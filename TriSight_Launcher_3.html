@@ -51,20 +51,8 @@
     border-bottom: 1px solid var(--border);
   }
   .logo { width: 80px; height: 80px; flex-shrink: 0; object-fit: contain; }
-  .title-block {}
-  .title {
-    font-family: 'Noto Serif JP', serif;
-    font-size: 22px;
-    font-weight: 300;
-    letter-spacing: 0.1em;
-    color: var(--ts-navy);
-  }
-  .subtitle {
-    font-size: 11px;
-    color: var(--text3);
-    letter-spacing: 0.15em;
-    margin-top: 3px;
-  }
+  .title { font-family: 'Noto Serif JP', serif; font-size: 22px; font-weight: 300; letter-spacing: 0.1em; color: var(--ts-navy); }
+  .subtitle { font-size: 11px; color: var(--text3); letter-spacing: 0.15em; margin-top: 3px; }
 
   /* ステータスバー */
   .status-bar {
@@ -84,15 +72,8 @@
     flex-shrink: 0;
     transition: background 0.4s, box-shadow 0.4s;
   }
-  .status-dot.active {
-    background: #22C55E;
-    box-shadow: 0 0 0 3px rgba(34,197,94,0.18);
-  }
-  .status-text {
-    flex: 1;
-    font-size: 13px;
-    color: var(--text2);
-  }
+  .status-dot.active { background: #22C55E; box-shadow: 0 0 0 3px rgba(34,197,94,0.18); }
+  .status-text { flex: 1; font-size: 13px; color: var(--text2); }
   .launch-btn {
     display: flex;
     align-items: center;
@@ -127,55 +108,127 @@
     border-radius: var(--radius-lg);
     transition: border-color 0.4s, box-shadow 0.4s;
   }
-  .member.awake {
-    border-color: var(--ts-gold);
-    box-shadow: 0 0 0 3px rgba(201,168,76,0.1);
-  }
-  .member-header {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    margin-bottom: 9px;
-  }
+  .member.awake { border-color: var(--ts-gold); box-shadow: 0 0 0 3px rgba(201,168,76,0.1); }
+  .member-header { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
   .member-icon {
     width: 30px; height: 30px;
     border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    font-weight: 500;
-    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 500; flex-shrink: 0;
   }
-  .icon-azusa  { background: #EDE9FE; color: #6D28D9; }
-  .icon-nagisa { background: #E0F2FE; color: #0369A1; }
-  .icon-tsukasa{ background: #FEF3C7; color: #92400E; }
-  .member-name { font-size: 14px; font-weight: 500; color: var(--text1); }
-  .member-role { font-size: 11px; color: var(--text2); line-height: 1.6; }
+  .icon-azusa   { background: #EDE9FE; color: #6D28D9; }
+  .icon-nagisa  { background: #E0F2FE; color: #0369A1; }
+  .icon-tsukasa { background: #FEF3C7; color: #92400E; }
+  .member-name  { font-size: 14px; font-weight: 500; color: var(--text1); }
+  .member-role  { font-size: 11px; color: var(--text2); line-height: 1.6; }
   .member-state {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 10px;
-    padding-top: 10px;
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 10px; padding-top: 10px;
     border-top: 1px solid var(--border);
   }
-  .state-dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: #D1D5DB;
-    flex-shrink: 0;
-    transition: background 0.4s;
-  }
+  .state-dot { width: 7px; height: 7px; border-radius: 50%; background: #D1D5DB; flex-shrink: 0; transition: background 0.4s; }
   .state-dot.on { background: #22C55E; }
   .state-label { font-size: 11px; color: var(--text3); }
 
-  /* 仕切り */
-  .divider {
-    height: 1px;
-    background: var(--border);
+  /* ==============================
+     出席確認シーケンス エリア（新規）
+     ============================== */
+  .rollcall-area {
+    display: none;
+    background: #0a0e1a;
+    border-radius: var(--radius-lg);
+    padding: 1.5rem 1.5rem 1.75rem;
     margin-bottom: 1.25rem;
+    position: relative;
+    overflow: hidden;
   }
+  .rollcall-area.show { display: block; }
+
+  /* 星の背景 */
+  .rc-stars { position: absolute; inset: 0; pointer-events: none; }
+  .rc-star {
+    position: absolute;
+    width: 2px; height: 2px;
+    background: rgba(200,220,255,0.45);
+    border-radius: 50%;
+    animation: rc-twinkle 3s infinite;
+  }
+  @keyframes rc-twinkle {
+    0%,100% { opacity: 0.2; }
+    50% { opacity: 0.9; }
+  }
+
+  /* タイトル */
+  .rc-title {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: #4a6a9a;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    position: relative;
+  }
+
+  /* 各AIの行 */
+  .rc-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 1rem; position: relative; }
+  .rc-row {
+    display: flex; align-items: center; gap: 12px;
+    opacity: 0; transform: translateX(-10px);
+    transition: opacity 0.45s ease, transform 0.45s ease;
+  }
+  .rc-row.visible { opacity: 1; transform: translateX(0); }
+  .rc-icon {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 500; flex-shrink: 0;
+    border: 1px solid rgba(100,140,220,0.25);
+  }
+  .rc-icon.azusa  { background: #1a1060; color: #9080ff; }
+  .rc-icon.nagisa { background: #0a1828; color: #4090e0; }
+  .rc-icon.tsukasa{ background: #0e1a10; color: #40c070; }
+  .rc-name  { font-size: 13px; font-weight: 500; color: #c8d8ff; flex: 1; }
+  .rc-role  { font-size: 10px; color: #3a5a8a; margin-top: 1px; }
+  .rc-status { font-size: 11px; letter-spacing: 1px; min-width: 80px; text-align: right; }
+  .rc-status.waiting    { color: #2a3a5a; }
+  .rc-status.connecting { color: #4a70bb; animation: rc-pulse 0.8s infinite; }
+  .rc-status.ok         { color: #40c070; }
+  @keyframes rc-pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+
+  /* プログレスバー */
+  .rc-progress {
+    height: 2px; background: #1a2040;
+    border-radius: 2px; overflow: hidden;
+    margin-bottom: 1rem; position: relative;
+  }
+  .rc-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3060c0, #40c090);
+    width: 0%; transition: width 0.4s ease;
+    border-radius: 2px;
+  }
+
+  /* 完了メッセージ */
+  .rc-ready {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+    animation: rc-fadein 0.7s ease;
+    position: relative;
+  }
+  .rc-ready.show { display: flex; }
+  @keyframes rc-fadein { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  .rc-ready-title { font-size: 14px; font-weight: 500; color: #40c090; letter-spacing: 2px; }
+  .rc-ready-msg   { font-size: 13px; color: #7a9abb; line-height: 1.9; }
+  .rc-cursor {
+    display: inline-block; width: 7px; height: 12px;
+    background: #40c090; animation: rc-blink 1s infinite;
+    vertical-align: middle; margin-left: 3px; border-radius: 1px;
+  }
+  @keyframes rc-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* 仕切り */
+  .divider { height: 1px; background: var(--border); margin-bottom: 1.25rem; }
 
   /* 音声セクション */
   .voice-section {
@@ -185,171 +238,89 @@
     padding: 18px 16px;
     margin-bottom: 1rem;
   }
-  .section-label {
-    font-size: 11px;
-    color: var(--text3);
-    letter-spacing: 0.12em;
-    margin-bottom: 14px;
-  }
-  .voice-controls {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    margin-bottom: 12px;
-  }
+  .section-label { font-size: 11px; color: var(--text3); letter-spacing: 0.12em; margin-bottom: 14px; }
+  .voice-controls { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 12px; }
   .mic-btn {
-    width: 46px; height: 46px;
-    border-radius: 50%;
-    border: 1px solid var(--border2);
-    background: var(--surface2);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    transition: all 0.2s;
+    width: 46px; height: 46px; border-radius: 50%;
+    border: 1px solid var(--border2); background: var(--surface2);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all 0.2s;
   }
   .mic-btn:hover:not(.disabled) { background: #EEE; }
-  .mic-btn.recording {
-    background: #EF4444;
-    border-color: #EF4444;
-    animation: pulse-rec 1.2s infinite;
-  }
-  .mic-btn.disabled { opacity: 0.35; cursor: not-allowed; }
+  .mic-btn.recording { background: #EF4444; border-color: #EF4444; animation: pulse-rec 1.2s infinite; }
+  .mic-btn.disabled  { opacity: 0.35; cursor: not-allowed; }
   @keyframes pulse-rec {
-    0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.3); }
-    50%      { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+    0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.3)}
+    50%    {box-shadow:0 0 0 10px rgba(239,68,68,0)}
   }
   .transcript {
-    flex: 1;
-    min-height: 60px;
-    max-height: 160px;
-    overflow-y: auto;
-    padding: 10px 12px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    font-size: 14px;
-    color: var(--text1);
-    line-height: 1.7;
-    word-break: break-all;
-    outline: none;
-    cursor: text;
+    flex: 1; min-height: 60px; max-height: 160px; overflow-y: auto;
+    padding: 10px 12px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: var(--radius-md);
+    font-size: 14px; color: var(--text1); line-height: 1.7;
+    word-break: break-all; outline: none; cursor: text;
   }
   .transcript:focus { border-color: var(--ts-gold); }
   .transcript.placeholder { color: var(--text3); font-style: italic; cursor: default; }
 
   /* ルート選択 */
-  .route-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
+  .route-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .route-label { font-size: 12px; color: var(--text2); }
   .route-chip {
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-    border: 1px solid;
-    cursor: pointer;
-    transition: opacity 0.2s, transform 0.1s;
-    user-select: none;
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 12px; font-weight: 500; border: 1px solid;
+    cursor: pointer; transition: opacity 0.2s, transform 0.1s; user-select: none;
   }
   .route-chip:hover { transform: scale(1.03); }
-  .chip-azusa  { background: #EDE9FE; color: #6D28D9; border-color: #A78BFA; }
-  .chip-nagisa { background: #E0F2FE; color: #0369A1; border-color: #7DD3FC; }
-  .chip-tsukasa{ background: #FEF3C7; color: #92400E; border-color: #FCD34D; }
+  .chip-azusa   { background: #EDE9FE; color: #6D28D9; border-color: #A78BFA; }
+  .chip-nagisa  { background: #E0F2FE; color: #0369A1; border-color: #7DD3FC; }
+  .chip-tsukasa { background: #FEF3C7; color: #92400E; border-color: #FCD34D; }
   .route-chip:not(.selected) { opacity: 0.38; }
 
   /* アクションボタン */
-  .action-row {
-    display: flex;
-    gap: 8px;
-    margin-top: 14px;
-  }
+  .action-row { display: flex; gap: 8px; margin-top: 14px; }
   .send-btn {
-    flex: 1;
-    padding: 10px;
-    background: var(--ts-navy);
-    color: var(--ts-gold);
-    border: none;
-    border-radius: var(--radius-md);
-    font-family: 'Zen Kaku Gothic New', sans-serif;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    letter-spacing: 0.04em;
-    transition: opacity 0.2s;
+    flex: 1; padding: 10px; background: var(--ts-navy); color: var(--ts-gold);
+    border: none; border-radius: var(--radius-md);
+    font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 14px; font-weight: 500;
+    cursor: pointer; letter-spacing: 0.04em; transition: opacity 0.2s;
   }
   .send-btn:disabled { opacity: 0.28; cursor: not-allowed; }
   .send-btn:hover:not(:disabled) { opacity: 0.85; }
   .clear-btn {
-    padding: 10px 16px;
-    background: var(--surface2);
-    color: var(--text2);
-    border: 1px solid var(--border2);
-    border-radius: var(--radius-md);
-    font-family: 'Zen Kaku Gothic New', sans-serif;
-    font-size: 14px;
-    cursor: pointer;
-    transition: opacity 0.2s;
+    padding: 10px 16px; background: var(--surface2); color: var(--text2);
+    border: 1px solid var(--border2); border-radius: var(--radius-md);
+    font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 14px;
+    cursor: pointer; transition: opacity 0.2s;
   }
   .clear-btn:hover { opacity: 0.7; }
 
   /* セッションログ */
   .log-section { margin-top: 1rem; }
-  .log-label {
-    font-size: 11px;
-    color: var(--text3);
-    letter-spacing: 0.12em;
-    margin-bottom: 10px;
-  }
+  .log-label { font-size: 11px; color: var(--text3); letter-spacing: 0.12em; margin-bottom: 10px; }
   .log-item {
-    padding: 10px 14px;
-    border-radius: var(--radius-md);
-    margin-bottom: 7px;
-    font-size: 13px;
-    line-height: 1.6;
-    border-left: 2.5px solid;
-    word-break: break-all;
+    padding: 10px 14px; border-radius: var(--radius-md); margin-bottom: 7px;
+    font-size: 13px; line-height: 1.6; border-left: 2.5px solid; word-break: break-all;
   }
-  .log-azusa  { background: #F5F3FF; border-color: #7C3AED; color: #4C1D95; }
-  .log-nagisa { background: #F0F9FF; border-color: #0369A1; color: #0C4A6E; }
-  .log-tsukasa{ background: #FFFBEB; border-color: #D97706; color: #78350F; }
-  .log-time { font-size: 10px; opacity: 0.55; margin-bottom: 3px; }
+  .log-azusa   { background: #F5F3FF; border-color: #7C3AED; color: #4C1D95; }
+  .log-nagisa  { background: #F0F9FF; border-color: #0369A1; color: #0C4A6E; }
+  .log-tsukasa { background: #FFFBEB; border-color: #D97706; color: #78350F; }
+  .log-time    { font-size: 10px; opacity: 0.55; margin-bottom: 3px; }
 
   /* Claude X 注記 */
   .claudex-note {
-    margin-top: 1rem;
-    padding: 12px 16px;
-    border-radius: var(--radius-md);
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 12px;
+    margin-top: 1rem; padding: 12px 16px; border-radius: var(--radius-md);
+    background: var(--surface2); border: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
   }
   .claudex-badge {
-    width: 26px; height: 26px;
-    border-radius: 6px;
-    background: var(--ts-navy);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
+    width: 26px; height: 26px; border-radius: 6px; background: var(--ts-navy);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
   .claudex-text { font-size: 12px; color: var(--text2); line-height: 1.6; }
 
   /* フッター */
-  .footer {
-    margin-top: 2rem;
-    text-align: center;
-    font-size: 11px;
-    color: var(--text3);
-    letter-spacing: 0.08em;
-  }
+  .footer { margin-top: 2rem; text-align: center; font-size: 11px; color: var(--text3); letter-spacing: 0.08em; }
 </style>
 </head>
 <body>
@@ -371,14 +342,10 @@
     <button class="launch-btn" id="launch-btn" onclick="launchSystem()">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
         <circle cx="8" cy="8" r="2.5" fill="currentColor" stroke="none"/>
-        <line x1="8" y1="1" x2="8" y2="3"/>
-        <line x1="8" y1="13" x2="8" y2="15"/>
-        <line x1="1" y1="8" x2="3" y2="8"/>
-        <line x1="13" y1="8" x2="15" y2="8"/>
-        <line x1="3.05" y1="3.05" x2="4.46" y2="4.46"/>
-        <line x1="11.54" y1="11.54" x2="12.95" y2="12.95"/>
-        <line x1="11.54" y1="3.05" x2="12.95" y2="4.46"/>
-        <line x1="3.05" y1="11.54" x2="4.46" y2="12.95"/>
+        <line x1="8" y1="1" x2="8" y2="3"/><line x1="8" y1="13" x2="8" y2="15"/>
+        <line x1="1" y1="8" x2="3" y2="8"/><line x1="13" y1="8" x2="15" y2="8"/>
+        <line x1="3.05" y1="3.05" x2="4.46" y2="4.46"/><line x1="11.54" y1="11.54" x2="12.95" y2="12.95"/>
+        <line x1="11.54" y1="3.05" x2="12.95" y2="4.46"/><line x1="3.05" y1="11.54" x2="4.46" y2="12.95"/>
       </svg>
       TriSight 起動
     </button>
@@ -421,6 +388,45 @@
     </div>
   </div>
 
+  <!-- ★ 出席確認シーケンスエリア（新規） -->
+  <div class="rollcall-area" id="rollcall-area">
+    <div class="rc-stars" id="rc-stars"></div>
+    <div class="rc-title">— AI スタッフ 出席確認 —</div>
+    <div class="rc-list">
+      <div class="rc-row" id="rc-azusa">
+        <div class="rc-icon azusa">あ</div>
+        <div>
+          <div class="rc-name">あずさ</div>
+          <div class="rc-role">起案・構想 AI</div>
+        </div>
+        <div class="rc-status waiting" id="rcs-azusa">———</div>
+      </div>
+      <div class="rc-row" id="rc-nagisa">
+        <div class="rc-icon nagisa">な</div>
+        <div>
+          <div class="rc-name">なぎさ</div>
+          <div class="rc-role">検証・分析 AI</div>
+        </div>
+        <div class="rc-status waiting" id="rcs-nagisa">———</div>
+      </div>
+      <div class="rc-row" id="rc-tsukasa">
+        <div class="rc-icon tsukasa">つ</div>
+        <div>
+          <div class="rc-name">つかさ</div>
+          <div class="rc-role">評価・判定 AI</div>
+        </div>
+        <div class="rc-status waiting" id="rcs-tsukasa">———</div>
+      </div>
+    </div>
+    <div class="rc-progress"><div class="rc-progress-fill" id="rc-progress-fill"></div></div>
+    <div class="rc-ready" id="rc-ready">
+      <div class="rc-ready-title">AIスタッフ — 全員起動完了</div>
+      <div class="rc-ready-msg" id="rc-today-msg">
+        本日のテーマをどうぞ。<span class="rc-cursor"></span>
+      </div>
+    </div>
+  </div>
+
   <div class="divider"></div>
 
   <!-- 音声・テキスト入力 -->
@@ -436,8 +442,7 @@
           <line x1="8" y1="22" x2="16" y2="22"/>
         </svg>
       </button>
-      <div class="transcript placeholder" id="transcript"
-           onclick="focusTranscript()">
+      <div class="transcript placeholder" id="transcript" onclick="focusTranscript()">
         起動後に音声入力またはテキスト入力が可能になります
       </div>
     </div>
@@ -478,6 +483,71 @@
 </div>
 
 <script>
+/* ===== 今日の問い リスト ===== */
+const todayMessages = [
+  '本日のテーマをどうぞ。',
+  '三つの知性が、あなたを待っています。',
+  '今日、誰かの仕事を楽にできますか？',
+  '昨日より少し、前へ。',
+  'どんな課題を持ち込みますか？',
+  '新しい一手を、一緒に考えましょう。',
+  '今日の問いを、投げてください。',
+  'アイデアの種を、ここに。',
+  '起案者の想像力が、システムを動かします。',
+  '今日も、トライサイトとともに。'
+];
+
+/* ===== 出席確認シーケンス ===== */
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function runRollCall() {
+  const area = document.getElementById('rollcall-area');
+  area.classList.add('show');
+
+  // 星を生成
+  const starsEl = document.getElementById('rc-stars');
+  starsEl.innerHTML = '';
+  for (let i = 0; i < 35; i++) {
+    const s = document.createElement('div');
+    s.className = 'rc-star';
+    s.style.left = Math.random() * 100 + '%';
+    s.style.top  = Math.random() * 100 + '%';
+    s.style.animationDelay = (Math.random() * 3) + 's';
+    starsEl.appendChild(s);
+  }
+
+  await delay(400);
+
+  const agents = [
+    { id: 'azusa',   label: 'あずさ' },
+    { id: 'nagisa',  label: 'なぎさ' },
+    { id: 'tsukasa', label: 'つかさ' },
+  ];
+
+  for (let i = 0; i < agents.length; i++) {
+    const a = agents[i];
+    document.getElementById('rc-' + a.id).classList.add('visible');
+    const st = document.getElementById('rcs-' + a.id);
+    st.textContent = '接続中…';
+    st.className = 'rc-status connecting';
+    document.getElementById('rc-progress-fill').style.width = ((i + 0.5) / 3 * 100) + '%';
+    await delay(850);
+    st.textContent = '起動完了 ✓';
+    st.className = 'rc-status ok';
+    document.getElementById('rc-progress-fill').style.width = ((i + 1) / 3 * 100) + '%';
+    await delay(350);
+  }
+
+  await delay(300);
+
+  // 今日の問いをランダム選択
+  const msg = todayMessages[Math.floor(Math.random() * todayMessages.length)];
+  document.getElementById('rc-today-msg').innerHTML =
+    msg + '<span class="rc-cursor"></span>';
+  document.getElementById('rc-ready').classList.add('show');
+}
+
+/* ===== メインランチャー ===== */
 let launched = false;
 let recording = false;
 let selectedRoute = 'azusa';
@@ -485,9 +555,9 @@ let recognition = null;
 let isPlaceholder = true;
 
 const routes = {
-  azusa:  { name: 'あずさ', cls: 'log-azusa'  },
-  nagisa: { name: 'なぎさ', cls: 'log-nagisa' },
-  tsukasa:{ name: 'つかさ', cls: 'log-tsukasa'}
+  azusa:   { name: 'あずさ', cls: 'log-azusa'   },
+  nagisa:  { name: 'なぎさ', cls: 'log-nagisa'  },
+  tsukasa: { name: 'つかさ', cls: 'log-tsukasa' }
 };
 
 function launchSystem() {
@@ -502,8 +572,8 @@ function launchSystem() {
   document.getElementById('sys-dot').classList.add('active');
   document.getElementById('sys-text').textContent = '稼働中 — 起案者の指示をお待ちしています';
 
-  const members = ['azusa', 'nagisa', 'tsukasa'];
-  members.forEach((m, i) => {
+  // メンバーカードをアクティブ化
+  ['azusa', 'nagisa', 'tsukasa'].forEach((m, i) => {
     setTimeout(() => {
       document.getElementById('m-' + m).classList.add('awake');
       document.getElementById('d-' + m).classList.add('on');
@@ -511,6 +581,10 @@ function launchSystem() {
     }, 300 + i * 300);
   });
 
+  // 出席確認シーケンス開始
+  runRollCall();
+
+  // 入力エリアを有効化（シーケンス完了後）
   setTimeout(() => {
     const mic = document.getElementById('mic-btn');
     mic.classList.remove('disabled');
@@ -527,7 +601,7 @@ function launchSystem() {
 
     document.getElementById('send-btn').disabled = false;
     initSpeech();
-  }, 1200);
+  }, 4000);
 }
 
 function focusTranscript() {
@@ -537,10 +611,7 @@ function focusTranscript() {
 
 function initSpeech() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    document.getElementById('mic-btn').classList.add('disabled');
-    return;
-  }
+  if (!SR) { document.getElementById('mic-btn').classList.add('disabled'); return; }
   recognition = new SR();
   recognition.lang = 'ja-JP';
   recognition.continuous = true;
@@ -563,7 +634,7 @@ function initSpeech() {
 function toggleMic() {
   if (!launched) return;
   recording = !recording;
-  const btn = document.getElementById('mic-btn');
+  const btn  = document.getElementById('mic-btn');
   const icon = document.getElementById('mic-icon');
   if (recording) {
     btn.classList.add('recording');
@@ -600,11 +671,10 @@ function checkSendable() {
 }
 
 function sendInput() {
-  const t = document.getElementById('transcript').textContent
-    .replace(/【.*?】/g, '').trim();
+  const t = document.getElementById('transcript').textContent.replace(/【.*?】/g, '').trim();
   if (!t) return;
   const r = routes[selectedRoute];
-  const log = document.getElementById('log-area');
+  const log   = document.getElementById('log-area');
   const items = document.getElementById('log-items');
   log.style.display = 'block';
   const now = new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });

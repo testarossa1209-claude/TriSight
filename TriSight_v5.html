@@ -602,10 +602,9 @@ textarea {
           <span class="stage-status" id="stT"></span>
         </div>
         <div class="stage-output" id="outT"></div>
-      </div>
+     <div style="text-align:right; margin-top:16px; padding-right:8px;">
+      <button onclick="downloadTXT()" style="background:#c9a84c; color:#0d1b2a; border:none; padding:10px 24px; font-size:0.9rem; font-weight:bold; border-radius:4px; cursor:pointer;">📄 TXT出力</button>
     </div>
-  </div>
-
   <div class="wf-footer">© 2026 合同会社トライサイト　TriSight™ is a registered trademark.</div>
 </div>
 
@@ -714,6 +713,18 @@ async function run() {
 
   btn.disabled = false;
   btn.textContent = 'ワークフロー実行';
+}function downloadTXT() {
+  var azusa = document.getElementById('outA') ? document.getElementById('outA').innerText : '';
+  var nagisa = document.getElementById('outN') ? document.getElementById('outN').innerText : '';
+  var tsukasa = document.getElementById('outT') ? document.getElementById('outT').innerText : '';
+  var now = new Date();
+  var dateStr = now.getFullYear() + ('0'+(now.getMonth()+1)).slice(-2) + ('0'+now.getDate()).slice(-2) + '_' + ('0'+now.getHours()).slice(-2) + ('0'+now.getMinutes()).slice(-2);
+  var content = '■TriSight™ 出力レポート\n生成日時：' + now.toLocaleString('ja-JP') + '\n\n【あずさ 出力】\n' + azusa + '\n\n【なぎさ 出力】\n' + nagisa + '\n\n【つかさ 出力】\n' + tsukasa;
+  var blob = new Blob([content], {type: 'text/plain;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'TriSight_' + dateStr + '.txt';
+  a.click();
 }
 </script>
 <style>.ai-lamp{display:inline-block;width:12px;height:12px;border-radius:50%;background:#555;margin-right:6px;vertical-align:middle;transition:background 0.5s}.ai-lamp.on{background:#00e676;box-shadow:0 0 8px #00e676}.ai-status{margin-top:8px;font-size:0.85em;color:#aaa}.ai-status-text.done{color:#00e676}</style><script>window.addEventListener('DOMContentLoaded',function(){var l=['lamp-azusa','lamp-nagisa','lamp-tsukasa'],t=['status-azusa','status-nagisa','status-tsukasa'];l.forEach(function(id,i){setTimeout(function(){var a=document.getElementById(id),b=document.getElementById(t[i]);if(a)a.classList.add('on');if(b){b.textContent='起動完了';b.classList.add('done')}},800*(i+1))})});</script>

@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<!-- saved from url=(0064)file:///C:/Users/testa/Downloads/TriSight_Report_Business_2.html -->
+<html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TriSight™ Business Report</title>
+<style>
+  /* ─────── 基本設定 ─────── */
+  :root {
+    --navy: #1a2a4a;
+    --navy-deep: #0f1a30;
+    --gold: #c9a961;
+    --gold-light: #e6d4a3;
+    --paper: #fdfcf8;
+    --ink: #1a1a1a;
+    --gray: #6b7280;
+    --gray-light: #e5e7eb;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: "Yu Mincho", "游明朝", "YuMincho", "Hiragino Mincho ProN", serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.7;
+    padding: 0;
+  }
+
+  /* ─────── 入力エリア（操作パネル） ─────── */
+  .control-panel {
+    background: var(--navy-deep);
+    color: white;
+    padding: 24px;
+    border-bottom: 4px solid var(--gold);
+  }
+
+  .control-panel h1 {
+    font-size: 18px;
+    color: var(--gold);
+    margin-bottom: 16px;
+    letter-spacing: 0.1em;
+  }
+
+  .panel-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+
+  .panel-section {
+    background: rgba(255,255,255,0.05);
+    padding: 16px;
+    border: 1px solid rgba(201,169,97,0.3);
+    border-radius: 4px;
+  }
+
+  .panel-section h2 {
+    font-size: 13px;
+    color: var(--gold-light);
+    margin-bottom: 12px;
+    font-weight: normal;
+    letter-spacing: 0.05em;
+  }
+
+  .panel-section input,
+  .panel-section textarea,
+  .panel-section select {
+    width: 100%;
+    padding: 8px 10px;
+    background: rgba(255,255,255,0.95);
+    border: 1px solid var(--gray-light);
+    border-radius: 3px;
+    font-size: 13px;
+    font-family: inherit;
+    margin-bottom: 8px;
+    color: var(--ink);
+  }
+
+  .panel-section textarea {
+    min-height: 100px;
+    resize: vertical;
+    font-family: "Yu Gothic", "游ゴシック", sans-serif;
+  }
+
+  .panel-section input[type="password"] {
+    font-family: monospace;
+  }
+
+  .button-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(201,169,97,0.3);
+  }
+
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+
+  .btn-primary {
+    background: var(--gold);
+    color: var(--navy-deep);
+    font-weight: bold;
+  }
+
+  .btn-primary:hover {
+    background: var(--gold-light);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--gold-light);
+    border: 1px solid var(--gold);
+  }
+
+  .btn-secondary:hover {
+    background: rgba(201,169,97,0.1);
+  }
+
+  /* ─────── ステータス表示 ─────── */
+  .status-bar {
+    padding: 12px 24px;
+    background: rgba(201,169,97,0.15);
+    color: var(--gold-light);
+    font-size: 13px;
+    display: none;
+  }
+
+  .status-bar.active { display: block; }
+  .status-bar.error {
+    background: rgba(220,38,38,0.2);
+    color: #fecaca;
+  }
+
+  /* ─────── 報告書本体 ─────── */
+  .report {
+    max-width: 210mm;
+    margin: 32px auto;
+    background: var(--paper);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  }
+
+  /* ── 表紙ページ ── */
+  .cover {
+    width: 100%;
+    height: 297mm;
+    background: linear-gradient(135deg, var(--navy-deep) 0%, var(--navy) 100%);
+    color: white;
+    padding: 60px 50px;
+    position: relative;
+    page-break-after: always;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cover::before {
+    content: "";
+    position: absolute;
+    top: 30px; left: 30px; right: 30px; bottom: 30px;
+    border: 2px solid var(--gold);
+    pointer-events: none;
+  }
+
+  .cover-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 60px;
+    z-index: 2;
+  }
+
+  .cover-logo {
+    height: 60px;
+    width: auto;
+  }
+
+  .confidential {
+    color: var(--gold);
+    font-size: 12px;
+    letter-spacing: 0.3em;
+    border: 1px solid var(--gold);
+    padding: 6px 14px;
+  }
+
+  .cover-title {
+    margin-top: auto;
+    margin-bottom: 80px;
+    text-align: center;
+  }
+
+  .cover-title .label {
+    font-size: 14px;
+    color: var(--gold-light);
+    letter-spacing: 0.4em;
+    margin-bottom: 24px;
+  }
+
+  .cover-title h1 {
+    font-size: 42px;
+    color: var(--gold);
+    letter-spacing: 0.15em;
+    margin-bottom: 16px;
+    font-weight: normal;
+  }
+
+  .cover-title .subtitle {
+    font-size: 18px;
+    color: white;
+    letter-spacing: 0.2em;
+  }
+
+  .cover-info {
+    margin-top: auto;
+    width: 100%;
+  }
+
+  .cover-info table {
+    width: 100%;
+    border-collapse: collapse;
+    color: white;
+    font-size: 14px;
+  }
+
+  .cover-info td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(201,169,97,0.4);
+  }
+
+  .cover-info td:first-child {
+    color: var(--gold-light);
+    width: 35%;
+    letter-spacing: 0.1em;
+  }
+
+  .cover-footer {
+    text-align: center;
+    margin-top: 40px;
+    color: var(--gold-light);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+  }
+
+  /* ── 本文ページ ── */
+  .page {
+    padding: 40px 50px;
+    min-height: 297mm;
+    page-break-after: always;
+    position: relative;
+  }
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--navy);
+    padding-bottom: 12px;
+    margin-bottom: 30px;
+  }
+
+  .page-header .title {
+    font-size: 14px;
+    color: var(--navy);
+    letter-spacing: 0.1em;
+  }
+
+  .page-header .meta {
+    font-size: 11px;
+    color: var(--gray);
+  }
+
+  .page-footer {
+    position: absolute;
+    bottom: 20px;
+    left: 50px;
+    right: 50px;
+    border-top: 1px solid var(--gold);
+    padding-top: 8px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--gray);
+  }
+
+  /* ── セクション ── */
+  .section {
+    margin-bottom: 30px;
+  }
+
+  .section h2 {
+    font-size: 18px;
+    color: var(--navy);
+    border-left: 5px solid var(--gold);
+    padding-left: 14px;
+    margin-bottom: 16px;
+    letter-spacing: 0.05em;
+  }
+
+  .section h3 {
+    font-size: 14px;
+    color: var(--navy);
+    margin: 16px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px dotted var(--gold);
+  }
+
+  .section .content {
+    font-size: 13px;
+    line-height: 1.9;
+    text-align: justify;
+  }
+
+  .section .content[contenteditable="true"] {
+    outline: none;
+    padding: 8px;
+    border-radius: 2px;
+    transition: background 0.2s;
+  }
+
+  .section .content[contenteditable="true"]:hover {
+    background: rgba(201,169,97,0.05);
+  }
+
+  .section .content[contenteditable="true"]:focus {
+    background: rgba(201,169,97,0.1);
+    box-shadow: inset 0 0 0 1px var(--gold);
+  }
+
+  /* ── 基本情報テーブル ── */
+  .info-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin: 12px 0;
+  }
+
+  .info-table th {
+    background: var(--navy);
+    color: white;
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: normal;
+    letter-spacing: 0.05em;
+  }
+
+  .info-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--gray-light);
+  }
+
+  .info-table tr:nth-child(even) td {
+    background: rgba(201,169,97,0.04);
+  }
+
+  /* ── データテーブル（手動入力） ── */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin: 12px 0;
+  }
+
+  .data-table th {
+    background: var(--navy);
+    color: white;
+    padding: 8px;
+    text-align: center;
+    font-weight: normal;
+  }
+
+  .data-table td {
+    padding: 6px 8px;
+    border: 1px solid var(--gray-light);
+    text-align: right;
+  }
+
+  .data-table td:first-child {
+    text-align: left;
+    background: rgba(26,42,74,0.05);
+  }
+
+  .data-table td[contenteditable="true"] {
+    outline: none;
+  }
+
+  .data-table td[contenteditable="true"]:hover {
+    background: rgba(201,169,97,0.08);
+  }
+
+  .data-table td[contenteditable="true"]:focus {
+    background: rgba(201,169,97,0.15);
+    box-shadow: inset 0 0 0 2px var(--gold);
+  }
+
+  /* ── 結論セクション ── */
+  .conclusion {
+    background: linear-gradient(135deg, rgba(26,42,74,0.05) 0%, rgba(201,169,97,0.08) 100%);
+    border: 2px solid var(--gold);
+    padding: 24px;
+    margin-top: 30px;
+  }
+
+  .conclusion h2 {
+    color: var(--navy);
+    border-left: 5px solid var(--navy);
+    margin-bottom: 16px;
+  }
+
+  .conclusion .note {
+    font-size: 11px;
+    color: var(--gray);
+    background: rgba(255,255,255,0.6);
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    border-left: 3px solid var(--gold);
+  }
+
+  .conclusion-content {
+    min-height: 180px;
+    font-size: 13px;
+    line-height: 2;
+    padding: 12px;
+    background: white;
+    border: 1px solid var(--gray-light);
+    outline: none;
+  }
+
+  .conclusion-content:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 2px rgba(201,169,97,0.2);
+  }
+
+  /* ── エクスポートバー ── */
+  .export-bar {
+    background: var(--navy-deep);
+    padding: 16px 24px;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    border-top: 4px solid var(--gold);
+  }
+
+  /* ─────── セキュリティモーダル ─────── */
+  .security-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15,26,48,0.95);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .security-modal {
+    background: var(--paper);
+    max-width: 560px;
+    padding: 40px;
+    border: 3px solid var(--gold);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  .security-modal h2 {
+    color: var(--navy);
+    border-left: 5px solid var(--gold);
+    padding-left: 14px;
+    margin-bottom: 20px;
+    font-size: 20px;
+  }
+
+  .security-modal .body {
+    font-size: 13px;
+    line-height: 1.9;
+    margin-bottom: 24px;
+  }
+
+  .security-modal .body strong {
+    color: var(--navy);
+    background: rgba(201,169,97,0.2);
+    padding: 0 4px;
+  }
+
+  .security-modal .check-item {
+    padding: 6px 0;
+    border-bottom: 1px dotted var(--gray-light);
+  }
+
+  .security-modal .check-item::before {
+    content: "✓ ";
+    color: var(--gold);
+    font-weight: bold;
+  }
+
+  /* ─────── 印刷時の調整 ─────── */
+  @media print {
+    body { background: white; }
+    .control-panel, .status-bar, .export-bar, .security-overlay {
+      display: none !important;
+    }
+    .report {
+      box-shadow: none;
+      margin: 0;
+      max-width: 100%;
+    }
+    .cover, .page {
+      page-break-after: always;
+    }
+    .page-footer {
+      position: fixed;
+      bottom: 10mm;
+    }
+    .section .content[contenteditable="true"]:hover,
+    .data-table td[contenteditable="true"]:hover {
+      background: transparent !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─────── セキュリティポリシーモーダル ─────── -->
+<div class="security-overlay" id="securityOverlay">
+  <div class="security-modal">
+    <h2>セキュリティポリシー（必読）</h2>
+    <div class="body">
+      <p style="margin-bottom: 14px;">本画面では <strong>OpenAI APIキー</strong> を使用します。以下の運用方針をご確認ください。</p>
+      <div class="check-item">APIキーは <strong>セッションストレージ</strong> にのみ一時保持されます</div>
+      <div class="check-item">タブを閉じると <strong>自動的に消去</strong> されます</div>
+      <div class="check-item">永続保存（localStorage等）は<strong>行いません</strong></div>
+      <div class="check-item">通信は <strong>HTTPS/TLS暗号化</strong> されます</div>
+      <div class="check-item">本ファイルは <strong>クライアント側のみ</strong> で動作し、第三者サーバへ情報を送信しません（OpenAI APIを除く）</div>
+      <p style="margin-top: 14px; font-size: 12px; color: var(--gray);">本報告書はTriSight™経営判断支援システムの一部として、ファクトチェック済みの結論を起案者へ提示するものです。最終的な経営判断責任は起案者に帰属します。</p>
+    </div>
+    <button class="btn btn-primary" style="width: 100%;" onclick="acknowledgeSecurity()">確認しました</button>
+  </div>
+</div>
+
+<!-- ─────── 操作パネル ─────── -->
+<div class="control-panel">
+  <h1>TriSight™ Business Report — 操作パネル</h1>
+  <div class="panel-grid">
+
+    <!-- パネル1: 三身一体出力 -->
+    <div class="panel-section">
+      <h2>1. TriSight™ 三身一体出力（TXT）</h2>
+      <textarea id="txtInput" placeholder="v5.htmlからの自動受信、または手動でTXTを貼り付けてください..."></textarea>
+    </div>
+
+    <!-- パネル2: クライアント情報 -->
+    <div class="panel-section">
+      <h2>2. クライアント情報</h2>
+      <input type="text" id="clientName" value="ノア・コーポレーション合同会社" placeholder="提出先名">
+      <input type="text" id="clientPeriod" placeholder="対象期間（例：令和8年4月分）">
+      <input type="date" id="clientDate">
+      <select id="clientPlan">
+        <option value="エグゼクティブプラン（月次訪問コンサル付）">エグゼクティブプラン（月次訪問コンサル付）</option>
+        <option value="スタンダードプラン">スタンダードプラン</option>
+        <option value="ベーシックプラン">ベーシックプラン</option>
+      </select>
+    </div>
+
+    <!-- パネル3: つかさAPIキー -->
+    <div class="panel-section">
+      <h2>3. つかさAPIキー（OpenAI）</h2>
+      <input type="password" id="apiKeyInput" placeholder="sk-...">
+      <p style="font-size: 11px; color: var(--gold-light); line-height: 1.6;">
+        モデル: gpt-4o<br>
+        毎回入力（セッション内のみ保持）<br>
+        タブを閉じると自動消去
+      </p>
+    </div>
+  </div>
+
+  <div class="button-row">
+    <button class="btn btn-primary" onclick="generateReport()">▶ 報告書を生成（つかさAPI実行）</button>
+    <button class="btn btn-secondary" onclick="loadDemoData()">デモデータ読込</button>
+    <button class="btn btn-secondary" onclick="clearAll()">クリア</button>
+  </div>
+</div>
+
+<!-- ステータスバー -->
+<div class="status-bar" id="statusBar"></div>
+
+<!-- ─────── 報告書本体 ─────── -->
+<div class="report" id="report">
+
+  <!-- 表紙ページ -->
+  <div class="cover">
+    <div class="cover-header">
+      <img src="file:///C:/Users/testa/Downloads/TriSight_logo_registered.jpg" alt="TriSight" class="cover-logo">
+      <div class="confidential">CONFIDENTIAL</div>
+    </div>
+
+    <div class="cover-title">
+      <div class="label">MONTHLY EXECUTIVE REPORT</div>
+      <h1>月次経営報告書</h1>
+      <div class="subtitle" id="coverPeriod">令和8年4月分</div>
+    </div>
+
+    <div class="cover-info">
+      <table>
+        <tbody><tr><td>提出先</td><td id="coverClient">ノア・コーポレーション合同会社</td></tr>
+        <tr><td>提出元</td><td>合同会社トライサイト</td></tr>
+        <tr><td>提出日</td><td id="coverDate">令和8年5月6日</td></tr>
+        <tr><td>契約プラン</td><td id="coverPlan">エグゼクティブプラン（月次訪問コンサル付）</td></tr>
+        <tr><td>分析システム</td><td>TriSight™ 三身一体型AIワークフロー</td></tr>
+      </tbody></table>
+    </div>
+
+    <div class="cover-footer">
+      © 合同会社トライサイト　TriSight™ is a registered trademark.
+    </div>
+  </div>
+
+  <!-- ── 本文ページ1 ── -->
+  <div class="page">
+    <div class="page-header">
+      <div class="title">月次経営報告書</div>
+      <div class="meta" id="pageMeta1">令和8年4月分 / 提出先：ノア・コーポレーション合同会社</div>
+    </div>
+
+    <div class="section">
+      <h2>1. 基本情報</h2>
+      <table class="info-table">
+        <tbody><tr><th style="width: 30%;">項目</th><th>内容</th></tr>
+        <tr><td>報告書種別</td><td>月次経営報告書（ビジネスレポート版）</td></tr>
+        <tr><td>分析対象期間</td><td id="infoPeriod">令和8年4月分</td></tr>
+        <tr><td>分析手法</td><td>TriSight™ 三身一体型AIワークフロー（あずさ・なぎさ・つかさ）</td></tr>
+        <tr><td>結論抽出AI</td><td>つかさ（評価AI / OpenAI gpt-4o）</td></tr>
+        <tr><td>提出元</td><td>合同会社トライサイト 代表 野木君江</td></tr>
+        <tr><td>担当コンサルタント</td><td>野木宏史（合同会社トライサイト）</td></tr>
+      </tbody></table>
+    </div>
+
+    <div class="section">
+      <h2>2. 経営サマリー</h2>
+      <div class="content" contenteditable="true" id="sec2">
+（つかさAPI実行後、ここに経営サマリーが自動配置されます。生成後、本欄は手動で編集可能です。）
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>3. 月次実績データ（部門別損益）</h2>
+      <p style="font-size: 11px; color: var(--gray); margin-bottom: 8px;">※ 試算表PDFから手動転記してください。単位：円</p>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>部門</th>
+            <th>売上高</th>
+            <th>売上原価</th>
+            <th>販管費</th>
+            <th>営業利益</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>看護部</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+          </tr>
+          <tr>
+            <td>介護部</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+          </tr>
+          <tr>
+            <td>相談支援</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+          </tr>
+          <tr>
+            <td>居宅介護支援</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+          </tr>
+          <tr>
+            <td>事務局</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+          </tr>
+          <tr style="background: rgba(201,169,97,0.15); font-weight: bold;">
+            <td>法人全体</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="page-footer">
+      <span>TriSight™ Business Report</span>
+      <span>1 / 3</span>
+    </div>
+  </div>
+
+  <!-- ── 本文ページ2 ── -->
+  <div class="page">
+    <div class="page-header">
+      <div class="title">月次経営報告書</div>
+      <div class="meta" id="pageMeta2">令和8年4月分 / 提出先：ノア・コーポレーション合同会社</div>
+    </div>
+
+    <div class="section">
+      <h2>4. 費用構造分析</h2>
+      <p style="font-size: 11px; color: var(--gray); margin-bottom: 8px;">※ 試算表PDFから手動転記してください</p>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>科目</th>
+            <th>当月実績（円）</th>
+            <th>構成比（%）</th>
+            <th>前月比（%）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>人件費</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+          </tr>
+          <tr>
+            <td>地代家賃</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+          </tr>
+          <tr>
+            <td>水道光熱費</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+          </tr>
+          <tr>
+            <td>消耗品費</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+          </tr>
+          <tr>
+            <td>支払手数料</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+          </tr>
+          <tr>
+            <td>その他</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+            <td contenteditable="true">-</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>5. AI分析所見（あずさ・なぎさ・つかさ統合）</h2>
+      <div class="content" contenteditable="true" id="sec5">
+（つかさAPI実行後、ここに三身一体型AIワークフローによる統合分析所見が自動配置されます。）
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>6. リスク評価</h2>
+      <div class="content" contenteditable="true" id="sec6">
+（つかさAPI実行後、ここにリスク評価が自動配置されます。発生確率・影響度の観点から整理されます。）
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span>TriSight™ Business Report</span>
+      <span>2 / 3</span>
+    </div>
+  </div>
+
+  <!-- ── 本文ページ3 ── -->
+  <div class="page">
+    <div class="page-header">
+      <div class="title">月次経営報告書</div>
+      <div class="meta" id="pageMeta3">令和8年4月分 / 提出先：ノア・コーポレーション合同会社</div>
+    </div>
+
+    <div class="section">
+      <h2>7. 次月アクションプラン</h2>
+      <div class="content" contenteditable="true" id="sec7">
+（つかさAPI実行後、ここに具体的な次月アクションプランが自動配置されます。）
+      </div>
+    </div>
+
+    <!-- 結論セクション（人間最終判断） -->
+    <div class="conclusion">
+      <h2>結論（起案者最終判断）</h2>
+      <div class="note">
+        ⓘ 本セクションは <strong>起案者（経営判断責任者）</strong> が最終的に記入する欄です。AIの結論はあくまで支援情報であり、最終的な経営判断責任は起案者に帰属します。
+      </div>
+      <div class="conclusion-content" contenteditable="true" id="conclusion">
+（経営判断責任者がここに最終結論を記入してください）
+      </div>
+    </div>
+
+    <div class="page-footer">
+      <span>TriSight™ Business Report</span>
+      <span>3 / 3</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- ─────── エクスポートバー ─────── -->
+<div class="export-bar">
+  <button class="btn btn-primary" onclick="window.print()">🖨 印刷 / PDF保存</button>
+  <button class="btn btn-secondary" onclick="downloadHTML()">💾 HTML保存</button>
+  <button class="btn btn-secondary" onclick="downloadTXT()">📄 TXT再出力</button>
+</div>
+
+<script>
+// ─────── セキュリティモーダル ───────
+function acknowledgeSecurity(){
+  document.getElementById('securityOverlay').style.display = 'none';
+}
+
+// ─────── ステータス表示 ───────
+function showStatus(msg, isError = false){
+  const bar = document.getElementById('statusBar');
+  bar.textContent = msg;
+  bar.className = 'status-bar active' + (isError ? ' error' : '');
+}
+
+function hideStatus(){
+  document.getElementById('statusBar').className = 'status-bar';
+}
+
+// ─────── 表紙・ヘッダー情報の同期 ───────
+function syncCoverInfo(){
+  const period = document.getElementById('clientPeriod').value || '令和8年4月分';
+  const client = document.getElementById('clientName').value || 'ノア・コーポレーション合同会社';
+  const dateRaw = document.getElementById('clientDate').value;
+  const plan = document.getElementById('clientPlan').value;
+
+  let dateStr = '令和8年5月7日';
+  if(dateRaw){
+    const d = new Date(dateRaw);
+    const wareki = d.getFullYear() - 2018;
+    dateStr = '令和' + wareki + '年' + (d.getMonth()+1) + '月' + d.getDate() + '日';
+  }
+
+  document.getElementById('coverPeriod').textContent = period;
+  document.getElementById('coverClient').textContent = client;
+  document.getElementById('coverDate').textContent = dateStr;
+  document.getElementById('coverPlan').textContent = plan;
+  document.getElementById('infoPeriod').textContent = period;
+
+  const meta = period + ' / 提出先：' + client;
+  document.getElementById('pageMeta1').textContent = meta;
+  document.getElementById('pageMeta2').textContent = meta;
+  document.getElementById('pageMeta3').textContent = meta;
+}
+
+// ─────── つかさAPI実行 ───────
+async function generateReport(){
+  syncCoverInfo();
+
+  const txt = document.getElementById('txtInput').value.trim();
+  const apiKey = document.getElementById('apiKeyInput').value.trim();
+
+  if(!txt){
+    showStatus('⚠ TriSight™三身一体出力（TXT）が入力されていません', true);
+    return;
+  }
+  if(!apiKey){
+    showStatus('⚠ つかさAPIキー（OpenAI）が入力されていません', true);
+    return;
+  }
+
+  // セッションストレージにAPIキーを一時保持
+  try{ sessionStorage.setItem('trisight_apikey_temp', apiKey); }catch(e){}
+
+  showStatus('⏳ つかさAPI（gpt-4o）が結論を抽出中... しばらくお待ちください');
+
+  const systemPrompt = `あなたはTriSight™経営判断支援システムにおける評価AI「つかさ」です。
+入力されたTriSight™三身一体型AIワークフロー（あずさ＝構想、なぎさ＝検証、つかさ＝評価）の出力TXTを読み解き、
+経営者向け月次報告書の各セクションに配置するための結論を、以下の5段階プロセスで生成してください。
+
+【5段階プロセス】
+1. 検証：入力TXTの論理整合性を確認
+2. 真偽性：事実関係の妥当性を判定
+3. 正当性：経営判断の正当化根拠を検証
+4. リスク判定：発生確率と影響度の観点から整理
+5. 結論再現：起案者が判断しやすい形に結論を再構成
+
+【世代間配慮原則】
+本報告書は経営者層が読む文書です。専門用語は必要最小限とし、判断の根拠を明示してください。
+
+【出力形式（JSON厳守）】
+{
+  "summary": "経営サマリー（200-300文字）",
+  "ai_findings": "AI分析所見（300-400文字）",
+  "risk_assessment": "リスク評価（200-300文字、発生確率・影響度を明記）",
+  "next_action": "次月アクションプラン（200-300文字、具体的なアクションを箇条書き含めて）"
+}
+
+最終的な経営判断責任は起案者に帰属することを前提に、参考情報として結論を提示してください。`;
+
+  const userPrompt = `以下はTriSight™三身一体型AIワークフローの出力です。月次報告書の各セクション結論を生成してください。\n\n${txt}`;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.4,
+        max_tokens: 2500,
+        response_format: { type: 'json_object' }
+      })
+    });
+
+    if(!response.ok){
+      const err = await response.text();
+      showStatus('⚠ APIエラー（' + response.status + '）: ' + err.slice(0, 200), true);
+      return;
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+
+    let parsed;
+    try {
+      parsed = JSON.parse(content);
+    } catch(e) {
+      showStatus('⚠ 結論のJSONパースに失敗しました。出力を生のまま配置します', true);
+      document.getElementById('sec2').textContent = content;
+      return;
+    }
+
+    // 各セクションへ配置
+    document.getElementById('sec2').textContent = parsed.summary || '（生成失敗）';
+    document.getElementById('sec5').textContent = parsed.ai_findings || '（生成失敗）';
+    document.getElementById('sec6').textContent = parsed.risk_assessment || '（生成失敗）';
+    document.getElementById('sec7').textContent = parsed.next_action || '（生成失敗）';
+
+    showStatus('✓ つかさAPIによる結論抽出が完了しました。各セクションは編集可能です。', false);
+    setTimeout(hideStatus, 5000);
+
+  } catch(error) {
+    showStatus('⚠ ネットワークエラー: ' + error.message, true);
+  }
+}
+
+// ─────── デモデータ読込 ───────
+function loadDemoData(){
+  document.getElementById('txtInput').value = `【あずさ構想出力】
+令和8年4月の試算表分析より、看護部の売上は前月比+8%で堅調に推移している一方、介護部では人員不足による稼働率低下が見られる。事務局は固定費が増加傾向。
+
+【なぎさ検証出力】
+あずさの構想に対し、看護部の伸長は新規利用者獲得によるものか、既存利用者の単価上昇によるものかの分解が必要。介護部の人員不足は採用戦略との連動で評価すべき。
+
+【つかさ評価出力】
+真偽性：データソース（試算表PDF）に基づき妥当。
+正当性：人員不足による機会損失額の試算が必要。
+リスク：介護部の稼働率低下が継続すれば、年間で約X円の機会損失が発生し得る。`;
+  showStatus('✓ デモデータを読み込みました', false);
+  setTimeout(hideStatus, 3000);
+}
+
+// ─────── クリア ───────
+function clearAll(){
+  if(!confirm('入力内容を全てクリアしますか？')) return;
+  document.getElementById('txtInput').value = '';
+  document.getElementById('apiKeyInput').value = '';
+  try{ sessionStorage.removeItem('trisight_apikey_temp'); }catch(e){}
+  hideStatus();
+}
+
+// ─────── HTML保存 ───────
+function downloadHTML(){
+  syncCoverInfo();
+  const html = '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>TriSight Business Report</title><style>'
+    + document.querySelector('style').innerHTML
+    + '</style></head><body><div class="report">'
+    + document.getElementById('report').innerHTML
+    + '</div></body></html>';
+  const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'TriSight_Business_Report_' + new Date().toISOString().slice(0,10) + '.html';
+  a.click();
+}
+
+// ─────── TXT再出力 ───────
+function downloadTXT(){
+  const period = document.getElementById('clientPeriod').value || '令和8年4月分';
+  const client = document.getElementById('clientName').value || 'ノア・コーポレーション合同会社';
+
+  let content = '═══════════════════════════════\n';
+  content += 'TriSight™ Business Report\n';
+  content += '月次経営報告書\n';
+  content += '═══════════════════════════════\n\n';
+  content += '提出先：' + client + '\n';
+  content += '対象期間：' + period + '\n\n';
+  content += '【2. 経営サマリー】\n' + document.getElementById('sec2').textContent + '\n\n';
+  content += '【5. AI分析所見】\n' + document.getElementById('sec5').textContent + '\n\n';
+  content += '【6. リスク評価】\n' + document.getElementById('sec6').textContent + '\n\n';
+  content += '【7. 次月アクションプラン】\n' + document.getElementById('sec7').textContent + '\n\n';
+  content += '【結論（起案者最終判断）】\n' + document.getElementById('conclusion').textContent + '\n';
+
+  const blob = new Blob([content], {type: 'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'TriSight_Business_Report_' + new Date().toISOString().slice(0,10) + '.txt';
+  a.click();
+}
+
+// ─────── 初期化 ───────
+window.addEventListener('DOMContentLoaded', function(){
+  // v5.htmlからの自動受信
+  try {
+    const saved = localStorage.getItem('trisight_output');
+    if(saved){
+      document.getElementById('txtInput').value = saved;
+      localStorage.removeItem('trisight_output');
+    }
+  } catch(e) {}
+
+  // セッション内に保持されたAPIキーがあれば復元
+  try {
+    const tempKey = sessionStorage.getItem('trisight_apikey_temp');
+    if(tempKey){ document.getElementById('apiKeyInput').value = tempKey; }
+  } catch(e) {}
+
+  // 今日の日付を初期値に
+  const today = new Date();
+  document.getElementById('clientDate').value = today.toISOString().slice(0,10);
+
+  // 表紙情報を初期同期
+  syncCoverInfo();
+
+  // クライアント情報の変更を表紙に即時反映
+  ['clientName','clientPeriod','clientDate','clientPlan'].forEach(id => {
+    document.getElementById(id).addEventListener('input', syncCoverInfo);
+    document.getElementById(id).addEventListener('change', syncCoverInfo);
+  });
+});
+
+// タブ閉じる時にAPIキーをクリア
+window.addEventListener('beforeunload', function(){
+  try { sessionStorage.removeItem('trisight_apikey_temp'); } catch(e) {}
+});
+</script>
+
+
+
+</body></html>

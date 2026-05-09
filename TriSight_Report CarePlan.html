@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<!-- saved from url=(0063)file:///C:/Users/DELL/Downloads/TriSight_Report_CarePlan_1.html -->
+<html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TriSight™ Report CarePlan</title>
+  <link href="./TriSight_Report CarePlan_files/css2" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #0d1b2a;
+      --navy-mid: #152638;
+      --navy-light: #1e3a52;
+      --gold: #c9a84c;
+      --gold-light: #e8c96a;
+      --teal: #4caf9f;
+      --teal-light: #6dd4c4;
+      --border: rgba(201,168,76,0.3);
+      --border-teal: rgba(76,175,159,0.3);
+      --text: #f5f0e8;
+      --text-muted: #9aabb8;
+      --green: #4caf82;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: var(--navy); color: var(--text); font-family: 'Zen Kaku Gothic New', sans-serif; min-height: 100vh; }
+
+    .header { background: linear-gradient(135deg, #0a1520 0%, var(--navy-mid) 100%); border-bottom: 1px solid var(--border-teal); padding: 24px 40px; display: flex; align-items: center; justify-content: space-between; }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .logo-mark { width: 48px; height: 48px; border: 2px solid var(--teal); border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; color: var(--teal); font-weight: 600; }
+    .logo-mark img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+    .header-title { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; color: var(--teal); letter-spacing: 0.08em; }
+    .header-sub { font-size: 0.72rem; color: var(--text-muted); letter-spacing: 0.15em; margin-top: 2px; }
+    .header-badge { font-size: 0.7rem; color: var(--teal); border: 1px solid var(--border-teal); padding: 4px 12px; border-radius: 20px; letter-spacing: 0.1em; }
+
+    .main { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+
+    .input-section { background: var(--navy-mid); border: 1px solid var(--border-teal); border-radius: 8px; padding: 28px; margin-bottom: 32px; }
+    .section-label { font-size: 0.72rem; color: var(--teal); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 12px; }
+    .input-section p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.7; }
+    textarea { width: 100%; min-height: 200px; background: var(--navy); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 0.85rem; padding: 16px; resize: vertical; line-height: 1.8; outline: none; transition: border-color 0.3s; }
+    textarea:focus { border-color: var(--teal); }
+    textarea::placeholder { color: #3a5068; }
+    .btn-row { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+    .btn-primary { background: var(--teal); color: var(--navy); border: none; padding: 12px 32px; font-size: 0.9rem; font-weight: 700; border-radius: 4px; cursor: pointer; font-family: 'Zen Kaku Gothic New', sans-serif; letter-spacing: 0.05em; transition: background 0.2s, transform 0.1s; }
+    .btn-primary:hover { background: var(--teal-light); transform: translateY(-1px); }
+    .btn-secondary { background: transparent; color: var(--text-muted); border: 1px solid var(--border); padding: 12px 24px; font-size: 0.85rem; border-radius: 4px; cursor: pointer; font-family: 'Zen Kaku Gothic New', sans-serif; transition: color 0.2s, border-color 0.2s; }
+    .btn-secondary:hover { color: var(--text); border-color: var(--teal); }
+
+    #report { display: none; }
+    .report-header { background: linear-gradient(135deg, #0a1520 0%, var(--navy-mid) 100%); border: 1px solid var(--border-teal); border-radius: 8px; padding: 36px; margin-bottom: 24px; text-align: center; position: relative; overflow: hidden; }
+    .report-header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--teal), transparent); }
+    .report-title { font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; color: var(--teal); letter-spacing: 0.1em; margin-bottom: 8px; }
+    .report-meta { font-size: 0.78rem; color: var(--text-muted); letter-spacing: 0.1em; }
+
+    .tab-bar { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border-teal); flex-wrap: wrap; }
+    .tab-btn { padding: 10px 20px; font-size: 0.82rem; font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; letter-spacing: 0.06em; cursor: pointer; border: none; background: transparent; color: var(--text-muted); border-bottom: 3px solid transparent; transition: all 0.2s; }
+    .tab-btn.active { color: var(--teal); border-bottom-color: var(--teal); }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    .ai-section { background: var(--navy-mid); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 20px; overflow: hidden; }
+    .ai-section-header { display: flex; align-items: center; gap: 16px; padding: 18px 24px; border-bottom: 1px solid var(--border); background: rgba(201,168,76,0.05); }
+    .ai-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; font-weight: 600; flex-shrink: 0; }
+    .ai-avatar.azusa  { background: rgba(100,160,255,0.15); color: #64a0ff; border: 1px solid rgba(100,160,255,0.3); }
+    .ai-avatar.nagisa { background: rgba(201,168,76,0.15);  color: var(--gold); border: 1px solid var(--border); }
+    .ai-avatar.tsukasa{ background: rgba(76,175,130,0.15);  color: var(--green); border: 1px solid rgba(76,175,130,0.3); }
+    .ai-name { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; color: var(--text); letter-spacing: 0.05em; }
+    .ai-role { font-size: 0.72rem; color: var(--text-muted); letter-spacing: 0.1em; margin-top: 2px; }
+    .ai-badge { margin-left: auto; font-size: 0.68rem; letter-spacing: 0.12em; padding: 3px 10px; border-radius: 12px; }
+    .ai-badge.azusa  { background: rgba(100,160,255,0.1); color: #64a0ff; border: 1px solid rgba(100,160,255,0.2); }
+    .ai-badge.nagisa { background: rgba(201,168,76,0.1);  color: var(--gold); border: 1px solid var(--border); }
+    .ai-badge.tsukasa{ background: rgba(76,175,130,0.1);  color: var(--green); border: 1px solid rgba(76,175,130,0.2); }
+    .ai-content { padding: 24px; font-size: 0.88rem; line-height: 1.9; color: #cdd8e0; white-space: pre-wrap; word-break: break-word; }
+    .ai-content.empty { color: #3a5068; font-style: italic; }
+
+    .placeholder-box { background: var(--navy-mid); border: 2px dashed rgba(76,175,159,0.3); border-radius: 8px; padding: 56px 32px; text-align: center; color: var(--text-muted); }
+    .placeholder-icon { font-size: 2.5rem; margin-bottom: 16px; }
+    .placeholder-title { font-size: 1rem; color: var(--teal); font-weight: 700; margin-bottom: 10px; font-family: 'Zen Kaku Gothic New', sans-serif; }
+    .placeholder-desc { font-size: 0.82rem; line-height: 1.9; }
+
+    .export-bar { display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-teal); flex-wrap: wrap; }
+    .btn-export { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 10px 20px; font-size: 0.82rem; border-radius: 4px; cursor: pointer; font-family: 'Zen Kaku Gothic New', sans-serif; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+    .btn-export:hover { border-color: var(--teal); color: var(--teal); }
+    .btn-export.primary-export { background: var(--teal); color: var(--navy); border-color: var(--teal); font-weight: 700; }
+    .btn-export.primary-export:hover { background: var(--teal-light); }
+
+    @media print {
+      .input-section, .export-bar, .header, .tab-bar { display: none; }
+      body { background: white; color: #111; }
+      .ai-section { border: 1px solid #ccc; page-break-inside: avoid; }
+      .report-header { background: white; }
+      .report-title { color: #2a7a70; }
+      .ai-content { color: #333; }
+      .tab-pane { display: block !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo-mark">
+      <img src="./TriSight_Report CarePlan_files/TriSight_logo_registered最新商標.jpg" onerror="this.style.display=&#39;none&#39;">
+      TS
+    </div>
+    <div>
+      <div class="header-title">TriSight™ Report CarePlan</div>
+      <div class="header-sub">CARE PLAN OUTPUT — INTERNAL REVIEW &amp; OFFICIAL FORM</div>
+    </div>
+  </div>
+  <div class="header-badge">🏥 CARE PLAN</div>
+</div>
+
+<div class="main">
+
+  <div class="input-section">
+    <div class="section-label">▸ TXT出力を貼り付け</div>
+    <p>TriSight™ワークフローで生成したTXTファイルの内容をそのまま貼り付けてください。自動的に三者の出力を分離・整形します。</p>
+    <textarea id="txtInput" placeholder="■TriSight™ ケアプラン出力
+生成日時：...
+
+【あずさ 出力】
+...
+
+【なぎさ 出力】
+...
+
+【つかさ 出力】
+..."></textarea>
+    <div class="btn-row">
+      <button class="btn-primary" onclick="generateReport()">🏥 ケアプランを生成</button>
+      <button class="btn-secondary" onclick="clearAll()">クリア</button>
+    </div>
+  </div>
+
+  <div id="report">
+    <div class="report-header">
+      <div class="report-title">TriSight™ ケアプラン出力</div>
+      <div class="report-meta" id="reportMeta"></div>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab(&#39;internal&#39;, this)">📝 社内検討用</button>
+      <button class="tab-btn" onclick="switchTab(&#39;form1&#39;, this)">📋 第1票</button>
+      <button class="tab-btn" onclick="switchTab(&#39;form2&#39;, this)">📋 第2票</button>
+      <button class="tab-btn" onclick="switchTab(&#39;form3&#39;, this)">📋 第3票</button>
+    </div>
+
+    <div class="tab-pane active" id="tab-internal">
+      <div class="ai-section">
+        <div class="ai-section-header">
+          <div class="ai-avatar azusa">あ</div>
+          <div><div class="ai-name">あずさ</div><div class="ai-role">構想担当 — 自由な発想で理論化・展開</div></div>
+          <span class="ai-badge azusa">THEORY AI-1</span>
+        </div>
+        <div class="ai-content" id="outAzusa"></div>
+      </div>
+      <div class="ai-section">
+        <div class="ai-section-header">
+          <div class="ai-avatar nagisa">な</div>
+          <div><div class="ai-name">なぎさ</div><div class="ai-role">検証担当 — 懸念点を抽出・理論補強</div></div>
+          <span class="ai-badge nagisa">THEORY AI-2</span>
+        </div>
+        <div class="ai-content" id="outNagisa"></div>
+      </div>
+      <div class="ai-section">
+        <div class="ai-section-header">
+          <div class="ai-avatar tsukasa">つ</div>
+          <div><div class="ai-name">つかさ</div><div class="ai-role">評価担当 — 妥当性・実現可能性・改善点を判定</div></div>
+          <span class="ai-badge tsukasa">EVALUATOR AI</span>
+        </div>
+        <div class="ai-content" id="outTsukasa"></div>
+      </div>
+    </div>
+
+    <div class="tab-pane" id="tab-form1">
+      <div class="placeholder-box">
+        <div class="placeholder-icon">📋</div>
+        <div class="placeholder-title">第1票：居宅サービス計画書（1）</div>
+        <div class="placeholder-desc">行政指定フォームの書式が確定次第、このエリアに入力フォームを実装します。<br>書式入手後、なぎさに第1票の項目をお伝えください。</div>
+      </div>
+    </div>
+
+    <div class="tab-pane" id="tab-form2">
+      <div class="placeholder-box">
+        <div class="placeholder-icon">📋</div>
+        <div class="placeholder-title">第2票：居宅サービス計画書（2）／週間サービス計画表</div>
+        <div class="placeholder-desc">行政指定フォームの書式が確定次第、このエリアに入力フォームを実装します。<br>書式入手後、なぎさに第2票の項目をお伝えください。</div>
+      </div>
+    </div>
+
+    <div class="tab-pane" id="tab-form3">
+      <div class="placeholder-box">
+        <div class="placeholder-icon">📋</div>
+        <div class="placeholder-title">第3票：サービス担当者会議の要点</div>
+        <div class="placeholder-desc">行政指定フォームの書式が確定次第、このエリアに入力フォームを実装します。<br>書式入手後、なぎさに第3票の項目をお伝えください。</div>
+      </div>
+    </div>
+
+    <div class="export-bar">
+      <button class="btn-export" onclick="window.print()">🖨 印刷 / PDF保存</button>
+      <button class="btn-export primary-export" onclick="downloadTXT()">📄 TXT再出力</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function generateReport() {
+  var raw = document.getElementById('txtInput').value.trim();
+  if (!raw) { alert('TXTの内容を貼り付けてください。'); return; }
+  var dateMatch = raw.match(/生成日時[：:]\s*(.+)/);
+  document.getElementById('reportMeta').textContent = '生成日時：' + (dateMatch ? dateMatch[1].trim() : '日時不明');
+  setContent('outAzusa',   extractSection(raw, '【あずさ 出力】',  '【なぎさ 出力】'));
+  setContent('outNagisa',  extractSection(raw, '【なぎさ 出力】',  '【つかさ 出力】'));
+  setContent('outTsukasa', extractSection(raw, '【つかさ 出力】',  null));
+  document.getElementById('report').style.display = 'block';
+  document.getElementById('report').scrollIntoView({ behavior: 'smooth' });
+}
+
+function extractSection(text, startTag, endTag) {
+  var start = text.indexOf(startTag);
+  if (start === -1) return '';
+  start += startTag.length;
+  var end = endTag ? text.indexOf(endTag) : text.length;
+  if (end === -1) end = text.length;
+  return text.substring(start, end).trim();
+}
+
+function setContent(id, text) {
+  var el = document.getElementById(id);
+  if (!text) { el.textContent = '（出力なし）'; el.classList.add('empty'); }
+  else { el.textContent = text; el.classList.remove('empty'); }
+}
+
+function clearAll() {
+  document.getElementById('txtInput').value = '';
+  document.getElementById('report').style.display = 'none';
+}
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-pane').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+  var saved = localStorage.getItem('trisight_output');
+  if (saved) {
+    document.getElementById('txtInput').value = saved;
+    localStorage.removeItem('trisight_output');
+    generateReport();
+  }
+});
+
+function downloadTXT() {
+  var meta    = document.getElementById('reportMeta').textContent;
+  var azusa   = document.getElementById('outAzusa').textContent;
+  var nagisa  = document.getElementById('outNagisa').textContent;
+  var tsukasa = document.getElementById('outTsukasa').textContent;
+  var content = '■TriSight™ ケアプラン出力\n' + meta + '\n\n【あずさ 出力】\n' + azusa + '\n\n【なぎさ 出力】\n' + nagisa + '\n\n【つかさ 出力】\n' + tsukasa;
+  var blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'TriSight_CarePlan_' + new Date().toISOString().slice(0,10) + '.txt';
+  a.click();
+}
+</script>
+
+
+</body></html>

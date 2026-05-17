@@ -472,6 +472,51 @@ textarea {
   font-size: 0.68rem;
   margin-top: 20px;
   font-family: 'Zen Kaku Gothic New', sans-serif;
+}/* ===== ベース資料機能（追加） ===== */
+.reference-toggle-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border-gold);
+  color: var(--gold);
+  padding: 8px 16px;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Zen Kaku Gothic New', sans-serif;
+  margin-top: 10px;
+  letter-spacing: 0.05em;
+  transition: background 0.2s;
+}
+.reference-toggle-btn:hover {
+  background: var(--bg);
+}
+.reference-toggle-btn.active {
+  background: var(--gold);
+  color: var(--bg);
+}
+.reference-section {
+  background: var(--bg2);
+  border: 1px solid var(--border-gold);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 10px;
+  margin-bottom: 16px;
+  display: none;
+}
+.reference-section.visible {
+  display: block;
+}
+.reference-title {
+  color: var(--gold);
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+  font-family: 'Zen Kaku Gothic New', sans-serif;
+}
+.reference-note {
+  color: var(--text-dim);
+  font-size: 0.68rem;
+  margin-bottom: 8px;
+  font-family: 'Zen Kaku Gothic New', sans-serif;
 }
 </style>
 </head>
@@ -581,6 +626,12 @@ textarea {
     <div class="input-section">
       <div class="input-title">▌起案者インプット</div>
       <textarea id="input" placeholder="起案内容を入力してください。"></textarea>
+      <button class="reference-toggle-btn" id="referenceToggleBtn" onclick="toggleReference()">📎 ベース資料を追加</button>
+      <div class="reference-section" id="referenceSection">
+        <div class="reference-title">▌ベース資料</div>
+        <div class="reference-note">既存の運営規定・契約書・会員情報など、起案に関連するベース資料をコピペで貼付してください。三身処理時に起案文と統合してAIに送信されます。</div>
+        <textarea id="referenceInput" placeholder="ベース資料をここに貼り付けてください。"></textarea>
+      </div>
       <button class="run-btn" id="btn" onclick="run()">ワークフロー実行</button>
     </div>
 
@@ -696,11 +747,16 @@ async function run() {
   const purpose = document.getElementById('purpose').value.trim();
   const situation = document.getElementById('situation').value.trim();
   const input = document.getElementById('input').value.trim();
+  const reference = document.getElementById('referenceInput').value.trim();
   if (!aKey) { alert('AnthropicのAPIキーを入力してください'); return; }
   if (!oKey) { alert('OpenAIのAPIキーを入力してください'); return; }
   if (!purpose) { alert('達成したい目的を入力してください'); return; }
   if (!situation) { alert('起案者の立ち位置を入力してください'); return; }
   if (!input) { alert('起案内容を入力してください'); return; }
+  let combinedInput = input;
+  if (reference) {
+    combinedInput = input + '\n\n【ベース資料】\n' + reference;
+  }
 
   const btn = document.getElementById('btn');
   btn.disabled = true;
@@ -711,7 +767,7 @@ async function run() {
     document.getElementById('out'+x).className = 'stage-output';
   });
 
-  const fullInput = '【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + input;
+  const fullInput = '【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + combinedInput;
 
   try {
     setStage('A', 'running', '理論化中...');
@@ -756,6 +812,19 @@ async function run() {
   var menu = document.getElementById('optionMenu');
   menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
 }
+ function toggleReference() {
+  const section = document.getElementById('referenceSection');
+  const btn = document.getElementById('referenceToggleBtn');
+  if (section.classList.contains('visible')) {
+    section.classList.remove('visible');
+    btn.classList.remove('active');
+    btn.textContent = '📎 ベース資料を追加';
+  } else {
+    section.classList.add('visible');
+    btn.classList.add('active');
+    btn.textContent = '📎 ベース資料を閉じる';
+  }
+} 
 function openStandard() {
   var purpose = document.getElementById('purpose') ? document.getElementById('purpose').value : '';
   var situation = document.getElementById('situation') ? document.getElementById('situation').value : '';

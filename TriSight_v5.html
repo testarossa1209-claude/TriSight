@@ -829,27 +829,38 @@ function openStandard() {
   var purpose = document.getElementById('purpose') ? document.getElementById('purpose').value : '';
   var situation = document.getElementById('situation') ? document.getElementById('situation').value : '';
   var input = document.getElementById('input') ? document.getElementById('input').value : '';
+  var reference = document.getElementById('referenceInput') ? document.getElementById('referenceInput').value : '';
   var azusa = document.getElementById('outA') ? document.getElementById('outA').innerText : '';
   var nagisa = document.getElementById('outN') ? document.getElementById('outN').innerText : '';
   var tsukasa = document.getElementById('outT') ? document.getElementById('outT').innerText : '';
   var now = new Date();
-  var content = '■TriSight™ 出力レポート\n生成日時：' + now.toLocaleString('ja-JP') + '\n\n【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + input + '\n\n【あずさ 出力】\n' + azusa + '\n\n【なぎさ 出力】\n' + nagisa + '\n\n【つかさ 出力】\n' + tsukasa;
-  localStorage.setItem('trisight_output', content);
-  window.open('https://testarossa1209-claude.github.io/TriSight/TriSight_Report_Standard.html', '_blank');
+  var content = '■TriSight™ 出力レポート\n生成日時：' + now.toLocaleString('ja-JP') + '\n\n【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + input;
+  if (reference) {
+    content += '\n\n【ベース資料】\n' + reference;
+  }
+  content += '\n\n【あずさ 出力】\n' + azusa + '\n\n【なぎさ 出力】\n' + nagisa + '\n\n【つかさ 出力】\n' + tsukasa;
+   localStorage.setItem('trisight_output', content);
+ window.open('https://testarossa1209-claude.github.io/TriSight/TriSight_Report_Standard.html', '_blank'); 
 }
-  function openCarePlan() {
+function openCarePlan() {
   var purpose = document.getElementById('purpose') ? document.getElementById('purpose').value : '';
   var situation = document.getElementById('situation') ? document.getElementById('situation').value : '';
   var input = document.getElementById('input') ? document.getElementById('input').value : '';
+  var reference = document.getElementById('referenceInput') ? document.getElementById('referenceInput').value : '';
   var azusa = document.getElementById('outA') ? document.getElementById('outA').innerText : '';
   var nagisa = document.getElementById('outN') ? document.getElementById('outN').innerText : '';
   var tsukasa = document.getElementById('outT') ? document.getElementById('outT').innerText : '';
   var now = new Date();
-  var content = '■TriSight™ ケアプラン出力\n生成日時：' + now.toLocaleString('ja-JP') + '\n\n【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + input + '\n\n【あずさ 出力】\n' + azusa + '\n\n【なぎさ 出力】\n' + nagisa + '\n\n【つかさ 出力】\n' + tsukasa;
+  var content = '■TriSight™ ケアプラン出力\n生成日時：' + now.toLocaleString('ja-JP') + '\n\n【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + input;
+  if (reference) {
+    content += '\n\n【ベース資料】\n' + reference;
+  }
+  content += '\n\n【あずさ 出力】\n' + azusa + '\n\n【なぎさ 出力】\n' + nagisa + '\n\n【つかさ 出力】\n' + tsukasa;
   localStorage.setItem('trisight_output', content);
   localStorage.setItem('trisight_mode', 'careplan');
   window.open('https://testarossa1209-claude.github.io/TriSight/TriSight_Report_CarePlan.html', '_blank');
 }
+  
   function openBusiness() {
   var purpose = document.getElementById('purpose') ? document.getElementById('purpose').value : '';
   var situation = document.getElementById('situation') ? document.getElementById('situation').value : '';

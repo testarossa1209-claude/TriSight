@@ -1,0 +1,1997 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TriGrantSupport® - 助成金マッチング出口品質保証システム</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Noto Sans CJK JP', 'Yu Gothic', sans-serif;
+    background: linear-gradient(135deg, #0a2540 0%, #1a3a5a 100%);
+    color: #fff;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .container { max-width: 1400px; margin: 0 auto; }
+  .header {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid #c9a96e;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+  .header h1 {
+    font-size: 28px;
+    color: #c9a96e;
+    margin-bottom: 8px;
+  }
+  .header .subtitle {
+    font-size: 14px;
+    color: #ddd;
+    opacity: 0.9;
+  }
+  .header .registered {
+    font-size: 11px;
+    color: #888;
+    margin-top: 8px;
+  }
+  .mode-toggle {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid #c9a96e;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 11px;
+    color: #c9a96e;
+    cursor: pointer;
+  }
+  .mode-toggle.live { background: #c9a96e; color: #0a2540; }
+  
+  .control-panel {
+    background: rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+  .control-panel h2 {
+    font-size: 18px;
+    color: #c9a96e;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(201,169,110,0.3);
+  }
+  .control-buttons {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    background: linear-gradient(135deg, #c9a96e 0%, #b8985d 100%);
+    color: #0a2540;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 14px;
+    transition: transform 0.2s;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-secondary {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border: 1px solid #c9a96e;
+  }
+  
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .stat-card {
+    background: rgba(0,0,0,0.3);
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+  }
+  .stat-card .value { font-size: 24px; color: #c9a96e; font-weight: bold; }
+  .stat-card .label { font-size: 11px; color: #aaa; margin-top: 4px; }
+  
+  .results-area {
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 20px;
+    min-height: 400px;
+  }
+  .results-area h2 {
+    font-size: 18px;
+    color: #c9a96e;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(201,169,110,0.3);
+  }
+  
+  .member-card {
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border-left: 3px solid #c9a96e;
+  }
+  .member-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  .member-meta {
+    font-size: 12px;
+    color: #aaa;
+    margin-bottom: 12px;
+  }
+  
+  .grade-summary {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .grade-badge {
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+  }
+  .grade-A { background: #4CAF50; color: white; }
+  .grade-B { background: #FFC107; color: #333; }
+  .grade-C { background: #FF9800; color: white; }
+  .grade-X { background: #757575; color: white; }
+  
+  .grant-list {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed rgba(255,255,255,0.2);
+    display: none;
+  }
+  .grant-list.expanded { display: block; }
+  .grant-item {
+    padding: 8px 12px;
+    margin: 4px 0;
+    background: rgba(255,255,255,0.05);
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .grant-item .grant-name { color: #c9a96e; font-weight: bold; }
+  .grant-item .grant-reason { color: #ddd; font-size: 11px; margin-top: 4px; }
+  
+  .progress-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 12px;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #c9a96e, #fff);
+    width: 0%;
+    transition: width 0.3s;
+  }
+  
+  .loading {
+    text-align: center;
+    padding: 40px;
+    color: #c9a96e;
+  }
+  .spinner {
+    border: 3px solid rgba(201,169,110,0.2);
+    border-top: 3px solid #c9a96e;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  .footer {
+    text-align: center;
+    padding: 20px;
+    font-size: 11px;
+    color: #888;
+    margin-top: 24px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  
+  <div style="position: relative;">
+    <div class="header">
+      <h1>TriGrantSupport®</h1>
+      <div class="subtitle">助成金マッチング出口品質保証エージェント</div>
+      <div class="registered">合同会社トライサイト | TriSight®ファミリー製品</div>
+    </div>
+    <div class="mode-toggle" id="modeToggle" onclick="toggleMode()">MODE: MOCK</div>
+  </div>
+  
+  <div class="control-panel">
+    <h2>制御パネル</h2>
+    <div class="control-buttons">
+      <button class="btn" id="btnLoadData" onclick="loadData()">①サンプルデータで開始</button>
+      <button class="btn" id="btnRunMatching" onclick="runMatching()" disabled>②マッチング実行</button>
+      <button class="btn btn-secondary" id="btnIndustrySummary" onclick="showIndustrySummary()" disabled>③業界別サマリー</button>
+      <button class="btn btn-secondary" id="btnChecklist" onclick="showChecklist()" disabled>④必要情報チェックリスト</button>
+      <button class="btn btn-secondary" id="btnExplanation" onclick="showExplanation()">⑤マッチング根拠</button>
+      <button class="btn btn-secondary" id="btnReset" onclick="resetAll()">リセット</button>
+    </div>
+    
+    <div style="margin-top:16px; padding-top:16px; border-top:1px dashed rgba(201,169,110,0.3);">
+      <div style="color:#c9a96e; font-size:13px; margin-bottom:8px;">▶ データ入れ替え（実運用想定／CSV形式）</div>
+      <div class="control-buttons">
+        <label class="btn btn-secondary" style="margin:0;">
+          会員データを入れ替える
+          <input type="file" accept=".csv" onchange="importCSV(event, 'members')" style="display:none;">
+        </label>
+        <label class="btn btn-secondary" style="margin:0;">
+          助成金データを入れ替える
+          <input type="file" accept=".csv" onchange="importCSV(event, 'grants')" style="display:none;">
+        </label>
+
+      </div>
+      <div id="importStatus" style="margin-top:8px; font-size:11px; color:#aaa;"></div>
+    </div>
+    
+    <div class="stats" id="stats" style="display:none;">
+      <div class="stat-card">
+        <div class="value" id="statMembers">0</div>
+        <div class="label">登録会員数</div>
+      </div>
+      <div class="stat-card">
+        <div class="value" id="statGrants">0</div>
+        <div class="label">助成金情報数</div>
+      </div>
+      <div class="stat-card">
+        <div class="value" id="statMatches">0</div>
+        <div class="label">適合A件数</div>
+      </div>
+      <div class="stat-card">
+        <div class="value" id="statExcluded">0</div>
+        <div class="label">除外件数</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="results-area">
+    <h2 id="resultsTitle">結果表示エリア</h2>
+    <div id="resultsContent">
+      <div style="text-align:center; padding:60px; color:#888;">
+        「①データ読み込み」ボタンから開始してください
+      </div>
+    </div>
+  </div>
+  
+  <div class="footer">
+    TriSight®／TriGrantSupport® は合同会社トライサイトの登録商標です。<br>
+    © 2026 TriSight Co., LLC. All rights reserved.
+  </div>
+</div>
+
+<script>
+// ===== グローバル変数 =====
+let members = [];
+let grants = [];
+let matchingResults = [];
+let currentMode = 'MOCK';  // 'MOCK' or 'LIVE'
+
+// ===== モード切替 =====
+function toggleMode() {
+  currentMode = (currentMode === 'MOCK') ? 'LIVE' : 'MOCK';
+  const toggle = document.getElementById('modeToggle');
+  toggle.textContent = `MODE: ${currentMode}`;
+  toggle.classList.toggle('live', currentMode === 'LIVE');
+}
+
+// ===== 埋め込みデータ =====
+const EMBEDDED_MEMBERS = [
+  {
+    "member_id": "M001",
+    "company_name": "合同会社トライサイト",
+    "industry_major": "情報通信業",
+    "industry_minor": "ソフトウェア開発",
+    "establishment_year": 2024,
+    "employee_count": 3,
+    "annual_revenue_million": null,
+    "capital_million": 0.5,
+    "prefecture": "東京都",
+    "city": "立川市",
+    "main_business": "TriSight®開発・運用、AI導入コンサルティング",
+    "has_certified_specialist": true,
+    "has_business_continuity_plan": false,
+    "previous_grant_received": [],
+    "previous_grant_failed": [],
+    "subscription_plan": "プレミアム",
+    "registration_date": "2024-04-01",
+    "代表者": "野木 君江",
+    "備考": "TriSight®登録商標保有（令和8年2月）、AI三身一体システム開発企業"
+  },
+  {
+    "member_id": "M002",
+    "company_name": "ノア・コーポレーション合同会社",
+    "industry_major": "医療・福祉",
+    "industry_minor": "介護・看護",
+    "establishment_year": 2013,
+    "employee_count": 40,
+    "annual_revenue_million": null,
+    "capital_million": 3,
+    "prefecture": "東京都",
+    "city": "東村山市",
+    "main_business": "訪問看護・居宅介護支援、相談支援事業",
+    "has_certified_specialist": true,
+    "has_business_continuity_plan": true,
+    "previous_grant_received": [
+      "介護職員処遇改善加算",
+      "キャリアアップ助成金",
+      "両立支援等助成金",
+      "東京都中小企業デジタル化助成金"
+    ],
+    "previous_grant_failed": [],
+    "subscription_plan": "プレミアム",
+    "registration_date": "2024-04-01",
+    "代表者": "野木 宏史",
+    "備考": "訪問看護・介護・相談支援事業所「サンケアネット」（秋津町）運営、助成金活用実績豊富"
+  }
+];
+
+const EMBEDDED_GRANTS = [
+  {
+    "grant_id": "G001",
+    "grant_name": "介護職員処遇改善加算",
+    "ministry": "厚生労働省",
+    "category": "人材・雇用",
+    "target_industries": [
+      "医療・福祉"
+    ],
+    "target_industries_minor": [
+      "介護・看護"
+    ],
+    "min_employee_count": null,
+    "max_employee_count": null,
+    "max_grant_amount_yen": null,
+    "subsidy_rate": null,
+    "application_deadline": "2026-06-30",
+    "required_certifications": [
+      "介護保険事業者指定"
+    ],
+    "required_documents": [
+      "介護給付費請求書",
+      "賃金台帳",
+      "キャリアパス要件確認書",
+      "職場環境等要件確認書"
+    ],
+    "adoption_rate_percent": 92,
+    "average_processing_days": 60,
+    "key_requirements": [
+      "介護職員処遇改善計画書の提出",
+      "賃金改善実施"
+    ],
+    "exclusion_conditions": [
+      "過去3年間に行政処分を受けた事業者"
+    ]
+  },
+  {
+    "grant_id": "G002",
+    "grant_name": "福祉・介護職員処遇改善加算",
+    "ministry": "厚生労働省",
+    "category": "人材・雇用",
+    "target_industries": [
+      "医療・福祉"
+    ],
+    "target_industries_minor": [
+      "障害福祉"
+    ],
+    "min_employee_count": null,
+    "max_employee_count": null,
+    "max_grant_amount_yen": null,
+    "subsidy_rate": null,
+    "application_deadline": "2026-06-30",
+    "required_certifications": [
+      "障害福祉サービス事業者指定"
+    ],
+    "required_documents": [
+      "障害福祉サービス費請求書",
+      "賃金台帳",
+      "キャリアパス要件確認書"
+    ],
+    "adoption_rate_percent": 90,
+    "average_processing_days": 60,
+    "key_requirements": [
+      "処遇改善計画書の提出",
+      "賃金改善実施"
+    ],
+    "exclusion_conditions": [
+      "過去3年間に行政処分を受けた事業者"
+    ]
+  },
+  {
+    "grant_id": "G003",
+    "grant_name": "保育士等処遇改善等加算",
+    "ministry": "厚生労働省・内閣府",
+    "category": "人材・雇用",
+    "target_industries": [
+      "医療・福祉"
+    ],
+    "target_industries_minor": [
+      "保育・子育て支援"
+    ],
+    "min_employee_count": null,
+    "max_employee_count": null,
+    "max_grant_amount_yen": null,
+    "subsidy_rate": null,
+    "application_deadline": "2026-07-15",
+    "required_certifications": [
+      "認可保育所等の指定"
+    ],
+    "required_documents": [
+      "処遇改善等加算計画書",
+      "賃金改善実績報告書"
+    ],
+    "adoption_rate_percent": 95,
+    "average_processing_days": 45,
+    "key_requirements": [
+      "キャリアパス要件の充足",
+      "賃金改善実施"
+    ],
+    "exclusion_conditions": []
+  },
+  {
+    "grant_id": "G004",
+    "grant_name": "業務改善助成金",
+    "ministry": "厚生労働省",
+    "category": "人材・雇用",
+    "target_industries": [
+      "全業種"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": null,
+    "max_employee_count": 100,
+    "max_grant_amount_yen": 6000000,
+    "subsidy_rate": 75,
+    "application_deadline": "2026-08-31",
+    "required_certifications": [],
+    "required_documents": [
+      "交付申請書",
+      "事業実施計画書",
+      "賃金引上げ計画書"
+    ],
+    "adoption_rate_percent": 70,
+    "average_processing_days": 90,
+    "key_requirements": [
+      "事業場内最低賃金の引上げ",
+      "設備投資等の実施"
+    ],
+    "exclusion_conditions": [
+      "過去1年以内に労働関係法令違反"
+    ]
+  },
+  {
+    "grant_id": "G005",
+    "grant_name": "キャリアアップ助成金（正社員化コース）",
+    "ministry": "厚生労働省",
+    "category": "人材・雇用",
+    "target_industries": [
+      "全業種"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": null,
+    "max_employee_count": null,
+    "max_grant_amount_yen": 800000,
+    "subsidy_rate": null,
+    "application_deadline": "2026-09-30",
+    "required_certifications": [],
+    "required_documents": [
+      "キャリアアップ計画書",
+      "正社員転換規程",
+      "雇用契約書"
+    ],
+    "adoption_rate_percent": 85,
+    "average_processing_days": 75,
+    "key_requirements": [
+      "有期雇用労働者の正社員化",
+      "6ヶ月以上の雇用継続"
+    ],
+    "exclusion_conditions": []
+  },
+  {
+    "grant_id": "G006",
+    "grant_name": "人材確保等支援助成金（介護福祉機器助成コース）",
+    "ministry": "厚生労働省",
+    "category": "人材・雇用",
+    "target_industries": [
+      "医療・福祉"
+    ],
+    "target_industries_minor": [
+      "介護・看護",
+      "障害福祉"
+    ],
+    "min_employee_count": null,
+    "max_employee_count": null,
+    "max_grant_amount_yen": 1500000,
+    "subsidy_rate": 50,
+    "application_deadline": "2026-07-31",
+    "required_certifications": [
+      "介護保険事業者指定または障害福祉サービス事業者指定"
+    ],
+    "required_documents": [
+      "機器導入計画書",
+      "見積書",
+      "雇用管理改善計画書"
+    ],
+    "adoption_rate_percent": 75,
+    "average_processing_days": 90,
+    "key_requirements": [
+      "介護福祉機器の導入",
+      "雇用管理改善"
+    ],
+    "exclusion_conditions": []
+  },
+  {
+    "grant_id": "G007",
+    "grant_name": "働き方改革推進支援助成金",
+    "ministry": "厚生労働省",
+    "category": "人材・雇用",
+    "target_industries": [
+      "全業種"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": null,
+    "max_employee_count": 300,
+    "max_grant_amount_yen": 4500000,
+    "subsidy_rate": 75,
+    "application_deadline": "2026-08-31",
+    "required_certifications": [],
+    "required_documents": [
+      "事業実施計画書",
+      "労働時間短縮計画書"
+    ],
+    "adoption_rate_percent": 65,
+    "average_processing_days": 90,
+    "key_requirements": [
+      "労働時間短縮の目標設定",
+      "36協定の見直し"
+    ],
+    "exclusion_conditions": [
+      "過去1年以内に労働関係法令違反"
+    ]
+  },
+  {
+    "grant_id": "G008",
+    "grant_name": "建設業働き方改革加速化助成金",
+    "ministry": "厚生労働省",
+    "category": "人材・雇用",
+    "target_industries": [
+      "建設業"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": null,
+    "max_employee_count": null,
+    "max_grant_amount_yen": 2000000,
+    "subsidy_rate": 75,
+    "application_deadline": "2026-10-31",
+    "required_certifications": [
+      "建設業許可"
+    ],
+    "required_documents": [
+      "実施計画書",
+      "労働時間管理規程"
+    ],
+    "adoption_rate_percent": 70,
+    "average_processing_days": 75,
+    "key_requirements": [
+      "建設業における労働時間短縮の取組"
+    ],
+    "exclusion_conditions": []
+  },
+  {
+    "grant_id": "G009",
+    "grant_name": "人材開発支援助成金（特定訓練コース）",
+    "ministry": "厚生労働省",
+    "category": "人材・雇用",
+    "target_industries": [
+      "全業種"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": null,
+    "max_employee_count": null,
+    "max_grant_amount_yen": 5000000,
+    "subsidy_rate": 60,
+    "application_deadline": "2026-09-30",
+    "required_certifications": [],
+    "required_documents": [
+      "訓練計画書",
+      "訓練カリキュラム"
+    ],
+    "adoption_rate_percent": 80,
+    "average_processing_days": 60,
+    "key_requirements": [
+      "10時間以上の職務関連訓練の実施"
+    ],
+    "exclusion_conditions": []
+  },
+  {
+    "grant_id": "G010",
+    "grant_name": "トライアル雇用助成金",
+    "ministry": "厚生労働省",
+    "category": "人材・雇用",
+    "target_industries": [
+      "全業種"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": null,
+    "max_employee_count": null,
+    "max_grant_amount_yen": 500000,
+    "subsidy_rate": null,
+    "application_deadline": "2026-12-31",
+    "required_certifications": [],
+    "required_documents": [
+      "トライアル雇用実施計画書",
+      "雇用契約書"
+    ],
+    "adoption_rate_percent": 88,
+    "average_processing_days": 45,
+    "key_requirements": [
+      "ハローワーク等からの紹介者を3ヶ月間試行雇用"
+    ],
+    "exclusion_conditions": []
+  },
+  {
+    "grant_id": "G011",
+    "grant_name": "ものづくり補助金（一般型）",
+    "ministry": "経済産業省・中小企業庁",
+    "category": "設備投資・事業開発",
+    "target_industries": [
+      "製造業",
+      "建設業",
+      "サービス業"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": null,
+    "max_employee_count": 300,
+    "max_grant_amount_yen": 12500000,
+    "subsidy_rate": 50,
+    "application_deadline": "2026-07-31",
+    "required_certifications": [],
+    "required_documents": [
+      "事業計画書",
+      "見積書",
+      "決算書3期分"
+    ],
+    "adoption_rate_percent": 50,
+    "average_processing_days": 120,
+    "key_requirements": [
+      "革新的サービス開発または試作品開発",
+      "生産プロセス改善"
+    ],
+    "exclusion_conditions": [
+      "過去3年以内に同種補助金で不正受給"
+    ]
+  },
+  {
+    "grant_id": "G012",
+    "grant_name": "IT導入補助金（通常枠）",
+    "ministry": "経済産業省・中小企業庁",
+    "category": "設備投資・事業開発",
+    "target_industries": [
+      "全業種"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": null,
+    "max_employee_count": 300,
+    "max_grant_amount_yen": 4500000,
+    "subsidy_rate": 50,
+    "application_deadline": "2026-08-15",
+    "required_certifications": [],
+    "required_documents": [
+      "交付申請書",
+      "ITツール導入計画書",
+      "見積書"
+    ],
+    "adoption_rate_percent": 60,
+    "average_processing_days": 60,
+    "key_requirements": [
+      "IT導入支援事業者経由での申請",
+      "生産性向上の数値目標"
+    ],
+    "exclusion_conditions": []
+  },
+  {
+    "grant_id": "G013",
+    "grant_name": "小規模事業者持続化補助金",
+    "ministry": "経済産業省・中小企業庁",
+    "category": "設備投資・事業開発",
+    "target_industries": [
+      "全業種"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": null,
+    "max_employee_count": 20,
+    "max_grant_amount_yen": 2000000,
+    "subsidy_rate": 67,
+    "application_deadline": "2026-06-30",
+    "required_certifications": [],
+    "required_documents": [
+      "経営計画書",
+      "補助事業計画書",
+      "事業支援計画書（商工会議所等）"
+    ],
+    "adoption_rate_percent": 55,
+    "average_processing_days": 90,
+    "key_requirements": [
+      "小規模事業者であること",
+      "販路開拓等の取組"
+    ],
+    "exclusion_conditions": []
+  },
+  {
+    "grant_id": "G014",
+    "grant_name": "事業再構築補助金",
+    "ministry": "経済産業省・中小企業庁",
+    "category": "設備投資・事業開発",
+    "target_industries": [
+      "全業種"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": null,
+    "max_employee_count": 300,
+    "max_grant_amount_yen": 80000000,
+    "subsidy_rate": 50,
+    "application_deadline": "2026-09-30",
+    "required_certifications": [],
+    "required_documents": [
+      "事業再構築計画書",
+      "認定経営革新等支援機関による確認書",
+      "決算書3期分"
+    ],
+    "adoption_rate_percent": 40,
+    "average_processing_days": 150,
+    "key_requirements": [
+      "売上減少要件",
+      "認定支援機関の関与",
+      "事業類型該当性"
+    ],
+    "exclusion_conditions": [
+      "前回採択者の再申請制限"
+    ]
+  },
+  {
+    "grant_id": "G015",
+    "grant_name": "事業承継・引継ぎ補助金",
+    "ministry": "経済産業省・中小企業庁",
+    "category": "設備投資・事業開発",
+    "target_industries": [
+      "全業種"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": null,
+    "max_employee_count": 300,
+    "max_grant_amount_yen": 8000000,
+    "subsidy_rate": 67,
+    "application_deadline": "2026-10-31",
+    "required_certifications": [],
+    "required_documents": [
+      "事業承継計画書",
+      "見積書",
+      "決算書3期分"
+    ],
+    "adoption_rate_percent": 65,
+    "average_processing_days": 90,
+    "key_requirements": [
+      "事業承継または引継ぎの実施",
+      "経営革新等の取組"
+    ],
+    "exclusion_conditions": []
+  },
+  {
+    "grant_id": "G016",
+    "grant_name": "中小企業省力化投資補助金",
+    "ministry": "経済産業省・中小企業庁",
+    "category": "設備投資・事業開発",
+    "target_industries": [
+      "全業種"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": null,
+    "max_employee_count": 300,
+    "max_grant_amount_yen": 10000000,
+    "subsidy_rate": 50,
+    "application_deadline": "2026-11-30",
+    "required_certifications": [],
+    "required_documents": [
+      "事業計画書",
+      "カタログ登録製品の見積書"
+    ],
+    "adoption_rate_percent": 70,
+    "average_processing_days": 60,
+    "key_requirements": [
+      "カタログ掲載の省力化設備導入",
+      "労働生産性向上"
+    ],
+    "exclusion_conditions": []
+  },
+  {
+    "grant_id": "G017",
+    "grant_name": "事業承継・M&A補助金（専門家活用枠）",
+    "ministry": "経済産業省・中小企業庁",
+    "category": "設備投資・事業開発",
+    "target_industries": [
+      "全業種"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": null,
+    "max_employee_count": 300,
+    "max_grant_amount_yen": 6000000,
+    "subsidy_rate": 67,
+    "application_deadline": "2026-09-15",
+    "required_certifications": [],
+    "required_documents": [
+      "M&A実施計画書",
+      "専門家利用契約書"
+    ],
+    "adoption_rate_percent": 60,
+    "average_processing_days": 90,
+    "key_requirements": [
+      "M&A仲介・FA等の専門家活用"
+    ],
+    "exclusion_conditions": []
+  },
+  {
+    "grant_id": "G018",
+    "grant_name": "GX関連補助金（中小企業向け省エネ）",
+    "ministry": "経済産業省・資源エネルギー庁",
+    "category": "設備投資・事業開発",
+    "target_industries": [
+      "製造業",
+      "建設業"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": 5,
+    "max_employee_count": 300,
+    "max_grant_amount_yen": 15000000,
+    "subsidy_rate": 50,
+    "application_deadline": "2026-08-31",
+    "required_certifications": [],
+    "required_documents": [
+      "省エネ計画書",
+      "導入設備仕様書",
+      "エネルギー使用量実績"
+    ],
+    "adoption_rate_percent": 55,
+    "average_processing_days": 120,
+    "key_requirements": [
+      "省エネ設備の導入",
+      "エネルギー使用量の削減目標"
+    ],
+    "exclusion_conditions": []
+  },
+  {
+    "grant_id": "G019",
+    "grant_name": "中小企業海外展開支援補助金",
+    "ministry": "経済産業省・JETRO",
+    "category": "設備投資・事業開発",
+    "target_industries": [
+      "製造業",
+      "小売・卸売業",
+      "情報通信業"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": null,
+    "max_employee_count": 300,
+    "max_grant_amount_yen": 5000000,
+    "subsidy_rate": 50,
+    "application_deadline": "2026-10-31",
+    "required_certifications": [],
+    "required_documents": [
+      "海外展開計画書",
+      "市場調査報告書"
+    ],
+    "adoption_rate_percent": 50,
+    "average_processing_days": 90,
+    "key_requirements": [
+      "海外市場での販路開拓計画"
+    ],
+    "exclusion_conditions": []
+  },
+  {
+    "grant_id": "G020",
+    "grant_name": "サイバーセキュリティ対策強化補助金",
+    "ministry": "経済産業省・IPA",
+    "category": "設備投資・事業開発",
+    "target_industries": [
+      "全業種"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": 5,
+    "max_employee_count": 300,
+    "max_grant_amount_yen": 3000000,
+    "subsidy_rate": 50,
+    "application_deadline": "2026-09-30",
+    "required_certifications": [],
+    "required_documents": [
+      "セキュリティ強化計画書",
+      "見積書"
+    ],
+    "adoption_rate_percent": 65,
+    "average_processing_days": 60,
+    "key_requirements": [
+      "セキュリティ診断の実施",
+      "対策ツールの導入"
+    ],
+    "exclusion_conditions": []
+  },
+  {
+    "grant_id": "G021",
+    "grant_name": "トラック運送業働き方改革推進助成金",
+    "ministry": "国土交通省",
+    "category": "人材・雇用",
+    "target_industries": [
+      "運輸業"
+    ],
+    "target_industries_minor": [
+      "貨物運送"
+    ],
+    "min_employee_count": null,
+    "max_employee_count": null,
+    "max_grant_amount_yen": 3000000,
+    "subsidy_rate": 67,
+    "application_deadline": "2026-11-30",
+    "required_certifications": [
+      "一般貨物自動車運送事業許可"
+    ],
+    "required_documents": [
+      "労働時間改善計画書",
+      "車両稼働実績"
+    ],
+    "adoption_rate_percent": 70,
+    "average_processing_days": 90,
+    "key_requirements": [
+      "ドライバー労働時間短縮",
+      "改善基準告示の遵守"
+    ],
+    "exclusion_conditions": []
+  },
+  {
+    "grant_id": "G022",
+    "grant_name": "介護タクシー導入支援補助金",
+    "ministry": "国土交通省・厚生労働省",
+    "category": "設備投資・事業開発",
+    "target_industries": [
+      "運輸業",
+      "医療・福祉"
+    ],
+    "target_industries_minor": [
+      "旅客運送",
+      "介護・看護"
+    ],
+    "min_employee_count": null,
+    "max_employee_count": null,
+    "max_grant_amount_yen": 2000000,
+    "subsidy_rate": 50,
+    "application_deadline": "2026-08-15",
+    "required_certifications": [
+      "一般乗用旅客自動車運送事業許可（福祉輸送限定）"
+    ],
+    "required_documents": [
+      "車両導入計画書",
+      "見積書"
+    ],
+    "adoption_rate_percent": 75,
+    "average_processing_days": 60,
+    "key_requirements": [
+      "福祉車両の導入",
+      "介護資格保有者の配置"
+    ],
+    "exclusion_conditions": []
+  },
+  {
+    "grant_id": "G023",
+    "grant_name": "住宅省エネ改修補助金（建設業者向け）",
+    "ministry": "国土交通省",
+    "category": "設備投資・事業開発",
+    "target_industries": [
+      "建設業"
+    ],
+    "target_industries_minor": [
+      "総合工事",
+      "設備工事"
+    ],
+    "min_employee_count": null,
+    "max_employee_count": null,
+    "max_grant_amount_yen": 5000000,
+    "subsidy_rate": 50,
+    "application_deadline": "2026-12-15",
+    "required_certifications": [
+      "建設業許可"
+    ],
+    "required_documents": [
+      "工事計画書",
+      "省エネ性能証明"
+    ],
+    "adoption_rate_percent": 65,
+    "average_processing_days": 75,
+    "key_requirements": [
+      "省エネ基準を満たす住宅改修工事"
+    ],
+    "exclusion_conditions": []
+  },
+  {
+    "grant_id": "G024",
+    "grant_name": "食品ロス削減推進補助金",
+    "ministry": "農林水産省",
+    "category": "設備投資・事業開発",
+    "target_industries": [
+      "製造業",
+      "小売・卸売業"
+    ],
+    "target_industries_minor": [
+      "食品製造",
+      "飲食料品小売"
+    ],
+    "min_employee_count": null,
+    "max_employee_count": 300,
+    "max_grant_amount_yen": 3000000,
+    "subsidy_rate": 50,
+    "application_deadline": "2026-09-30",
+    "required_certifications": [],
+    "required_documents": [
+      "食品ロス削減計画書",
+      "実績報告書"
+    ],
+    "adoption_rate_percent": 70,
+    "average_processing_days": 60,
+    "key_requirements": [
+      "食品ロス削減の数値目標",
+      "取組の継続性"
+    ],
+    "exclusion_conditions": []
+  },
+  {
+    "grant_id": "G025",
+    "grant_name": "農商工連携事業化支援補助金",
+    "ministry": "農林水産省・経済産業省",
+    "category": "設備投資・事業開発",
+    "target_industries": [
+      "製造業",
+      "小売・卸売業"
+    ],
+    "target_industries_minor": [
+      "食品製造"
+    ],
+    "min_employee_count": null,
+    "max_employee_count": 300,
+    "max_grant_amount_yen": 6000000,
+    "subsidy_rate": 67,
+    "application_deadline": "2026-08-31",
+    "required_certifications": [],
+    "required_documents": [
+      "農商工連携計画書",
+      "連携先合意書"
+    ],
+    "adoption_rate_percent": 50,
+    "average_processing_days": 120,
+    "key_requirements": [
+      "農林漁業者との連携",
+      "新商品・新サービス開発"
+    ],
+    "exclusion_conditions": []
+  },
+  {
+    "grant_id": "G026",
+    "grant_name": "東京都中小企業デジタル化助成金",
+    "ministry": "東京都",
+    "category": "設備投資・事業開発",
+    "target_industries": [
+      "全業種"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": null,
+    "max_employee_count": 300,
+    "max_grant_amount_yen": 1000000,
+    "subsidy_rate": 67,
+    "application_deadline": "2026-07-31",
+    "required_certifications": [],
+    "required_documents": [
+      "導入計画書",
+      "見積書"
+    ],
+    "adoption_rate_percent": 70,
+    "average_processing_days": 60,
+    "key_requirements": [
+      "東京都内の事業所",
+      "デジタルツールの導入"
+    ],
+    "exclusion_conditions": [],
+    "target_prefecture": "東京都"
+  },
+  {
+    "grant_id": "G027",
+    "grant_name": "京都府ものづくり中小企業活性化補助金",
+    "ministry": "京都府",
+    "category": "設備投資・事業開発",
+    "target_industries": [
+      "製造業"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": null,
+    "max_employee_count": 300,
+    "max_grant_amount_yen": 3000000,
+    "subsidy_rate": 50,
+    "application_deadline": "2026-08-15",
+    "required_certifications": [],
+    "required_documents": [
+      "事業計画書",
+      "見積書"
+    ],
+    "adoption_rate_percent": 60,
+    "average_processing_days": 90,
+    "key_requirements": [
+      "京都府内の事業所",
+      "新製品開発または生産性向上"
+    ],
+    "exclusion_conditions": [],
+    "target_prefecture": "京都府"
+  },
+  {
+    "grant_id": "G028",
+    "grant_name": "大阪府中小企業設備投資支援補助金",
+    "ministry": "大阪府",
+    "category": "設備投資・事業開発",
+    "target_industries": [
+      "製造業",
+      "建設業"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": null,
+    "max_employee_count": 300,
+    "max_grant_amount_yen": 5000000,
+    "subsidy_rate": 50,
+    "application_deadline": "2026-09-30",
+    "required_certifications": [],
+    "required_documents": [
+      "設備投資計画書",
+      "見積書"
+    ],
+    "adoption_rate_percent": 55,
+    "average_processing_days": 90,
+    "key_requirements": [
+      "大阪府内の事業所",
+      "生産性向上の数値目標"
+    ],
+    "exclusion_conditions": [],
+    "target_prefecture": "大阪府"
+  },
+  {
+    "grant_id": "G029",
+    "grant_name": "神奈川県介護人材確保支援助成金",
+    "ministry": "神奈川県",
+    "category": "人材・雇用",
+    "target_industries": [
+      "医療・福祉"
+    ],
+    "target_industries_minor": [
+      "介護・看護"
+    ],
+    "min_employee_count": null,
+    "max_employee_count": null,
+    "max_grant_amount_yen": 2000000,
+    "subsidy_rate": 75,
+    "application_deadline": "2026-10-31",
+    "required_certifications": [
+      "介護保険事業者指定"
+    ],
+    "required_documents": [
+      "人材確保計画書",
+      "雇用契約書"
+    ],
+    "adoption_rate_percent": 75,
+    "average_processing_days": 75,
+    "key_requirements": [
+      "神奈川県内の事業所",
+      "介護職員の新規雇用"
+    ],
+    "exclusion_conditions": [],
+    "target_prefecture": "神奈川県"
+  },
+  {
+    "grant_id": "G030",
+    "grant_name": "愛知県スタートアップ・新事業展開補助金",
+    "ministry": "愛知県",
+    "category": "設備投資・事業開発",
+    "target_industries": [
+      "全業種"
+    ],
+    "target_industries_minor": [],
+    "min_employee_count": null,
+    "max_employee_count": 100,
+    "max_grant_amount_yen": 4000000,
+    "subsidy_rate": 67,
+    "application_deadline": "2026-11-30",
+    "required_certifications": [],
+    "required_documents": [
+      "事業計画書",
+      "市場調査報告書"
+    ],
+    "adoption_rate_percent": 55,
+    "average_processing_days": 90,
+    "key_requirements": [
+      "愛知県内の事業所",
+      "新事業または第二創業"
+    ],
+    "exclusion_conditions": [],
+    "target_prefecture": "愛知県"
+  }
+];
+
+// ===== データ読み込み =====
+async function loadData() {
+  document.getElementById('resultsTitle').textContent = 'データ読み込み中...';
+  document.getElementById('resultsContent').innerHTML = '<div class="loading"><div class="spinner"></div>会員名簿と助成金情報を読み込んでいます</div>';
+  
+  // 演出用ディレイ
+  await new Promise(r => setTimeout(r, 800));
+  
+  try {
+    members = EMBEDDED_MEMBERS;
+    grants = EMBEDDED_GRANTS;
+    
+    document.getElementById('statMembers').textContent = members.length;
+    document.getElementById('statGrants').textContent = grants.length;
+    document.getElementById('stats').style.display = 'grid';
+    document.getElementById('btnRunMatching').disabled = false;
+    
+    document.getElementById('resultsTitle').textContent = 'データ読み込み完了';
+    document.getElementById('resultsContent').innerHTML = `
+      <div style="text-align:center; padding:40px;">
+        <div style="font-size:48px; margin-bottom:16px;">✓</div>
+        <div>会員${members.length}社、助成金${grants.length}件を読み込みました。</div>
+        <div style="color:#888; font-size:12px; margin-top:8px;">「②マッチング実行」ボタンを押してください。</div>
+      </div>
+    `;
+  } catch (e) {
+    document.getElementById('resultsContent').innerHTML = `
+      <div style="color:#ff6b6b; text-align:center; padding:40px;">
+        データ読み込みエラー：${e.message}<br>
+        <span style="font-size:11px; color:#888;">JSONファイルが同じディレクトリにあることを確認してください</span>
+      </div>
+    `;
+  }
+}
+
+// ===== マッチング判定ロジック（モック版）=====
+function calculateMatchScore(member, grant) {
+  let score = 0;
+  let reasons = [];
+  let exclusionReasons = [];
+  
+  // 業種適合（30点）
+  if (grant.target_industries.includes('全業種')) {
+    score += 30;
+    reasons.push('全業種対象');
+  } else if (grant.target_industries.includes(member.industry_major)) {
+    if (grant.target_industries_minor && grant.target_industries_minor.length > 0) {
+      if (grant.target_industries_minor.includes(member.industry_minor)) {
+        score += 30;
+        reasons.push(`業種完全一致（${member.industry_minor}）`);
+      } else {
+        score += 10;
+        reasons.push(`業種大分類一致（${member.industry_major}）`);
+      }
+    } else {
+      score += 25;
+      reasons.push(`業種大分類一致（${member.industry_major}）`);
+    }
+  } else {
+    exclusionReasons.push(`対象業種外（${member.industry_minor}）`);
+  }
+  
+  // 規模適合（20点）
+  let scaleOK = true;
+  if (grant.max_employee_count !== null && member.employee_count > grant.max_employee_count) {
+    exclusionReasons.push(`従業員数超過（${member.employee_count}名 > 上限${grant.max_employee_count}名）`);
+    scaleOK = false;
+  } else if (grant.min_employee_count !== null && member.employee_count < grant.min_employee_count) {
+    exclusionReasons.push(`従業員数不足（${member.employee_count}名 < 下限${grant.min_employee_count}名）`);
+    scaleOK = false;
+  } else {
+    score += 20;
+    if (grant.max_employee_count !== null) reasons.push(`従業員規模範囲内`);
+  }
+  
+  // 都道府県適合（地方自治体助成金の場合）
+  if (grant.target_prefecture) {
+    if (member.prefecture === grant.target_prefecture) {
+      score += 5;
+      reasons.push(`所在地一致（${grant.target_prefecture}）`);
+    } else {
+      exclusionReasons.push(`所在地不一致（${grant.target_prefecture}内事業所のみ対象）`);
+    }
+  }
+  
+  // 認証要件（30点：満たせば加点、満たせなければ大幅減点）
+  if (grant.required_certifications && grant.required_certifications.length > 0) {
+    // 介護・障害福祉系の認証チェック（簡易ロジック）
+    const reqCert = grant.required_certifications[0];
+    if (reqCert.includes('介護保険') && member.industry_minor === '介護・看護') {
+      score += 30;
+      reasons.push('必要認証保有（介護保険事業者指定）');
+    } else if (reqCert.includes('障害福祉') && member.industry_minor === '障害福祉') {
+      score += 30;
+      reasons.push('必要認証保有（障害福祉サービス事業者指定）');
+    } else if (reqCert.includes('保育') && member.industry_minor === '保育・子育て支援') {
+      score += 30;
+      reasons.push('必要認証保有');
+    } else if (reqCert.includes('建設業許可') && member.industry_major === '建設業') {
+      score += 30;
+      reasons.push('必要認証保有（建設業許可）');
+    } else if (reqCert.includes('一般貨物') && member.industry_minor === '貨物運送') {
+      score += 30;
+      reasons.push('必要認証保有');
+    } else if (reqCert.includes('旅客自動車') && member.industry_minor === '旅客運送') {
+      score += 30;
+      reasons.push('必要認証保有');
+    } else {
+      exclusionReasons.push(`必要認証なし（${reqCert}）`);
+    }
+  } else {
+    score += 25;  // 認証要件なしの場合は25点付与
+  }
+  
+  // 過去採択実績（10点）
+  if (member.previous_grant_received && member.previous_grant_received.includes(grant.grant_name)) {
+    score += 10;
+    reasons.push('同種助成金の採択実績あり');
+  }
+  
+  // タイミング（10点）
+  const deadline = new Date(grant.application_deadline);
+  const today = new Date('2026-05-18');
+  const daysUntilDeadline = Math.floor((deadline - today) / (1000 * 60 * 60 * 24));
+  if (daysUntilDeadline >= 30) {
+    score += 10;
+    reasons.push(`期限まで${daysUntilDeadline}日（十分な準備期間）`);
+  } else if (daysUntilDeadline >= 14) {
+    score += 5;
+    reasons.push(`期限まで${daysUntilDeadline}日（要急ぎ）`);
+  } else if (daysUntilDeadline > 0) {
+    reasons.push(`期限まで${daysUntilDeadline}日（厳しい）`);
+  } else {
+    exclusionReasons.push('申請期限経過');
+  }
+  
+  // 採択率による補正（採択率の高い助成金は+α）
+  if (grant.adoption_rate_percent >= 85) {
+    score += 5;
+    reasons.push(`採択率${grant.adoption_rate_percent}%（高採択率）`);
+  }
+  
+  // 判定
+  let grade = 'X';  // 除外
+  if (exclusionReasons.length > 0) {
+    grade = 'X';
+  } else if (score >= 80) {
+    grade = 'A';
+  } else if (score >= 60) {
+    grade = 'B';
+  } else if (score >= 40) {
+    grade = 'C';
+  } else {
+    grade = 'X';
+    exclusionReasons.push(`総合スコア不足（${score}点）`);
+  }
+  
+  return {
+    member_id: member.member_id,
+    grant_id: grant.grant_id,
+    grant_name: grant.grant_name,
+    score: score,
+    grade: grade,
+    reasons: reasons,
+    exclusion_reasons: exclusionReasons,
+    deadline: grant.application_deadline,
+    days_until_deadline: daysUntilDeadline,
+    max_amount: grant.max_grant_amount_yen,
+    ministry: grant.ministry
+  };
+}
+
+// ===== マッチング実行 =====
+async function runMatching() {
+  document.getElementById('btnRunMatching').disabled = true;
+  document.getElementById('resultsTitle').textContent = 'マッチング処理中...';
+  
+  const total = members.length;
+  matchingResults = [];
+  
+  for (let i = 0; i < members.length; i++) {
+    const member = members[i];
+    const memberMatches = [];
+    
+    for (const grant of grants) {
+      memberMatches.push(calculateMatchScore(member, grant));
+    }
+    
+    matchingResults.push({
+      member: member,
+      matches: memberMatches
+    });
+    
+    // 進捗表示
+    const progress = Math.floor(((i + 1) / total) * 100);
+    document.getElementById('resultsContent').innerHTML = `
+      <div class="loading">
+        <div class="spinner"></div>
+        マッチング処理中（${i + 1}/${total}社）
+        <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
+      </div>
+    `;
+    
+    // 演出用ディレイ（モック時のみ）
+    if (currentMode === 'MOCK') {
+      await new Promise(r => setTimeout(r, 50));
+    }
+  }
+  
+  // 集計
+  let totalA = 0, totalB = 0, totalC = 0, totalX = 0;
+  for (const result of matchingResults) {
+    for (const match of result.matches) {
+      if (match.grade === 'A') totalA++;
+      else if (match.grade === 'B') totalB++;
+      else if (match.grade === 'C') totalC++;
+      else totalX++;
+    }
+  }
+  document.getElementById('statMatches').textContent = totalA;
+  document.getElementById('statExcluded').textContent = totalX;
+  document.getElementById('btnIndustrySummary').disabled = false;
+  document.getElementById('btnChecklist').disabled = false;
+  
+  // 結果表示
+  displayMatchingResults();
+}
+
+// ===== マッチング結果表示 =====
+function displayMatchingResults() {
+  document.getElementById('resultsTitle').textContent = '会員別マッチング結果';
+  
+  let html = '';
+  for (const result of matchingResults) {
+    const m = result.member;
+    const matchA = result.matches.filter(x => x.grade === 'A').sort((a,b) => b.score - a.score);
+    const matchB = result.matches.filter(x => x.grade === 'B').sort((a,b) => b.score - a.score);
+    const matchC = result.matches.filter(x => x.grade === 'C').sort((a,b) => b.score - a.score);
+    const matchX = result.matches.filter(x => x.grade === 'X');
+    
+    html += `
+      <div class="member-card">
+        <div class="member-name">${m.company_name}</div>
+        <div class="member-meta">
+          ${m.industry_major}／${m.industry_minor}｜従業員${m.employee_count}名｜売上${m.annual_revenue_million}百万円｜${m.prefecture}${m.city}
+        </div>
+        <div class="grade-summary">
+          <span class="grade-badge grade-A">適合A: ${matchA.length}件</span>
+          <span class="grade-badge grade-B">適合B: ${matchB.length}件</span>
+          <span class="grade-badge grade-C">適合C: ${matchC.length}件</span>
+          <span class="grade-badge grade-X">除外: ${matchX.length}件</span>
+          <button class="btn btn-secondary" style="margin-left:auto; padding:4px 12px; font-size:11px;" onclick="toggleDetails('${m.member_id}')">詳細表示</button>
+        </div>
+        <div class="grant-list" id="details-${m.member_id}">
+          ${matchA.length > 0 ? '<div style="color:#4CAF50; font-weight:bold; margin-top:8px;">▶ 適合A（採択可能性高）</div>' : ''}
+          ${matchA.map(g => `
+            <div class="grant-item">
+              <div class="grant-name">${g.grant_name}（${g.ministry}）</div>
+              <div class="grant-reason">
+                スコア${g.score}点｜期限${g.deadline}（残${g.days_until_deadline}日）｜上限${g.max_amount ? g.max_amount.toLocaleString() + '円' : '非公表'}<br>
+                理由：${g.reasons.join('、')}
+              </div>
+            </div>
+          `).join('')}
+          ${matchB.length > 0 ? '<div style="color:#FFC107; font-weight:bold; margin-top:8px;">▶ 適合B（要件確認必要）</div>' : ''}
+          ${matchB.slice(0,3).map(g => `
+            <div class="grant-item">
+              <div class="grant-name">${g.grant_name}</div>
+              <div class="grant-reason">スコア${g.score}点｜${g.reasons.join('、')}</div>
+            </div>
+          `).join('')}
+          ${matchX.length > 0 ? '<div style="color:#888; font-weight:bold; margin-top:8px;">▶ 除外（要件不適合）</div>' : ''}
+          ${matchX.slice(0,3).map(g => `
+            <div class="grant-item" style="opacity:0.6;">
+              <div class="grant-name">${g.grant_name}</div>
+              <div class="grant-reason">除外理由：${g.exclusion_reasons.join('、')}</div>
+            </div>
+          `).join('')}
+          ${matchX.length > 3 ? `<div style="color:#888; font-size:11px; padding:4px 12px;">他${matchX.length - 3}件の除外案件あり</div>` : ''}
+        </div>
+      </div>
+    `;
+  }
+  
+  document.getElementById('resultsContent').innerHTML = html;
+}
+
+// ===== 詳細表示トグル =====
+function toggleDetails(memberId) {
+  const el = document.getElementById(`details-${memberId}`);
+  el.classList.toggle('expanded');
+}
+
+// ===== 業界別サマリー表示 =====
+function showIndustrySummary() {
+  document.getElementById('resultsTitle').textContent = '業界別マッチングサマリー';
+  
+  const summary = {};
+  for (const result of matchingResults) {
+    const key = result.member.industry_minor;
+    if (!summary[key]) {
+      summary[key] = {
+        major: result.member.industry_major,
+        minor: key,
+        company_count: 0,
+        total_A: 0,
+        total_B: 0,
+        common_grants: {},
+        avg_A: 0
+      };
+    }
+    const matchA = result.matches.filter(x => x.grade === 'A');
+    const matchB = result.matches.filter(x => x.grade === 'B');
+    summary[key].company_count++;
+    summary[key].total_A += matchA.length;
+    summary[key].total_B += matchB.length;
+    for (const m of matchA) {
+      summary[key].common_grants[m.grant_name] = (summary[key].common_grants[m.grant_name] || 0) + 1;
+    }
+  }
+  
+  let html = '';
+  for (const k in summary) {
+    const s = summary[k];
+    s.avg_A = (s.total_A / s.company_count).toFixed(1);
+    const sortedGrants = Object.entries(s.common_grants).sort((a,b) => b[1] - a[1]).slice(0, 5);
+    
+    html += `
+      <div class="member-card">
+        <div class="member-name">${s.major} ／ ${s.minor}</div>
+        <div class="member-meta">該当会員 ${s.company_count}社｜適合A総数 ${s.total_A}件｜平均 ${s.avg_A}件/社</div>
+        <div style="margin-top:12px; padding-top:12px; border-top:1px dashed rgba(255,255,255,0.2);">
+          <div style="color:#c9a96e; font-weight:bold; margin-bottom:8px;">業界共通の高適合助成金（上位5件）</div>
+          ${sortedGrants.map(([name, count]) => `
+            <div class="grant-item">
+              <div class="grant-name">${name}</div>
+              <div class="grant-reason">${count}社が適合A判定（業界内${Math.round(count/s.company_count*100)}%）</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+  
+  document.getElementById('resultsContent').innerHTML = html;
+}
+
+// ===== リセット =====
+function resetAll() {
+  members = [];
+  grants = [];
+  matchingResults = [];
+  document.getElementById('stats').style.display = 'none';
+  document.getElementById('btnRunMatching').disabled = true;
+  document.getElementById('btnIndustrySummary').disabled = true;
+  document.getElementById('btnChecklist').disabled = true;
+  document.getElementById('resultsTitle').textContent = '結果表示エリア';
+  document.getElementById('resultsContent').innerHTML = `
+    <div style="text-align:center; padding:60px; color:#888;">
+      「①データ読み込み」ボタンから開始してください
+    </div>
+  `;
+}
+
+// ===== CSV取込機能 =====
+function importCSV(event, type) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const csvText = e.target.result;
+      const parsed = parseCSV(csvText);
+      
+      if (type === 'members') {
+        members = parsed;
+        document.getElementById('statMembers').textContent = members.length;
+        document.getElementById('importStatus').innerHTML = 
+          '<span style="color:#4CAF50;">✓ 会員データ取込完了：' + members.length + '社</span>';
+      } else {
+        grants = parsed;
+        document.getElementById('statGrants').textContent = grants.length;
+        document.getElementById('importStatus').innerHTML = 
+          '<span style="color:#4CAF50;">✓ 助成金データ取込完了：' + grants.length + '件</span>';
+      }
+      
+      document.getElementById('stats').style.display = 'grid';
+      if (members.length > 0 && grants.length > 0) {
+        document.getElementById('btnRunMatching').disabled = false;
+      }
+    } catch (err) {
+      document.getElementById('importStatus').innerHTML = 
+        '<span style="color:#ff6b6b;">✗ 取込エラー：' + err.message + '</span>';
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) throw new Error('データ行が見つかりません');
+  
+  const headers = parseCSVLine(lines[0]);
+  const result = [];
+  
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const values = parseCSVLine(lines[i]);
+    const obj = {};
+    headers.forEach((h, idx) => {
+      let v = values[idx] || '';
+      // 数値変換
+      if (/^-?\d+(\.\d+)?$/.test(v)) v = Number(v);
+      // true/false変換
+      else if (v === 'true') v = true;
+      else if (v === 'false') v = false;
+      // 配列変換（パイプ区切り）
+      else if (v.includes('|')) v = v.split('|').map(s => s.trim()).filter(s => s);
+      // 空文字はnullに
+      else if (v === '') v = null;
+      obj[h] = v;
+    });
+    result.push(obj);
+  }
+  return result;
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQuotes && line[i+1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (c === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += c;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function downloadSampleCSV(type) {
+  let csv = '';
+  let filename = '';
+  
+  if (type === 'members') {
+    csv = 'member_id,company_name,industry_major,industry_minor,establishment_year,employee_count,annual_revenue_million,capital_million,prefecture,city,main_business,has_certified_specialist,has_business_continuity_plan,previous_grant_received,previous_grant_failed,subscription_plan,registration_date\n';
+    csv += 'M001,株式会社サンプル介護,医療・福祉,介護・看護,2015,30,,5,東京都,新宿区,訪問介護事業,true,true,介護職員処遇改善加算,,プレミアム,2024-04-01\n';
+    csv += 'M002,合同会社サンプル製造,製造業,金属加工,2010,50,,10,神奈川県,横浜市,精密板金加工,true,false,ものづくり補助金|IT導入補助金,,スタンダード,2024-04-15\n';
+    filename = 'sample_members.csv';
+  } else {
+    csv = 'grant_id,grant_name,ministry,category,target_industries,target_industries_minor,min_employee_count,max_employee_count,max_grant_amount_yen,subsidy_rate,application_deadline,required_certifications,required_documents,adoption_rate_percent,average_processing_days,key_requirements,exclusion_conditions\n';
+    csv += 'G001,サンプル助成金A,厚生労働省,人材・雇用,医療・福祉,介護・看護,,,1000000,50,2026-12-31,介護保険事業者指定,介護給付費請求書|賃金台帳,85,60,賃金改善実施,過去3年間に行政処分\n';
+    csv += 'G002,サンプル助成金B,経済産業省,設備投資・事業開発,全業種,,,300,5000000,50,2026-10-31,,事業計画書|見積書,60,90,生産性向上,\n';
+    filename = 'sample_grants.csv';
+  }
+  
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+}
+
+
+// ===== 段階3：必要情報チェックリスト =====
+function showChecklist() {
+  document.getElementById('resultsTitle').textContent = '会員別必要情報チェックリスト（適合A案件）';
+  
+  // 業種別・会員が保有していそうな書類の推定マップ
+  const memberDocumentMap = {
+    '介護・看護': ['介護給付費請求書', '賃金台帳', '雇用契約書', '就業規則', '事業計画書'],
+    '障害福祉': ['障害福祉サービス費請求書', '賃金台帳', '雇用契約書', '就業規則'],
+    '保育・子育て支援': ['処遇改善等加算計画書', '賃金台帳', '雇用契約書'],
+    'ソフトウェア開発': ['事業計画書', '見積書', '賃金台帳', '雇用契約書'],
+    '情報処理サービス': ['事業計画書', '見積書', '賃金台帳'],
+    '総合工事': ['建設業許可証', '事業計画書', '賃金台帳', '労働時間管理規程'],
+    '設備工事': ['建設業許可証', '事業計画書', '賃金台帳'],
+    '金属加工': ['事業計画書', '決算書', '見積書', '賃金台帳'],
+    '食品製造': ['事業計画書', '決算書', '見積書'],
+    '電子部品': ['事業計画書', '決算書', '見積書'],
+    '飲食料品小売': ['事業計画書', '決算書', '経営計画書'],
+    '機械器具卸売': ['事業計画書', '決算書', '見積書'],
+    '専門サービス': ['事業計画書', '経営計画書'],
+    '生活関連サービス': ['事業計画書', '経営計画書'],
+    '貨物運送': ['一般貨物自動車運送事業許可証', '労働時間管理規程', '車両稼働実績'],
+    '旅客運送': ['一般乗用旅客自動車運送事業許可証', '車両稼働実績']
+  };
+  
+  // 書類取得方法の推定
+  const documentObtainMethod = {
+    '介護給付費請求書': '社内保有（経理部門）',
+    '障害福祉サービス費請求書': '社内保有（経理部門）',
+    '賃金台帳': '社内保有（労務担当）',
+    '雇用契約書': '社内保有（人事担当）',
+    '就業規則': '社内保有（人事担当）',
+    '事業計画書': '社内保有または新規作成（経営層）',
+    '見積書': '取引先から取得',
+    '決算書': '社内保有（経理部門・税理士）',
+    '経営計画書': '新規作成必要（中小企業診断士等の支援推奨）',
+    'キャリアパス要件確認書': '新規作成必要（人事規定から抽出可能、推定作業30分）',
+    '職場環境等要件確認書': '新規作成必要（労務担当ヒアリング、推定作業1時間）',
+    '処遇改善等加算計画書': '社内保有（毎年度作成）',
+    '建設業許可証': '社内保有（要更新確認）',
+    '一般貨物自動車運送事業許可証': '社内保有',
+    '一般乗用旅客自動車運送事業許可証': '社内保有',
+    '労働時間管理規程': '社内保有または新規作成',
+    '車両稼働実績': '社内保有（運行管理）',
+    '交付申請書': '助成金センター様式から取得',
+    '事業実施計画書': '新規作成必要',
+    '賃金引上げ計画書': '新規作成必要（労務担当）',
+    '労働時間改善計画書': '新規作成必要',
+    'ITツール導入計画書': '新規作成必要（IT導入支援事業者との協議）',
+    '補助事業計画書': '新規作成必要',
+    '事業支援計画書（商工会議所等）': '商工会議所等で取得',
+    '事業再構築計画書': '新規作成必要（認定支援機関の関与必須）',
+    '認定経営革新等支援機関による確認書': '認定支援機関に依頼',
+    '事業承継計画書': '新規作成必要',
+    'カタログ登録製品の見積書': 'IT導入支援事業者から取得',
+    'M&A実施計画書': '新規作成必要',
+    '専門家利用契約書': 'M&A仲介・FA等と契約後取得',
+    '省エネ計画書': '新規作成必要（省エネ診断士の関与推奨）',
+    '導入設備仕様書': 'メーカーから取得',
+    'エネルギー使用量実績': '社内保有（電気・ガス使用量データ）',
+    '海外展開計画書': '新規作成必要',
+    '市場調査報告書': '新規作成または外部調査会社に依頼',
+    'セキュリティ強化計画書': '新規作成必要',
+    'M&A実施計画書': '新規作成必要',
+    'カリキュラム': '新規作成必要（人材開発支援機関の活用）',
+    '訓練計画書': '新規作成必要',
+    '訓練カリキュラム': '新規作成必要',
+    'トライアル雇用実施計画書': '新規作成必要',
+    'キャリアアップ計画書': '新規作成必要',
+    '正社員転換規程': '新規作成必要（社労士の関与推奨）',
+    '機器導入計画書': '新規作成必要',
+    '雇用管理改善計画書': '新規作成必要',
+    '人材確保計画書': '新規作成必要',
+    '導入計画書': '新規作成必要',
+    '工事計画書': '社内保有または新規作成',
+    '省エネ性能証明': '建築士等から取得',
+    '連携先合意書': '農林漁業者等との合意後作成',
+    '農商工連携計画書': '新規作成必要（農水省様式）',
+    '食品ロス削減計画書': '新規作成必要',
+    '実績報告書': '実施後に作成',
+    '設備投資計画書': '新規作成必要',
+    'キャリアパス要件確認書': '新規作成必要（人事規定から抽出可能）',
+    '職場環境等要件確認書': '新規作成必要（労務担当ヒアリング）'
+  };
+  
+  let html = '';
+  
+  for (const result of matchingResults) {
+    const m = result.member;
+    const matchA = result.matches.filter(x => x.grade === 'A').sort((a,b) => b.score - a.score);
+    
+    if (matchA.length === 0) {
+      html += `
+        <div class="member-card">
+          <div class="member-name">${m.company_name}</div>
+          <div class="member-meta">
+            ${m.industry_major}／${m.industry_minor}｜従業員${m.employee_count}名
+          </div>
+          <div style="color:#888; padding:8px;">適合A判定の助成金がありません。</div>
+        </div>
+      `;
+      continue;
+    }
+    
+    // この会員が保有していそうな書類
+    const ownedDocs = memberDocumentMap[m.industry_minor] || [];
+    
+    html += `
+      <div class="member-card">
+        <div class="member-name">${m.company_name}</div>
+        <div class="member-meta">
+          ${m.industry_major}／${m.industry_minor}｜従業員${m.employee_count}名｜${m.prefecture}${m.city}
+        </div>
+        <div style="margin-top:12px; color:#c9a96e; font-weight:bold;">
+          適合A判定 ${matchA.length}件の申請に必要な情報
+        </div>
+    `;
+    
+    for (const matchedGrant of matchA) {
+      // 元の助成金データを取得して必要書類を引く
+      const fullGrant = grants.find(g => g.grant_id === matchedGrant.grant_id);
+      if (!fullGrant) continue;
+      
+      const reqDocs = fullGrant.required_documents || [];
+      const owned = reqDocs.filter(d => ownedDocs.some(od => d.includes(od) || od.includes(d)));
+      const missing = reqDocs.filter(d => !owned.includes(d));
+      
+      html += `
+        <div style="margin-top:16px; padding:12px; background:rgba(0,0,0,0.3); border-radius:8px; border-left:3px solid #4CAF50;">
+          <div style="color:#4CAF50; font-weight:bold; margin-bottom:8px;">
+            ▶ ${fullGrant.grant_name}（${fullGrant.ministry}）
+          </div>
+          <div style="font-size:12px; color:#aaa; margin-bottom:12px;">
+            申請期限：${fullGrant.application_deadline}（残${matchedGrant.days_until_deadline}日）｜
+            上限：${fullGrant.max_grant_amount_yen ? fullGrant.max_grant_amount_yen.toLocaleString() + '円' : '非公表'}｜
+            採択率：${fullGrant.adoption_rate_percent}%
+          </div>
+          
+          <div style="font-size:13px; margin-bottom:8px;">
+            <span style="color:#4CAF50;">■ 必要書類（${reqDocs.length}点）</span>
+          </div>
+          
+          <div style="margin-bottom:12px;">
+            ${reqDocs.map(doc => {
+              const isOwned = owned.includes(doc);
+              const method = documentObtainMethod[doc] || '取得方法を確認';
+              const isInternal = method.includes('社内保有');
+              return `
+                <div style="display:flex; align-items:flex-start; padding:6px 8px; margin:2px 0; background:rgba(255,255,255,0.05); border-radius:4px; font-size:12px;">
+                  <span style="margin-right:8px; flex-shrink:0;">
+                    ${isOwned ? '<span style="color:#4CAF50;">✓</span>' : '<span style="color:#FFC107;">★</span>'}
+                  </span>
+                  <div style="flex:1;">
+                    <div style="color:#fff;">${doc}</div>
+                    <div style="color:${isOwned ? '#888' : '#FFC107'}; font-size:11px; margin-top:2px;">
+                      ${isOwned ? '社内保有想定' : method}
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+          
+          ${missing.length > 0 ? `
+            <div style="padding:8px; background:rgba(255,193,7,0.1); border-radius:4px; font-size:11px; color:#FFC107;">
+              ★印（${missing.length}点）は新規作成または外部取得が必要です。<br>
+              申請開始前に準備期間を確保してください。
+            </div>
+          ` : `
+            <div style="padding:8px; background:rgba(76,175,80,0.1); border-radius:4px; font-size:11px; color:#4CAF50;">
+              ✓ 必要書類はすべて社内保有想定です。即座に申請準備に入れます。
+            </div>
+          `}
+        </div>
+      `;
+    }
+    
+    html += '</div>';
+  }
+  
+  document.getElementById('resultsContent').innerHTML = html;
+}
+
+
+// ===== マッチング根拠説明 =====
+function showExplanation() {
+  document.getElementById('resultsTitle').textContent = 'マッチング精度の信憑性について';
+  
+  document.getElementById('resultsContent').innerHTML = `
+    <div class="member-card" style="border-left:3px solid #c9a96e;">
+      <div style="font-size:18px; color:#c9a96e; font-weight:bold; margin-bottom:12px;">
+        TriGrantSupport®のマッチングは「現場知」に基づいています
+      </div>
+      <div style="font-size:13px; color:#ddd; line-height:1.8;">
+        TriGrantSupport®のマッチング判定は、机上のアルゴリズムではなく、<br>
+        <strong style="color:#c9a96e;">生きた現場知</strong>に基づいて設計されています。
+      </div>
+    </div>
+    
+    <div class="member-card">
+      <div style="color:#c9a96e; font-weight:bold; margin-bottom:12px;">▶ 情報源の構造</div>
+      <div style="font-size:13px; line-height:1.8;">
+        <div style="margin-bottom:8px;">
+          <span style="color:#4CAF50;">●</span>
+          <strong>ノアの30年の現場知</strong><br>
+          <span style="color:#aaa; margin-left:16px;">介護・看護業界の助成金活用実績、申請落とし穴、採択パターン</span>
+        </div>
+        <div style="margin-bottom:8px;">
+          <span style="color:#4CAF50;">●</span>
+          <strong>業界別現場ヒアリング</strong><br>
+          <span style="color:#aaa; margin-left:16px;">各業種の経営者・担当者から聞いた「今まさに困っていること」</span>
+        </div>
+        <div style="margin-bottom:8px;">
+          <span style="color:#4CAF50;">●</span>
+          <strong>行政公表情報</strong><br>
+          <span style="color:#aaa; margin-left:16px;">各助成金の要件・採択率・申請期限の正確な反映</span>
+        </div>
+        <div style="margin-bottom:8px;">
+          <span style="color:#4CAF50;">●</span>
+          <strong>過去採択事例の分析</strong><br>
+          <span style="color:#aaa; margin-left:16px;">業種別の採択パターン・落選パターン</span>
+        </div>
+        <div style="margin-bottom:8px;">
+          <span style="color:#4CAF50;">●</span>
+          <strong>三身一体構造による相互検証</strong><br>
+          <span style="color:#aaa; margin-left:16px;">あずさ・なぎさ・つかさによる単一AI誤判定の構造的排除</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="member-card">
+      <div style="color:#c9a96e; font-weight:bold; margin-bottom:12px;">▶ 判定の5つの観点（100点満点）</div>
+      <div style="font-size:13px;">
+        <div class="grant-item">
+          <div class="grant-name">業種適合（30点）</div>
+          <div class="grant-reason">「どの業種が実際に取れるか」現場知に基づく業種別判定</div>
+        </div>
+        <div class="grant-item">
+          <div class="grant-name">規模適合（20点）</div>
+          <div class="grant-reason">「規模が合わないと採択されない」現場経験に基づく従業員数判定</div>
+        </div>
+        <div class="grant-item">
+          <div class="grant-name">必要認証保有（30点）</div>
+          <div class="grant-reason">「認証がないと申請資格すらない」現場現実の反映</div>
+        </div>
+        <div class="grant-item">
+          <div class="grant-name">過去採択実績（10点）</div>
+          <div class="grant-reason">「過去取れた事業者は次も取りやすい」採択パターン反映</div>
+        </div>
+        <div class="grant-item">
+          <div class="grant-name">タイミング（10点）</div>
+          <div class="grant-reason">「準備期間がないと採択されない」現場経験に基づく期限判定</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="member-card">
+      <div style="color:#c9a96e; font-weight:bold; margin-bottom:12px;">▶ 判定基準</div>
+      <div style="font-size:13px; line-height:1.8;">
+        <div style="margin-bottom:6px;"><span class="grade-badge grade-A">適合A</span> 80点以上：採択可能性が高い</div>
+        <div style="margin-bottom:6px;"><span class="grade-badge grade-B">適合B</span> 60〜79点：要件確認が必要</div>
+        <div style="margin-bottom:6px;"><span class="grade-badge grade-C">適合C</span> 40〜59点：推奨度低</div>
+        <div><span class="grade-badge grade-X">除外</span> 39点以下、または要件不適合（理由明示）</div>
+      </div>
+    </div>
+    
+    <div class="member-card" style="border-left:3px solid #4CAF50;">
+      <div style="color:#4CAF50; font-weight:bold; margin-bottom:8px;">▶ TriSight®思想との関係：出口品質保証</div>
+      <div style="font-size:13px; line-height:1.8;">
+        一般的なマッチングAIは「該当しそうな助成金を全部出す」入口型です。<br>
+        TriGrantSupport®は「採択可能性が一定水準以上のもののみ提示し、不適格案件は理由付きで除外する」<strong style="color:#c9a96e;">出口型</strong>です。<br><br>
+        <strong style="color:#c9a96e;">信憑性のある情報×構造的な検証</strong>——この二重の仕組みで精度を担保しています。
+      </div>
+    </div>
+  `;
+}
+
+</script>
+</body>
+</html>

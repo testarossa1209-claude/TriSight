@@ -611,6 +611,17 @@ textarea {
         <span class="config-label">OpenAI</span>
         <input type="password" id="oKey" placeholder="sk-proj-..." />
       </div>
+    </div><div class="input-section" style="background:#f1f8f4;border-left:4px solid #2d6a4f;padding:14px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <div>
+          <div style="font-weight:600;color:#1a3050;font-size:14px">数値解析ロボ</div>
+          <div style="font-size:12px;color:#6a7280;margin-top:2px">税理士発行PDFから数値を自動抽出し、ベース資料欄に流し込みます</div>
+        </div>
+        <button onclick="window.location.href='https://testarossa1209-claude.github.io/TriSight/TriSight_NumericParser_v2.html'"
+                style="background:#1a3050;color:white;border:none;padding:10px 20px;font-family:inherit;font-size:13px;letter-spacing:0.1em;cursor:pointer">
+          数値解析ロボを起動
+        </button>
+      </div>
     </div>
 
     <div class="input-section">
@@ -880,5 +891,31 @@ function openCarePlan() {
  
 </script>
 <style>.ai-lamp{display:inline-block;width:12px;height:12px;border-radius:50%;background:#555;margin-right:6px;vertical-align:middle;transition:background 0.5s}.ai-lamp.on{background:#00e676;box-shadow:0 0 8px #00e676}.ai-status{margin-top:8px;font-size:0.85em;color:#aaa}.ai-status-text.done{color:#00e676}</style><script>window.addEventListener('DOMContentLoaded',function(){var l=['lamp-azusa','lamp-nagisa','lamp-tsukasa'],t=['status-azusa','status-nagisa','status-tsukasa'];l.forEach(function(id,i){setTimeout(function(){var a=document.getElementById(id),b=document.getElementById(t[i]);if(a)a.classList.add('on');if(b){b.textContent='起動完了';b.classList.add('done')}},800*(i+1))})});</script>
-</body>
+<script>
+// === TriSight 数値解析ロボ連携：起動時自動流し込み ===
+window.addEventListener('DOMContentLoaded', function() {
+  try {
+    var parserOutput = localStorage.getItem('trisight_parser_output');
+    if (parserOutput && parserOutput.length > 0) {
+      var refInput = document.getElementById('referenceInput');
+      var refSection = document.getElementById('referenceSection');
+      var refToggleBtn = document.getElementById('referenceToggleBtn');
+      if (refInput) {
+        refInput.value = parserOutput;
+        if (refSection) refSection.style.display = 'block';
+        if (refToggleBtn) refToggleBtn.textContent = '📎 ベース資料（数値解析ロボから自動流し込み済み）';
+        var banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;top:20px;right:20px;background:#2d6a4f;color:white;padding:14px 20px;border-radius:0;z-index:9999;font-family:inherit;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,0.2)';
+        banner.textContent = '✓ 数値解析ロボから数値データを流し込みました';
+        document.body.appendChild(banner);
+        setTimeout(function() { banner.remove(); }, 5000);
+      }
+      localStorage.removeItem('trisight_parser_output');
+    }
+  } catch (e) {
+    console.error('数値解析ロボ連携エラー:', e);
+  }
+});
+</script>
+      </body>
 </html>

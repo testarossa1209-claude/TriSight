@@ -860,19 +860,25 @@ function openCarePlan() {
   localStorage.setItem('trisight_mode', 'careplan');
   window.open('https://testarossa1209-claude.github.io/TriSight/TriSight_Report_CarePlan.html', '_blank');
 }
-  
-  function openBusiness() {
+ function openBusiness() {
   var purpose = document.getElementById('purpose') ? document.getElementById('purpose').value : '';
   var situation = document.getElementById('situation') ? document.getElementById('situation').value : '';
   var input = document.getElementById('input') ? document.getElementById('input').value : '';
+  var reference = document.getElementById('referenceInput') ? document.getElementById('referenceInput').value : '';
   var azusa = document.getElementById('outA') ? document.getElementById('outA').innerText : '';
   var nagisa = document.getElementById('outN') ? document.getElementById('outN').innerText : '';
   var tsukasa = document.getElementById('outT') ? document.getElementById('outT').innerText : '';
   var now = new Date();
-  var content = '■TriSight™ 出力レポート\n生成日時：' + now.toLocaleString('ja-JP') + '\n\n【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + input + '\n\n【あずさ 出力】\n' + azusa + '\n\n【なぎさ 出力】\n' + nagisa + '\n\n【つかさ 出力】\n' + tsukasa;
+  var content = '■TriSight™ 出力レポート\n生成日時：' + now.toLocaleString('ja-JP') + '\n\n【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + input;
+  if (reference) {
+    content += '\n\n【ベース資料】\n' + reference;
+  }
+  content += '\n\n【あずさ 出力】\n' + azusa + '\n\n【なぎさ 出力】\n' + nagisa + '\n\n【つかさ 出力】\n' + tsukasa;
   localStorage.setItem('trisight_output', content);
+  localStorage.setItem('trisight_mode', 'business');
   window.open('https://testarossa1209-claude.github.io/TriSight/TriSight_Report_Business.html', '_blank');
-}
+} 
+ 
 </script>
 <style>.ai-lamp{display:inline-block;width:12px;height:12px;border-radius:50%;background:#555;margin-right:6px;vertical-align:middle;transition:background 0.5s}.ai-lamp.on{background:#00e676;box-shadow:0 0 8px #00e676}.ai-status{margin-top:8px;font-size:0.85em;color:#aaa}.ai-status-text.done{color:#00e676}</style><script>window.addEventListener('DOMContentLoaded',function(){var l=['lamp-azusa','lamp-nagisa','lamp-tsukasa'],t=['status-azusa','status-nagisa','status-tsukasa'];l.forEach(function(id,i){setTimeout(function(){var a=document.getElementById(id),b=document.getElementById(t[i]);if(a)a.classList.add('on');if(b){b.textContent='起動完了';b.classList.add('done')}},800*(i+1))})});</script>
 </body>

@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>TriSight 数値解析ロボ v2.0</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+</script>
+<style>
+  :root {
+    --navy: #1a3050;
+    --navy-dark: #0f1e35;
+    --gold: #c9a84c;
+    --gold-light: #e0c878;
+    --bg: #f7f5f0;
+    --paper: #ffffff;
+    --text: #2a2a2a;
+    --muted: #6a7280;
+    --border: #d8d4c8;
+    --success: #2d6a4f;
+    --error: #9d2c2c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Yu Mincho", "游明朝", serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 32px 24px;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  .header {
+    background: var(--navy);
+    color: white;
+    padding: 24px 32px;
+    border-top: 4px solid var(--gold);
+    margin-bottom: 24px;
+    position: relative;
+  }
+  .header-title { font-size: 24px; letter-spacing: 0.1em; font-weight: 600; }
+  .header-sub { font-size: 12px; letter-spacing: 0.3em; color: var(--gold-light); margin-top: 6px; text-transform: uppercase; }
+  .header-badge { position: absolute; top: 24px; right: 32px; background: var(--gold); color: var(--navy-dark); padding: 4px 12px; font-size: 11px; letter-spacing: 0.15em; font-weight: 700; }
+  .mode-bar { display: flex; gap: 0; margin-bottom: 24px; border: 1px solid var(--border); background: var(--paper); }
+  .mode-btn { flex: 1; padding: 14px 16px; background: var(--paper); border: none; border-right: 1px solid var(--border); cursor: pointer; font-family: inherit; font-size: 13px; color: var(--muted); letter-spacing: 0.05em; transition: all 0.2s; }
+  .mode-btn:last-child { border-right: none; }
+  .mode-btn.active { background: var(--navy); color: white; }
+  .mode-btn:disabled { background: #f0ede5; color: #b8b4a8; cursor: not-allowed; }
+  .mode-btn .prep { display: block; font-size: 10px; color: #b8b4a8; margin-top: 2px; letter-spacing: 0.1em; }
+  .drop-zone { background: var(--paper); border: 2px dashed var(--border); padding: 56px 32px; text-align: center; margin-bottom: 24px; transition: all 0.2s; cursor: pointer; }
+  .drop-zone.drag-over { border-color: var(--gold); background: #fdfaf0; }
+  .drop-zone.has-file { border-style: solid; border-color: var(--success); background: #f1f8f4; }
+  .drop-icon { font-size: 40px; color: var(--muted); margin-bottom: 12px; }
+  .drop-text { font-size: 15px; color: var(--text); margin-bottom: 8px; }
+  .drop-hint { font-size: 12px; color: var(--muted); }
+  .file-info { font-size: 13px; color: var(--success); margin-top: 12px; font-weight: 600; }
+  .actions { display: flex; gap: 12px; margin-bottom: 24px; }
+  .btn { padding: 14px 32px; font-family: inherit; font-size: 14px; letter-spacing: 0.1em; border: none; cursor: pointer; transition: all 0.2s; }
+  .btn-primary { background: var(--navy); color: white; flex: 1; }
+  .btn-primary:hover:not(:disabled) { background: var(--navy-dark); }
+  .btn-primary:disabled { background: #b8c0cc; cursor: not-allowed; }
+  .btn-secondary { background: var(--paper); color: var(--navy); border: 1px solid var(--navy); }
+  .btn-gold { background: var(--gold); color: var(--navy-dark); font-weight: 600; }
+  .btn-gold:hover { background: var(--gold-light); }
+  .btn-return { background: var(--success); color: white; padding: 16px 32px; font-size: 15px; font-weight: 600; }
+  .btn-return:hover { background: #245840; }
+  .result-section { background: var(--paper); border: 1px solid var(--border); margin-bottom: 24px; }
+  .result-header { background: var(--navy); color: white; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; }
+  .result-title { font-size: 14px; letter-spacing: 0.15em; }
+  .result-text { width: 100%; min-height: 400px; padding: 20px; font-family: "Courier New", "MS Gothic", monospace; font-size: 12px; border: none; resize: vertical; background: #fafaf7; color: var(--text); line-height: 1.6; }
+  .result-text:focus { outline: none; background: white; }
+  .status { padding: 12px 20px; font-size: 13px; margin-bottom: 16px; border-left: 3px solid var(--gold); background: #fdfaf0; display: none; }
+  .status.error { border-color: var(--error); background: #fbeded; color: var(--error); }
+  .status.success { border-color: var(--success); background: #f1f8f4; color: var(--success); }
+  .status.show { display: block; }
+  .footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 32px; letter-spacing: 0.1em; }
+  .preview-table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 20px; margin-bottom: 0; }
+  .preview-table th, .preview-table td { border: 1px solid var(--border); padding: 6px 10px; text-align: right; }
+  .preview-table th { background: var(--navy); color: white; text-align: center; font-weight: normal; font-size: 11px; letter-spacing: 0.05em; }
+  .preview-table td.label { text-align: left; background: #fafaf7; }
+  .return-section { background: #f1f8f4; border: 2px solid var(--success); padding: 24px; margin-bottom: 24px; text-align: center; display: none; }
+  .return-section.show { display: block; }
+  .return-message { font-size: 14px; color: var(--success); margin-bottom: 16px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="header-title">TriSight 数値解析ロボ</div>
+    <div class="header-sub">NUMERIC PARSER FOR FINANCIAL DATA</div>
+    <div class="header-badge">Ver 2.0</div>
+  </div>
+
+  <div class="mode-bar">
+    <button class="mode-btn active" data-mode="monthly">月次推移モード<span class="prep" style="color:rgba(224,200,120,0.8)">対応中</span></button>
+    <button class="mode-btn" disabled>期間累計モード<span class="prep">準備中</span></button>
+    <button class="mode-btn" disabled>三期比較モード<span class="prep">準備中</span></button>
+    <button class="mode-btn" disabled>部門別モード<span class="prep">準備中</span></button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="drop-zone" id="dropZone">
+    <div class="drop-icon">▼</div>
+    <div class="drop-text">月次推移PDFをここにドラッグ＆ドロップ</div>
+    <div class="drop-hint">またはクリックしてファイルを選択（顧問税理士から送付される月次推移損益計算書）</div>
+    <input type="file" id="fileInput" accept=".pdf" style="display:none">
+    <div class="file-info" id="fileInfo"></div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary" id="parseBtn" disabled>処理実行</button>
+    <button class="btn btn-secondary" id="clearBtn">クリア</button>
+  </div>
+
+  <div class="return-section" id="returnSection">
+    <div class="return-message">✓ 解析完了。TriSight本体のベース資料欄に自動流し込みします。</div>
+    <button class="btn btn-return" id="returnBtn">TriSight本体に戻る</button>
+  </div>
+
+  <div class="result-section" id="resultSection" style="display:none">
+    <div class="result-header">
+      <div class="result-title">整形済み数値テキスト（AI入力用）</div>
+      <button class="btn btn-gold" id="copyBtn">クリップボードにコピー（手動用）</button>
+    </div>
+    <div>
+      <textarea class="result-text" id="resultText" readonly></textarea>
+    </div>
+  </div>
+
+  <div class="result-section" id="previewSection" style="display:none">
+    <div class="result-header">
+      <div class="result-title">抽出データプレビュー</div>
+    </div>
+    <div id="previewBody"></div>
+  </div>
+
+  <div class="footer">
+    TriSight® 数値解析ロボ Ver 2.0  ／  合同会社トライサイト
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+let currentFile = null;
+let extractedData = null;
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const fileInfo = document.getElementById('fileInfo');
+const parseBtn = document.getElementById('parseBtn');
+const clearBtn = document.getElementById('clearBtn');
+const copyBtn = document.getElementById('copyBtn');
+const returnBtn = document.getElementById('returnBtn');
+const returnSection = document.getElementById('returnSection');
+const status = document.getElementById('status');
+const resultSection = document.getElementById('resultSection');
+const resultText = document.getElementById('resultText');
+const previewSection = document.getElementById('previewSection');
+const previewBody = document.getElementById('previewBody');
+
+const STORAGE_KEY = 'trisight_parser_output';
+const V5_URL = 'https://testarossa1209-claude.github.io/TriSight/TriSight_v5.html';
+
+function showStatus(msg, type) {
+  status.textContent = msg;
+  status.className = 'status show ' + (type || '');
+  if (type === 'success') setTimeout(() => { status.classList.remove('show'); }, 4000);
+}
+
+function handleFile(file) {
+  if (!file) return;
+  if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+    showStatus('PDFファイルのみ対応しています', 'error');
+    return;
+  }
+  currentFile = file;
+  fileInfo.textContent = '✓ ' + file.name + ' （' + Math.round(file.size / 1024) + ' KB）';
+  dropZone.classList.add('has-file');
+  parseBtn.disabled = false;
+  showStatus('ファイルを受領しました。「処理実行」を押してください', '');
+}
+
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  handleFile(e.dataTransfer.files[0]);
+});
+
+clearBtn.addEventListener('click', () => {
+  currentFile = null;
+  extractedData = null;
+  fileInput.value = '';
+  fileInfo.textContent = '';
+  dropZone.classList.remove('has-file');
+  parseBtn.disabled = true;
+  resultSection.style.display = 'none';
+  previewSection.style.display = 'none';
+  returnSection.classList.remove('show');
+  status.classList.remove('show');
+  localStorage.removeItem(STORAGE_KEY);
+});
+
+parseBtn.addEventListener('click', async () => {
+  if (!currentFile) return;
+  parseBtn.disabled = true;
+  showStatus('PDFを解析中...', '');
+
+  try {
+    const arrayBuffer = await currentFile.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let fullText = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const lines = groupByLine(textContent.items);
+      fullText += lines.join('\n') + '\n';
+    }
+
+    extractedData = parseMonthlyTrend(fullText);
+    if (!extractedData || !extractedData.months || extractedData.months.length === 0) {
+      throw new Error('月次推移データを認識できませんでした。月次推移PDFを投入してください。');
+    }
+
+    renderPreview(extractedData);
+    const formatted = formatForAI(extractedData);
+    resultText.value = formatted;
+    resultSection.style.display = 'block';
+
+    // localStorage書き込み（自動連携）
+    localStorage.setItem(STORAGE_KEY, formatted);
+
+    // 戻るボタン表示
+    returnSection.classList.add('show');
+
+    showStatus('解析完了。「TriSight本体に戻る」を押すと、ベース資料欄に自動流し込みされます', 'success');
+
+  } catch (err) {
+    showStatus('エラー: ' + err.message, 'error');
+    console.error(err);
+  } finally {
+    parseBtn.disabled = false;
+  }
+});
+
+returnBtn.addEventListener('click', () => {
+  // localStorageに既に書き込み済み、v5本体へ遷移
+  window.location.href = V5_URL;
+});
+
+function groupByLine(items) {
+  const lineMap = new Map();
+  items.forEach(item => {
+    const y = Math.round(item.transform[5]);
+    if (!lineMap.has(y)) lineMap.set(y, []);
+    lineMap.get(y).push({ x: item.transform[4], text: item.str });
+  });
+  const sortedKeys = [...lineMap.keys()].sort((a, b) => b - a);
+  return sortedKeys.map(y => {
+    const items = lineMap.get(y).sort((a, b) => a.x - b.x);
+    return items.map(i => i.text).join(' ');
+  });
+}
+
+function parseMonthlyTrend(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+  const result = { companyName: '', period: '', months: [], rows: [], docType: '' };
+
+  const companyLine = lines.find(l => /合同会社|株式会社|有限会社/.test(l));
+  if (companyLine) result.companyName = companyLine.replace(/\s+/g, '');
+
+  const periodLine = lines.find(l => /\d{4}年\d{1,2}月\d{1,2}日.*〜.*\d{4}年\d{1,2}月\d{1,2}日/.test(l));
+  if (periodLine) {
+    const m = periodLine.match(/(\d{4}年\d{1,2}月\d{1,2}日.*\d{4}年\d{1,2}月\d{1,2}日)/);
+    if (m) result.period = m[1].replace(/\s+/g, '');
+  }
+
+  if (lines.some(l => /月\s*次\s*推\s*移/.test(l))) result.docType = '月次推移';
+  if (lines.some(l => /損\s*益\s*計\s*算\s*書/.test(l))) result.docType += '・損益計算書';
+
+  let headerLineIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const matches = lines[i].match(/\d{4}-\d{1,2}/g);
+    if (matches && matches.length >= 2) {
+      headerLineIdx = i;
+      result.months = matches;
+      break;
+    }
+  }
+  if (headerLineIdx < 0) return result;
+
+  for (let i = headerLineIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line) continue;
+    if (/^\d+\s*\/\s*\d+$/.test(line)) continue;
+    if (/勘\s*定\s*科\s*目/.test(line)) continue;
+    if (/月\s*次\s*推\s*移/.test(line)) continue;
+    if (/損\s*益\s*計\s*算\s*書/.test(line)) continue;
+    if (/合同会社|株式会社/.test(line)) continue;
+    if (/^\d{4}年\d{1,2}月\d{1,2}日/.test(line)) continue;
+
+    const nums = line.match(/-?[\d,]+/g);
+    if (!nums || nums.length < result.months.length) continue;
+
+    const firstNumIdx = line.search(/-?[\d,]+/);
+    const labelRaw = line.substring(0, firstNumIdx).trim();
+    const label = labelRaw.replace(/\s+/g, '');
+    if (!label) continue;
+
+    const expectedCount = result.months.length + 1;
+    const dataNums = nums.slice(-expectedCount);
+    if (dataNums.length < result.months.length) continue;
+
+    const monthValues = dataNums.slice(0, result.months.length).map(n => parseInt(n.replace(/,/g, ''), 10));
+    const total = dataNums.length > result.months.length
+      ? parseInt(dataNums[result.months.length].replace(/,/g, ''), 10)
+      : monthValues.reduce((a, b) => a + b, 0);
+
+    result.rows.push({ label, monthValues, total });
+  }
+
+  return result;
+}
+
+function renderPreview(data) {
+  let html = '<table class="preview-table"><thead><tr><th>勘定科目</th>';
+  data.months.forEach(m => { html += `<th>${m}</th>`; });
+  html += '<th>累計</th></tr></thead><tbody>';
+  data.rows.forEach(row => {
+    html += `<tr><td class="label">${row.label}</td>`;
+    row.monthValues.forEach(v => { html += `<td>${v.toLocaleString()}</td>`; });
+    html += `<td><strong>${row.total.toLocaleString()}</strong></td></tr>`;
+  });
+  html += '</tbody></table>';
+  previewBody.innerHTML = html;
+  previewSection.style.display = 'block';
+}
+
+function formatForAI(data) {
+  let out = '';
+  out += '【月次推移データ】\n';
+  out += '会社名: ' + (data.companyName || '不明') + '\n';
+  out += '期間: ' + (data.period || '不明') + '\n';
+  out += '書類: ' + (data.docType || '月次推移') + '\n';
+  out += '対象月: ' + data.months.join(' / ') + '\n\n';
+  out += '--- 月別数値（単位：円） ---\n';
+
+  const keyAccounts = ['売上高計', '売上総利益', '役員報酬', '給料手当', '賞与', '法定福利費', '福利厚生費', '外注費', '販売管理費計', '営業利益', '経常利益', '当期純利益'];
+  const keyRows = data.rows.filter(r => keyAccounts.some(k => r.label.includes(k)));
+  const otherRows = data.rows.filter(r => !keyAccounts.some(k => r.label.includes(k)));
+
+  out += '\n■ 主要項目\n';
+  out += formatRowsTable(keyRows, data.months);
+  out += '\n■ その他全項目\n';
+  out += formatRowsTable(otherRows, data.months);
+
+  out += '\n--- 月別サマリー ---\n';
+  const sales = data.rows.find(r => r.label.includes('売上高計'));
+  const opProfit = data.rows.find(r => r.label.includes('営業利益'));
+  const ordProfit = data.rows.find(r => r.label.includes('経常利益'));
+  if (sales) {
+    out += '\n[売上推移]\n';
+    data.months.forEach((m, i) => { out += `  ${m}: ${sales.monthValues[i].toLocaleString()}円\n`; });
+    out += `  累計: ${sales.total.toLocaleString()}円\n`;
+  }
+  if (opProfit) {
+    out += '\n[営業利益推移]\n';
+    data.months.forEach((m, i) => {
+      const v = opProfit.monthValues[i];
+      out += `  ${m}: ${v >= 0 ? '+' : ''}${v.toLocaleString()}円${v >= 0 ? ' (黒字)' : ' (赤字)'}\n`;
+    });
+    out += `  累計: ${opProfit.total >= 0 ? '+' : ''}${opProfit.total.toLocaleString()}円\n`;
+  }
+  if (ordProfit) {
+    out += '\n[経常利益推移]\n';
+    data.months.forEach((m, i) => {
+      const v = ordProfit.monthValues[i];
+      out += `  ${m}: ${v >= 0 ? '+' : ''}${v.toLocaleString()}円\n`;
+    });
+    out += `  累計: ${ordProfit.total >= 0 ? '+' : ''}${ordProfit.total.toLocaleString()}円\n`;
+  }
+
+  if (sales && data.months.length >= 2) {
+    out += '\n[売上前月比]\n';
+    for (let i = 1; i < data.months.length; i++) {
+      const diff = sales.monthValues[i] - sales.monthValues[i-1];
+      const pct = sales.monthValues[i-1] !== 0 ? (diff / sales.monthValues[i-1] * 100).toFixed(2) : '0.00';
+      out += `  ${data.months[i-1]} → ${data.months[i]}: ${diff >= 0 ? '+' : ''}${diff.toLocaleString()}円 (${diff >= 0 ? '+' : ''}${pct}%)\n`;
+    }
+  }
+
+  out += '\n--- 備考 ---\n';
+  out += '※本データはTriSight数値解析ロボにより、税理士発行PDFから自動抽出された数値です。\n';
+  out += '※AIは上記の正確な数値を前提に、分析・所見・提案を行ってください。\n';
+  out += '※AI側での数値再計算は行わず、上記の数値をそのまま引用してください。\n';
+
+  return out;
+}
+
+function formatRowsTable(rows, months) {
+  if (rows.length === 0) return '（該当なし）\n';
+  let out = '';
+  out += '勘定科目'.padEnd(20, '　');
+  months.forEach(m => { out += m.padStart(14); });
+  out += '累計'.padStart(16);
+  out += '\n';
+  rows.forEach(r => {
+    out += r.label.padEnd(20, '　');
+    r.monthValues.forEach(v => { out += v.toLocaleString().padStart(14); });
+    out += r.total.toLocaleString().padStart(16);
+    out += '\n';
+  });
+  return out;
+}
+
+copyBtn.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(resultText.value);
+    showStatus('クリップボードにコピーしました', 'success');
+  } catch {
+    resultText.select();
+    document.execCommand('copy');
+    showStatus('クリップボードにコピーしました', 'success');
+  }
+});
+
+</script>
+</body>
+</html>

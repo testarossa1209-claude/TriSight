@@ -6,14 +6,12 @@
 body{margin:0;min-height:100vh;font-family:"Yu Gothic","Hiragino Kaku Gothic ProN","Helvetica Neue",sans-serif;color:var(--ink);background:radial-gradient(1200px 520px at 50% -140px,#1c356a 0%,transparent 60%),linear-gradient(165deg,#0c1830,#16264a 55%,#0b1428);padding:40px 16px 64px}
 .wrap{max-width:960px;margin:0 auto}
 .serif{font-family:Georgia,"Yu Mincho","Hiragino Mincho ProN","MS Mincho",serif}
-/* header */
 .hd{text-align:center;color:#fff;margin-bottom:34px;opacity:0;animation:rise .8s cubic-bezier(.2,.7,.2,1) forwards}
 .ey{font-family:Georgia,"Yu Mincho",serif;font-weight:700;font-size:13px;letter-spacing:.2em;color:var(--gold-soft)}
 .hd h1{font-family:Georgia,"Yu Mincho","Hiragino Mincho ProN",serif;font-weight:800;font-size:42px;letter-spacing:.04em;margin:8px 0 2px;color:#fff}
 .hd .jp{font-size:14px;color:#cdd6ea;letter-spacing:.18em}
 .hd .tag{margin-top:16px;font-size:13px;color:#aeb4c8;line-height:1.7}
 .hd .rule{width:54px;height:2px;background:var(--gold);margin:18px auto 0;border-radius:2px}
-/* grid */
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(248px,1fr));gap:16px}
 .mod{display:block;text-decoration:none;background:linear-gradient(180deg,#fffdf9,var(--paper));border:1px solid var(--line);border-radius:16px;padding:22px 22px 20px;position:relative;box-shadow:0 26px 60px -34px rgba(0,0,0,.7);transition:transform .16s,box-shadow .2s;opacity:0;animation:rise .7s cubic-bezier(.2,.7,.2,1) forwards}
 .mod:hover{transform:translateY(-4px);box-shadow:0 38px 78px -34px rgba(0,0,0,.78)}
@@ -35,8 +33,6 @@ body{margin:0;min-height:100vh;font-family:"Yu Gothic","Hiragino Kaku Gothic Pro
 footer{text-align:center;color:#7e8499;font-size:11px;margin-top:14px;line-height:1.7}
 @keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 .mod:nth-child(1){animation-delay:.10s}.mod:nth-child(2){animation-delay:.16s}.mod:nth-child(3){animation-delay:.22s}.mod:nth-child(4){animation-delay:.28s}.mod:nth-child(5){animation-delay:.34s}
-
-.hd{text-align:center}
 .parent{display:flex;align-items:center;justify-content:space-between;gap:18px;text-decoration:none;
   background:linear-gradient(135deg,var(--navy),var(--navy2));border:1px solid var(--gold);
   border-radius:16px;padding:22px 30px;margin:0 0 26px;position:relative;overflow:hidden;
@@ -87,7 +83,7 @@ footer{text-align:center;color:#7e8499;font-size:11px;margin-top:14px;line-heigh
     <div class="foot"><span class="badge live">実装済</span><span class="go">OPEN &rsaquo;</span></div>
   </a>
 
-  <a class="mod" href="TriReward_書き込み機_v0.3d.html">
+  <a class="mod" href="TriReward.html">
     <div class="nm"><b>TriReward</b><span class="sys">System</span></div>
     <div class="fn">処遇改善加算の計画書作成</div>
     <div class="ds">障害版・高齢版の処遇改善加算 計画書／実績報告。計算は確定ロジック、AIは点検と赤旗。</div>
@@ -101,11 +97,11 @@ footer{text-align:center;color:#7e8499;font-size:11px;margin-top:14px;line-heigh
     <div class="foot"><span class="badge live">実装済</span><span class="go">OPEN &rsaquo;</span></div>
   </a>
 
-  <a class="mod soon" href="#" onclick="return false">
+  <a class="mod" href="TriSight_Report_CarePlan.html">
     <div class="nm"><b>TriCare</b><span class="sys">System</span></div>
     <div class="fn">ケアマネ帳票の作成支援</div>
     <div class="ds">ケアプラン等の帳票を、入力負担を抑えて作成。アセスメント・利用者情報を入れて起動。</div>
-    <div class="foot"><span class="badge dev">開発中</span><span class="go">準備中</span></div>
+    <div class="foot"><span class="badge live">実装済</span><span class="go">OPEN &rsaquo;</span></div>
   </a>
 
 </div>

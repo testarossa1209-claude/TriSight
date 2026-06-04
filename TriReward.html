@@ -3,361 +3,65 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>処遇改善加算 書類作成支援システム v3（令和8年度対応）｜ TriSupport® Office</title>
+<title>TriReward® 処遇改善加算システム</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@600;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700;800&family=Zen+Kaku+Gothic+Antique:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
-  :root{--navy:#0f1d3a;--navy2:#16294f;--navy3:#1e3a66;--gold:#c8a24a;--gold-soft:#e3c987;
-    --paper:#f7f4ec;--paper2:#fffdf8;--ink:#1a2236;--ink-soft:#46506a;--line:#d8d0bc;
-    --ok:#2f7d52;--warn:#b5481f;--shadow:0 18px 50px -22px rgba(15,29,58,.55);}
-  *{box-sizing:border-box;} html,body{margin:0;padding:0;}
-  body{background:radial-gradient(1200px 500px at 80% -10%,rgba(200,162,74,.10),transparent 60%),
-    radial-gradient(900px 400px at -10% 110%,rgba(30,58,102,.10),transparent 55%),var(--paper);
-    color:var(--ink);font-family:"Noto Sans JP",sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased;}
-  .wrap{max-width:1080px;margin:0 auto;padding:0 20px 80px;}
-  header{background:linear-gradient(135deg,var(--navy),var(--navy2) 55%,var(--navy3));color:#fff;border-bottom:3px solid var(--gold);position:relative;overflow:hidden;}
-  header::after{content:"";position:absolute;inset:0;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.03) 0 2px,transparent 2px 14px);}
-  .hbar{max-width:1080px;margin:0 auto;padding:22px 20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;position:relative;z-index:1;}
-  .crest{width:52px;height:52px;border:2px solid var(--gold);border-radius:12px;display:grid;place-items:center;font-family:"Noto Serif JP",serif;font-weight:900;color:var(--gold);font-size:23px;background:rgba(0,0,0,.18);flex:none;}
-  .htitle h1{font-family:"Noto Serif JP",serif;font-weight:700;font-size:20px;margin:0;letter-spacing:.04em;}
-  .htitle .sub{font-size:12px;color:var(--gold-soft);letter-spacing:.13em;margin-top:3px;}
-  .htitle .brand{font-size:11px;color:#cdd7ec;letter-spacing:.09em;margin-top:5px;}
-  .verbadge{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
-  .verbadge .v{font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--navy);background:var(--gold);padding:6px 13px;border-radius:999px;}
-  .verbadge .mode{appearance:none;border:1.5px solid var(--gold);background:rgba(0,0,0,.2);color:var(--gold-soft);font-family:inherit;font-weight:700;letter-spacing:.1em;font-size:11px;padding:6px 13px;border-radius:999px;cursor:pointer;}
-  .verbadge .mode.live{background:var(--gold);color:var(--navy);}
-  .notice{background:#fbf3df;border:1px solid var(--gold);border-left:5px solid var(--gold);border-radius:10px;padding:13px 18px;margin:24px 0 8px;font-size:12.5px;color:#5a4a23;}
-  .notice b{color:var(--navy);}
-  .card{background:var(--paper2);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin-top:22px;overflow:hidden;}
-  .card>h2{font-family:"Noto Serif JP",serif;font-weight:700;font-size:16px;margin:0;background:linear-gradient(90deg,var(--navy),var(--navy3));color:#fff;padding:13px 20px;letter-spacing:.05em;display:flex;align-items:center;gap:10px;}
-  .card>h2 .no{color:var(--gold);font-family:"Noto Serif JP";}
-  .card>h2 .tm{margin-left:auto;font-size:10px;color:var(--gold-soft);font-weight:400;letter-spacing:.08em;}
-  .card .body{padding:20px 22px;}
-  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:13px 18px;}
-  @media(max-width:680px){.grid{grid-template-columns:1fr;}}
-  .field{display:flex;flex-direction:column;gap:5px;}
-  .field.full{grid-column:1/-1;}
-  label{font-size:12px;font-weight:700;color:var(--ink-soft);}
-  label .hint{font-weight:400;color:#8a93a8;font-size:11px;}
-  input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;transition:.15s;}
-  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(200,162,74,.18);}
-  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;}
-  .period-toggle{display:inline-flex;border:1.5px solid var(--navy3);border-radius:999px;overflow:hidden;}
-  .period-toggle button{border:none;background:#fff;color:var(--navy3);font-family:inherit;font-weight:700;font-size:12px;padding:8px 15px;cursor:pointer;}
-  .period-toggle button.on{background:var(--navy3);color:#fff;}
-  table{width:100%;border-collapse:collapse;margin-top:4px;font-size:13px;}
-  th,td{border:1px solid var(--line);padding:8px 9px;text-align:center;}
-  th{background:var(--navy);color:#fff;font-weight:700;font-size:12px;}
-  td input,td select{width:100%;border:1px solid #e4dcc8;border-radius:6px;padding:6px;font-size:13px;text-align:center;}
-  td.auto{background:#f1f6f1;}
-  .grant{font-family:"Noto Serif JP",serif;font-weight:900;color:var(--navy);}
-  .rate-need{color:var(--warn);font-size:11px;}
-  .btn{appearance:none;border:none;cursor:pointer;font-family:inherit;font-weight:700;border-radius:9px;padding:9px 16px;font-size:13px;transition:.18s;}
-  .btn.primary{background:linear-gradient(135deg,var(--navy),var(--navy3));color:#fff;}
-  .btn.primary:hover{transform:translateY(-1px);}
-  .btn.gold{background:var(--gold);color:var(--navy);}
-  .btn.ghost{background:#fff;border:1px solid var(--line);color:var(--ink-soft);}
-  .btn.ghost:hover{border-color:var(--gold);color:var(--navy);}
-  .btn.small{padding:6px 12px;font-size:12px;}
-  .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:center;}
-  .totbar{display:flex;justify-content:flex-end;align-items:baseline;gap:14px;margin-top:14px;padding:13px 16px;background:linear-gradient(160deg,#fff,#fbf7ee);border:1px solid var(--gold);border-radius:10px;}
-  .totbar .k{font-size:13px;color:var(--ink-soft);} .totbar .v{font-family:"Noto Serif JP",serif;font-weight:900;font-size:25px;color:var(--navy);}
-  .calc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:6px;}
-  @media(max-width:680px){.calc-grid{grid-template-columns:1fr;}}
-  .stat{background:linear-gradient(160deg,#fff,#fbf7ee);border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center;}
-  .stat .k{font-size:11px;color:var(--ink-soft);} .stat .v{font-family:"Noto Serif JP",serif;font-weight:900;font-size:22px;color:var(--navy);margin-top:3px;}
-  .judge{margin-top:14px;padding:13px 15px;border-radius:10px;font-size:13px;display:flex;gap:10px;align-items:flex-start;}
-  .judge.ok{background:#eaf5ee;border:1px solid #b9ddc7;color:#1d5a39;} .judge.warn{background:#fbeee6;border:1px solid #e9c3ac;color:#8c3614;}
-  .judge .badge{font-weight:900;flex:none;}
-  .reqgroup{margin-bottom:16px;} .reqgroup h3{font-size:13px;color:var(--navy);font-weight:700;margin:0 0 8px;padding-bottom:6px;border-bottom:2px solid var(--gold-soft);}
-  .check{display:flex;gap:10px;align-items:flex-start;padding:6px 0;font-size:12.5px;}
-  .check input{margin-top:4px;flex:none;width:16px;height:16px;accent-color:var(--gold);}
-  .need{font-size:11px;color:var(--gold);font-weight:700;}
-  textarea.draft{min-height:300px;font-size:13px;line-height:1.85;resize:vertical;background:#fffdf8;}
-  details{margin-top:16px;border:1px solid var(--line);border-radius:12px;overflow:hidden;}
-  details>summary{cursor:pointer;padding:11px 18px;font-family:"Noto Serif JP",serif;font-weight:700;background:var(--navy3);color:#fff;list-style:none;}
-  details>summary::-webkit-details-marker{display:none;}
-  details>summary::before{content:"▸ ";color:var(--gold);} details[open]>summary::before{content:"▾ ";}
-  details .body{padding:16px 18px;}
-  .keyrow{display:none;gap:10px;align-items:end;margin-bottom:12px;} .keyrow.show{display:flex;flex-wrap:wrap;}
-  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--navy);color:#fff;padding:11px 22px;border-radius:999px;font-size:13px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.25s;z-index:50;border:1px solid var(--gold);}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-  .mini{font-size:11.5px;color:#8a93a8;}
-  footer{margin-top:40px;padding:24px 20px;text-align:center;color:var(--ink-soft);font-size:11.5px;border-top:1px solid var(--line);}
-  footer .crestmini{font-family:"Noto Serif JP";font-weight:900;color:var(--gold);border:1.5px solid var(--gold);border-radius:8px;padding:2px 8px;margin-right:8px;}
-  footer .disc{max-width:780px;margin:0 auto 14px;font-size:11px;color:#7a8298;background:#fbf7ee;border:1px solid var(--line);border-radius:10px;padding:12px 16px;text-align:left;}
-  footer .logo{font-family:"Noto Serif JP",serif;font-weight:900;color:var(--navy);}
+  :root{
+    --navy:#0f1d3a; --navy2:#1a2f54; --navy3:#26416e;
+    --gold:#c8a24a; --gold-soft:#e6cd8f;
+    --paper:#faf8f2; --card:#ffffff; --ink:#172033; --soft:#5c6781; --line:#e6e0d0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Zen Kaku Gothic Antique",sans-serif;background:var(--navy);color:var(--ink);
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;
+    background-image:radial-gradient(circle at 15% 0,rgba(40,65,110,.55),transparent 50%),radial-gradient(circle at 100% 100%,rgba(200,162,74,.16),transparent 45%);}
+  .brand{font-family:"Shippori Mincho",serif;font-weight:800;font-size:46px;color:#fff;letter-spacing:.02em;text-align:center}
+  .brand .reg{font-size:20px;vertical-align:super;color:var(--gold-soft);margin-left:2px}
+  .tag{color:var(--gold-soft);font-size:15px;font-weight:700;letter-spacing:.18em;margin-top:8px;text-align:center}
+  .sub{color:#aeb9cf;font-size:14.5px;font-weight:500;margin-top:14px;text-align:center;max-width:560px;line-height:1.8}
+  .rule{width:60px;height:3px;background:var(--gold);margin:26px auto 30px;border-radius:2px}
+  .cards{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;width:100%;max-width:760px}
+  .btn{flex:1;min-width:280px;text-decoration:none;background:var(--card);border-radius:18px;padding:30px 28px;
+    border:1px solid rgba(230,205,143,.25);box-shadow:0 18px 40px rgba(0,0,0,.32);transition:.18s;display:block}
+  .btn:hover{transform:translateY(-4px);box-shadow:0 26px 54px rgba(0,0,0,.42);border-color:var(--gold)}
+  .btn .k{font-family:"Shippori Mincho",serif;font-weight:800;font-size:25px;color:var(--navy)}
+  .btn .law{display:inline-block;font-size:12.5px;font-weight:700;color:var(--navy3);background:#eef3fb;
+    border-radius:999px;padding:4px 12px;margin-top:10px}
+  .btn .desc{color:var(--soft);font-size:14px;font-weight:500;margin-top:14px;line-height:1.7}
+  .btn .tabs{margin-top:16px;display:flex;gap:8px}
+  .btn .tabs span{font-size:12.5px;font-weight:700;color:var(--navy);background:#f4eedb;border:1px solid #e7d9ad;
+    border-radius:7px;padding:5px 11px}
+  .btn .go{margin-top:18px;color:var(--gold);font-weight:800;font-size:14px;font-family:"Shippori Mincho",serif}
+  .foot{color:#8794ac;font-size:12px;margin-top:38px;text-align:center}
+  .foot .r{color:var(--gold)}
+  @media(max-width:560px){.brand{font-size:36px}.btn{min-width:100%}}
 </style>
 </head>
 <body>
-<header>
-  <div class="hbar">
-    <div class="crest">三</div>
-    <div class="htitle">
-      <h1>処遇改善加算 書類作成支援システム</h1>
-      <div class="sub">介護職員等処遇改善加算（令和8年度対応・統合本体）</div>
-      <div class="brand">TriSupport® Office　／　Powered by TriSight®　／　合同会社トライサイト</div>
-    </div>
-    <div class="verbadge">
-      <span class="v">v3 統合本体</span>
-      <button class="mode" id="modeToggle" onclick="toggleMode()">MODE: MOCK</button>
-    </div>
-  </div>
-</header>
+  <div class="brand">TriReward<span class="reg">®</span></div>
+  <div class="tag">処遇改善加算システム</div>
+  <div class="sub">事業種別を選んでください。計画書（様式2）と実績報告（様式3）を、システムが計算し、○×と転記先まで示します。</div>
+  <div class="rule"></div>
 
-<div class="wrap">
-  <div class="notice">
-    <b>令和8年度の要点</b>：4〜5月は旧4区分、6月以降は6区分（Ⅰイ／Ⅰロ／Ⅱイ／Ⅱロ／Ⅲ／Ⅳ）。<b>訪問看護・訪問リハ・居宅介護支援は6月から新たに対象</b>（Ⅳ準ずる要件）。本システムは入力情報の計算・転記を行う事務支援ツールで、対象可否・要件充足の判断は事業者責任です。
-  </div>
-
-  <!-- Ⅰ 基本情報 -->
-  <div class="card">
-    <h2><span class="no">Ⅰ</span>事業所マスター（基本情報）<span class="tm">TriSupport® Office</span></h2>
-    <div class="body">
-      <div class="grid">
-        <div class="field"><label>法人名</label><input type="text" id="corp" placeholder="例）ノア・コーポレーション合同会社"></div>
-        <div class="field"><label>事業所名</label><input type="text" id="office" placeholder="例）ノア訪問看護ステーション"></div>
-        <div class="field"><label>介護保険事業所番号</label><input type="text" id="officeno"></div>
-        <div class="field"><label>指定権者（名称）</label><input type="text" id="auth" placeholder="例）東京都／立川市"></div>
-        <div class="field"><label>指定権者の区分</label><select id="authtype"><option value="">—</option><option>都道府県</option><option>市区町村</option><option>広域連合</option></select></div>
-        <div class="field"><label>代表者氏名</label><input type="text" id="rep"></div>
-        <div class="field full"><label>所在地</label><input type="text" id="addr"></div>
-        <div class="field"><label>連絡先 電話</label><input type="text" id="tel"></div>
-        <div class="field"><label>連絡先 メール</label><input type="text" id="mail"></div>
-        <div class="field">
-          <label>地域区分 <span class="hint">（単位単価の連動元）</span></label>
-          <select id="area" onchange="onArea()">
-            <option>1級地</option><option>2級地</option><option selected>3級地</option><option>4級地</option>
-            <option>5級地</option><option>6級地</option><option>7級地</option><option>その他</option>
-          </select>
-        </div>
-        <div class="field"><label>単位単価（円）<span class="hint">（自動・編集可）</span></label><input type="number" id="unitPrice" step="0.01" onchange="recalc()"></div>
-        <div class="field full"><label>賃金体系・就業規則の整備状況 <span class="hint">（キャリアパス要件の基盤）</span></label><input type="text" id="wagesys" placeholder="例）等級別賃金表整備済／昇給規程あり"></div>
-      </div>
-    </div>
+  <div class="cards">
+    <a class="btn" href="TriReward_高齢版_v0.1.html">
+      <div class="k">高齢版</div>
+      <span class="law">介護保険サービス</span>
+      <div class="desc">訪問介護・通所介護など、介護保険サービスの処遇改善加算。</div>
+      <div class="tabs"><span>計画書</span><span>実績報告</span></div>
+      <div class="go">OPEN &rsaquo;</div>
+    </a>
+    <a class="btn" href="TriReward_障害版_v0.1.html">
+      <div class="k">障害版</div>
+      <span class="law">障害福祉サービス</span>
+      <div class="desc">居宅介護・同行援護など、障害福祉サービスの処遇改善加算。</div>
+      <div class="tabs"><span>計画書</span><span>実績報告</span></div>
+      <div class="go">OPEN &rsaquo;</div>
+    </a>
   </div>
 
-  <!-- Ⅱ 加算算定 -->
-  <div class="card">
-    <h2><span class="no">Ⅱ</span>加算算定（連動マスター）<span class="tm">Powered by TriSight®</span></h2>
-    <div class="body">
-      <div class="row" style="margin-bottom:12px;">
-        <div class="field"><label>適用期間</label>
-          <div class="period-toggle">
-            <button id="p1" class="on" onclick="setPeriod('4-5')">令和8年 4〜5月</button>
-            <button id="p2" onclick="setPeriod('6-')">令和8年 6月〜</button>
-          </div>
-        </div>
-      </div>
-      <table><thead><tr>
-        <th style="width:25%;">サービス種別</th><th style="width:19%;">加算区分</th><th style="width:12%;">加算率(％)</th>
-        <th style="width:20%;">年間総単位数</th><th style="width:19%;">加算見込額(円)</th><th style="width:5%;"></th>
-      </tr></thead><tbody id="svcBody"></tbody></table>
-      <div class="btn-row">
-        <button class="btn ghost small" onclick="addRow()">＋ サービス行を追加</button>
-        <button class="btn ghost small" onclick="loadNoa()">ノア想定セットを読込</button>
-      </div>
-      <div class="totbar"><span class="k">加算見込額 合計（年額・計画ベース）</span><span class="v" id="total">¥0</span></div>
-      <details><summary>加算率マスター（連動の元データ・編集可能）</summary>
-        <div class="body"><p class="mini">空欄は推測で埋めず「要確認」にしてあります。明日ノアの計画書の確定値で埋めれば連動も確定します。</p><div id="masterView"></div></div>
-      </details>
-    </div>
-  </div>
-
-  <!-- Ⅲ 賃金改善 -->
-  <div class="card">
-    <h2><span class="no">Ⅲ</span>賃金改善の計画<span class="tm">TriSupport® Office</span></h2>
-    <div class="body">
-      <div class="grid">
-        <div class="field"><label>対象職員数 <span class="hint">（常勤換算 人）</span></label><input type="number" id="staff" step="0.1" oninput="recalc()"></div>
-        <div class="field"><label>賃金改善 見込総額 <span class="hint">（年額・円）</span></label><input type="number" id="wageTotal" step="1000" oninput="recalc()"></div>
-        <div class="field full"><label>うち 月額賃金（基本給・毎月手当）改善への充当額 <span class="hint">（年額・円）</span></label><input type="number" id="wageBase" step="1000" oninput="recalc()"></div>
-      </div>
-      <div class="btn-row">
-        <button class="btn ghost small" onclick="toast('職員別の賃金内訳・分配基準は次段（v3.1）で実装予定です')">職員別 賃金内訳を開く（次段）</button>
-        <span class="mini">※ 人数分の基本給・手当・分配基準・差異理由を持つモーダルは次段で接続します。</span>
-      </div>
-      <div class="calc-grid" style="margin-top:14px;">
-        <div class="stat"><div class="k">加算見込額 合計（Ⅱより）</div><div class="v" id="rGrant">¥0</div></div>
-        <div class="stat"><div class="k">月額賃金改善 必要下限（1/2）</div><div class="v" id="rHalf">¥0</div></div>
-        <div class="stat"><div class="k">月額賃金改善 充当</div><div class="v" id="rBase">¥0</div></div>
-      </div>
-      <div id="judgeWage" class="judge"></div>
-    </div>
-  </div>
-
-  <!-- Ⅳ 要件チェックリスト -->
-  <div class="card">
-    <h2><span class="no">Ⅳ</span>算定要件チェックリスト<span class="tm">令和8年度</span></h2>
-    <div class="body">
-      <div class="mini" style="margin-bottom:12px;">選択中の区分で<strong style="color:var(--gold);">必要</strong>と出た項目を中心に確認してください（適否判断は事業者）。</div>
-      <div class="reqgroup"><h3>① キャリアパス要件</h3><div id="reqCareer"></div></div>
-      <div class="reqgroup"><h3>② 月額賃金改善要件</h3>
-        <div class="check"><input type="checkbox"><div>加算（Ⅳ相当）見込額の概ね1/2以上を、基本給または毎月支払う手当の改善に充てている。<span class="need">全区分 必要</span></div></div>
-      </div>
-      <div class="reqgroup"><h3>③ 職場環境等要件（6区分）</h3><div id="reqEnv"></div></div>
-      <div class="reqgroup"><h3>④ 令和8年度特例要件（Ⅰロ／Ⅱロ算定時）</h3>
-        <div class="check"><input type="checkbox"><div>ア）訪問・通所等：ケアプランデータ連携システムに加入＋実績報告（申請時は誓約可）</div></div>
-        <div class="check"><input type="checkbox"><div>イ）施設系：生産性向上推進体制加算Ⅰ又はⅡの取得＋実績報告（申請時は誓約可）</div></div>
-        <div class="check"><input type="checkbox"><div>ウ）社会福祉連携推進法人に所属</div></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Ⅴ ドラフト -->
-  <div class="card">
-    <h2><span class="no">Ⅴ</span>計画書ドラフトの生成<span class="tm">Powered by TriSight®</span></h2>
-    <div class="body">
-      <div class="keyrow" id="keyRow">
-        <div class="field" style="flex:1;min-width:220px;"><label>Anthropic APIキー <span class="hint">（LIVE時のみ・画面内のみ保持）</span></label><input type="text" id="apiKey" placeholder="sk-ant-..."></div>
-      </div>
-      <div class="btn-row">
-        <button class="btn gold" onclick="genDraft()">ドラフトを生成</button>
-        <button class="btn ghost" onclick="copyDraft()">コピー</button>
-        <button class="btn ghost" onclick="downloadDraft()">テキスト保存</button>
-        <label class="check" style="margin-left:auto;"><input type="checkbox" id="sanitize"><div style="font-size:12px;">事業所名・所在地をマスキング</div></label>
-      </div>
-      <textarea class="draft" id="draft" style="margin-top:12px;" placeholder="「ドラフトを生成」で、入力内容から計画書の素案を作成します。"></textarea>
-    </div>
-  </div>
-
-  <footer>
-    <div class="disc">
-      <b>確認事項</b>：本書はAI支援により作成された素案であり、最終確認は事業者の責任において実施するものとします。令和8年度は4〜5月（旧4区分）と6月以降（6区分）で加算率が異なります。Ⅰロ／Ⅱロは令和8年度特例要件、新規対象サービス（訪問看護・訪問リハ・居宅介護支援）は（Ⅳ）に準ずる要件で6月から算定可。加算率・単価・要件・様式・提出期限は最新の厚生労働省告示および指定権者通知で必ずご確認ください。
-    </div>
-    <div><span class="crestmini">三</span><span class="logo">TriSupport® Office</span>　／　Powered by <span class="logo">TriSight®</span>　／　v3（令和8年度対応）</div>
-    <div style="margin-top:6px;opacity:.75;">© 合同会社トライサイト　All rights reserved.　TriSight® / TriSupport® は合同会社トライサイトの登録商標です。</div>
-  </footer>
-</div>
-<div class="toast" id="toast"></div>
-
-<script>
-const KUBUN={"4-5":["Ⅰ","Ⅱ","Ⅲ","Ⅳ"],"6-":["Ⅰイ","Ⅰロ","Ⅱイ","Ⅱロ","Ⅲ","Ⅳ","Ⅳ準ずる"]};
-const NEWSVC=["訪問看護","（介護予防）訪問看護","訪問リハビリテーション","居宅介護支援","介護予防支援"];
-const RATES={
- "4-5":{"訪問介護":{"Ⅰ":24.5,"Ⅱ":22.4,"Ⅲ":18.2,"Ⅳ":14.5},"訪問入浴介護":{"Ⅰ":10.0,"Ⅱ":9.4,"Ⅲ":7.9,"Ⅳ":6.3},
-   "通所介護":{"Ⅰ":9.2,"Ⅱ":9.0,"Ⅲ":8.0,"Ⅳ":6.4},"短期入所生活介護":{"Ⅰ":null,"Ⅱ":null,"Ⅲ":null,"Ⅳ":null}},
- "6-":{"訪問介護":{"Ⅰイ":null,"Ⅰロ":28.7,"Ⅱイ":null,"Ⅱロ":null,"Ⅲ":18.2,"Ⅳ":14.5},
-   "訪問入浴介護":{"Ⅰイ":null,"Ⅰロ":null,"Ⅱイ":null,"Ⅱロ":null,"Ⅲ":null,"Ⅳ":null},
-   "通所介護":{"Ⅰイ":null,"Ⅰロ":null,"Ⅱイ":null,"Ⅱロ":null,"Ⅲ":null,"Ⅳ":null},
-   "訪問看護":{"Ⅳ準ずる":1.8},"（介護予防）訪問看護":{"Ⅳ準ずる":1.8},
-   "訪問リハビリテーション":{"Ⅳ準ずる":1.5},"居宅介護支援":{"Ⅳ準ずる":2.1},"介護予防支援":{"Ⅳ準ずる":2.1}}
-};
-const AREA_PRICE={"1級地":11.40,"2級地":11.12,"3級地":11.05,"4級地":10.84,"5級地":10.70,"6級地":10.42,"7級地":10.21,"その他":10.00};
-const CAREER=[
- {l:"要件Ⅰ：任用要件と賃金体系の整備",need:["Ⅰ","Ⅱ","Ⅲ","Ⅳ","Ⅰイ","Ⅰロ","Ⅱイ","Ⅱロ","Ⅲ","Ⅳ","Ⅳ準ずる"]},
- {l:"要件Ⅱ：研修機会の提供・技術指導",need:["Ⅰ","Ⅱ","Ⅲ","Ⅳ","Ⅰイ","Ⅰロ","Ⅱイ","Ⅱロ","Ⅲ","Ⅳ","Ⅳ準ずる"]},
- {l:"要件Ⅲ：昇給の仕組みの整備（就業規則等）",need:["Ⅰ","Ⅱ","Ⅲ","Ⅰイ","Ⅰロ","Ⅱイ","Ⅱロ","Ⅲ"]},
- {l:"要件Ⅳ：改善後賃金440万円以上の者を1人以上",need:["Ⅰ","Ⅱ","Ⅰイ","Ⅰロ","Ⅱイ","Ⅱロ"]},
- {l:"要件Ⅴ：経験・技能ある介護福祉士等の一定数配置（特定事業所加算等）",need:["Ⅰ","Ⅰイ","Ⅰロ"]}
-];
-const ENV=["入職促進に向けた取組","資質向上・キャリアアップ支援","両立支援・多様な働き方の推進",
- "腰痛含む心身の健康管理","生産性向上のための業務改善（⑰⑱含む）","やりがい・働きがいの醸成"];
-
-let period="4-5",mode="MOCK";
-function svcList(){return Object.keys(RATES[period]);}
-function fmt(n){return '¥'+Math.round(n).toLocaleString('ja-JP');}
-function num(id){return parseFloat(document.getElementById(id).value)||0;}
-
-function toggleMode(){mode=mode==='MOCK'?'LIVE':'MOCK';const t=document.getElementById('modeToggle');
-  t.textContent='MODE: '+mode;t.classList.toggle('live',mode==='LIVE');document.getElementById('keyRow').classList.toggle('show',mode==='LIVE');}
-function onArea(){document.getElementById('unitPrice').value=AREA_PRICE[document.getElementById('area').value];recalc();}
-function setPeriod(p){period=p;document.getElementById('p1').classList.toggle('on',p==='4-5');document.getElementById('p2').classList.toggle('on',p==='6-');
-  document.getElementById('svcBody').innerHTML='';addRow();renderMaster();}
-
-function rowHtml(){const opts=svcList().map(s=>`<option>${s}</option>`).join('');
-  return `<td><select class="svc" onchange="onSvc(this)"><option value="">選択…</option>${opts}</select></td>
-   <td><select class="kub" onchange="onKub(this)"><option value="">—</option></select></td>
-   <td class="auto"><input type="number" step="0.01" class="rate" oninput="recalc()" placeholder="—"></td>
-   <td><input type="number" step="1" class="units" oninput="recalc()" placeholder="例)4800000"></td>
-   <td class="auto"><span class="grant">¥0</span></td>
-   <td><button class="btn ghost small" onclick="this.closest('tr').remove();recalc()">×</button></td>`;}
-function addRow(){const tr=document.createElement('tr');tr.innerHTML=rowHtml();document.getElementById('svcBody').appendChild(tr);}
-function onSvc(sel){const tr=sel.closest('tr'),svc=sel.value,kub=tr.querySelector('.kub');
-  const list=svc?Object.keys(RATES[period][svc]||{}):[];
-  kub.innerHTML='<option value="">—</option>'+list.map(k=>`<option>${k}</option>`).join('');
-  if(list.length===1){kub.value=list[0];onKub(kub);}else{tr.querySelector('.rate').value='';recalc();}}
-function onKub(sel){const tr=sel.closest('tr'),svc=tr.querySelector('.svc').value,k=sel.value,r=tr.querySelector('.rate');
-  const v=(svc&&k)?RATES[period][svc][k]:null;
-  if(v===null||v===undefined){r.value='';r.placeholder='要・告示確認';}else{r.value=v;}recalc();}
-function recalc(){const up=num('unitPrice');let tot=0;
-  document.querySelectorAll('#svcBody tr').forEach(tr=>{const rate=parseFloat(tr.querySelector('.rate').value)||0;
-    const units=parseFloat(tr.querySelector('.units').value)||0;const g=units*rate/100*up;tot+=g;tr.querySelector('.grant').textContent=fmt(g);});
-  document.getElementById('total').textContent=fmt(tot);
-  const half=tot/2,base=num('wageBase');
-  document.getElementById('rGrant').textContent=fmt(tot);
-  document.getElementById('rHalf').textContent=fmt(half);
-  document.getElementById('rBase').textContent=fmt(base);
-  const jw=document.getElementById('judgeWage');
-  if(!tot){jw.className='judge warn';jw.innerHTML='<span class="badge">要入力</span><div>加算見込額が0です。Ⅱでサービス・区分・総単位数を入力してください。</div>';}
-  else if(base>=half){jw.className='judge ok';jw.innerHTML='<span class="badge">充足（計算上）</span><div>月額賃金改善への充当 '+fmt(base)+' ≧ 必要下限 '+fmt(half)+'。要件を計算上満たします。</div>';}
-  else{jw.className='judge warn';jw.innerHTML='<span class="badge">要確認</span><div>充当 '+fmt(base)+' が下限 '+fmt(half)+' を下回ります（不足 '+fmt(half-base)+'）。</div>';}}
-function renderMaster(){const t=RATES[period],cols=KUBUN[period];
-  let h='<table><thead><tr><th>サービス種別</th>'+cols.filter(c=>c!=="Ⅳ準ずる").map(c=>`<th>${c}</th>`).join('')+'<th>Ⅳ準ずる</th></tr></thead><tbody>';
-  Object.keys(t).forEach(svc=>{h+=`<tr><td style="text-align:left;font-weight:700;">${svc}${NEWSVC.includes(svc)?' <span class="rate-need">新規</span>':''}</td>`;
-    cols.filter(c=>c!=="Ⅳ準ずる").forEach(c=>{const v=t[svc][c];h+=`<td>${v==null?'<span class="rate-need">要確認</span>':v.toFixed(1)}</td>`;});
-    const vn=t[svc]["Ⅳ準ずる"];h+=`<td>${vn==null?'—':vn.toFixed(1)}</td></tr>`;});
-  document.getElementById('masterView').innerHTML=h+'</tbody></table>';}
-function loadNoa(){setPeriod('6-');document.getElementById('area').value='3級地';onArea();
-  const body=document.getElementById('svcBody');body.innerHTML='';
-  [["訪問看護","Ⅳ準ずる"],["訪問介護","Ⅰロ"],["居宅介護支援","Ⅳ準ずる"]].forEach(([s,k])=>{addRow();const tr=body.lastChild;
-    tr.querySelector('.svc').value=s;onSvc(tr.querySelector('.svc'));tr.querySelector('.kub').value=k;onKub(tr.querySelector('.kub'));});recalc();}
-
-function renderReq(){const k=document.querySelector('#svcBody .kub')?document.querySelector('#svcBody .kub').value:'';
-  document.getElementById('reqCareer').innerHTML=CAREER.map(c=>{const nd=(k&&c.need.includes(k))?'<span class="need">この区分で必要</span>':'<span class="mini">（区分により任意／不要）</span>';
-    return `<div class="check"><input type="checkbox"><div>${c.l} ${nd}</div></div>`;}).join('');
-  document.getElementById('reqEnv').innerHTML=ENV.map(e=>`<div class="check"><input type="checkbox"><div>${e}</div></div>`).join('')
-   +'<div class="mini" style="margin-top:6px;">※ Ⅰ・Ⅱは各区分2以上（生産性向上は3以上・うち⑰⑱必須）、Ⅲ・Ⅳは各区分1以上（生産性向上は2以上）。</div>';}
-
-function maskV(v){return v?v.replace(/./g,'○'):'';}
-function gv(id,m){const v=document.getElementById(id).value.trim();return m?maskV(v):v;}
-function buildDraft(){const m=document.getElementById('sanitize').checked;const up=num('unitPrice');let tot=0,lines=[];
-  document.querySelectorAll('#svcBody tr').forEach(tr=>{const s=tr.querySelector('.svc').value||'（サービス）';const k=tr.querySelector('.kub').value||'';
-    const rt=parseFloat(tr.querySelector('.rate').value)||0;const u=parseFloat(tr.querySelector('.units').value)||0;const g=u*rt/100*up;tot+=g;
-    lines.push(`  ・${s}（${k}）：${u.toLocaleString()}単位 × ${rt}％ × ${up}円 ＝ ${fmt(g)}`);});
-  const base=num('wageBase'),total=num('wageTotal'),staff=num('staff'),pl=period==='6-'?'令和8年6月以降':'令和8年4〜5月';
-  return `【介護職員等処遇改善計画書（素案）】　${pl}
-
-１．事業所
-　法人名　　：${gv('corp',m)||'（未入力）'}
-　事業所名　：${gv('office',m)||'（未入力）'}
-　事業所番号：${gv('officeno',m)||'（未入力）'}
-　所在地　　：${gv('addr',m)||'（未入力）'}
-　指定権者　：${gv('auth',m)||'（未入力）'}（${document.getElementById('authtype').value||'区分未設定'}）
-　地域区分　：${document.getElementById('area').value}（単位単価 ${up}円）
-
-２．加算見込額（算定基礎）
-${lines.length?lines.join('\n'):'  ・（サービス未入力）'}
-　合計：${fmt(tot)}
-
-３．賃金改善計画
-　対象職員数：${staff||'（未入力）'} 名（常勤換算）
-　賃金改善見込総額：${fmt(total)}
-　うち月額賃金改善への充当：${fmt(base)}　／　必要下限（1/2）：${fmt(tot/2)}
-　充足状況（計算上）：${base>=tot/2?'要件を満たす':'要確認'}
-
-４．要件
-　キャリアパス要件・職場環境等要件・（該当時）令和8年度特例要件は別添チェックのとおり整備・実施。
-
-５．確認
-　本素案はAI支援による下書きです。加算率・要件・様式・期限は最新告示と指定権者通知で確認のうえ、公式様式へ転記してください。
-　TriSupport® Office ／ Powered by TriSight® ／ 合同会社トライサイト`;}
-async function genDraft(){const base=buildDraft(),ta=document.getElementById('draft');
-  if(mode==='MOCK'){ta.value=base;toast('ドラフトを生成しました（MOCK）');return;}
-  const key=document.getElementById('apiKey').value.trim();if(!key){ta.value=base;toast('APIキー未入力のためMOCK出力');return;}
-  ta.value='生成中…';
-  try{const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1600,messages:[{role:'user',content:'次の処遇改善加算計画書の素案を、行政提出書類にふさわしい簡潔な日本語に整えてください。数値・固有名詞は改変しないこと。\n\n'+base}]})});
-    const data=await res.json();const txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');ta.value=txt||base;toast('ドラフトを生成しました（LIVE）');
-  }catch(e){ta.value=base;toast('API接続不可のためMOCK出力');}}
-function copyDraft(){const t=document.getElementById('draft').value;if(!t){toast('先に生成してください');return;}navigator.clipboard.writeText(t).then(()=>toast('コピーしました'));}
-function downloadDraft(){const t=document.getElementById('draft').value;if(!t){toast('先に生成してください');return;}
-  const b=new Blob([t],{type:'text/plain;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='処遇改善計画書_素案.txt';a.click();toast('保存しました');}
-let tt;function toast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>e.classList.remove('show'),2200);}
-
-document.getElementById('svcBody').addEventListener('change',renderReq);
-onArea();addRow();renderMaster();renderReq();
-</script>
+  <div class="foot">TriReward<span class="r">®</span> は合同会社トライサイトの登録商標です ／ © 2026 合同会社トライサイト ／ 入口 v0.1</div>
 </body>
 </html>

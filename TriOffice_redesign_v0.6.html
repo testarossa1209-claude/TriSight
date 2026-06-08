@@ -81,25 +81,22 @@ footer .tm-note{font-size:10px;color:#b3ad9f;margin-top:9px}
 <div class="top"><span class="lamp" id="genLamp"></span><span class="nm">生成AI</span><span class="role">文書作成</span></div>
 <div class="rd">既存の運営規定に、改正条項を機械的に反映する（判断・解釈はしない）。</div>
 <div class="fl"><label>使用AIを選択</label>
-<select id="genProvider" onchange="updateKeyLabel('gen')"><option value="gemini">Gemini (Google)</option><option value="claude">Claude (Anthropic)</option><option value="openai">ChatGPT (OpenAI)</option></select></div>
-<div class="fl"><label id="genKeyLabel">Gemini API Key <span class="req">*</span></label><input id="genKey" placeholder="API Key を入力"></div>
+<select id="genProvider"><option value="openai">ChatGPT (OpenAI)</option><option value="claude">Claude (Anthropic)</option></select></div>
 </div>
 <div class="ai">
 <div class="top"><span class="lamp" id="verLamp"></span><span class="nm">検証AI</span><span class="role">不備検出</span></div>
 <div class="rd">修正版の不備を検出する（修正も合否判定もしない）。</div>
 <div class="fl"><label>使用AIを選択</label>
-<select id="verProvider" onchange="updateKeyLabel('ver')"><option value="claude">Claude (Anthropic)</option><option value="gemini">Gemini (Google)</option><option value="openai">ChatGPT (OpenAI)</option></select></div>
-<div class="fl"><label id="verKeyLabel">Anthropic API Key <span class="req">*</span></label><input id="verKey" placeholder="API Key を入力"></div>
+<select id="verProvider"><option value="claude">Claude (Anthropic)</option><option value="openai">ChatGPT (OpenAI)</option></select></div>
 </div>
 <div class="ai">
 <div class="top"><span class="lamp" id="jdgLamp"></span><span class="nm">判定AI</span><span class="role">提出可否</span></div>
 <div class="rd">行政への提出可否を判定する（文書生成はしない）。</div>
 <div class="fl"><label>使用AIを選択</label>
-<select id="jdgProvider" onchange="updateKeyLabel('jdg')"><option value="openai">ChatGPT (OpenAI)</option><option value="gemini">Gemini (Google)</option><option value="claude">Claude (Anthropic)</option></select></div>
-<div class="fl"><label id="jdgKeyLabel">OpenAI API Key <span class="req">*</span></label><input id="jdgKey" placeholder="API Key を入力"></div>
+<select id="jdgProvider"><option value="openai">ChatGPT (OpenAI)</option><option value="claude">Claude (Anthropic)</option></select></div>
 </div>
 </div>
-<div class="savechk"><input type="checkbox" id="saveKeys"><label for="saveKeys">このブラウザに選択内容とAPIキーを保存する</label></div>
+<div class="savechk"><input type="checkbox" id="saveKeys"><label for="saveKeys">このブラウザに選択内容を保存する</label></div>
 </div>
 
 <div class="sec" style="animation-delay:.12s">
@@ -151,10 +148,7 @@ claude:"Anthropic API Key",
 openai:"OpenAI API Key"
 }
 
-function updateKeyLabel(role){
-let provider=document.getElementById(role+"Provider").value
-document.getElementById(role+"KeyLabel").innerHTML=PROVIDER_LABEL[provider]+' <span class="req">*</span>'
-}
+function updateKeyLabel(role){}
 
 function log(s){document.getElementById("status").innerHTML+=s+"<br>"}
 
@@ -172,9 +166,6 @@ let k=JSON.parse(s)
 if(k.genProvider){document.getElementById("genProvider").value=k.genProvider;updateKeyLabel("gen")}
 if(k.verProvider){document.getElementById("verProvider").value=k.verProvider;updateKeyLabel("ver")}
 if(k.jdgProvider){document.getElementById("jdgProvider").value=k.jdgProvider;updateKeyLabel("jdg")}
-genKey.value=k.genKey||""
-verKey.value=k.verKey||""
-jdgKey.value=k.jdgKey||""
 saveKeys.checked=true
 }
 }
@@ -210,25 +201,14 @@ throw "プロバイダ不明:"+provider
 }
 
 async function callGemini(key,prompt){
-let r=await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=${key}`,{
-method:"POST",
-body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
-})
-let j=await r.json()
-if(!j.candidates||!j.candidates[0]) throw "Gemini応答異常"
-return j.candidates[0].content.parts[0].text
+throw "Gemini は現在準備中です。生成・検証・判定の各AIは Claude または ChatGPT を選んでください。"
 }
 
 async function callClaude(key,prompt){
-let r=await fetch("https://api.anthropic.com/v1/messages",{
+let r=await fetch("https://trisight-relay.vercel.app/api/anthropic",{
 method:"POST",
-headers:{
-"x-api-key":key,
-"anthropic-version":"2023-06-01",
-"anthropic-dangerous-direct-browser-access":"true",
-"Content-Type":"application/json"
-},
-body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:2000,messages:[{role:"user",content:prompt}]})
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:2000,messages:[{role:"user",content:prompt}]})
 })
 let j=await r.json()
 if(!j.content||!j.content[0]) throw "Claude応答異常"
@@ -236,12 +216,9 @@ return j.content[0].text
 }
 
 async function callOpenAI(key,prompt){
-let r=await fetch("https://api.openai.com/v1/chat/completions",{
+let r=await fetch("https://trisight-relay.vercel.app/api/openai",{
 method:"POST",
-headers:{
-"Authorization":"Bearer "+key,
-"Content-Type":"application/json"
-},
+headers:{"Content-Type":"application/json"},
 body:JSON.stringify({model:"gpt-4o",messages:[{role:"user",content:prompt}]})
 })
 let j=await r.json()
@@ -259,7 +236,7 @@ JSONのみ出力(コードブロックなし)。
 事業所:${nameInput.value}(${typeInput.value})/${cityInput.value}`
 
 let provider=document.getElementById("genProvider").value
-let res=await callAI(provider,genKey.value,prompt)
+let res=await callAI(provider,null,prompt)
 let g=safeParse(res)
 if(!g.diff_list||g.diff_list.length===0) throw "差分未生成"
 return g
@@ -273,7 +250,7 @@ JSONのみ出力(コードブロックなし)。
 文書:${text}`
 
 let provider=document.getElementById("verProvider").value
-let res=await callAI(provider,verKey.value,prompt)
+let res=await callAI(provider,null,prompt)
 return safeParse(res)
 }
 
@@ -284,7 +261,7 @@ JSONのみ出力(コードブロックなし)。
 文書:${text}`
 
 let provider=document.getElementById("jdgProvider").value
-let res=await callAI(provider,jdgKey.value,prompt)
+let res=await callAI(provider,null,prompt)
 let t=safeParse(res)
 if(!t.verdict) throw "判定不正"
 return t
@@ -352,18 +329,12 @@ if(saveKeys.checked){
 localStorage.setItem("trisight_office_keys",JSON.stringify({
 genProvider:document.getElementById("genProvider").value,
 verProvider:document.getElementById("verProvider").value,
-jdgProvider:document.getElementById("jdgProvider").value,
-genKey:genKey.value,
-verKey:verKey.value,
-jdgKey:jdgKey.value
+jdgProvider:document.getElementById("jdgProvider").value
 }))
 }
 
 if(!nameInput.value||!cityInput.value||!lawInput.value||!refInput.value){
 throw "入力不足"
-}
-if(!genKey.value||!verKey.value||!jdgKey.value){
-throw "APIキー未入力"
 }
 
 document.getElementById("status").innerHTML=""

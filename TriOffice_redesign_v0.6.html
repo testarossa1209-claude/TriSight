@@ -1,1 +1,447 @@
-file:///C:/Users/testa/Downloads/TriOffice_redesign_v0.6_1.html
+<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>TriOffice ─ 事務文書の更新支援</title>
+<script defer src="mammoth.browser.min.js"></script>
+<script defer src="pdf.min.js"></script>
+<script defer src="docx.umd.min.js"></script>
+<script defer src="FileSaver.min.js"></script>
+<style>
+:root{--navy:#0f1d3a;--navy2:#1c3461;--gold:#c9a55a;--gold-soft:#d9bc7a;--paper:#fffdf8;--line:#e3dccb;--ink:#1c2433;--soft:#5a6172}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;color:var(--ink);background:#ece8de;font-size:13px;line-height:1.85}
+.wrap{max-width:860px;margin:0 auto;padding:26px 20px 60px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:30px 34px;box-shadow:0 14px 40px -22px rgba(15,29,58,.55)}
+header.hero{background:linear-gradient(125deg,var(--navy) 0%,var(--navy2) 78%,#27406e 100%);color:#f2ede1;border-radius:16px;padding:26px 30px;margin-bottom:18px}
+header.hero h1{font-size:22px;letter-spacing:.05em}
+header.hero .sub{margin-top:6px;font-size:12.5px;color:#cfd6e4}
+@keyframes rise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+.sec{opacity:0;animation:rise .7s cubic-bezier(.2,.7,.2,1) forwards}
+.kicker{display:flex;align-items:baseline;gap:11px;margin:26px 0 14px}
+.kicker .no{flex:none;width:26px;height:26px;border-radius:50%;background:var(--navy);color:var(--gold-soft);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.kicker h2{font-size:15.5px;letter-spacing:.05em}
+.h-sub{font-size:11px;color:var(--soft);letter-spacing:.08em}
+.lead{font-size:12.5px;color:var(--soft);line-height:1.75;margin:-6px 0 14px 37px}
+.block{background:#fffdf8;border:1px solid var(--line);border-radius:13px;padding:17px 19px;box-shadow:0 6px 20px -16px rgba(15,29,58,.5)}
+.block{margin-top:13px}
+.rd{font-size:12px;color:var(--soft);margin-top:6px}
+.fl{display:flex;flex-direction:column;gap:6px}
+label{font-size:12px;font-weight:600;letter-spacing:.04em}
+.req{color:#b25b3c;font-size:10.5px}
+input[type=text],select,textarea{font-family:inherit;font-size:13px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:#fff;width:100%}
+textarea{min-height:84px;resize:vertical}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.runwrap{margin-top:16px}
+.run{font-family:inherit;font-size:14.5px;font-weight:700;letter-spacing:.06em;color:#f7f3e9;background:linear-gradient(120deg,var(--navy),var(--navy2));border:1px solid var(--gold);border-radius:12px;padding:13px 26px;cursor:pointer;width:100%}
+.run:hover{filter:brightness(1.12)}
+#status{margin-top:13px;font-size:12.5px;line-height:2}
+.ok{color:#7fd6a3;font-weight:600}
+.warn{color:#e8b774;font-weight:600}
+.err{color:#ff9b7a;font-weight:600}
+.run-state{color:var(--gold-soft);font-weight:600}
+#status{background:#11203d;border-radius:11px;padding:13px 16px;color:#dfe6f2;display:none}
+#status.show{display:block}
+footer{text-align:center;padding:22px 20px 6px;font-size:11px;color:#9a958a;line-height:1.7}
+.tm-note{margin-top:5px}
+.prov{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.dlbtn{font-family:inherit;font-size:12px;font-weight:600;color:var(--navy,#0f1d3a);background:#f7f3e9;border:1px solid #c9a55a;border-radius:9px;padding:7px 14px;margin:3px 4px 3px 0;cursor:pointer}
+.dlbtn:hover{background:#f0e8d5}
+.idx-wrap{overflow-x:auto}
+.idx-table{width:100%;border-collapse:collapse;font-size:12px;line-height:1.65;background:#fffdf8}
+.idx-table th,.idx-table td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+.idx-table th{background:#f4efe4;font-size:11.5px;white-space:nowrap}
+.idx-table td.nowrap{white-space:nowrap}
+.idx-kind{display:inline-block;padding:1px 8px;border-radius:9px;font-size:11px;font-weight:600;white-space:nowrap}
+.idx-kind.kai{background:#eef4ff;color:#3a5fa8}.idx-kind.tsui{background:#eefaf1;color:#2e8b57}.idx-kind.saku{background:#fdf0ec;color:#b25b3c}
+.idx-ok{color:#2e8b57;font-weight:600;white-space:nowrap}
+.idx-warn{color:#b25b3c;font-weight:600;white-space:nowrap}
+.idx-summary{margin:10px 0 0;font-size:12px;color:var(--soft)}
+@media(max-width:640px){.grid2,.prov{grid-template-columns:1fr}.card{padding:22px 18px}}
+</style></head>
+<body>
+<div class="wrap">
+<header class="hero">
+<h1>TriOffice ─ 事務文書の更新支援</h1>
+<div class="sub">運営規定・契約書・重要事項説明書・社内規程 ― 事務文書の更新支援</div>
+</header>
+<div class="card">
+
+<div class="sec" style="animation-delay:.03s">
+<div class="kicker"><div class="no">1</div><h2>仕事を選ぶ</h2><span class="h-sub">文書の種類</span></div>
+<div class="lead">選ぶと、下の入力欄と出来上がる書類が自動で切り替わります。</div>
+<div class="block">
+<div class="rd">既存の運営規定に、改正条項を機械的に反映する（判断・解釈はしない）。</div>
+<div class="fl" style="margin-top:10px">
+<label>文書の種類 <span class="req">*</span></label>
+<select id="docType" onchange="applyCfg()">
+<option value="kitei">運営規定の改正</option>
+<option value="keiyaku">利用契約書の改修</option>
+<option value="juusetsu">重要事項説明書の改修</option>
+<option value="kisoku">社内規程等の改修</option>
+</select>
+</div>
+</div>
+</div>
+
+<div class="sec" style="animation-delay:.09s">
+<div class="kicker"><div class="no">2</div><h2 id="secFileTitle">いまの運営規定</h2><span class="h-sub">docx / PDF</span></div>
+<div class="block"><div class="fl"><label><span id="fileLabelText">運営規定ファイル</span> <span class="req">*</span></label><input type="file" id="fileInput" accept=".docx,.pdf"></div></div>
+</div>
+
+<div class="sec" style="animation-delay:.15s">
+<div class="kicker"><div class="no">3</div><h2 id="secEditTitle">改正の内容</h2><span class="h-sub">なにを変えるか</span></div>
+<div class="block">
+<div class="fl"><label><span id="lawLabelText">改正条項の内容</span> <span class="req">*</span></label><textarea id="lawInput" placeholder=""></textarea></div>
+<div class="fl" style="margin-top:12px"><label><span id="refLabelText">改正根拠</span> <span class="req">*</span></label><input type="text" id="refInput" placeholder=""></div>
+</div>
+</div>
+
+<div class="sec" style="animation-delay:.21s">
+<div class="kicker"><div class="no">4</div><h2>事業所情報</h2><span class="h-sub">書類に載る情報</span></div>
+<div class="block">
+<div class="grid2">
+<div class="fl"><label>事業所名 <span class="req">*</span></label><input type="text" id="nameInput"></div>
+<div class="fl"><label>サービス種別</label><input type="text" id="typeInput" placeholder="例：訪問介護"></div>
+<div class="fl"><label>市区町村 <span class="req">*</span></label><input type="text" id="cityInput"></div>
+</div>
+<div class="prov" style="margin-top:14px">
+<div class="fl"><label>生成AI</label><select id="genProvider"><option value="openai">ChatGPT</option><option value="claude">Claude</option></select></div>
+<div class="fl"><label>検証AI</label><select id="verProvider"><option value="claude">Claude</option><option value="openai">ChatGPT</option></select></div>
+<div class="fl"><label>判定AI</label><select id="jdgProvider"><option value="openai">ChatGPT</option><option value="claude">Claude</option></select></div>
+</div>
+<div style="margin-top:10px;font-size:12px"><label><input type="checkbox" id="saveKeys" checked> この設定を記憶する</label></div>
+</div>
+</div>
+
+<div class="sec" style="animation-delay:.33s">
+<div class="kicker"><div class="no">5</div><h2>書類を仕上げる</h2><span class="h-sub">生成→検証→判定</span></div>
+<div class="lead">ボタンを押すと、生成→（ルールチェック）→検証→判定 の順に処理し、<span id="outputsDesc">修正版運営規定・変更インデックス・変更届の3点</span>を作ります。</div>
+<div class="runwrap">
+<button class="run" onclick="run()">この内容で書類を作成する</button>
+<div id="status"></div>
+</div>
+</div>
+
+<div class="sec" id="idxSec" style="display:none">
+<div class="kicker"><div class="no">6</div><h2>変更インデックス</h2><span class="h-sub">機械照合済み</span></div>
+<div class="lead">どこが・どう変わったかをコードが新旧両文書と突き合わせた一覧です。審査側はこの表だけで変更点を確認できます。</div>
+<div class="block idx-wrap" id="idxBody"></div>
+<div class="idx-summary" id="idxSummary"></div>
+</div>
+
+</div></div>
+<footer>本書はAI支援により作成されており、最終確認は事業者責任において実施するものとする。<br>自治体独自の条例が存在する場合は別途確認が必要である。
+<div class="tm-note">TriSight&reg; は合同会社トライサイトの登録商標です ／ &copy; 2026 合同会社トライサイト</div></footer>
+</div>
+
+<script>
+
+const PROVIDER_LABEL={
+gemini:"Gemini API Key",
+claude:"Anthropic API Key",
+openai:"OpenAI API Key"
+}
+
+function updateKeyLabel(role){}
+
+function log(s){document.getElementById("status").classList.add("show");document.getElementById("status").innerHTML+=s+"<br>"}
+
+function escIdx(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function normIdx(s){return String(s==null?"":s).replace(/\s+/g,"").replace(/[「」『』]/g,"")}
+function renderChangeIndex(diffList,baseText,revisedText){
+const nb=normIdx(baseText),nr=normIdx(revisedText)
+let okCount=0
+let rows=diffList.map((x,i)=>{
+const before=(x.before||"").trim(),after=(x.after||"").trim()
+let kind,kcls
+if(!before&&after){kind="追加";kcls="tsui"}
+else if(before&&!after){kind="削除";kcls="saku"}
+else{kind="改定";kcls="kai"}
+const beforeOk=!before||nb.indexOf(normIdx(before))>=0
+const afterOk=!after||nr.indexOf(normIdx(after))>=0
+const removedOk=kind!=="削除"||nr.indexOf(normIdx(before))<0
+let check
+if(beforeOk&&afterOk&&removedOk){check="<span class='idx-ok'>✓ 照合済</span>";okCount++}
+else{
+let why=[]
+if(!beforeOk)why.push("旧文が原文に見つからない")
+if(!afterOk)why.push("新文が修正版に未反映")
+if(!removedOk)why.push("削除文が修正版に残存")
+check="<span class='idx-warn'>△ 要確認</span><br><span style='font-weight:400;white-space:normal'>"+escIdx(why.join("・"))+"</span>"
+}
+return"<tr><td class='nowrap'>"+(i+1)+"</td><td>"+escIdx(x.section||"")+"</td><td><span class='idx-kind "+kcls+"'>"+kind+"</span></td><td>"+escIdx(before||"—")+"</td><td>"+escIdx(after||"—")+"</td><td>"+escIdx(x.reason||"")+"</td><td>"+check+"</td></tr>"
+}).join("")
+document.getElementById("idxBody").innerHTML="<table class='idx-table'><thead><tr><th>No.</th><th>条文位置</th><th>種別</th><th>変更前</th><th>変更後</th><th>根拠・理由</th><th>機械照合</th></tr></thead><tbody>"+rows+"</tbody></table>"
+document.getElementById("idxSummary").textContent="全"+diffList.length+"件中 "+okCount+"件照合済（照合はAIではなくJavaScriptが新旧両文書と突き合わせた結果です）"
+document.getElementById("idxSec").style.display=""
+return okCount
+}
+
+function clean(t){return t.replace(/```json|```/g,"").trim()}
+
+function safeParse(t){
+try{return JSON.parse(clean(t))}catch(e){
+let m=clean(t).match(/\{[\s\S]*\}/)
+if(m){return JSON.parse(m[0])}
+throw "AI応答の解析に失敗"
+}
+}
+
+const RELAY="https://trisight-relay.vercel.app"
+
+async function callAI(provider,_key,prompt){
+let url=provider==="claude"?RELAY+"/api/anthropic":RELAY+"/api/openai"
+let res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:prompt})})
+if(!res.ok){throw "通信エラー("+res.status+")"}
+let j=await res.json()
+return j.text
+}
+
+async function readFile(){
+let f=fileInput.files[0]
+if(!f) throw "ファイル未選択"
+
+if(f.name.endsWith(".docx")){
+let r=await mammoth.extractRawText({arrayBuffer:await f.arrayBuffer()})
+return r.value
+}
+
+if(f.name.endsWith(".pdf")){
+pdfjsLib.GlobalWorkerOptions.workerSrc="pdf.worker.min.js"
+let pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise
+let out=""
+for(let i=1;i<=pdf.numPages;i++){
+let pg=await pdf.getPage(i)
+let tc=await pg.getTextContent()
+out+=tc.items.map(x=>x.str).join("")+"\n"
+}
+return out
+}
+throw "docxまたはPDFを選択してください"
+}
+
+async function generateDoc(text){
+let c=cfgNow()
+let prompt=`あなたは介護事業所の書類作成AIです。役割:既存の${c.noun}に改修内容を機械的に反映する。判断・解釈は禁止。
+JSONのみ出力(コードブロックなし)。
+{"revised_text":"改修反映後の${c.noun}全文","diff_list":[{"section":"","before":"","after":"","reason":""}]}
+既存:${text}
+改修:${lawInput.value}
+根拠:${refInput.value}
+事業所:${nameInput.value}(${typeInput.value})/${cityInput.value}`
+
+let provider=document.getElementById("genProvider").value
+let res=await callAI(provider,null,prompt)
+let g=safeParse(res)
+if(!g.diff_list||g.diff_list.length===0) throw "差分未生成"
+return g
+}
+
+async function verifyDoc(text){
+let prompt=`あなたは検証AIです。役割:修正版の不備検出のみ。修正・合否判定は禁止。
+JSONのみ出力(コードブロックなし)。
+{"issues":["不備があれば列挙"]}
+対象:${text}`
+let provider=document.getElementById("verProvider").value
+let res=await callAI(provider,null,prompt)
+return safeParse(res)
+}
+
+async function judgeDoc(text){
+let c=cfgNow()
+let prompt=`あなたは判定AIです。役割:${c.judge}の最終判定のみ。
+JSONのみ出力(コードブロックなし)。
+{"verdict":"approved または rejected","notes":"所見"}
+対象:${text}`
+let provider=document.getElementById("jdgProvider").value
+let res=await callAI(provider,null,prompt)
+return safeParse(res)
+}
+
+const RULE_ITEMS=["事業の目的","運営の方針","従業者","営業日","利用料","実施地域","緊急時","苦情","虐待","個人情報"]
+function ruleCheck(text){
+return RULE_ITEMS.filter(k=>text.indexOf(k)<0)
+}
+
+let pendingDocs=[]
+
+function createDoc(name,text){
+pendingDocs.push({name:name,text:text})
+}
+
+function dlDoc(i){
+const {Document,Paragraph,Packer}=docx
+let d=pendingDocs[i]
+let paras=String(d.text).split(/\n/).map(line=>new Paragraph(line))
+paras.push(new Paragraph(""))
+paras.push(new Paragraph("本書はAI支援により作成されており、最終確認は事業者責任において実施するものとする。自治体独自の条例が存在する場合は別途確認が必要である。"))
+let doc=new Document({sections:[{children:paras}]})
+Packer.toBlob(doc).then(b=>saveAs(b,d.name))
+}
+
+function renderDlButtons(){
+let html=pendingDocs.map((d,i)=>"<button class='dlbtn' onclick='dlDoc("+i+")'>📄 "+d.name+"</button>").join(" ")
+log("<div style='margin-top:8px'>"+html+"</div>")
+}
+
+async function ensureLibs(){
+for(let i=0;i<50;i++){
+if(typeof docx!=="undefined"&&typeof saveAs!=="undefined"&&typeof mammoth!=="undefined"&&typeof pdfjsLib!=="undefined")return
+if(i===0)log("<span class='run-state'>● 部品を読込中...そのままお待ちください</span>")
+await new Promise(r=>setTimeout(r,200))
+}
+throw "部品の読込に失敗しました。ページを再読込して、もう一度お試しください"
+}
+
+function createTodoke(){
+return `変更届出書
+
+${cityInput.value} 長 殿
+
+下記のとおり運営規程を変更しましたので、届け出ます。
+
+事業所名:${nameInput.value}
+サービス種別:${typeInput.value}
+変更内容:${lawInput.value}
+変更根拠:${refInput.value}`
+}
+
+function createNotice(idx){
+return `利用者の皆様へ
+
+${nameInput.value}
+
+このたび、下記のとおり内容を変更いたしましたので、お知らせいたします。
+
+${idx}
+
+ご不明な点は当事業所までお問い合わせください。`
+}
+
+const CFG={
+kitei:{noun:"運営規定",secFile:"いまの運営規定",fileLabel:"運営規定ファイル",secEdit:"改正の内容",lawLabel:"改正条項の内容",lawPh:"例：第○条 営業時間を改正する。改正前「9:00〜18:00」を「8:30〜17:30」に変更する。",refLabel:"改正根拠（法令名・条番号・通知番号）",refPh:"例：介護保険法施行規則 第○条 / 厚労省告示 第○号",judge:"行政への提出可否",third:"todoke",outMain:"修正版運営規定.docx",desc:"出来上がる書類：①修正版運営規定 ②変更インデックス ③変更届（行政提出用）",outputs:"修正版運営規定・変更インデックス・変更届の3点"},
+keiyaku:{noun:"利用契約書",secFile:"いまの契約書",fileLabel:"契約書ファイル",secEdit:"改修の内容",lawPh:"例：第○条 利用料金を改定する。改定前「○○円」を「○○円」に変更する。",lawLabel:"改修内容",refLabel:"改修根拠（法令・通知・社内決定等）",refPh:"例：令和8年度 介護報酬改定 / 理事会決議",judge:"利用者への交付可否",third:"notice",outMain:"修正版契約書.docx",desc:"出来上がる書類：①修正版契約書 ②変更インデックス ③利用者向け変更お知らせ",outputs:"修正版契約書・変更インデックス・利用者向けお知らせの3点"},
+juusetsu:{noun:"重要事項説明書",secFile:"いまの重要事項説明書",fileLabel:"重要事項説明書ファイル",secEdit:"改修の内容",lawLabel:"改修内容",lawPh:"例：苦情相談窓口の担当者および連絡先を変更する。",refLabel:"改修根拠（法令・通知・社内決定等）",refPh:"例：運営規定改正に伴う整合 / 厚労省通知 第○号",judge:"利用者への交付・説明の可否",third:"notice",outMain:"修正版重要事項説明書.docx",desc:"出来上がる書類：①修正版重要事項説明書 ②変更インデックス ③利用者向け変更お知らせ",outputs:"修正版重要事項説明書・変更インデックス・利用者向けお知らせの3点"},
+kisoku:{noun:"社内規程等の事務文書",secFile:"いまの文書",fileLabel:"文書ファイル",secEdit:"改修の内容",lawLabel:"改修内容",lawPh:"例：第○条 服務規律に在宅勤務に関する項を追加する。",refLabel:"根拠（社内決定・法令等）",refPh:"例：令和8年6月 理事会決議",judge:"社内文書としての施行可否",third:null,outMain:"修正版文書.docx",desc:"出来上がる書類：①修正版文書 ②変更インデックス",outputs:"修正版文書・変更インデックスの2点"}
+}
+
+function cfgNow(){return CFG[document.getElementById("docType").value]}
+
+function applyCfg(){
+let c=cfgNow()
+document.getElementById("secFileTitle").textContent=c.secFile
+document.getElementById("fileLabelText").textContent=c.fileLabel
+document.getElementById("secEditTitle").textContent=c.secEdit
+document.getElementById("lawLabelText").textContent=c.lawLabel
+document.getElementById("lawInput").placeholder=c.lawPh
+document.getElementById("refLabelText").textContent=c.refLabel
+document.getElementById("refInput").placeholder=c.refPh
+document.getElementById("outputsDesc").textContent=c.outputs
+}
+
+document.addEventListener("DOMContentLoaded",function(){
+applyCfg()
+let saved=localStorage.getItem("trisight_office_keys")
+if(saved){
+try{
+let s=JSON.parse(saved)
+if(s.genProvider)document.getElementById("genProvider").value=s.genProvider
+if(s.verProvider)document.getElementById("verProvider").value=s.verProvider
+if(s.jdgProvider)document.getElementById("jdgProvider").value=s.jdgProvider
+}catch(e){}
+}
+})
+
+async function run(){
+
+try{
+
+if(saveKeys.checked){
+localStorage.setItem("trisight_office_keys",JSON.stringify({
+genProvider:document.getElementById("genProvider").value,
+verProvider:document.getElementById("verProvider").value,
+jdgProvider:document.getElementById("jdgProvider").value
+}))
+}
+
+if(!nameInput.value||!cityInput.value||!lawInput.value||!refInput.value){
+throw "入力不足"
+}
+
+document.getElementById("status").innerHTML=""
+document.getElementById("idxSec").style.display="none"
+document.getElementById("idxBody").innerHTML=""
+document.getElementById("idxSummary").textContent=""
+log("<span class='run-state'>● 処理開始</span>")
+pendingDocs=[]
+await ensureLibs()
+
+let base=await readFile()
+log("<span class='ok'>✓ ファイル読込完了</span>")
+
+let genProv=document.getElementById("genProvider").value
+log("<span class='run-state'>● 生成AI("+genProv+") 文書生成中...</span>")
+let g=await generateDoc(base)
+log("<span class='ok'>✓ 生成完了 (差分"+g.diff_list.length+"件)</span>")
+
+let idxOk=renderChangeIndex(g.diff_list,base,g.revised_text)
+if(idxOk===g.diff_list.length){
+log("<span class='ok'>✓ 変更インデックス:全"+g.diff_list.length+"件 機械照合済（画面下部に表示）</span>")
+}else{
+log("<span class='warn'>△ 変更インデックス:"+(g.diff_list.length-idxOk)+"件 要確認（画面下部に表示）</span>")
+}
+
+if(document.getElementById("docType").value==="kitei"){
+let missing=ruleCheck(g.revised_text)
+if(missing.length>0){
+log("<span class='warn'>△ ルールチェック:不足項目「"+missing.join("、")+"」</span>")
+}else{
+log("<span class='ok'>✓ ルールチェック:必須項目すべて検出</span>")
+}
+}else{
+log("<span class='ok'>✓ ルールチェック:運営規定以外のためスキップ</span>")
+}
+
+let verProv=document.getElementById("verProvider").value
+log("<span class='run-state'>● 検証AI("+verProv+") 検証中...</span>")
+let c=await verifyDoc(g.revised_text)
+if(c.issues&&c.issues.length>0){
+log("<span class='warn'>△ 検証:不備"+c.issues.length+"件検出</span>")
+}else{
+log("<span class='ok'>✓ 検証完了</span>")
+}
+
+let jdgProv=document.getElementById("jdgProvider").value
+log("<span class='run-state'>● 判定AI("+jdgProv+") 最終判定中...</span>")
+let t=await judgeDoc(g.revised_text)
+
+if(t.verdict==="rejected"){
+log("<span class='err'>✗ 判定:提出不可 - 処理停止</span>")
+if(t.notes) log("<span class='err'>所見:"+t.notes+"</span>")
+return
+}
+log("<span class='ok'>✓ 判定:提出可</span>")
+
+let oc=cfgNow()
+createDoc(oc.outMain,g.revised_text)
+
+let idx=g.diff_list.map(x=>`${x.section}\n${x.before}\n→${x.after}\n理由:${x.reason}`).join("\n\n")
+createDoc("変更インデックス.docx",idx)
+
+let docCount=2
+if(oc.third==="todoke"){createDoc("変更届.docx",createTodoke());docCount=3}
+if(oc.third==="notice"){createDoc("利用者向け変更お知らせ.docx",createNotice(idx));docCount=3}
+
+renderDlButtons()
+log("<span class='ok'>✓ 完了:"+docCount+"つの書類が用意できました。上のボタンを押すと1つずつダウンロードされます</span>")
+
+}catch(e){
+log("<span class='err'>✗ エラー:"+e+"</span>")
+}
+
+}
+
+</script>
+<script>
+(function(){function sync(){['gen','ver','jdg'].forEach(function(r){var k=document.getElementById(r+'Key'),l=document.getElementById(r+'Lamp');if(k&&l)l.classList.toggle('lit',(k.value||'').trim().length>0);});}
+document.addEventListener('DOMContentLoaded',function(){sync();['gen','ver','jdg'].forEach(function(r){var k=document.getElementById(r+'Key');if(k)k.addEventListener('input',sync);});});
+setTimeout(sync,400);})();
+</script>
+</body></html>

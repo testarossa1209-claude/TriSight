@@ -185,13 +185,17 @@ throw "AI応答の解析に失敗"
 }
 
 const RELAY="https://trisight-relay.vercel.app"
-
-async function callAI(provider,_key,prompt){
+  async function callAI(provider,_key,prompt){
 let url=provider==="claude"?RELAY+"/api/anthropic":RELAY+"/api/openai"
-let res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:prompt})})
+let body=provider==="claude"
+?{model:"claude-sonnet-4-6",max_tokens:2000,messages:[{role:"user",content:prompt}]}
+:{model:"gpt-4o",messages:[{role:"user",content:prompt}]}
+let res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})
 if(!res.ok){throw "通信エラー("+res.status+")"}
 let j=await res.json()
-return j.text
+if(provider==="claude"){if(!j.content||!j.content[0])throw "Claude応答異常";return j.content[0].text}
+if(!j.choices||!j.choices[0])throw "OpenAI応答異常"
+return j.choices[0].message.content
 }
 
 async function readFile(){

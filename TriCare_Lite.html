@@ -83,6 +83,28 @@ textarea{
 textarea:focus{outline:2px solid var(--teal);border-color:var(--teal);}
 .out{min-height:120px;white-space:pre-wrap;}
 
+/* マイク（Web Speech API：会話・会議の文字起こし用） */
+.mic-row{display:flex;align-items:center;gap:12px;margin:0 0 10px 38px;flex-wrap:wrap;}
+button.action.mic{
+  background:var(--surface);color:var(--ink);border:1.5px solid var(--teal);
+  display:inline-flex;align-items:center;gap:9px;
+}
+button.action.mic.live{background:var(--danger);color:#fff;border-color:var(--danger);}
+.mic-dot{width:10px;height:10px;border-radius:50%;background:var(--teal);flex:0 0 auto;}
+button.action.mic.live .mic-dot{background:#fff;animation:pulse 1s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.25;}}
+.mic-status{font-size:14px;color:var(--ink-soft);}
+.mic-status.live{color:var(--danger);font-weight:600;}
+.interim{
+  margin:0 0 10px 38px;min-height:0;font-size:15px;color:var(--ink-soft);
+  font-style:italic;line-height:1.6;
+}
+.interim:empty{display:none;}
+.mic-note{
+  margin:10px 0 0 38px;font-size:12.5px;color:var(--ink-soft);line-height:1.6;
+}
+.mic-note.warn{color:#7a4f12;}
+
 /* モード選択 */
 .modes{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px 38px;}
 .mode-btn{
@@ -143,7 +165,7 @@ details.registry>summary .chev{color:var(--ink-soft);font-weight:400;font-size:1
 
 @media (max-width:480px){
   body{font-size:17px;}
-  .step-hint,.modes,.btn-row,.shield,.status{margin-left:0;}
+  .step-hint,.modes,.btn-row,.shield,.status,.mic-row,.interim,.mic-note{margin-left:0;}
 }
 </style>
 </head>
@@ -182,8 +204,16 @@ details.registry>summary .chev{color:var(--ink-soft);font-weight:400;font-size:1
   <!-- 工程① 話す -->
   <section class="step">
     <div class="step-head"><div class="step-num">1</div><div class="step-title">話す</div></div>
-    <div class="step-hint">下の欄をタップ → キーボードのマイクボタン（🎤）を押して口述します。このアプリは録音しません。文字にするのはiPadです。</div>
-    <textarea id="raw" placeholder="ここに口述した内容が入ります。&#10;例：本日14時訪問。血圧132/80、体温36度4分。前回より浮腫やや軽減。内服自己管理できており飲み忘れなし。次回までに……"></textarea>
+    <div class="step-hint" id="step1hint">下の「話す」ボタンを押すと音声入力が始まります。もう一度押すと止まります。手で打ち込んでも構いません。</div>
+    <div class="mic-row">
+      <button class="action mic" id="micBtn" type="button" onclick="toggleMic()">
+        <span class="mic-dot"></span><span id="micLabel">🎤 話す</span>
+      </button>
+      <span class="mic-status" id="micStatus"></span>
+    </div>
+    <div class="interim" id="interim"></div>
+    <textarea id="raw" placeholder="ここに話した内容が文字で入ります（手入力も可）。&#10;例：本日14時訪問。血圧132/80、体温36度4分。前回より浮腫やや軽減。内服自己管理できており飲み忘れなし。次回までに……"></textarea>
+    <div class="mic-note" id="micNote"></div>
   </section>
 
   <!-- 工程② 整える -->
@@ -220,7 +250,7 @@ details.registry>summary .chev{color:var(--ink-soft);font-weight:400;font-size:1
 
   <div class="foot">
     TriCare 簡易版 ／ 合同会社トライサイト ／ Powered by TriSight®<br>
-    口述内容は登録名を伏字化したうえでTriSightリレー経由で整形されます。録音・音声データは保存・送信しません。
+    整形時は登録名を端末内で伏字化したうえでTriSightリレー経由で処理します。アプリ内マイク使用時は、音声認識のため音声が提供元（Google/Microsoft）に送られます（会話の文字起こし用）。音声ファイルは保存しません。
   </div>
 
 </div>
@@ -401,13 +431,124 @@ function copyOut(){
 function clearAll(){
   document.getElementById("raw").value="";
   document.getElementById("out").value="";
+  var iv=document.getElementById("interim"); if(iv) iv.textContent="";
   setStatus("","");
   document.getElementById("copyStatus").textContent="";
   document.getElementById("raw").focus();
 }
 
+/* ====== 音声入力（Web Speech API／会話・会議の文字起こし用） ======
+   注意：Chrome/Edgeでは音声を提供元サーバーに送って文字化する。
+   看護記録の医療情報には使わず、会話の文字起こし用途に用いる。 */
+var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+var rec = null, listening = false, userStopped = false;
+
+function micSupported(){ return !!SR; }
+
+function initMic(){
+  var btn = document.getElementById("micBtn");
+  var note = document.getElementById("micNote");
+  if(!micSupported()){
+    // 非対応（iPad Safari等）：ボタンを隠し、OS音声入力を案内
+    btn.style.display = "none";
+    document.getElementById("step1hint").textContent =
+      "下の欄をタップし、お使いの端末の音声入力で口述します（iPadはキーボードの🎤、Windowsは Win+H）。手で打ち込んでも構いません。";
+    note.className = "mic-note";
+    note.textContent = "この環境ではアプリ内マイクが使えないため、端末標準の音声入力をお使いください。";
+    return;
+  }
+  note.className = "mic-note warn";
+  note.textContent = "※アプリ内マイクは音声を提供元（Google/Microsoft）に送って文字化します。会話・会議の文字起こし向けです。利用者の医療情報を含む声には使わないでください。";
+
+  rec = new SR();
+  rec.lang = "ja-JP";
+  rec.continuous = true;
+  rec.interimResults = true;
+
+  rec.onresult = function(e){
+    var interim = "";
+    var ta = document.getElementById("raw");
+    for(var i=e.resultIndex; i<e.results.length; i++){
+      var tr = e.results[i][0].transcript;
+      if(e.results[i].isFinal){
+        // 確定分を口述欄に追記（末尾が改行・空でなければ区切りを足す）
+        var cur = ta.value;
+        if(cur.length>0 && !/\s$/.test(cur)) cur += "\n";
+        ta.value = cur + tr;
+      }else{
+        interim += tr;
+      }
+    }
+    document.getElementById("interim").textContent = interim ? "（認識中）"+interim : "";
+  };
+
+  rec.onerror = function(e){
+    var ms = document.getElementById("micStatus");
+    if(e.error === "not-allowed" || e.error === "service-not-allowed"){
+      ms.className="mic-status"; ms.textContent="マイクが許可されていません。ブラウザのマイク許可を確認してください。";
+      stopMic(true);
+    }else if(e.error === "no-speech"){
+      // 無音：自動再開に任せる（onendで処理）
+    }else if(e.error === "audio-capture"){
+      ms.className="mic-status"; ms.textContent="マイクが見つかりません。接続と入力デバイスを確認してください。";
+      stopMic(true);
+    }else if(e.error === "network"){
+      ms.className="mic-status"; ms.textContent="通信エラーで音声認識できませんでした。電波を確認してください。";
+      stopMic(true);
+    }else{
+      ms.className="mic-status"; ms.textContent="音声認識エラー（"+e.error+"）。もう一度お試しください。";
+    }
+  };
+
+  rec.onend = function(){
+    // continuousでも無音等で止まる。ユーザーが止めていなければ自動再開
+    document.getElementById("interim").textContent = "";
+    if(listening && !userStopped){
+      try{ rec.start(); }catch(err){ /* 連続start例外は無視 */ }
+    }else{
+      setMicUI(false);
+    }
+  };
+}
+
+function setMicUI(on){
+  var btn=document.getElementById("micBtn");
+  var lbl=document.getElementById("micLabel");
+  var ms=document.getElementById("micStatus");
+  if(on){
+    btn.classList.add("live"); lbl.textContent="■ 停止";
+    ms.className="mic-status live"; ms.textContent="録音中…話してください";
+  }else{
+    btn.classList.remove("live"); lbl.textContent="🎤 話す";
+    if(ms.textContent==="録音中…話してください"){ ms.className="mic-status"; ms.textContent=""; }
+  }
+}
+
+function toggleMic(){
+  if(!micSupported()) return;
+  if(listening){ stopMic(false); }
+  else{ startMic(); }
+}
+function startMic(){
+  try{
+    userStopped=false; listening=true;
+    setMicUI(true);
+    rec.start();
+  }catch(err){
+    // 既にstart済み等
+    document.getElementById("micStatus").textContent="";
+  }
+}
+function stopMic(fromError){
+  userStopped=true; listening=false;
+  try{ rec.stop(); }catch(err){}
+  setMicUI(false);
+  document.getElementById("interim").textContent="";
+}
+
 /* 起動時 */
 loadRegistry();
+initMic();
 </script>
 </body>
 </html>

@@ -271,13 +271,29 @@ pendingDocs.push({name:name,text:text})
 }
 
 function dlDoc(i){
+if(typeof docx==="undefined"||!docx.Packer||typeof docx.Packer.toBlob!=="function"){
+alert("このパソコンではWord生成部品が読み込めていません。ページを再読込（Ctrl+Shift+R）するか、正常に動作する端末で開き直してください。");
+return;
+}
 const {Document,Paragraph,Packer}=docx
 let d=pendingDocs[i]
 let paras=String(d.text).split(/\n/).map(line=>new Paragraph(line))
 paras.push(new Paragraph(""))
 paras.push(new Paragraph("本書はAI支援により作成されており、最終確認は事業者責任において実施するものとする。自治体独自の条例が存在する場合は別途確認が必要である。"))
 let doc=new Document({sections:[{children:paras}]})
-Packer.toBlob(doc).then(b=>saveAs(b,d.name))
+Packer.toBlob(doc).then(async function(b){
+// 出力検証: docx(ZIP)は先頭が "PK"(0x50,0x4B)。違えば破損出力なので保存しない
+let head=new Uint8Array(await b.slice(0,2).arrayBuffer())
+if(head[0]!==0x50||head[1]!==0x4B){
+alert("このパソコンでは正しいWord文書を生成できませんでした（出力が破損しています）。\n正常に動作する端末（例：渋谷さんのPC）で開き直してください。テキストのままの保存は行いません。")
+return
+}
+// Word種別を明示して保存（拡張子が.txtに化けるのを防ぐ）
+let docBlob=new Blob([b],{type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"})
+saveAs(docBlob,d.name)
+}).catch(function(e){
+alert("Word生成中にエラーが発生しました。ページを再読込（Ctrl+Shift+R）して、もう一度お試しください。")
+})
 }
 
 function renderDlButtons(){
@@ -287,7 +303,7 @@ log("<div style='margin-top:8px'>"+html+"</div>")
 
 async function ensureLibs(){
 for(let i=0;i<50;i++){
-if(typeof docx!=="undefined"&&typeof saveAs!=="undefined"&&typeof mammoth!=="undefined"&&typeof pdfjsLib!=="undefined")return
+if(typeof docx!=="undefined"&&docx.Packer&&typeof docx.Packer.toBlob==="function"&&typeof saveAs!=="undefined"&&typeof mammoth!=="undefined"&&typeof pdfjsLib!=="undefined")return
 if(i===0)log("<span class='run-state'>● 部品を読込中...そのままお待ちください</span>")
 await new Promise(r=>setTimeout(r,200))
 }

@@ -79,6 +79,11 @@
 
   .topinfo td{padding:5px 6px;}
   .topinfo .lbl{background:#f7f7f7;font-weight:700;white-space:nowrap;width:74px;text-align:center;}
+  .sig-cell{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .sigpad{border:1px solid #999;border-radius:4px;background:#fff;width:320px;height:72px;display:block;touch-action:none;}
+  .sig-clear{font-size:12px;padding:4px 9px;cursor:pointer;}
+  .sig-note{font-size:11px;color:var(--muted);}
+  @media print{ .sigpad{border:1px solid #000;} .sig-clear,.sig-note{display:none;} }
 
   /* 入力欄 */
   .fld{
@@ -227,6 +232,16 @@
           
           <input class="fld" data-v id="ns_name" style="max-width:240px;">
         </span>
+      </td>
+    </tr>
+    <tr>
+      <td class="lbl">本人確認<br>サイン</td>
+      <td>
+        <div class="sig-cell">
+          <canvas id="sigPad" class="sigpad" aria-label="本人確認サイン欄"></canvas>
+          <button id="sigClear" class="sig-clear no-print" type="button">サインを消す</button>
+          <span class="sig-note no-print">利用者ご本人が指またはペンでサインしてください</span>
+        </div>
       </td>
     </tr>
   </table>
@@ -673,6 +688,38 @@
   bindFigure('figFront','markFront','svgFront');
   bindFigure('figBack','markBack','svgBack');
 
+  /* ---------- 本人確認サイン（タブレット直書き：指/ペン対応） ---------- */
+  var sigCanvas = document.getElementById('sigPad');
+  var sigCtx = null;
+  function clearSignature(){
+    if(!sigCtx || !sigCanvas) return;
+    sigCtx.save(); sigCtx.setTransform(1,0,0,1,0,0);
+    sigCtx.clearRect(0,0,sigCanvas.width,sigCanvas.height);
+    sigCtx.restore();
+  }
+  (function initSig(){
+    if(!sigCanvas || !sigCanvas.getContext) return;
+    sigCtx = sigCanvas.getContext('2d');
+    var dpr = window.devicePixelRatio || 1;
+    var rect = sigCanvas.getBoundingClientRect();
+    var w = rect.width || 320, h = rect.height || 72;
+    sigCanvas.width = Math.round(w * dpr);
+    sigCanvas.height = Math.round(h * dpr);
+    sigCtx.setTransform(dpr,0,0,dpr,0,0);
+    sigCtx.lineWidth = 2; sigCtx.lineCap = 'round'; sigCtx.lineJoin = 'round';
+    sigCtx.strokeStyle = '#0b2a4a';
+    var drawing=false, lx=0, ly=0;
+    function pt(e){ var r=sigCanvas.getBoundingClientRect(); return { x:e.clientX-r.left, y:e.clientY-r.top }; }
+    sigCanvas.addEventListener('pointerdown', function(e){ drawing=true; var p=pt(e); lx=p.x; ly=p.y; try{sigCanvas.setPointerCapture(e.pointerId);}catch(_){ } e.preventDefault(); });
+    sigCanvas.addEventListener('pointermove', function(e){ if(!drawing) return; var p=pt(e); sigCtx.beginPath(); sigCtx.moveTo(lx,ly); sigCtx.lineTo(p.x,p.y); sigCtx.stroke(); lx=p.x; ly=p.y; e.preventDefault(); });
+    function endDraw(){ drawing=false; }
+    sigCanvas.addEventListener('pointerup', endDraw);
+    sigCanvas.addEventListener('pointercancel', endDraw);
+    sigCanvas.addEventListener('pointerleave', endDraw);
+    var sc = document.getElementById('sigClear');
+    if(sc){ sc.addEventListener('click', clearSignature); }
+  })();
+
   /* ---------- 操作ボタン ---------- */
   document.getElementById('btnPrint').addEventListener('click', function(){ stopRec(); window.print(); });
   document.getElementById('btnClear').addEventListener('click', function(){
@@ -683,6 +730,7 @@
     });
     document.querySelectorAll('.marker').forEach(function(m){ m.remove(); });
     markerSeq = 0;
+    clearSignature();
     setStatus('クリアしました。');
   });
 

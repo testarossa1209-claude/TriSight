@@ -905,5 +905,71 @@ window.addEventListener('DOMContentLoaded', function() {
   }
 });
 </script>
-      </body>
+      <!-- ===== ② TriVoice 音声入力（本体あずさ欄・素通しモード）ここから ===== -->
+<script src="TriVoiceEngine.js"></script>
+<style>
+  #tvMic{
+    position:fixed; right:20px; bottom:20px; z-index:99999;
+    width:60px; height:60px; border-radius:50%;
+    border:none; background:#c0392b; color:#fff; font-size:26px; line-height:1;
+    box-shadow:0 4px 12px rgba(0,0,0,.35); cursor:pointer;
+  }
+  #tvMic.listening{ background:#e74c3c; animation:tvPulse 1s infinite; }
+  @keyframes tvPulse{
+    0%{box-shadow:0 0 0 0 rgba(231,76,60,.6)}
+    70%{box-shadow:0 0 0 14px rgba(231,76,60,0)}
+    100%{box-shadow:0 0 0 0 rgba(231,76,60,0)}
+  }
+  #tvStatus{
+    position:fixed; right:20px; bottom:88px; z-index:99999;
+    max-width:280px; background:rgba(0,0,0,.82); color:#fff;
+    font-size:12px; line-height:1.5; padding:7px 11px; border-radius:8px; display:none;
+  }
+</style>
+<button id="tvMic" type="button" title="音声入力" aria-label="音声入力">🎤</button>
+<div id="tvStatus"></div>
+<script>
+(function(){
+  /* 入力先：最後にカーソルがあった起案欄を覚える。既定は起案内容(input)。 */
+  var FIELDS = ['purpose','situation','input','referenceInput'];
+  var target = document.getElementById('input');
+  FIELDS.forEach(function(id){
+    var el = document.getElementById(id);
+    if(el){ el.addEventListener('focus', function(){ target = el; }); }
+  });
+
+  var statusEl = document.getElementById('tvStatus');
+  var hideTimer = null;
+  function showStatus(t){
+    if(!statusEl) return;
+    statusEl.textContent = t || '';
+    statusEl.style.display = t ? 'block' : 'none';
+  }
+
+  /* エンジン未読込（src先が無い等）の保険 */
+  if(typeof TriVoice === 'undefined'){
+    showStatus('音声エンジンが読み込めません（TriVoiceEngine.js の配置を確認）。');
+    return;
+  }
+
+  TriVoice.init({
+    micButton: '#tvMic',
+    status: showStatus,
+    onText: function(txt){
+      var el = target || document.getElementById('input');
+      if(!el){ return; }
+      var sep = (el.value && !/\s$/.test(el.value)) ? ' ' : '';
+      el.value += sep + txt;
+      el.dispatchEvent(new Event('input'));
+      el.focus();
+      showStatus('入力しました。続けて話すには🎤を押してください。');
+      if(hideTimer){ clearTimeout(hideTimer); }
+      hideTimer = setTimeout(function(){ showStatus(''); }, 4000);
+    },
+    readyMessage: ''   /* 起動直後は何も表示しない（録音時のみ案内を出す） */
+  });
+})();
+</script>
+<!-- ===== ② TriVoice 音声入力ここまで ===== -->
+</body>
 </html>

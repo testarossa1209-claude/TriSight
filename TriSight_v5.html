@@ -930,7 +930,6 @@ window.addEventListener('DOMContentLoaded', function() {
 <div id="tvStatus"></div>
 <script>
 (function(){
-  /* 入力先：最後にカーソルがあった起案欄を覚える。既定は起案内容(input)。 */
   var FIELDS = ['purpose','situation','input','referenceInput'];
   var target = document.getElementById('input');
   FIELDS.forEach(function(id){
@@ -944,9 +943,20 @@ window.addEventListener('DOMContentLoaded', function() {
     if(!statusEl) return;
     statusEl.textContent = t || '';
     statusEl.style.display = t ? 'block' : 'none';
+    if(hideTimer){ clearTimeout(hideTimer); }
+    if(t){ hideTimer = setTimeout(function(){ showStatus(''); }, 4000); }
   }
 
-  /* エンジン未読込（src先が無い等）の保険 */
+  /* 発話を正規化（空白・長音・中黒・句読点を除去し小文字化）して、コマンド語"だけ"か判定 */
+  function norm(s){
+    return (s||'').replace(/[\s　・ー－―\-。、，．,.!?！？]/g,'').toLowerCase();
+  }
+  var CLEAR_ONE = ['クリア','くりあ','clear','クリアして','この欄クリア','欄クリア'].map(norm);
+  var CLEAR_ALL = ['オールクリア','おーるくりあ','allclear','全部クリア','ぜんぶクリア',
+                   '全部クリアして','全部消して','ぜんぶけして','全部消す','全部削除'].map(norm);
+
+  function clearField(el){ if(el){ el.value=''; el.dispatchEvent(new Event('input')); } }
+
   if(typeof TriVoice === 'undefined'){
     showStatus('音声エンジンが読み込めません（TriVoiceEngine.js の配置を確認）。');
     return;
@@ -958,15 +968,28 @@ window.addEventListener('DOMContentLoaded', function() {
     onText: function(txt){
       var el = target || document.getElementById('input');
       if(!el){ return; }
+      var key = norm(txt);
+
+      /* 音声コマンド：その言葉"だけ"を言ったときに発動（通常の口述では誤爆しない） */
+      if(CLEAR_ALL.indexOf(key) !== -1){
+        FIELDS.forEach(function(id){ clearField(document.getElementById(id)); });
+        showStatus('全欄をクリアしました。');
+        return;
+      }
+      if(CLEAR_ONE.indexOf(key) !== -1){
+        clearField(el); el.focus();
+        showStatus('この欄をクリアしました。');
+        return;
+      }
+
+      /* 通常の追記 */
       var sep = (el.value && !/\s$/.test(el.value)) ? ' ' : '';
       el.value += sep + txt;
       el.dispatchEvent(new Event('input'));
       el.focus();
       showStatus('入力しました。続けて話すには🎤を押してください。');
-      if(hideTimer){ clearTimeout(hideTimer); }
-      hideTimer = setTimeout(function(){ showStatus(''); }, 4000);
     },
-    readyMessage: ''   /* 起動直後は何も表示しない（録音時のみ案内を出す） */
+    readyMessage: ''
   });
 })();
 </script>

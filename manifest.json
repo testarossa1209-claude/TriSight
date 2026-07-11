@@ -1,12 +1,12 @@
 {
-  "name": "TriGate ― 補助金・助成金の受付",
-  "short_name": "TriGate",
-  "description": "行政や外部から届いた補助金・助成金の案内PDFを入れると、当社が対象になりそうか・締切・逆算タスク・必要書類を返す受付。",
+  "name": "TriSight ― 出力品質保証システム",
+  "short_name": "TriSight",
+  "description": "TriSight製品ファミリーの玄関。三身一体（あずさ・なぎさ・つかさ）による出力品質保証システム。",
   "lang": "ja",
-  "start_url": "https://testarossa1209-claude.github.io/TriSight/TriGate.html",
+  "start_url": "https://testarossa1209-claude.github.io/TriSight/",
   "scope": "https://testarossa1209-claude.github.io/TriSight/",
   "display": "standalone",
-  "background_color": "#eef1f5",
+  "background_color": "#f3f2ef",
   "theme_color": "#16213a",
   "icons": [
     {
@@ -26,16 +26,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
-    }
-  ],
-  "file_handlers": [
-    {
-      "action": "https://testarossa1209-claude.github.io/TriSight/TriGate.html",
-      "accept": {
-        "application/pdf": [
-          ".pdf"
-        ]
-      }
     }
   ]
 }

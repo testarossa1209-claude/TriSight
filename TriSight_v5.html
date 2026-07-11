@@ -711,11 +711,19 @@ function showOutput(id, text) {
 /* ===== TriSight 認証コード（リレー保護・2026-07-11導入） ===== */
 function tsCode(){
   var c = localStorage.getItem('trisight_access_code');
-  if(!c){
-    c = prompt('TriSight 認証コードを入力してください（この端末での初回のみ）');
-    if(c){ c = c.trim(); localStorage.setItem('trisight_access_code', c); }
+  if(c && /[^\x21-\x7E]/.test(c)){ localStorage.removeItem('trisight_access_code'); c = null; }
+  while(!c){
+    c = prompt('TriSight 認証コードを入力してください（この端末での初回のみ・半角英数字）');
+    if(c === null){ return ''; }
+    c = c.trim();
+    if(c === '' || /[^\x21-\x7E]/.test(c)){
+      alert('認証コードは半角英数字で入力してください（全角文字・日本語・空白は使えません）。\n日本語入力（IME）をオフにして、打ち直してください。');
+      c = null;
+      continue;
+    }
+    localStorage.setItem('trisight_access_code', c);
   }
-  return (c || '').trim();
+  return c;
 }
 function tsAuthFail(status){
   if(status === 401){

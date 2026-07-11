@@ -185,13 +185,32 @@ throw "AI応答の解析に失敗"
 }
 
 const RELAY="https://trisight-relay.vercel.app"
+
+  /* ===== TriSight 認証コード（リレー保護・2026-07-11導入） ===== */
+  function tsCode(){
+    var c = localStorage.getItem('trisight_access_code');
+    if(!c){
+      c = prompt('TriSight 認証コードを入力してください（この端末での初回のみ）');
+      if(c){ c = c.trim(); localStorage.setItem('trisight_access_code', c); }
+    }
+    return (c || '').trim();
+  }
+  function tsAuthFail(status){
+    if(status === 401){
+      localStorage.removeItem('trisight_access_code');
+      alert('TriSight認証コードが未入力または不一致です。ページを再読み込みして、正しいコードを入力し直してください。');
+      return true;
+    }
+    return false;
+  }
+
   async function callAI(provider,_key,prompt){
 let url=provider==="claude"?RELAY+"/api/anthropic":RELAY+"/api/openai"
 let body=provider==="claude"
 ?{model:"claude-sonnet-4-6",max_tokens:2000,messages:[{role:"user",content:prompt}]}
 :{model:"gpt-4o",messages:[{role:"user",content:prompt}]}
-let res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})
-if(!res.ok){throw "通信エラー("+res.status+")"}
+let res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json","x-trisight-code":tsCode()},body:JSON.stringify(body)})
+if(!res.ok){if(tsAuthFail(res.status)){throw "認証エラー(401)"};throw "通信エラー("+res.status+")"}
 let j=await res.json()
 if(provider==="claude"){if(!j.content||!j.content[0])throw "Claude応答異常";return j.content[0].text}
 if(!j.choices||!j.choices[0])throw "OpenAI応答異常"

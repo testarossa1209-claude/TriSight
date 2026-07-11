@@ -707,10 +707,29 @@ function showOutput(id, text) {
   out.className = 'stage-output visible';
 }
 
+
+/* ===== TriSight 認証コード（リレー保護・2026-07-11導入） ===== */
+function tsCode(){
+  var c = localStorage.getItem('trisight_access_code');
+  if(!c){
+    c = prompt('TriSight 認証コードを入力してください（この端末での初回のみ）');
+    if(c){ c = c.trim(); localStorage.setItem('trisight_access_code', c); }
+  }
+  return (c || '').trim();
+}
+function tsAuthFail(status){
+  if(status === 401){
+    localStorage.removeItem('trisight_access_code');
+    alert('TriSight認証コードが未入力または不一致です。ページを再読み込みして、正しいコードを入力し直してください。');
+    return true;
+  }
+  return false;
+}
+
 async function callAzusa(input, key) {
   const r = await fetch('https://trisight-relay.vercel.app/api/openai', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-trisight-code': tsCode() },
     body: JSON.stringify({
       model: 'gpt-4o',
       max_tokens: 4000,
@@ -719,14 +738,14 @@ async function callAzusa(input, key) {
       ]
     })
   });
-  if (!r.ok) { const e = await r.json(); throw new Error('あずさエラー: ' + (e.error?.message || r.status)); }
+  if (!r.ok) { tsAuthFail(r.status); const e = await r.json(); throw new Error('あずさエラー: ' + (e.error?.message || r.status)); }
   return (await r.json()).choices[0].message.content;
 }
 
 async function callTsukasa(systemPrompt, userInput) {
   const r = await fetch('https://trisight-relay.vercel.app/api/openai', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-trisight-code': tsCode() },
     body: JSON.stringify({
       model: 'gpt-4o',
       max_tokens: 4000,
@@ -736,7 +755,7 @@ async function callTsukasa(systemPrompt, userInput) {
       ]
     })
   });
-  if (!r.ok) { const e = await r.json(); throw new Error('つかさエラー: ' + (e.error?.message || r.status)); }
+  if (!r.ok) { tsAuthFail(r.status); const e = await r.json(); throw new Error('つかさエラー: ' + (e.error?.message || r.status)); }
   return (await r.json()).choices[0].message.content;
 }
 
@@ -744,7 +763,8 @@ async function callClaude(system, user, key) {
   const r = await fetch('https://trisight-relay.vercel.app/api/anthropic', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'x-trisight-code': tsCode()
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
@@ -753,7 +773,7 @@ async function callClaude(system, user, key) {
       messages: [{ role: 'user', content: user }]
     })
   });
-  if (!r.ok) { const e = await r.json(); throw new Error(e.error?.message || r.status); }
+  if (!r.ok) { tsAuthFail(r.status); const e = await r.json(); throw new Error(e.error?.message || r.status); }
   return (await r.json()).content[0].text;
 }
 

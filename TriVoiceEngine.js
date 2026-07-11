@@ -34,6 +34,25 @@
     maxTokens:   2000
   };
 
+  /* ===== TriSight 認証コード（リレー保護・2026-07-11導入） ===== */
+  function tsCode(){
+    var c = localStorage.getItem('trisight_access_code');
+    if(!c){
+      c = prompt('TriSight 認証コードを入力してください（この端末での初回のみ）');
+      if(c){ c = c.trim(); localStorage.setItem('trisight_access_code', c); }
+    }
+    return (c || '').trim();
+  }
+  function tsAuthFail(status){
+    if(status === 401){
+      localStorage.removeItem('trisight_access_code');
+      alert('TriSight認証コードが未入力または不一致です。ページを再読み込みして、正しいコードを入力し直してください。');
+      return true;
+    }
+    return false;
+  }
+
+
   /* ---- 内部状態（1ページ1インスタンス） -------------------------------- */
   var cfg = null;
   var micEl = null, statusTarget = null;
@@ -111,9 +130,10 @@
     fd.append('language', cfg.language);
     fd.append('response_format', 'json');
     setStatus('送信中… 文字起こしを待っています。');
-    fetch(cfg.relay + cfg.sttPath, { method:'POST', body:fd })
+    fetch(cfg.relay + cfg.sttPath, { method:'POST', headers:{ 'x-trisight-code': tsCode() }, body:fd })
       .then(function(resp){ return resp.json().then(function(d){ return { ok:resp.ok, status:resp.status, d:d }; }); })
       .then(function(r){
+        if(tsAuthFail(r.status)){ setStatus('認証コード不一致。再読み込みして入力し直してください。'); return; }
         if(!r.ok || r.d.error){ setStatus('文字起こし失敗：' + (r.d.error || ('HTTP ' + r.status))); return; }
         var txt = (r.d.text || '').trim();
         if(!txt){ setStatus('音声を認識できませんでした。もう一度お試しください。'); return; }
@@ -149,7 +169,7 @@
       '【項目一覧】\n' + schemaText + '\n\n【文字起こし】\n' + txt;
 
     fetch(cfg.relay + cfg.aiPath, {
-      method:'POST', headers:{ 'Content-Type':'application/json' },
+      method:'POST', headers:{ 'Content-Type':'application/json', 'x-trisight-code': tsCode() },
       body: JSON.stringify({ model: cfg.aiModel, max_tokens: cfg.maxTokens, messages:[{ role:'user', content: prompt }] })
     })
       .then(function(resp){ return resp.json(); })

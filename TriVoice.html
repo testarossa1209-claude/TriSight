@@ -260,6 +260,25 @@ details.registry>summary .chev{color:var(--ink-soft);font-weight:400;font-size:1
 var RELAY_URL = "https://trisight-relay.vercel.app/api/anthropic"; // なぎさ中継（Anthropic）
 var MODEL     = "claude-opus-4-8"; // なぎさ＝Opus 4.8
 
+  /* ===== TriSight 認証コード（リレー保護・2026-07-11導入） ===== */
+  function tsCode(){
+    var c = localStorage.getItem('trisight_access_code');
+    if(!c){
+      c = prompt('TriSight 認証コードを入力してください（この端末での初回のみ）');
+      if(c){ c = c.trim(); localStorage.setItem('trisight_access_code', c); }
+    }
+    return (c || '').trim();
+  }
+  function tsAuthFail(status){
+    if(status === 401){
+      localStorage.removeItem('trisight_access_code');
+      alert('TriSight認証コードが未入力または不一致です。ページを再読み込みして、正しいコードを入力し直してください。');
+      return true;
+    }
+    return false;
+  }
+
+
 /* ====== 名前帳（localStorage） ====== */
 var LS_KEY = "tricare_lite_registry_v1";
 function loadRegistry(){
@@ -381,7 +400,7 @@ function run(){
 
   fetch(RELAY_URL,{
     method:"POST",
-    headers:{"Content-Type":"application/json"},
+    headers:{"Content-Type":"application/json","x-trisight-code":tsCode()},
     body:payloadStr
   })
   .then(function(res){
@@ -390,6 +409,7 @@ function run(){
   .then(function(r){
     btn.disabled=false;
     if(!r.ok){
+      if(tsAuthFail(r.status)){ setStatus("err","認証コード不一致。再読み込みして入力し直してください。口述内容は消えていません。"); return; }
       var msg = (r.data && (r.data.error && (r.data.error.message||r.data.error)) ) || ("HTTP "+r.status);
       setStatus("err","整形に失敗しました（"+msg+"）。通信状況を確認して、もう一度お試しください。口述内容は消えていません。");
       return;

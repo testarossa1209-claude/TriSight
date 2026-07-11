@@ -277,6 +277,25 @@
   // ★ 既存のTriSight共通リレー（Vercel）へ接続。APIキーはサーバー側で管理。
   const PROXY_URL = "https://trisight-relay.vercel.app/api/anthropic";
 
+  /* ===== TriSight 認証コード（リレー保護・2026-07-11導入） ===== */
+  function tsCode(){
+    var c = localStorage.getItem('trisight_access_code');
+    if(!c){
+      c = prompt('TriSight 認証コードを入力してください（この端末での初回のみ）');
+      if(c){ c = c.trim(); localStorage.setItem('trisight_access_code', c); }
+    }
+    return (c || '').trim();
+  }
+  function tsAuthFail(status){
+    if(status === 401){
+      localStorage.removeItem('trisight_access_code');
+      alert('TriSight認証コードが未入力または不一致です。ページを再読み込みして、正しいコードを入力し直してください。');
+      return true;
+    }
+    return false;
+  }
+
+
   const $ = id => document.getElementById(id);
   let selectedSrc = "TriSight®（経営理論）";
   let stepState = []; // true=完了
@@ -337,7 +356,7 @@
 
     const res = await fetch(PROXY_URL,{
       method:"POST",
-      headers:{"Content-Type":"application/json"},
+      headers:{"Content-Type":"application/json","x-trisight-code":tsCode()},
       body:JSON.stringify({
         model:"claude-sonnet-4-6",
         max_tokens:3000,
@@ -345,7 +364,7 @@
         messages:[{role:"user",content:userMsg}]
       })
     });
-    if(!res.ok) throw new Error("API "+res.status+"（中継サーバの住所が正しいか、鍵が設定されているか確認してください）");
+    if(!res.ok){ if(tsAuthFail(res.status)) throw new Error("認証エラー（401）：認証コードを確認してください。"); throw new Error("API "+res.status+"（中継サーバの住所が正しいか、鍵が設定されているか確認してください）"); }
     const data = await res.json();
     const text = (data.content||[])
       .filter(b=>b.type==="text").map(b=>b.text).join("").trim();

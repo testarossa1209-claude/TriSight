@@ -284,6 +284,25 @@
 <script>
   // ---- 設定 ----------------------------------------------------
   const RELAY = "https://trisight-relay.vercel.app/api/anthropic";
+
+  /* ===== TriSight 認証コード（リレー保護・2026-07-11導入） ===== */
+  function tsCode(){
+    var c = localStorage.getItem('trisight_access_code');
+    if(!c){
+      c = prompt('TriSight 認証コードを入力してください（この端末での初回のみ）');
+      if(c){ c = c.trim(); localStorage.setItem('trisight_access_code', c); }
+    }
+    return (c || '').trim();
+  }
+  function tsAuthFail(status){
+    if(status === 401){
+      localStorage.removeItem('trisight_access_code');
+      alert('TriSight認証コードが未入力または不一致です。ページを再読み込みして、正しいコードを入力し直してください。');
+      return true;
+    }
+    return false;
+  }
+
   const MODEL = "claude-sonnet-4-6";
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -502,12 +521,13 @@
     try{
       const res = await fetch(RELAY,{
         method:"POST",
-        headers:{"Content-Type":"application/json"},
+        headers:{"Content-Type":"application/json","x-trisight-code":tsCode()},
         body:JSON.stringify({
           model:MODEL, max_tokens:8000, system:SYSTEM, messages
         })
       });
       if(!res.ok){
+        if(tsAuthFail(res.status)) throw new Error("認証エラー（401）：認証コードを確認してください。");
         const t=await res.text();
         let extra="";
         if(res.status===413) extra="　／　PDFが大きすぎてリレーの上限を超えた可能性があります（画像PDFは重くなりがち）。";

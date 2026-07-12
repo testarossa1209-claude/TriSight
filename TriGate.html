@@ -493,6 +493,91 @@
       }
     });
 
+    /* ---- 第二段：AIゲート判定（公募情報×企業基礎情報） 2026-07-13 ---- */
+    const GATE_MODEL = "claude-sonnet-4-6";
+    const GATE_SYSTEM = "あなたはTriSightの補助金ゲート判定係（検証担当・なぎさ）です。"
+      + "与えられた『公募情報』と『企業基礎情報』だけを根拠に、この企業がこの補助金を追う価値があるかを判定します。"
+      + "推測で要件を補わず、公募情報に書かれていない点は『確認事項』に回してください。"
+      + "観点：①対象要件との適合（地域・業種・規模・事業内容）②企業の事業計画との整合③上限額・補助率と申請負担の釣り合い④受付締切までの現実性。"
+      + "出力は次のJSONのみ。前置き・後書き・コードブロック記号は一切禁止。"
+      + '{"判定":"追う"|"見送り"|"要確認","適合度":0から100の整数,"理由":["…"],"懸念":["…"],"確認事項":["…"],"次の一手":"…（1文）"}';
+
+    function gateSourceText(d){
+      let ov = "";
+      if(d.detail){
+        try{ ov = new DOMParser().parseFromString(String(d.detail), "text/html").body.textContent || ""; }
+        catch(_){ ov = String(d.detail).replace(/<[^>]*>/g, " "); }
+        ov = ov.replace(/[ \t\u3000]+/g, " ").replace(/\s*\n\s*/g, "\n").trim();
+        if(ov.length > 2000) ov = ov.slice(0, 2000) + "…（以下略）";
+      }
+      const gl = Array.isArray(d.application_guidelines)
+        ? d.application_guidelines.map(f => f && f.name).filter(Boolean).join(" ／ ") : "";
+      const L = [];
+      const add = (k, v) => { if(v != null && v !== "") L.push(k + "：" + v); };
+      add("案件名", d.title || d.name);
+      add("キャッチコピー", d.subsidy_catch_phrase);
+      add("利用目的", d.use_purpose);
+      add("対象業種", d.industry);
+      add("従業員規模", d.target_number_of_employees);
+      add("対象地域", d.target_area_detail || d.target_area_search);
+      add("上限額", fy(d.subsidy_max_limit));
+      add("補助率", d.subsidy_rate);
+      add("受付期間", fd(d.acceptance_start_datetime) + " 〜 " + fd(d.acceptance_end_datetime));
+      if(d.project_end_deadline) add("事業終了期限", fd(d.project_end_deadline));
+      add("公募要領ファイル名", gl);
+      if(ov) L.push("概要：\n" + ov);
+      return L.join("\n");
+    }
+
+    function gateParse(t){
+      let s = String(t).replace(/```json/gi, "").replace(/```/g, "").trim();
+      const a = s.indexOf("{");
+      if(a > 0) s = s.slice(a);
+      try{ return JSON.parse(s); }catch(_){}
+      const b = s.lastIndexOf("}");
+      if(b > 0){ try{ return JSON.parse(s.slice(0, b + 1)); }catch(_){} }
+      throw new Error("判定結果をJSONとして読めませんでした。もう一度お試しください。");
+    }
+
+    async function aiGateCheck(d){
+      const code = tsCode();
+      if(!code) throw new Error("認証コードが未入力です。");
+      const userMsg = "■ 公募情報（Jグランツ）\n" + gateSourceText(d)
+        + "\n\n■ 企業基礎情報（端末内JSON）\n" + JSON.stringify(company, null, 1)
+        + "\n\n上記のみを根拠に、指定のJSONだけで判定を返してください。";
+      const res = await fetch(RELAY, {
+        method: "POST",
+        headers: {"Content-Type": "application/json", "x-trisight-code": code},
+        body: JSON.stringify({ model: GATE_MODEL, max_tokens: 1500, system: GATE_SYSTEM,
+          messages: [{ role: "user", content: userMsg }] })
+      });
+      if(tsAuthFail(res.status)) throw new Error("認証エラー（401）：認証コードを確認してください。");
+      if(!res.ok){
+        const t = await res.text();
+        throw new Error("リレー応答 " + res.status + "：" + t.slice(0, 200));
+      }
+      const data = await res.json();
+      const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
+      if(!text) throw new Error("空の応答が返りました。");
+      return gateParse(text);
+    }
+
+    function gateHtml(g){
+      const v = String(g["判定"] || "要確認");
+      const col = v === "追う" ? "var(--ok)" : (v === "見送り" ? "var(--fix)" : "var(--muted)");
+      const li = a => (Array.isArray(a) && a.length)
+        ? "<ul style='margin:2px 0 6px 18px;padding:0'>" + a.map(x => "<li>" + e(x) + "</li>").join("") + "</ul>" : "";
+      let h = '<div style="margin-top:6px;border-top:1px dashed var(--line);padding-top:6px">'
+        + '<b>AIゲート判定：<span style="color:' + col + '">' + e(v) + '</span></b>'
+        + (g["適合度"] != null ? '　適合度 ' + e(g["適合度"]) + ' / 100' : '') ;
+      if(Array.isArray(g["理由"]) && g["理由"].length) h += "<br>理由" + li(g["理由"]);
+      if(Array.isArray(g["懸念"]) && g["懸念"].length) h += "懸念" + li(g["懸念"]);
+      if(Array.isArray(g["確認事項"]) && g["確認事項"].length) h += "確認事項" + li(g["確認事項"]);
+      if(g["次の一手"]) h += "次の一手：" + e(g["次の一手"]);
+      h += '<br><span style="color:var(--muted);font-weight:400">※判定はJグランツ掲載情報と基礎情報のみが根拠です。公募要領PDFの精読は、下のPDF読み取り機能をご利用ください。</span></div>';
+      return h;
+    }
+
     /* ---- 詳細表示と「この案件で進める」（候補登録） ---- */
     async function fetchDetail(id){
       const code = tsCode();
@@ -593,10 +678,38 @@
             ? '<span style="color:var(--ok)">機械足切り：通過</span>'
             : '<span style="color:var(--fix)">機械足切り：不通過</span>';
           const lines = mc.results.map(r => e((r.ok ? "○ " : "× ") + r.k + "：" + r.v)).join("<br>");
-          msg.innerHTML = head + "<br>" + lines
-            + '<br><span style="color:var(--muted);font-weight:400">第二段のAIゲート判定（公募要領×基礎情報）は次の実装で接続します。</span>';
+          let gatePart;
+          if(mc.pass){
+            gatePart = '<br><button class="rbtn" data-act="gate" data-id="'+e(id)+'" style="margin-top:6px">第二段：AIゲート判定を実行（API利用）</button><div class="diggate"></div>';
+          }else{
+            gatePart = '<br><span style="color:var(--muted);font-weight:400">機械足切り不通過のため、AIゲート判定（API利用）は省略します。</span>';
+          }
+          msg.innerHTML = head + "<br>" + lines + gatePart;
         }else if(msg){
           msg.textContent = "候補に登録しました（判定用の詳細が取得できず、足切りは未実施です）。";
+        }
+      }
+
+      if(b.dataset.act === "gate"){
+        const id = b.dataset.id;
+        const box = b.parentElement.querySelector(".diggate");
+        b.disabled = true; b.textContent = "AIゲート判定中…";
+        try{
+          let d = digDetails[id];
+          if(!d){ d = await fetchDetail(id); digDetails[id] = d; }
+          const g = await aiGateCheck(d);
+          if(box) box.innerHTML = gateHtml(g);
+          try{
+            let cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]");
+            cands = cands.map(c => c.id === id ? Object.assign(c, { gate: g, gated: new Date().toISOString() }) : c);
+            localStorage.setItem("trisight_dig_candidates", JSON.stringify(cands));
+          }catch(_){}
+          b.textContent = "AIゲート判定を再実行（API利用）";
+        }catch(err){
+          if(box) box.innerHTML = '<span style="color:var(--fix)">' + e(String(err && err.message ? err.message : err)) + '</span>';
+          b.textContent = "第二段：AIゲート判定を実行（API利用）";
+        }finally{
+          b.disabled = false;
         }
       }
     });

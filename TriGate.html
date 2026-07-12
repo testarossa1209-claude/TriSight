@@ -453,9 +453,19 @@
           st.textContent = "「"+kw+"」で受付中の補助金は見つかりませんでした。キーワードを変えてお試しください。";
           return;
         }
-        st.textContent = "受付中 "+list.length+" 件（キーワード："+kw+"）";
+        let show = list;
+        if(company){
+          show = list.filter(it => { const m = mechCheck(it); return m ? m.pass : true; });
+          st.textContent = "受付中 "+list.length+" 件 → 基礎情報による足切り後 "+show.length+" 件を表示（キーワード："+kw+"）";
+          if(show.length === 0){
+            st.textContent += "　※全件が地域・業種・従業員規模の条件で除外されました。";
+            return;
+          }
+        }else{
+          st.textContent = "受付中 "+list.length+" 件（キーワード："+kw+"）※基礎情報が未読み込みのため全件表示";
+        }
         let html = '<table class="digtbl"><thead><tr><th>案件名</th><th>上限額</th><th>受付締切</th><th>対象地域</th><th></th></tr></thead><tbody>';
-        for(const it of list){
+        for(const it of show){
           html += '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'">'
                 + "<td>"+e(it.title || it.name || "（名称不明）")+"</td>"
                 + "<td>"+fy(it.subsidy_max_limit)+"</td>"

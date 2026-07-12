@@ -408,6 +408,17 @@
       }
       results.push({k:"従業員規模", v:(t || "（指定なし）"), ok:empOk});
 
+      // 案件名の除外語（ただし探索キーワードを含む案件は優先して残す）
+      const title = String(d.title || d.name || "");
+      const ngList  = Array.isArray(company["案件名の除外キーワード"]) ? company["案件名の除外キーワード"] : [];
+      const posList = Array.isArray(company["探索キーワード"]) ? company["探索キーワード"] : [];
+      let ngOk = true, ngHit = "";
+      if(title && ngList.length){
+        const hit = ngList.find(w => w && title.includes(w));
+        if(hit && !posList.some(w => w && title.includes(w))){ ngOk = false; ngHit = hit; }
+      }
+      results.push({k:"案件名の除外語", v:(ngOk ? "該当なし" : "「"+ngHit+"」を含む"), ok:ngOk});
+
       return { pass: results.every(r => r.ok), results };
     }
 

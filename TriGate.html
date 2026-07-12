@@ -384,16 +384,59 @@
     }
 
     /* ---- 第一段：機械足切り（地域・業種・従業員規模） ---- */
+    const PREFS = ["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県","静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県","徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"];
+    const REGIONS = {
+      "東北":["青森県","岩手県","宮城県","秋田県","山形県","福島県"],
+      "関東":["茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県"],
+      "首都圏":["埼玉県","千葉県","東京都","神奈川県"],
+      "甲信越":["山梨県","長野県","新潟県"],
+      "北陸":["富山県","石川県","福井県"],
+      "東海":["岐阜県","静岡県","愛知県","三重県"],
+      "近畿":["滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県"],
+      "関西":["滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県"],
+      "中国地方":["鳥取県","島根県","岡山県","広島県","山口県"],
+      "四国":["徳島県","香川県","愛媛県","高知県"],
+      "九州":["福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県"]
+    };
     function mechCheck(d){
       if(!company) return null;
       const comp = (company["会社"] || {}), fil = (company["機械足切り条件"] || {});
       const pref = comp["本店所在地_都道府県"] || fil["対象地域"] || "";
+      /* 進出予定地域：出店・進出計画がある場合の予定県。未定なら空＝全国対象のみ通す */
+      const planned = [].concat(comp["進出予定地域"] || company["進出予定地域"] || []).filter(Boolean);
+      const myPrefs = [pref].concat(planned).filter(Boolean);
+      const myCity = comp["本店所在地_市区町村"] || "";
       const emp  = Number(comp["従業員数_合計"]);
       const results = [];
 
       const area = d.target_area_search || "";
-      const areaOk = !area || area.includes("全国") || (pref && area.includes(pref));
-      results.push({k:"対象地域", v:(area || "（指定なし）"), ok:areaOk});
+      let areaOk = !area || area.includes("全国") || myPrefs.some(p => area.includes(p));
+      let areaV  = area || "（指定なし）";
+      if(areaOk && myPrefs.length){
+        const extra = String(d.target_area_detail || "") + "　" + String(d.title || d.name || "");
+        const inMine = myPrefs.some(p => extra.includes(p)) || (myCity && extra.includes(myCity));
+        if(extra.trim() && !extra.includes("全国") && !inMine){
+          /* ① 他県名の限定記載 */
+          const other = PREFS.find(p => !myPrefs.includes(p) && extra.includes(p));
+          if(other){ areaOk = false; areaV = (area ? area + "／" : "") + "文面に「"+other+"」の地域限定記載"; }
+          /* ② 地方区分（東北・首都圏・九州など）の限定記載：自社県がそのブロックに含まれなければ弾く */
+          if(areaOk){
+            for(const rn in REGIONS){
+              if(extra.includes(rn) && !REGIONS[rn].some(p => myPrefs.includes(p))){
+                areaOk = false; areaV = (area ? area + "／" : "") + "文面に「"+rn+"」の地域限定記載"; break;
+              }
+            }
+          }
+          /* ③ 市区町村レベルの明確な限定文言（○○市限定・○○市内の事業者 等） */
+          if(areaOk){
+            const mm = extra.match(/([一-龠々ヶ]{1,6}?[市区町村])(限定|内の|内に|に所在|に本社|に事業所)/);
+            if(mm && mm[1] !== "市区町村" && mm[1] !== "市町村" && (!myCity || mm[1] !== myCity)){
+              areaOk = false; areaV = (area ? area + "／" : "") + "文面に「"+mm[1]+"」の地域限定記載";
+            }
+          }
+        }
+      }
+      results.push({k:"対象地域", v:areaV, ok:areaOk});
 
       const ind = d.industry || "";
       const tokens = String(fil["業種"] || "").split(/[，,、\s]+/).filter(Boolean);
@@ -638,7 +681,8 @@
       const titles = items.map((it, i) => (i + 1) + ". " + String(it.title || it.name || "（名称不明）")).join("\n");
       const sys = "あなたはTriSightの補助金仕分け係です。企業情報と補助金の案件名一覧を渡します。"
         + "案件名だけから判断して、この企業が申請できる可能性が少しでもある案件の番号を残してください。"
-        + "迷ったら残す（保守的に）。明らかに無関係な分野（例：この企業の業種・所在地・事業計画とまったく接点がない分野）だけを落とします。"
+        + "迷ったら残す（保守的に）。明らかに無関係な分野（例：この企業の業種・事業計画とまったく接点がない分野）は落とします。"
+        + "また、案件名に地域名（都道府県・地方・市区町村）が含まれ、それが企業の本店所在地・進出予定地域と明らかに合わない場合も落としてください。"
         + '出力は {"残す":[番号,…]} のJSONのみ。前置き・後書き・コードブロック記号は禁止。';
       const userMsg = "■ 企業情報\n" + compBrief + "\n\n■ 案件名一覧\n" + titles;
       const res = await fetch(RELAY, {

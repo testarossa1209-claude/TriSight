@@ -447,7 +447,15 @@
       if(d.front_subsidy_detail_page_url){
         add("公式ページ", '<a href="'+e(d.front_subsidy_detail_page_url)+'" target="_blank" rel="noopener">Jグランツで開く</a>');
       }
-      let ov = d.detail ? String(d.detail) : "";
+      let ov = "";
+      if(d.detail){
+        try{
+          ov = new DOMParser().parseFromString(String(d.detail), "text/html").body.textContent || "";
+        }catch(_){
+          ov = String(d.detail).replace(/<[^>]*>/g, " ");
+        }
+        ov = ov.replace(/[ \t\u3000]+/g, " ").replace(/\s*\n\s*/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+      }
       if(ov.length > 800) ov = ov.slice(0,800) + "…（続きは公式ページで）";
       const ovHtml = ov ? '<div class="digov">'+e(ov)+"</div>" : "";
       return "<dl>"+rows.join("")+"</dl>"+ovHtml

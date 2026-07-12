@@ -466,15 +466,35 @@
         }
         let show = list;
         if(company){
+          /* 第1段：粗足切り（一覧項目・無料・瞬時） */
           show = list.filter(it => { const m = mechCheck(it); return m ? m.pass : true; });
           if(show.length === 0){
             st.textContent = "受付中 "+list.length+" 件　※全件が地域・業種・従業員規模の条件で除外されました。";
             return;
           }
-          /* 精密足切り：全件の詳細を並行照合し、通過案件だけを残す（jグランツ照会のみ・API課金なし） */
-          const total = show.length;
+          /* 第2段：案件名の一括AI仕分け（API1回・明らかな無関係を落とす） */
+          let sortNote = "";
+          if(show.length > 1){
+            st.textContent = "受付中 "+list.length+" 件 → 粗足切り "+show.length+" 件 → 案件名をAIで一括仕分け中…（API 1回）";
+            try{
+              const kept = await aiTitleSort(show);
+              if(Array.isArray(kept)){
+                show = show.filter((it, i) => kept.includes(i + 1));
+                if(show.length === 0){
+                  st.textContent = "受付中 "+list.length+" 件　※案件名のAI仕分けで全件が無関係と判定されました。";
+                  return;
+                }
+              }else{
+                sortNote = "（AI仕分けは結果を読めず未適用）";
+              }
+            }catch(err){
+              sortNote = "（AI仕分け失敗のため未適用："+String(err && err.message ? err.message : err).slice(0,60)+"）";
+            }
+          }
+          const aiCount = show.length;
+          /* 第3段：精密足切り（生き残りだけ詳細照合・無料・地域や規模の最終確認） */
           let done = 0;
-          st.textContent = "受付中 "+list.length+" 件 → 粗足切り "+total+" 件 → 精密足切り中…（0/"+total+"）";
+          st.textContent = "受付中 "+list.length+" 件 → AI仕分け "+aiCount+" 件 → 精密足切り中…（0/"+aiCount+"）";
           const passIds = {};
           const queue = show.slice();
           async function worker(){
@@ -490,16 +510,16 @@
                 passIds[it.id] = true; /* 取得失敗は見落とし防止のため残す */
               }
               done++;
-              st.textContent = "受付中 "+list.length+" 件 → 粗足切り "+total+" 件 → 精密足切り中…（"+done+"/"+total+"）";
+              st.textContent = "受付中 "+list.length+" 件 → AI仕分け "+aiCount+" 件 → 精密足切り中…（"+done+"/"+aiCount+"）";
             }
           }
           await Promise.all([worker(), worker(), worker(), worker()]);
           show = show.filter(it => !it.id || passIds[it.id]);
-          st.textContent = "受付中 "+list.length+" 件 → 精密足切り後 "+show.length+" 件を表示（キーワード："+kw+"）";
           if(show.length === 0){
-            st.textContent += "　※全件が精密足切りで除外されました。条件を見直してください。";
+            st.textContent = "受付中 "+list.length+" 件　※精密足切りで全件が除外されました。";
             return;
           }
+          st.textContent = "受付中 "+list.length+" 件 → AI仕分け "+aiCount+" 件 → 精密足切り後 "+show.length+" 件を表示"+sortNote+"（キーワード："+kw+"）";
         }else{
           st.textContent = "受付中 "+list.length+" 件（キーワード："+kw+"）※基礎情報が未読み込みのため全件表示";
         }
@@ -604,6 +624,38 @@
       if(g["次の一手"]) h += "次の一手：" + e(g["次の一手"]);
       h += '<br><span style="color:var(--muted);font-weight:400">※判定はJグランツ掲載情報と基礎情報のみが根拠です。公募要領PDFの精読は、下のPDF読み取り機能をご利用ください。</span></div>';
       return h;
+    }
+
+    /* ---- 案件名の一括AI仕分け（1回のAPI呼び出しで題名を粗選別） 2026-07-13 ---- */
+    async function aiTitleSort(items){
+      const code = tsCode();
+      if(!code) throw new Error("認証コードが未入力です。");
+      const compBrief = JSON.stringify({
+        "会社": (company && company["会社"]) || {},
+        "探索キーワード": (company && company["探索キーワード"]) || [],
+        "今後の計画": (company && (company["今後の計画"] || company["事業計画"])) || ""
+      });
+      const titles = items.map((it, i) => (i + 1) + ". " + String(it.title || it.name || "（名称不明）")).join("\n");
+      const sys = "あなたはTriSightの補助金仕分け係です。企業情報と補助金の案件名一覧を渡します。"
+        + "案件名だけから判断して、この企業が申請できる可能性が少しでもある案件の番号を残してください。"
+        + "迷ったら残す（保守的に）。明らかに無関係な分野（例：この企業の業種・所在地・事業計画とまったく接点がない分野）だけを落とします。"
+        + '出力は {"残す":[番号,…]} のJSONのみ。前置き・後書き・コードブロック記号は禁止。';
+      const userMsg = "■ 企業情報\n" + compBrief + "\n\n■ 案件名一覧\n" + titles;
+      const res = await fetch(RELAY, {
+        method: "POST",
+        headers: {"Content-Type": "application/json", "x-trisight-code": code},
+        body: JSON.stringify({ model: GATE_MODEL, max_tokens: 2000, system: sys,
+          messages: [{ role: "user", content: userMsg }] })
+      });
+      if(tsAuthFail(res.status)) throw new Error("認証エラー（401）");
+      if(!res.ok){ const t = await res.text(); throw new Error("リレー応答 " + res.status + "：" + t.slice(0, 120)); }
+      const data = await res.json();
+      const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
+      if(!text) throw new Error("空の応答");
+      const parsed = gateParse(text);
+      const arr = Array.isArray(parsed) ? parsed : parsed["残す"];
+      if(!Array.isArray(arr)) return null;
+      return arr.map(Number).filter(n => !isNaN(n));
     }
 
     /* ---- 詳細表示と「この案件で進める」（候補登録） ---- */

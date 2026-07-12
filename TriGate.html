@@ -366,8 +366,8 @@
       try{
         const res = await fetch(JG_RELAY, {
           method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ accessCode: code, action:"list", params:{ keyword: kw } })
+          headers:{"Content-Type":"application/json","x-trisight-code":code},
+          body: JSON.stringify({ action:"list", params:{ keyword: kw } })
         });
         if(tsAuthFail(res.status)) throw new Error("認証エラー（401）：認証コードを確認してください。");
         if(!res.ok){

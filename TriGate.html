@@ -210,6 +210,15 @@
     h3.sec{break-after:avoid}
     tr,.gate,.escalate,.countdown,.verify-box,ul.docs li{break-inside:avoid}
   }
+  /* 発掘（新着探索） */
+  .digrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .digrow input{flex:1;min-width:220px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--ink)}
+  .digrow input:focus{outline:none;border-color:var(--ink)}
+  .digstatus{font-size:13px;color:var(--muted);margin-top:8px}
+  table.digtbl{width:100%;border-collapse:collapse;margin-top:12px;font-size:13.5px}
+  .digtbl th,.digtbl td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}
+  .digtbl th{color:var(--ink-soft);font-size:12.5px;letter-spacing:.06em;white-space:nowrap}
+  .digtbl td.dl{color:var(--fix);font-weight:700;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -227,6 +236,17 @@
     <p class="lead">行政から来た補助金・助成金の案内（PDF）をそのまま入れると、まず<b>当事業所が対象になりそうか</b>を返し、続けて<b>絶対の締切・逆算タスク・必要書類</b>を並べ直します。読み込む前に「取りに行く価値があるか」が分かる受付です。十枚を時間かけて読んで対象外でした、をなくすために。<b>補助金の受付だけでは扱いきれない案件だと判断したら、引き継ぎの目印を立ててお知らせします。</b></p>
     <div class="rule"></div>
   </header>
+
+  <!-- 発掘（新着探索・Jグランツ） 2026-07-13 -->
+  <div class="step"><span class="no">発掘</span><h2>新着の補助金を掘る</h2><span class="hint">Jグランツで受付中の案件を、リレー経由で探しに行きます</span></div>
+  <div class="card">
+    <div class="digrow">
+      <input type="text" id="digKeyword" value="事業" placeholder="キーワード（2文字以上・例：介護、看護、賃上げ）">
+      <button id="digBtn" class="rbtn">新着を掘る</button>
+    </div>
+    <div class="digstatus" id="digStatus"></div>
+    <div id="digOut"></div>
+  </div>
 
   <!-- ① いま一番知りたいこと -->
   <div class="step"><span class="no">STEP 1</span><h2>この文書について、いま一番知りたいことは？</h2><span class="hint">先に教えてもらえると、門がそこに重心を置いて読みます（任意）</span></div>
@@ -310,6 +330,74 @@
     }
     return false;
   }
+
+  /* ===== 発掘（新着探索・Jグランツ）2026-07-13 ===== */
+  const JG_RELAY = "https://trisight-relay.vercel.app/api/jgrants";
+  (function(){
+    const btn = document.getElementById("digBtn");
+    const st  = document.getElementById("digStatus");
+    const out = document.getElementById("digOut");
+    if(!btn) return;
+
+    const e = s => (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+    const fd = iso => {
+      if(!iso) return "—";
+      const d = new Date(iso);
+      if(isNaN(d)) return e(iso);
+      return d.getFullYear()+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+String(d.getDate()).padStart(2,"0");
+    };
+    const fy = n => {
+      if(n==null || n==="") return "—";
+      const v = Number(n);
+      if(isNaN(v)) return e(n);
+      if(v >= 100000000) return (v/100000000).toLocaleString("ja-JP",{maximumFractionDigits:1})+"億円";
+      if(v >= 10000) return Math.round(v/10000).toLocaleString("ja-JP")+"万円";
+      return v.toLocaleString("ja-JP")+"円";
+    };
+
+    btn.addEventListener("click", async ()=>{
+      const kw = (document.getElementById("digKeyword").value || "").trim() || "事業";
+      if(kw.length < 2){ st.textContent = "キーワードは2文字以上で入力してください。"; return; }
+      const code = tsCode();
+      if(!code){ st.textContent = "認証コードが未入力のため中止しました。"; return; }
+      btn.disabled = true;
+      st.textContent = "Jグランツへ探しに行っています…";
+      out.innerHTML = "";
+      try{
+        const res = await fetch(JG_RELAY, {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ accessCode: code, action:"list", params:{ keyword: kw } })
+        });
+        if(tsAuthFail(res.status)) throw new Error("認証エラー（401）：認証コードを確認してください。");
+        if(!res.ok){
+          let detail = "";
+          try{ detail = (await res.json()).error || ""; }catch(_){}
+          throw new Error("取得エラー（"+res.status+"）"+(detail ? "："+detail : ""));
+        }
+        const data = await res.json();
+        const list = Array.isArray(data.result) ? data.result : [];
+        if(list.length === 0){
+          st.textContent = "「"+kw+"」で受付中の補助金は見つかりませんでした。キーワードを変えてお試しください。";
+          return;
+        }
+        st.textContent = "受付中 "+list.length+" 件（キーワード："+kw+"）";
+        let html = '<table class="digtbl"><thead><tr><th>案件名</th><th>上限額</th><th>受付締切</th><th>対象地域</th></tr></thead><tbody>';
+        for(const it of list){
+          html += "<tr><td>"+e(it.title || it.name || "（名称不明）")+"</td>"
+                + "<td>"+fy(it.subsidy_max_limit)+"</td>"
+                + '<td class="dl">'+fd(it.acceptance_end_datetime)+"</td>"
+                + "<td>"+e(it.target_area_search || "—")+"</td></tr>";
+        }
+        html += "</tbody></table>";
+        out.innerHTML = html;
+      }catch(err){
+        st.textContent = String(err && err.message ? err.message : err);
+      }finally{
+        btn.disabled = false;
+      }
+    });
+  })();
 
   const MODEL = "claude-sonnet-4-6";
   pdfjsLib.GlobalWorkerOptions.workerSrc =

@@ -467,9 +467,37 @@
         let show = list;
         if(company){
           show = list.filter(it => { const m = mechCheck(it); return m ? m.pass : true; });
-          st.textContent = "受付中 "+list.length+" 件 → 基礎情報による足切り後 "+show.length+" 件を表示（キーワード："+kw+"）";
           if(show.length === 0){
-            st.textContent += "　※全件が地域・業種・従業員規模の条件で除外されました。";
+            st.textContent = "受付中 "+list.length+" 件　※全件が地域・業種・従業員規模の条件で除外されました。";
+            return;
+          }
+          /* 精密足切り：全件の詳細を並行照合し、通過案件だけを残す（jグランツ照会のみ・API課金なし） */
+          const total = show.length;
+          let done = 0;
+          st.textContent = "受付中 "+list.length+" 件 → 粗足切り "+total+" 件 → 精密足切り中…（0/"+total+"）";
+          const passIds = {};
+          const queue = show.slice();
+          async function worker(){
+            while(queue.length){
+              const it = queue.shift();
+              if(!it.id){ passIds["_noid_"+done] = true; done++; continue; }
+              try{
+                let d = digDetails[it.id];
+                if(!d){ d = await fetchDetail(it.id); digDetails[it.id] = d; }
+                const m = mechCheck(d);
+                if(!m || m.pass) passIds[it.id] = true;
+              }catch(_){
+                passIds[it.id] = true; /* 取得失敗は見落とし防止のため残す */
+              }
+              done++;
+              st.textContent = "受付中 "+list.length+" 件 → 粗足切り "+total+" 件 → 精密足切り中…（"+done+"/"+total+"）";
+            }
+          }
+          await Promise.all([worker(), worker(), worker(), worker()]);
+          show = show.filter(it => !it.id || passIds[it.id]);
+          st.textContent = "受付中 "+list.length+" 件 → 精密足切り後 "+show.length+" 件を表示（キーワード："+kw+"）";
+          if(show.length === 0){
+            st.textContent += "　※全件が精密足切りで除外されました。条件を見直してください。";
             return;
           }
         }else{

@@ -227,7 +227,8 @@
   .digdetail dd{margin:0}
   .digov{margin-top:10px;font-size:13.5px;white-space:pre-wrap;border-top:1px dashed var(--line);padding-top:10px}
   .digpick{margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  .digpicked{color:var(--ok);font-weight:700;font-size:13px}
+  .digpicked{font-weight:700;font-size:13px;line-height:1.9}
+  .digfile{font-size:13px;color:var(--ink-soft)}
 </style>
 </head>
 <body>
@@ -252,6 +253,10 @@
     <div class="digrow">
       <input type="text" id="digKeyword" value="事業" placeholder="キーワード（2文字以上・例：介護、看護、賃上げ）">
       <button id="digBtn" class="rbtn">新着を掘る</button>
+    </div>
+    <div class="digrow" style="margin-top:8px">
+      <label class="digfile">企業基礎情報：<input type="file" id="digCompanyFile" accept=".json,application/json"></label>
+      <span class="digstatus" id="digCompanyStatus" style="margin-top:0">未読み込み（機械足切りに必要です）</span>
     </div>
     <div class="digstatus" id="digStatus"></div>
     <div id="digOut"></div>
@@ -347,6 +352,64 @@
     const st  = document.getElementById("digStatus");
     const out = document.getElementById("digOut");
     if(!btn) return;
+
+    /* ---- 企業基礎情報（ローカルJSON読み込み・端末内のみ保持） ---- */
+    const digDetails = {};
+    let company = null;
+    try{ company = JSON.parse(localStorage.getItem("trisight_dig_company") || "null"); }catch(_){ company = null; }
+    const compSt = document.getElementById("digCompanyStatus");
+    const compIn = document.getElementById("digCompanyFile");
+    function compLabel(){
+      if(company && company["会社"] && company["会社"]["名称"]){
+        compSt.textContent = "読み込み済：" + company["会社"]["名称"];
+      }
+    }
+    compLabel();
+    if(compIn){
+      compIn.addEventListener("change", ev=>{
+        const f = ev.target.files && ev.target.files[0];
+        if(!f) return;
+        const r = new FileReader();
+        r.onload = ()=>{
+          try{
+            company = JSON.parse(r.result);
+            localStorage.setItem("trisight_dig_company", JSON.stringify(company));
+            compLabel();
+          }catch(_){
+            compSt.textContent = "JSONの読み込みに失敗しました。ファイルの形式を確認してください。";
+          }
+        };
+        r.readAsText(f, "utf-8");
+      });
+    }
+
+    /* ---- 第一段：機械足切り（地域・業種・従業員規模） ---- */
+    function mechCheck(d){
+      if(!company) return null;
+      const comp = (company["会社"] || {}), fil = (company["機械足切り条件"] || {});
+      const pref = comp["本店所在地_都道府県"] || fil["対象地域"] || "";
+      const emp  = Number(comp["従業員数_合計"]);
+      const results = [];
+
+      const area = d.target_area_search || "";
+      const areaOk = !area || area.includes("全国") || (pref && area.includes(pref));
+      results.push({k:"対象地域", v:(area || "（指定なし）"), ok:areaOk});
+
+      const ind = d.industry || "";
+      const tokens = String(fil["業種"] || "").split(/[，,、\s]+/).filter(Boolean);
+      const indOk = !ind || ind.includes("指定なし") || tokens.some(tk => ind.includes(tk));
+      results.push({k:"対象業種", v:(ind || "（指定なし）"), ok:indOk});
+
+      const t = d.target_number_of_employees || "";
+      let empOk = true;
+      if(t && !t.includes("制約なし") && !isNaN(emp)){
+        const m = t.match(/(\d+)\s*名(以下|以上)/);
+        if(m){ const n = Number(m[1]); empOk = (m[2] === "以下") ? (emp <= n) : (emp >= n); }
+      }
+      results.push({k:"従業員規模", v:(t || "（指定なし）"), ok:empOk});
+
+      return { pass: results.every(r => r.ok), results };
+    }
 
     const e = s => (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
     const fd = iso => {
@@ -473,6 +536,7 @@
         b.disabled = true; b.textContent = "取得中…";
         try{
           const d = await fetchDetail(tr.dataset.id);
+          digDetails[tr.dataset.id] = d;
           const dtr = document.createElement("tr");
           dtr.className = "digdetail";
           dtr.innerHTML = '<td colspan="5">'+detailHtml(d)+"</td>";
@@ -486,13 +550,33 @@
 
       if(b.dataset.act === "pick"){
         const baseRow = tr.classList.contains("digdetail") ? tr.previousElementSibling : tr;
-        const item = { id: baseRow.dataset.id, title: baseRow.dataset.title, saved: new Date().toISOString() };
+        const id = baseRow.dataset.id;
+        const item = { id: id, title: baseRow.dataset.title, saved: new Date().toISOString() };
         let cands = [];
         try{ cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]"); }catch(_){ cands = []; }
         if(!cands.some(c => c.id === item.id)) cands.push(item);
         localStorage.setItem("trisight_dig_candidates", JSON.stringify(cands));
         const msg = b.parentElement.querySelector(".digpicked");
-        if(msg) msg.textContent = "候補に登録しました（現在 "+cands.length+" 件）。ゲート判定への接続は次段の実装で行います。";
+
+        if(!company){
+          if(msg) msg.textContent = "候補に登録しました。機械足切りを行うには、上の「企業基礎情報」欄でJSONファイルを読み込んでください。";
+          return;
+        }
+        let d = digDetails[id];
+        if(!d){
+          try{ d = await fetchDetail(id); digDetails[id] = d; }catch(_){ d = null; }
+        }
+        const mc = d ? mechCheck(d) : null;
+        if(msg && mc){
+          const head = mc.pass
+            ? '<span style="color:var(--ok)">機械足切り：通過</span>'
+            : '<span style="color:var(--fix)">機械足切り：不通過</span>';
+          const lines = mc.results.map(r => e((r.ok ? "○ " : "× ") + r.k + "：" + r.v)).join("<br>");
+          msg.innerHTML = head + "<br>" + lines
+            + '<br><span style="color:var(--muted);font-weight:400">第二段のAIゲート判定（公募要領×基礎情報）は次の実装で接続します。</span>';
+        }else if(msg){
+          msg.textContent = "候補に登録しました（判定用の詳細が取得できず、足切りは未実施です）。";
+        }
       }
     });
   })();

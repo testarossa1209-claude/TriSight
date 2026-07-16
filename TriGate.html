@@ -178,7 +178,11 @@
   ul.checklist{list-style:none;margin:0;padding:0}
   ul.checklist li{display:flex;gap:10px;align-items:flex-start;padding:7px 0;font-size:14px;border-bottom:1px dashed #d6dbe3}
   ul.checklist li:last-child{border-bottom:0}
-  ul.checklist li .box{flex:none;width:18px;height:18px;border:2px solid var(--ink-soft);border-radius:4px;margin-top:2px}
+  ul.checklist li label.ck{display:flex;gap:10px;align-items:flex-start;cursor:pointer;width:100%}
+  ul.checklist li input.box{flex:none;width:18px;height:18px;margin:1px 0 0;accent-color:var(--ink);
+    cursor:pointer;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+  ul.checklist li input.box:checked ~ span{font-weight:700;color:var(--ink)}
+  ul.checklist li label.ck:hover{background:#f7f9fc}
   .gate-note{font-size:12px;color:var(--muted);margin:10px 0 0}
 
   .boundary{margin-top:24px;border-top:1px dashed #c3ccd9;padding-top:14px;font-size:12.5px;color:var(--muted)}
@@ -1243,7 +1247,7 @@
       parts.push(`<div class="gate"><div class="gate-head"><span class="q">まず確認</span>うちが対象になりそうか</div><div class="gate-body">`);
       if(el.who) parts.push(`<p class="gate-who"><b>対象：</b>${esc(el.who)}</p>`);
       if(el.checklist&&el.checklist.length){
-        parts.push(`<ul class="checklist">`+el.checklist.map(c=>`<li><span class="box"></span><span>${esc(c)}</span></li>`).join("")+`</ul>`);
+        parts.push(`<ul class="checklist">`+el.checklist.map(c=>`<li><label class="ck"><input type="checkbox" class="box"><span>${esc(c)}</span></label></li>`).join("")+`</ul>`);
       }
       if(el.note) parts.push(`<p class="gate-note">${esc(el.note)}</p>`);
       parts.push(`</div></div>`);

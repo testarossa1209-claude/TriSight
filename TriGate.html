@@ -197,6 +197,10 @@
   .rbtn:hover{background:#0f1830}
   .rbtn.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
   .rbtn.ghost:hover{border-color:var(--ink);background:#f7f9fc}
+  .rbtn:disabled{background:#8a93a6;cursor:default}
+  .rbtn:disabled:hover{background:#8a93a6}
+  .rmsg{font-size:12.5px;font-weight:700;color:#1a7f4b;background:#eaf7f0;
+    border:1px solid #bfe3ce;border-radius:6px;padding:6px 10px;letter-spacing:.02em}
 
   /* 印刷：結果だけをきれいに出す */
   @media print{
@@ -304,6 +308,7 @@
     <button id="printBtn" class="rbtn">印刷する</button>
     <button id="taskBtn" class="rbtn">TriTaskへ送る</button>
     <button id="resetBtn" class="rbtn ghost">次の案件へ（最初から）</button>
+    <span id="taskMsg" class="rmsg" style="display:none"></span>
   </div>
 
   <!-- 結果 -->
@@ -1031,8 +1036,47 @@
       paid_confirmed_at: null
     };
     list.push(card);
-    localStorage.setItem("tritask_grants", JSON.stringify(list));
-    alert("TriTaskへ送りました。\n" + card.program_name);
+    try{
+      localStorage.setItem("tritask_grants", JSON.stringify(list));
+    }catch(e){
+      showTaskMsg("× 保存できませんでした（" + (e && e.name ? e.name : "不明") + "）", false);
+      return;
+    }
+    // 保存できたか読み直して確かめる（書けたつもりを潰す）
+    let saved = 0;
+    try{ saved = (JSON.parse(localStorage.getItem("tritask_grants") || "[]")).length; }catch(e){ saved = 0; }
+    if(!saved){
+      showTaskMsg("× 保存を確認できませんでした", false);
+      return;
+    }
+    const t = new Date();
+    const hhmm = ("0"+t.getHours()).slice(-2) + ":" + ("0"+t.getMinutes()).slice(-2);
+    showTaskMsg("✓ TriTaskへ送信済み " + hhmm + "（未処理 " + saved + " 件）", true);
+    const b = $("taskBtn");
+    b.disabled = true;
+    b.textContent = "送信済み";
+    b.title = card.program_name;
+  }
+
+  function showTaskMsg(text, ok){
+    const m = $("taskMsg");
+    m.textContent = text;
+    m.style.display = "";
+    if(!ok){
+      m.style.color = "#b0203a"; m.style.background = "#fdeef1"; m.style.borderColor = "#f0c3cc";
+    }else{
+      m.style.color = ""; m.style.background = ""; m.style.borderColor = "";
+    }
+  }
+
+  function resetTaskBtn(){
+    const b = $("taskBtn");
+    b.disabled = false;
+    b.textContent = "TriTaskへ送る";
+    b.title = "";
+    const m = $("taskMsg");
+    m.style.display = "none";
+    m.textContent = "";
   }
 
   function resetAll(){
@@ -1048,6 +1092,8 @@
     fileInput.value="";                 // 同じPDFを選び直せるように
     outEl.innerHTML=""; outEl.style.display="none";
     $("resultBar").style.display="none";
+    resetTaskBtn();
+    TG_LAST=null;
     hideErr();
     goBtn.disabled=true;
     statusEl.textContent="まずPDFを入れてください。";
@@ -1162,6 +1208,7 @@
 
   function render(d){
     TG_LAST = d;
+    resetTaskBtn();
     const parts=[];
     parts.push(`<p class="prog-head">${esc(d.issuer||"")}</p>`);
     parts.push(`<p class="prog-name">${esc(d.program_name||"（名称不明）")}</p>`);

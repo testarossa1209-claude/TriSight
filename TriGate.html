@@ -302,6 +302,7 @@
   <!-- 結果バー（印刷・次の案件へ） -->
   <div id="resultBar" class="no-print" style="display:none">
     <button id="printBtn" class="rbtn">印刷する</button>
+    <button id="taskBtn" class="rbtn">TriTaskへ送る</button>
     <button id="resetBtn" class="rbtn ghost">次の案件へ（最初から）</button>
   </div>
 
@@ -1005,6 +1006,35 @@
   $("printBtn").addEventListener("click", ()=>window.print());
   $("resetBtn").addEventListener("click", resetAll);
 
+  // ---- TriTaskへ送る -------------------------------------------
+  let TG_LAST = null;
+  $("taskBtn").addEventListener("click", tgToTask);
+  function tgToTask(){
+    if(!TG_LAST){ alert("先に判定を実行してください。"); return; }
+    const d = TG_LAST;
+    let list = [];
+    try{ list = JSON.parse(localStorage.getItem("tritask_grants") || "[]"); }catch(e){ list = []; }
+    const card = {
+      id: "TG-" + Date.now(),
+      created_at: new Date().toISOString(),
+      source: "TriGate",
+      program_name: d.program_name || "（名称不明）",
+      issuer: d.issuer || "",
+      summary: d.summary || "",
+      deadlines: d.deadlines || [],
+      reverse_tasks: d.reverse_tasks || [],
+      required_documents: d.required_documents || [],
+      verify_items: d.verify_items || [],
+      contact: d.contact || "",
+      amount_expected: null,
+      status: "未着手",
+      paid_confirmed_at: null
+    };
+    list.push(card);
+    localStorage.setItem("tritask_grants", JSON.stringify(list));
+    alert("TriTaskへ送りました。\n" + card.program_name);
+  }
+
   function resetAll(){
     extracted=""; fileName=""; pdfBase64=""; isImagePdf=false;
     focusChoice="";
@@ -1131,6 +1161,7 @@
   function esc(s){return (s==null?"":String(s)).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
 
   function render(d){
+    TG_LAST = d;
     const parts=[];
     parts.push(`<p class="prog-head">${esc(d.issuer||"")}</p>`);
     parts.push(`<p class="prog-name">${esc(d.program_name||"（名称不明）")}</p>`);

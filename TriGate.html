@@ -243,6 +243,8 @@
     padding:14px 18px;margin:0 0 22px;box-shadow:var(--shadow)}
   .rc-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .rc-head h3{font-size:14px;margin:0;font-weight:800;color:var(--ink)}
+  .rc-code{font-size:11.5px;color:var(--muted);background:var(--bg);border:1px solid var(--line);
+    border-radius:5px;padding:2px 8px;letter-spacing:.02em}
   .rc-add,.rc-toggle{border:1.5px solid var(--line);background:#fff;color:var(--ink-soft);
     border-radius:6px;padding:5px 12px;font-size:12.5px;cursor:pointer;font-family:inherit}
   .rc-add:hover,.rc-toggle:hover{border-color:var(--ink);color:var(--ink)}
@@ -250,6 +252,12 @@
   .rc-figs{display:flex;gap:20px;flex-wrap:wrap;margin-top:10px}
   .rc-fig{font-size:12.5px;color:var(--muted)}
   .rc-fig b{font-size:19px;color:var(--ink);margin-right:5px;font-weight:800}
+  .rc-sync{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;
+    font-size:12px;color:var(--muted)}
+  .rc-sync.on{color:var(--ok)}
+  .rc-syncbtn{border:1.5px solid var(--line);background:#fff;color:var(--ink-soft);
+    border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit}
+  .rc-syncbtn:hover{border-color:var(--ink);color:var(--ink)}
   .rc-form{margin-top:14px;border-top:1px dashed var(--line);padding-top:14px;display:none}
   .rc-form.on{display:block}
   .rc-form .rcf-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px}
@@ -293,10 +301,15 @@
   <div class="resultCounter">
     <div class="rc-head">
       <h3>獲得実績</h3>
+      <span class="rc-code" id="rcCodeLabel"></span>
       <button type="button" class="rc-add" id="rcAddBtn">＋ 実績を登録</button>
       <button type="button" class="rc-toggle" id="rcToggleBtn">内訳を見る</button>
     </div>
     <div class="rc-figs" id="rcFigs"></div>
+    <div class="rc-sync" id="rcSync">
+      <span id="rcSyncStatus">同期フォルダ：未設定（この端末のみに保存されます）</span>
+      <button type="button" class="rc-syncbtn" id="rcSyncBtn">共有フォルダを選ぶ</button>
+    </div>
     <div class="rc-form" id="rcForm">
       <div class="rcf-row">
         <label>制度名<input type="text" id="rcName" placeholder="例：東村山市高齢者施設等物価高騰対策支援金"></label>
@@ -331,6 +344,16 @@
     </div>
     <div class="digstatus" id="digStatus"></div>
     <div id="digOut"></div>
+  </div>
+
+  <!-- 見込み額カウンター（2026-07-22導入） -->
+  <div class="resultCounter" id="pjPanel">
+    <div class="rc-head">
+      <h3>見込み額（要件充足・除外条件なし）</h3>
+      <button type="button" class="rc-toggle" id="pjToggleBtn">内訳を見る</button>
+    </div>
+    <div class="rc-figs" id="pjFigs"></div>
+    <div class="rc-detail" id="pjDetail"></div>
   </div>
 
   <!-- ① いま一番知りたいこと -->
@@ -658,14 +681,16 @@
       }
     });
 
-    /* ---- 第二段：AIゲート判定（公募情報×企業基礎情報） 2026-07-13 ---- */
+    /* ---- 第二段：AIゲート判定（公募情報×企業基礎情報） 2026-07-13／2026-07-22：給付方式・除外条件チェックを追加 ---- */
     const GATE_MODEL = "claude-sonnet-4-6";
     const GATE_SYSTEM = "あなたはTriSightの補助金ゲート判定係（検証担当・なぎさ）です。"
       + "与えられた『公募情報』と『企業基礎情報』だけを根拠に、この企業がこの補助金を追う価値があるかを判定します。"
       + "推測で要件を補わず、公募情報に書かれていない点は『確認事項』に回してください。"
-      + "観点：①対象要件との適合（地域・業種・規模・事業内容）②企業の事業計画との整合③上限額・補助率と申請負担の釣り合い④受付締切までの現実性。"
+      + "観点：①対象要件との適合（地域・業種・規模・事業内容）②企業の事業計画との整合③上限額・補助率と申請負担の釣り合い④受付締切までの現実性"
+      + "⑤除外条件チェック：公募情報に労働保険の適用・重大な労働関係法令違反や労働紛争の不存在・反社会的勢力の排除等が支給要件として明記されている場合、企業基礎情報内の『除外条件宣言』と照合する。宣言のいずれかが要件に抵触する場合のみ除外条件抵触=trueとし、具体的にどの宣言がどの要件に反するかを理由に書く。公募情報にその要件の記載が無ければ抵触なしとする（無い規則を推測で作らない）"
+      + "⑥給付方式の判定：公募情報の記述から、審査・順位付け・予算上限による不採択があり得る制度（審査・採択枠あり）か、要件をすべて満たせば原則として支給される制度（要件充足型）かを読み取る。記述から判別できない場合は『不明』とする。断定できる根拠が無いのに要件充足型と判定しない"
       + "出力は次のJSONのみ。前置き・後書き・コードブロック記号は一切禁止。"
-      + '{"判定":"追う"|"見送り"|"要確認","適合度":0から100の整数,"理由":["…"],"懸念":["…"],"確認事項":["…"],"次の一手":"…（1文）"}';
+      + '{"判定":"追う"|"見送り"|"要確認","適合度":0から100の整数,"給付方式":"要件充足型"|"審査・採択枠あり"|"不明","除外条件抵触":true|false,"除外条件抵触理由":"…（抵触なしなら空文字）","理由":["…"],"懸念":["…"],"確認事項":["…"],"次の一手":"…（1文）"}';
 
     function gateSourceText(d){
       let ov = "";
@@ -735,6 +760,12 @@
       let h = '<div style="margin-top:6px;border-top:1px dashed var(--line);padding-top:6px">'
         + '<b>AIゲート判定：<span style="color:' + col + '">' + e(v) + '</span></b>'
         + (g["適合度"] != null ? '　適合度 ' + e(g["適合度"]) + ' / 100' : '') ;
+      if(g["除外条件抵触"] === true){
+        h += '<br><b style="color:var(--fix)">除外条件に抵触：</b>' + e(g["除外条件抵触理由"] || "（理由未記載）");
+      }
+      if(g["給付方式"]){
+        h += '<br>給付方式：' + e(g["給付方式"]);
+      }
       if(Array.isArray(g["理由"]) && g["理由"].length) h += "<br>理由" + li(g["理由"]);
       if(Array.isArray(g["懸念"]) && g["懸念"].length) h += "懸念" + li(g["懸念"]);
       if(Array.isArray(g["確認事項"]) && g["確認事項"].length) h += "確認事項" + li(g["確認事項"]);
@@ -885,6 +916,7 @@
       if(b.dataset.act === "gate"){
         const id = b.dataset.id;
         const box = b.parentElement.querySelector(".diggate");
+        const baseRow = tr.classList.contains("digdetail") ? tr.previousElementSibling : tr;
         b.disabled = true; b.textContent = "AIゲート判定中…";
         try{
           let d = digDetails[id];
@@ -893,9 +925,19 @@
           if(box) box.innerHTML = gateHtml(g);
           try{
             let cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]");
-            cands = cands.map(c => c.id === id ? Object.assign(c, { gate: g, gated: new Date().toISOString() }) : c);
+            if(!cands.some(c => c.id === id)){
+              // 「候補に登録」を押していなくても、ゲート判定した以上は見込み額の対象にできるよう自動登録する
+              cands.push({ id: id, title: (baseRow && baseRow.dataset.title) || "", saved: new Date().toISOString() });
+            }
+            cands = cands.map(c => c.id === id
+              ? Object.assign(c, { gate: g, amount_max: (d && d.subsidy_max_limit != null ? d.subsidy_max_limit : null), gated: new Date().toISOString() })
+              : c);
             localStorage.setItem("trisight_dig_candidates", JSON.stringify(cands));
           }catch(_){}
+          if(typeof pjRenderFigs === "function"){
+            pjRenderFigs();
+            if($("pjDetail") && $("pjDetail").classList.contains("on")) pjRenderDetail();
+          }
           b.textContent = "AIゲート判定を再実行（API利用）";
         }catch(err){
           if(box) box.innerHTML = '<span style="color:var(--fix)">' + e(String(err && err.message ? err.message : err)) + '</span>';
@@ -908,8 +950,16 @@
   })();
 
   const MODEL = "claude-sonnet-4-6";
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  let PDFJS_OK = true;
+  try{
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  }catch(e){
+    // PDF.jsの外部読み込みが遮断された環境（プレビュー等）でも、
+    // 印刷・TriTask送出・獲得実績カウンターなど他の機能は止めない
+    PDFJS_OK = false;
+    console.error("pdfjsLibの読み込みに失敗しました。PDF読み取り機能のみ無効化します。", e);
+  }
 
   let extracted = "";    // PDFから抜いたテキスト（文字PDFのとき）
   let fileName  = "";
@@ -948,6 +998,10 @@
 
   async function handleFile(f){
     if(f.type!=="application/pdf"){ showErr("PDFファイルを入れてください。"); return; }
+    if(!PDFJS_OK){
+      showErr("PDF読み取り機能が読み込めていません（外部ライブラリの取得に失敗）。ネットワーク環境を変えて再読み込みしてください。他の機能（獲得実績カウンター等）は通常どおり使えます。");
+      return;
+    }
     hideErr(); outEl.style.display="none";
     fileName=f.name; pdfBase64=""; isImagePdf=false;
     $("dropTitle").textContent="読み込み中…";
@@ -1168,16 +1222,183 @@
     window.scrollTo({top:0,behavior:"smooth"});
   }
 
-  // ---- 獲得実績カウンター（2026-07-22導入） ----------------------
+  // ---- 獲得実績カウンター（2026-07-22導入／認証コード単位で仕切り／OneDrive共有フォルダ同期対応） ----------------------
   const RC_KEY = "trigate_results";
-  function rcLoad(){
-    let arr;
-    try{ arr = JSON.parse(localStorage.getItem(RC_KEY) || "[]"); }catch(e){ arr = []; }
-    return Array.isArray(arr) ? arr : [];
+  const RC_FILE_NAME = "trigate_results.json";
+  const RC_IDB_NAME = "trisight_fs";
+  const RC_IDB_STORE = "handles";
+  const RC_IDB_KEY = "trigate_results_dir";
+
+  let RC_CACHE = null;     // {code: [...records]} のメモリキャッシュ（読み込み後はここが正）
+  let rcDirHandle = null;  // 接続済みの共有フォルダハンドル（未接続はnull）
+  let rcSyncOn = false;    // 今このセッションで共有フォルダに書き込めている状態か
+
+  function rcMaskCode(c){
+    if(!c) return "";
+    return c.length <= 4 ? c : "•••" + c.slice(-4);
   }
-  function rcSave(arr){
-    try{ localStorage.setItem(RC_KEY, JSON.stringify(arr)); return true; }catch(e){ return false; }
+  function rcCurrentCode(){
+    // 表示・登録・削除では新規にプロンプトを出さない（呼び出しはAPI認証時のtsCode()側に任せる）
+    var c = localStorage.getItem('trisight_access_code');
+    return (c && !/[^\x21-\x7E]/.test(c)) ? c : "";
   }
+  function rcNormalize(data){
+    if(Array.isArray(data)) data = data.length ? { "": data } : {};
+    if(!data || typeof data !== "object") data = {};
+    return data;
+  }
+  function rcLoadLocal(){
+    let data;
+    try{ data = JSON.parse(localStorage.getItem(RC_KEY) || "{}"); }catch(e){ data = {}; }
+    return rcNormalize(data);
+  }
+  function rcSaveLocal(data){
+    try{ localStorage.setItem(RC_KEY, JSON.stringify(data)); return true; }catch(e){ return false; }
+  }
+  function rcLoadAll(){
+    if(!RC_CACHE) RC_CACHE = rcLoadLocal();
+    return RC_CACHE;
+  }
+  function rcRecordsForCurrentCode(){
+    const data = rcLoadAll();
+    const code = rcCurrentCode();
+    return Array.isArray(data[code]) ? data[code] : [];
+  }
+
+  // ---- 共有フォルダ（File System Access API）関連 ----
+  async function rcFileRead(dirHandle){
+    const fh = await dirHandle.getFileHandle(RC_FILE_NAME, {create:true});
+    const file = await fh.getFile();
+    const text = await file.text();
+    if(!text || !text.trim()) return {};
+    try{ return rcNormalize(JSON.parse(text)); }catch(e){ return {}; }
+  }
+  async function rcFileWrite(dirHandle, data){
+    const fh = await dirHandle.getFileHandle(RC_FILE_NAME, {create:true});
+    const w = await fh.createWritable();
+    await w.write(JSON.stringify(data, null, 2));
+    await w.close();
+  }
+  function rcMergeData(a, b){
+    // 同一IDはbを優先（後勝ち）。実害の小さい衝突解決として割り切る（契約上も同時操作の不整合は不問の建付け）
+    const out = {};
+    const codes = new Set([...Object.keys(a||{}), ...Object.keys(b||{})]);
+    codes.forEach(code=>{
+      const byId = new Map();
+      (Array.isArray(a[code])?a[code]:[]).forEach(r=> byId.set(r.id, r));
+      (Array.isArray(b[code])?b[code]:[]).forEach(r=> byId.set(r.id, r));
+      out[code] = Array.from(byId.values());
+    });
+    return out;
+  }
+  function rcIdbOpen(){
+    return new Promise((resolve, reject)=>{
+      const req = indexedDB.open(RC_IDB_NAME, 1);
+      req.onupgradeneeded = ()=>{ req.result.createObjectStore(RC_IDB_STORE); };
+      req.onsuccess = ()=> resolve(req.result);
+      req.onerror = ()=> reject(req.error);
+    });
+  }
+  async function rcIdbGetHandle(){
+    try{
+      const db = await rcIdbOpen();
+      return await new Promise((resolve,reject)=>{
+        const tx = db.transaction(RC_IDB_STORE, "readonly");
+        const req = tx.objectStore(RC_IDB_STORE).get(RC_IDB_KEY);
+        req.onsuccess = ()=> resolve(req.result || null);
+        req.onerror = ()=> reject(req.error);
+      });
+    }catch(e){ return null; }
+  }
+  async function rcIdbSetHandle(handle){
+    try{
+      const db = await rcIdbOpen();
+      await new Promise((resolve,reject)=>{
+        const tx = db.transaction(RC_IDB_STORE, "readwrite");
+        tx.objectStore(RC_IDB_STORE).put(handle, RC_IDB_KEY);
+        tx.oncomplete = resolve;
+        tx.onerror = ()=> reject(tx.error);
+      });
+    }catch(e){ /* 保存に失敗しても次回選び直せるので致命的ではない */ }
+  }
+  function rcSetSyncStatus(text, ok){
+    $("rcSyncStatus").textContent = text;
+    $("rcSync").classList.toggle("on", !!ok);
+  }
+  async function rcActivateHandle(handle){
+    rcDirHandle = handle;
+    const fileData = await rcFileRead(handle);
+    const localData = rcLoadAll();
+    const fileHasData  = Object.keys(fileData).some(k=>(fileData[k]||[]).length);
+    const localHasData = Object.keys(localData).some(k=>(localData[k]||[]).length);
+    const merged = (fileHasData && localHasData) ? rcMergeData(localData, fileData)
+                 : fileHasData ? fileData
+                 : localData; // ファイルが空なら、この端末の既存実績を初期投入
+    RC_CACHE = merged;
+    await rcFileWrite(handle, merged);
+    rcSaveLocal(merged);
+    rcSyncOn = true;
+    $("rcSyncBtn").textContent = "フォルダを変更する";
+    rcSetSyncStatus("同期フォルダ：接続済み" + (handle.name ? "（"+handle.name+"）" : ""), true);
+    rcRenderFigs();
+    if($("rcDetail").classList.contains("on")) rcRenderDetail();
+  }
+  async function rcRefreshFromFile(){
+    if(!rcSyncOn || !rcDirHandle) return;
+    try{
+      RC_CACHE = await rcFileRead(rcDirHandle);
+      rcSaveLocal(RC_CACHE);
+      rcRenderFigs();
+      if($("rcDetail").classList.contains("on")) rcRenderDetail();
+    }catch(e){ /* 読めなければ何もしない。次の機会に再試行 */ }
+  }
+  async function rcTryRestoreFolder(){
+    const handle = await rcIdbGetHandle();
+    if(!handle) return;
+    try{
+      const perm = await handle.queryPermission({mode:"readwrite"});
+      if(perm === "granted"){
+        await rcActivateHandle(handle);
+      }else{
+        rcDirHandle = handle;
+        $("rcSyncBtn").textContent = "アクセスを許可";
+        rcSetSyncStatus("同期フォルダ："+(handle.name||"設定済み")+"（アクセス許可が必要です）", false);
+      }
+    }catch(e){ /* ハンドルが失効（フォルダ削除・移動等）。未設定として扱う */ }
+  }
+  async function rcConnectFolder(){
+    if(!('showDirectoryPicker' in window)){
+      alert("お使いのブラウザは共有フォルダ同期に対応していません。Edge（またはChrome系）でお試しください。この端末単体では引き続き通常どおり使えます。");
+      return;
+    }
+    try{
+      const handle = await window.showDirectoryPicker({ id:"trigate-results", mode:"readwrite" });
+      await rcIdbSetHandle(handle);
+      await rcActivateHandle(handle);
+    }catch(e){ /* ユーザーがピッカーをキャンセルした場合等。何もしない */ }
+  }
+  $("rcSyncBtn").addEventListener("click", async ()=>{
+    if(rcDirHandle && !rcSyncOn){
+      try{
+        const perm = await rcDirHandle.requestPermission({mode:"readwrite"});
+        if(perm === "granted"){ await rcActivateHandle(rcDirHandle); }
+        else{ rcSetSyncStatus("アクセスが許可されませんでした。この端末はローカル保存のままです。", false); }
+      }catch(e){ rcSetSyncStatus("アクセス許可の取得に失敗しました。", false); }
+      return;
+    }
+    await rcConnectFolder();
+  });
+  window.addEventListener("focus", ()=>{ if(rcSyncOn) rcRefreshFromFile(); });
+
+  async function rcPersist(data){
+    RC_CACHE = data;
+    rcSaveLocal(data); // 常にこの端末にもミラーを残す（同期不通時の保険）
+    if(rcSyncOn && rcDirHandle){
+      try{ await rcFileWrite(rcDirHandle, data); }
+      catch(e){ rcSetSyncStatus("共有フォルダへの書き込みに失敗しました（この端末には保存済み）", false); }
+    }
+  }
+
   function rcYen(n){
     n = Number(n); if(!isFinite(n)) n = 0;
     return "¥" + n.toLocaleString("ja-JP");
@@ -1186,8 +1407,12 @@
     const f = arr.filter(pred);
     return { count: f.length, total: f.reduce((s,r)=>s+(Number(r.amount)||0),0) };
   }
+  function rcRenderCodeLabel(){
+    const code = rcCurrentCode();
+    $("rcCodeLabel").textContent = code ? ("管理コード：" + rcMaskCode(code)) : "管理コード：未設定分";
+  }
   function rcRenderFigs(){
-    const arr = rcLoad();
+    const arr = rcRecordsForCurrentCode();
     const now = new Date();
     const ym = now.getFullYear() + "-" + ("0"+(now.getMonth()+1)).slice(-2);
     const y  = String(now.getFullYear());
@@ -1198,12 +1423,13 @@
       '<span class="rc-fig"><b>'+mo.count+'件</b>今月 '+rcYen(mo.total)+'</span>'+
       '<span class="rc-fig"><b>'+yr.count+'件</b>今年 '+rcYen(yr.total)+'</span>'+
       '<span class="rc-fig"><b>'+al.count+'件</b>累計 '+rcYen(al.total)+'</span>';
+    rcRenderCodeLabel();
   }
   function rcRenderDetail(){
     const detail = $("rcDetail");
-    const arr = rcLoad().slice().sort((a,b)=>(b.acquired_at||"").localeCompare(a.acquired_at||""));
+    const arr = rcRecordsForCurrentCode().slice().sort((a,b)=>(b.acquired_at||"").localeCompare(a.acquired_at||""));
     if(!arr.length){
-      detail.innerHTML = '<div class="rc-empty">まだ実績の登録がありません。</div>';
+      detail.innerHTML = '<div class="rc-empty">この管理コードでの実績登録はまだありません。</div>';
       return;
     }
     const rows = arr.map(r =>
@@ -1220,10 +1446,12 @@
       '<table class="rctbl"><thead><tr><th>確定日</th><th>制度名</th><th>交付元</th><th>金額</th><th>メモ</th><th></th></tr></thead><tbody>'+
       rows+'</tbody></table>';
     detail.querySelectorAll(".rcdel").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
+      btn.addEventListener("click", async ()=>{
         if(!confirm("この実績を削除しますか？（元に戻せません）")) return;
-        const list = rcLoad().filter(r => r.id !== btn.dataset.id);
-        rcSave(list);
+        const data = rcLoadAll();
+        const code = rcCurrentCode();
+        data[code] = (data[code]||[]).filter(r => r.id !== btn.dataset.id);
+        await rcPersist(data);
         rcRenderFigs();
         rcRenderDetail();
       });
@@ -1248,9 +1476,9 @@
   $("rcToggleBtn").addEventListener("click", ()=>{
     const on = $("rcDetail").classList.toggle("on");
     $("rcToggleBtn").textContent = on ? "内訳を閉じる" : "内訳を見る";
-    if(on) rcRenderDetail();
+    if(on){ if(rcSyncOn) rcRefreshFromFile(); else rcRenderDetail(); }
   });
-  $("rcSaveBtn").addEventListener("click", ()=>{
+  $("rcSaveBtn").addEventListener("click", async ()=>{
     const name   = $("rcName").value.trim();
     const amount = Number($("rcAmount").value);
     const date   = $("rcDate").value;
@@ -1266,18 +1494,64 @@
       acquired_at: date,
       note: $("rcNote").value.trim()
     };
-    const list = rcLoad();
-    list.push(rec);
-    if(!rcSave(list)){
-      $("rcErr").textContent="保存できませんでした。";
-      $("rcErr").style.display="block";
-      return;
-    }
+    const data = rcLoadAll();
+    const code = rcCurrentCode();
+    if(!Array.isArray(data[code])) data[code] = [];
+    data[code].push(rec);
+    await rcPersist(data);
     rcCloseForm();
     rcRenderFigs();
     if($("rcDetail").classList.contains("on")) rcRenderDetail();
   });
   rcRenderFigs();
+  rcTryRestoreFolder();
+
+  // ---- 見込み額カウンター（2026-07-22導入）：発掘の候補のうち、給付方式=要件充足型・除外条件抵触なしのみを合算 ----
+  function pjYen(n){
+    n = Number(n); if(!isFinite(n)) n = 0;
+    return "¥" + n.toLocaleString("ja-JP");
+  }
+  function pjCandidates(){
+    let cands = [];
+    try{ cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]"); }catch(e){ cands = []; }
+    return Array.isArray(cands) ? cands : [];
+  }
+  function pjEligible(){
+    return pjCandidates().filter(c => c.gate && c.gate["給付方式"] === "要件充足型" && c.gate["除外条件抵触"] === false);
+  }
+  function pjRenderFigs(){
+    const list = pjEligible();
+    const withAmt = list.filter(c => c.amount_max != null && isFinite(Number(c.amount_max)));
+    const total = withAmt.reduce((s,c)=> s + Number(c.amount_max), 0);
+    const unknown = list.length - withAmt.length;
+    $("pjFigs").innerHTML =
+      '<span class="rc-fig"><b>'+list.length+'件</b>要件充足・除外条件なし</span>'+
+      '<span class="rc-fig"><b>'+pjYen(total)+'</b>見込み額合計'+(unknown ? '（金額不明 '+unknown+'件は含まず）' : '')+'</span>';
+  }
+  function pjRenderDetail(){
+    const detail = $("pjDetail");
+    const list = pjEligible().slice().sort((a,b)=>(b.gated||"").localeCompare(a.gated||""));
+    if(!list.length){
+      detail.innerHTML = '<div class="rc-empty">該当する案件はまだありません（発掘→詳細→AIゲート判定を実行すると、ここに反映されます）。</div>';
+      return;
+    }
+    const rows = list.map(c =>
+      '<tr>'+
+        '<td>'+esc(c.title||"")+'</td>'+
+        '<td class="amt">'+(c.amount_max!=null ? pjYen(c.amount_max) : "金額不明")+'</td>'+
+        '<td>'+esc((c.gated||"").slice(0,10))+'</td>'+
+      '</tr>'
+    ).join("");
+    detail.innerHTML =
+      '<table class="rctbl"><thead><tr><th>案件名</th><th>見込み額（上限額）</th><th>判定日</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+      '<div class="rc-empty" style="margin-top:8px">※上限額は制度の上限であり、実際の交付額とは異なる場合があります。給付方式・除外条件の判定はJグランツ掲載情報と企業基礎情報の宣言のみが根拠です。</div>';
+  }
+  $("pjToggleBtn").addEventListener("click", ()=>{
+    const on = $("pjDetail").classList.toggle("on");
+    $("pjToggleBtn").textContent = on ? "内訳を閉じる" : "内訳を見る";
+    if(on) pjRenderDetail();
+  });
+  pjRenderFigs();
 
   async function run(){
     hideErr();

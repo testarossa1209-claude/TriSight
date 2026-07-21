@@ -346,6 +346,16 @@
     <div id="digOut"></div>
   </div>
 
+  <!-- 見込み額カウンター（2026-07-22導入） -->
+  <div class="resultCounter" id="pjPanel">
+    <div class="rc-head">
+      <h3>見込み額（要件充足・除外条件なし）</h3>
+      <button type="button" class="rc-toggle" id="pjToggleBtn">内訳を見る</button>
+    </div>
+    <div class="rc-figs" id="pjFigs"></div>
+    <div class="rc-detail" id="pjDetail"></div>
+  </div>
+
   <!-- ① いま一番知りたいこと -->
   <div class="step"><span class="no">STEP 1</span><h2>この文書について、いま一番知りたいことは？</h2><span class="hint">先に教えてもらえると、門がそこに重心を置いて読みます（任意）</span></div>
   <div class="card">
@@ -906,6 +916,7 @@
       if(b.dataset.act === "gate"){
         const id = b.dataset.id;
         const box = b.parentElement.querySelector(".diggate");
+        const baseRow = tr.classList.contains("digdetail") ? tr.previousElementSibling : tr;
         b.disabled = true; b.textContent = "AIゲート判定中…";
         try{
           let d = digDetails[id];
@@ -914,9 +925,19 @@
           if(box) box.innerHTML = gateHtml(g);
           try{
             let cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]");
-            cands = cands.map(c => c.id === id ? Object.assign(c, { gate: g, gated: new Date().toISOString() }) : c);
+            if(!cands.some(c => c.id === id)){
+              // 「候補に登録」を押していなくても、ゲート判定した以上は見込み額の対象にできるよう自動登録する
+              cands.push({ id: id, title: (baseRow && baseRow.dataset.title) || "", saved: new Date().toISOString() });
+            }
+            cands = cands.map(c => c.id === id
+              ? Object.assign(c, { gate: g, amount_max: (d && d.subsidy_max_limit != null ? d.subsidy_max_limit : null), gated: new Date().toISOString() })
+              : c);
             localStorage.setItem("trisight_dig_candidates", JSON.stringify(cands));
           }catch(_){}
+          if(typeof pjRenderFigs === "function"){
+            pjRenderFigs();
+            if($("pjDetail") && $("pjDetail").classList.contains("on")) pjRenderDetail();
+          }
           b.textContent = "AIゲート判定を再実行（API利用）";
         }catch(err){
           if(box) box.innerHTML = '<span style="color:var(--fix)">' + e(String(err && err.message ? err.message : err)) + '</span>';
@@ -1484,6 +1505,53 @@
   });
   rcRenderFigs();
   rcTryRestoreFolder();
+
+  // ---- 見込み額カウンター（2026-07-22導入）：発掘の候補のうち、給付方式=要件充足型・除外条件抵触なしのみを合算 ----
+  function pjYen(n){
+    n = Number(n); if(!isFinite(n)) n = 0;
+    return "¥" + n.toLocaleString("ja-JP");
+  }
+  function pjCandidates(){
+    let cands = [];
+    try{ cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]"); }catch(e){ cands = []; }
+    return Array.isArray(cands) ? cands : [];
+  }
+  function pjEligible(){
+    return pjCandidates().filter(c => c.gate && c.gate["給付方式"] === "要件充足型" && c.gate["除外条件抵触"] === false);
+  }
+  function pjRenderFigs(){
+    const list = pjEligible();
+    const withAmt = list.filter(c => c.amount_max != null && isFinite(Number(c.amount_max)));
+    const total = withAmt.reduce((s,c)=> s + Number(c.amount_max), 0);
+    const unknown = list.length - withAmt.length;
+    $("pjFigs").innerHTML =
+      '<span class="rc-fig"><b>'+list.length+'件</b>要件充足・除外条件なし</span>'+
+      '<span class="rc-fig"><b>'+pjYen(total)+'</b>見込み額合計'+(unknown ? '（金額不明 '+unknown+'件は含まず）' : '')+'</span>';
+  }
+  function pjRenderDetail(){
+    const detail = $("pjDetail");
+    const list = pjEligible().slice().sort((a,b)=>(b.gated||"").localeCompare(a.gated||""));
+    if(!list.length){
+      detail.innerHTML = '<div class="rc-empty">該当する案件はまだありません（発掘→詳細→AIゲート判定を実行すると、ここに反映されます）。</div>';
+      return;
+    }
+    const rows = list.map(c =>
+      '<tr>'+
+        '<td>'+esc(c.title||"")+'</td>'+
+        '<td class="amt">'+(c.amount_max!=null ? pjYen(c.amount_max) : "金額不明")+'</td>'+
+        '<td>'+esc((c.gated||"").slice(0,10))+'</td>'+
+      '</tr>'
+    ).join("");
+    detail.innerHTML =
+      '<table class="rctbl"><thead><tr><th>案件名</th><th>見込み額（上限額）</th><th>判定日</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+      '<div class="rc-empty" style="margin-top:8px">※上限額は制度の上限であり、実際の交付額とは異なる場合があります。給付方式・除外条件の判定はJグランツ掲載情報と企業基礎情報の宣言のみが根拠です。</div>';
+  }
+  $("pjToggleBtn").addEventListener("click", ()=>{
+    const on = $("pjDetail").classList.toggle("on");
+    $("pjToggleBtn").textContent = on ? "内訳を閉じる" : "内訳を見る";
+    if(on) pjRenderDetail();
+  });
+  pjRenderFigs();
 
   async function run(){
     hideErr();

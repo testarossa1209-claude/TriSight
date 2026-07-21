@@ -210,7 +210,7 @@
   @media print{
     body{background:#fff;color:#000}
     .wrap{max-width:none;padding:0;margin:0}
-    .lead,.rule,.step,#drop,#file,.extract,.run,.err,footer,.no-print,.card{display:none!important}
+    .lead,.rule,.step,#drop,#file,.extract,.run,.err,footer,.no-print,.card,.resultCounter{display:none!important}
     header{margin:0 0 10px}
     .brand h1{font-size:22px}
     #out{display:block!important;margin:0}
@@ -237,6 +237,40 @@
   .digpick{margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .digpicked{font-weight:700;font-size:13px;line-height:1.9}
   .digfile{font-size:13px;color:var(--ink-soft)}
+
+  /* 獲得実績カウンター（2026-07-22導入） */
+  .resultCounter{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+    padding:14px 18px;margin:0 0 22px;box-shadow:var(--shadow)}
+  .rc-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .rc-head h3{font-size:14px;margin:0;font-weight:800;color:var(--ink)}
+  .rc-add,.rc-toggle{border:1.5px solid var(--line);background:#fff;color:var(--ink-soft);
+    border-radius:6px;padding:5px 12px;font-size:12.5px;cursor:pointer;font-family:inherit}
+  .rc-add:hover,.rc-toggle:hover{border-color:var(--ink);color:var(--ink)}
+  .rc-toggle{margin-left:auto}
+  .rc-figs{display:flex;gap:20px;flex-wrap:wrap;margin-top:10px}
+  .rc-fig{font-size:12.5px;color:var(--muted)}
+  .rc-fig b{font-size:19px;color:var(--ink);margin-right:5px;font-weight:800}
+  .rc-form{margin-top:14px;border-top:1px dashed var(--line);padding-top:14px;display:none}
+  .rc-form.on{display:block}
+  .rc-form .rcf-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+  .rc-form label{font-size:12px;color:var(--ink-soft);display:flex;flex-direction:column;gap:4px}
+  .rc-form input{border:1px solid var(--line);border-radius:6px;padding:8px 10px;
+    font-size:13.5px;color:var(--ink);font-family:inherit;background:var(--surface)}
+  .rc-form input:focus{outline:none;border-color:var(--ink)}
+  .rc-form input[type=number],.rc-form input[type=date]{width:170px}
+  .rc-form input[type=text]{min-width:220px;flex:1}
+  .rc-form .rcf-btns{display:flex;gap:8px}
+  .rc-err{font-size:12.5px;color:var(--fix);margin:-2px 0 8px;display:none}
+  .rc-detail{margin-top:14px;display:none;border-top:1px dashed var(--line);padding-top:12px}
+  .rc-detail.on{display:block}
+  table.rctbl{width:100%;border-collapse:collapse;font-size:13px}
+  .rctbl th,.rctbl td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:top}
+  .rctbl th{color:var(--ink-soft);font-size:12px;white-space:nowrap}
+  .rctbl td.amt{white-space:nowrap;font-weight:700}
+  .rctbl button.rcdel{border:1px solid var(--line);background:#fff;color:var(--muted);
+    border-radius:5px;padding:3px 9px;font-size:11.5px;cursor:pointer;font-family:inherit}
+  .rctbl button.rcdel:hover{border-color:var(--fix);color:var(--fix)}
+  .rc-empty{font-size:13px;color:var(--muted);padding:4px 0}
 </style>
 </head>
 <body>
@@ -254,6 +288,35 @@
     <p class="lead">行政から来た補助金・助成金の案内（PDF）をそのまま入れると、まず<b>当事業所が対象になりそうか</b>を返し、続けて<b>絶対の締切・逆算タスク・必要書類</b>を並べ直します。読み込む前に「取りに行く価値があるか」が分かる受付です。十枚を時間かけて読んで対象外でした、をなくすために。<b>補助金の受付だけでは扱いきれない案件だと判断したら、引き継ぎの目印を立ててお知らせします。</b></p>
     <div class="rule"></div>
   </header>
+
+  <!-- 獲得実績カウンター（2026-07-22導入） -->
+  <div class="resultCounter">
+    <div class="rc-head">
+      <h3>獲得実績</h3>
+      <button type="button" class="rc-add" id="rcAddBtn">＋ 実績を登録</button>
+      <button type="button" class="rc-toggle" id="rcToggleBtn">内訳を見る</button>
+    </div>
+    <div class="rc-figs" id="rcFigs"></div>
+    <div class="rc-form" id="rcForm">
+      <div class="rcf-row">
+        <label>制度名<input type="text" id="rcName" placeholder="例：東村山市高齢者施設等物価高騰対策支援金"></label>
+        <label>交付元<input type="text" id="rcIssuer" placeholder="例：東村山市"></label>
+      </div>
+      <div class="rcf-row">
+        <label>獲得金額（円）<input type="number" id="rcAmount" min="0" step="1"></label>
+        <label>確定日（入金・受理確認日）<input type="date" id="rcDate"></label>
+      </div>
+      <div class="rcf-row">
+        <label style="flex:1">メモ（任意）<input type="text" id="rcNote"></label>
+      </div>
+      <div class="rc-err" id="rcErr"></div>
+      <div class="rcf-btns">
+        <button type="button" class="rbtn" id="rcSaveBtn">登録する</button>
+        <button type="button" class="rbtn ghost" id="rcCancelBtn">キャンセル</button>
+      </div>
+    </div>
+    <div class="rc-detail" id="rcDetail"></div>
+  </div>
 
   <!-- 発掘（新着探索・Jグランツ） 2026-07-13 -->
   <div class="step"><span class="no">発掘</span><h2>新着の補助金を掘る</h2><span class="hint">Jグランツで受付中の案件を、リレー経由で探しに行きます</span></div>
@@ -311,6 +374,7 @@
   <div id="resultBar" class="no-print" style="display:none">
     <button id="printBtn" class="rbtn">印刷する</button>
     <button id="taskBtn" class="rbtn">TriTaskへ送る</button>
+    <button id="resultRegBtn" class="rbtn ghost">獲得実績を登録</button>
     <button id="resetBtn" class="rbtn ghost">次の案件へ（最初から）</button>
     <span id="taskMsg" class="rmsg" style="display:none"></span>
   </div>
@@ -1103,6 +1167,117 @@
     statusEl.textContent="まずPDFを入れてください。";
     window.scrollTo({top:0,behavior:"smooth"});
   }
+
+  // ---- 獲得実績カウンター（2026-07-22導入） ----------------------
+  const RC_KEY = "trigate_results";
+  function rcLoad(){
+    let arr;
+    try{ arr = JSON.parse(localStorage.getItem(RC_KEY) || "[]"); }catch(e){ arr = []; }
+    return Array.isArray(arr) ? arr : [];
+  }
+  function rcSave(arr){
+    try{ localStorage.setItem(RC_KEY, JSON.stringify(arr)); return true; }catch(e){ return false; }
+  }
+  function rcYen(n){
+    n = Number(n); if(!isFinite(n)) n = 0;
+    return "¥" + n.toLocaleString("ja-JP");
+  }
+  function rcSum(arr, pred){
+    const f = arr.filter(pred);
+    return { count: f.length, total: f.reduce((s,r)=>s+(Number(r.amount)||0),0) };
+  }
+  function rcRenderFigs(){
+    const arr = rcLoad();
+    const now = new Date();
+    const ym = now.getFullYear() + "-" + ("0"+(now.getMonth()+1)).slice(-2);
+    const y  = String(now.getFullYear());
+    const mo = rcSum(arr, r => (r.acquired_at||"").slice(0,7) === ym);
+    const yr = rcSum(arr, r => (r.acquired_at||"").slice(0,4) === y);
+    const al = rcSum(arr, () => true);
+    $("rcFigs").innerHTML =
+      '<span class="rc-fig"><b>'+mo.count+'件</b>今月 '+rcYen(mo.total)+'</span>'+
+      '<span class="rc-fig"><b>'+yr.count+'件</b>今年 '+rcYen(yr.total)+'</span>'+
+      '<span class="rc-fig"><b>'+al.count+'件</b>累計 '+rcYen(al.total)+'</span>';
+  }
+  function rcRenderDetail(){
+    const detail = $("rcDetail");
+    const arr = rcLoad().slice().sort((a,b)=>(b.acquired_at||"").localeCompare(a.acquired_at||""));
+    if(!arr.length){
+      detail.innerHTML = '<div class="rc-empty">まだ実績の登録がありません。</div>';
+      return;
+    }
+    const rows = arr.map(r =>
+      '<tr>'+
+        '<td>'+esc(r.acquired_at||"")+'</td>'+
+        '<td>'+esc(r.program_name||"")+'</td>'+
+        '<td>'+esc(r.issuer||"")+'</td>'+
+        '<td class="amt">'+rcYen(r.amount)+'</td>'+
+        '<td>'+esc(r.note||"")+'</td>'+
+        '<td><button type="button" class="rcdel" data-id="'+esc(r.id)+'">削除</button></td>'+
+      '</tr>'
+    ).join("");
+    detail.innerHTML =
+      '<table class="rctbl"><thead><tr><th>確定日</th><th>制度名</th><th>交付元</th><th>金額</th><th>メモ</th><th></th></tr></thead><tbody>'+
+      rows+'</tbody></table>';
+    detail.querySelectorAll(".rcdel").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        if(!confirm("この実績を削除しますか？（元に戻せません）")) return;
+        const list = rcLoad().filter(r => r.id !== btn.dataset.id);
+        rcSave(list);
+        rcRenderFigs();
+        rcRenderDetail();
+      });
+    });
+  }
+  function rcOpenForm(prefill){
+    $("rcErr").style.display="none"; $("rcErr").textContent="";
+    $("rcName").value   = (prefill && prefill.program_name) || "";
+    $("rcIssuer").value = (prefill && prefill.issuer) || "";
+    $("rcAmount").value = "";
+    $("rcDate").value   = new Date().toISOString().slice(0,10);
+    $("rcNote").value   = "";
+    $("rcForm").classList.add("on");
+    $("rcForm").scrollIntoView({behavior:"smooth",block:"center"});
+  }
+  function rcCloseForm(){
+    $("rcForm").classList.remove("on");
+  }
+  $("rcAddBtn").addEventListener("click", ()=> rcOpenForm(null));
+  $("resultRegBtn").addEventListener("click", ()=> rcOpenForm(TG_LAST));
+  $("rcCancelBtn").addEventListener("click", rcCloseForm);
+  $("rcToggleBtn").addEventListener("click", ()=>{
+    const on = $("rcDetail").classList.toggle("on");
+    $("rcToggleBtn").textContent = on ? "内訳を閉じる" : "内訳を見る";
+    if(on) rcRenderDetail();
+  });
+  $("rcSaveBtn").addEventListener("click", ()=>{
+    const name   = $("rcName").value.trim();
+    const amount = Number($("rcAmount").value);
+    const date   = $("rcDate").value;
+    if(!name){ $("rcErr").textContent="制度名を入力してください。"; $("rcErr").style.display="block"; return; }
+    if(!amount || amount <= 0){ $("rcErr").textContent="獲得金額を正しく入力してください。"; $("rcErr").style.display="block"; return; }
+    if(!date){ $("rcErr").textContent="確定日を入力してください。"; $("rcErr").style.display="block"; return; }
+    const rec = {
+      id: "TR-" + Date.now(),
+      created_at: new Date().toISOString(),
+      program_name: name,
+      issuer: $("rcIssuer").value.trim(),
+      amount: amount,
+      acquired_at: date,
+      note: $("rcNote").value.trim()
+    };
+    const list = rcLoad();
+    list.push(rec);
+    if(!rcSave(list)){
+      $("rcErr").textContent="保存できませんでした。";
+      $("rcErr").style.display="block";
+      return;
+    }
+    rcCloseForm();
+    rcRenderFigs();
+    if($("rcDetail").classList.contains("on")) rcRenderDetail();
+  });
+  rcRenderFigs();
 
   async function run(){
     hideErr();

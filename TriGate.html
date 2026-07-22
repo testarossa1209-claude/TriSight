@@ -487,6 +487,18 @@
     let company = null;
     let lastShow = [];   // 直近の検索結果（精密足切り通過分）。全件詳細AIゲート判定ボタンから参照する
     const fullGateBtn = document.getElementById("digFullGateBtn");
+    function findDigRow(id){
+      const rows = out.querySelectorAll("tr[data-id]");
+      for(const row of rows){ if(row.dataset.id === id) return row; }
+      return null;
+    }
+    function setDigRowBadge(id, badgeHtml){
+      const row = findDigRow(id);
+      if(!row) return;
+      const cell = row.querySelector("td:first-child");
+      if(!cell) return;
+      cell.innerHTML = e(row.dataset.title || "") + badgeHtml;
+    }
     try{ company = JSON.parse(localStorage.getItem("trisight_dig_company") || "null"); }catch(_){ company = null; }
     const compSt = document.getElementById("digCompanyStatus");
     const compIn = document.getElementById("digCompanyFile");
@@ -699,25 +711,11 @@
         }else{
           st.textContent = "受付中 "+list.length+" 件（キーワード："+kw+"）※基礎情報が未読み込みのため全件表示";
         }
-        /* 第4段：給付方式・除外条件の一括判定（API数回・見込み額カウンターへ自動反映） */
-        let giveMap = {};
-        if(company && show.length){
-          const baseMsg = st.textContent;
-          try{
-            giveMap = await runGiveBatch(show, (done, total)=>{
-              st.textContent = baseMsg + "　／　見込み額を一括判定中…（"+done+"/"+total+"）";
-            });
-            st.textContent = baseMsg + "　／　見込み額の判定が完了しました。";
-          }catch(_){
-            st.textContent = baseMsg + "　／　見込み額の一括判定に失敗しました（個別の「AIゲート判定」は引き続き使えます）。";
-          }
-        }
+        /* 先に一覧を描画する（バッジは未判定のため空欄）。判定結果は後から行ごとに追記する */
         let html = '<table class="digtbl"><thead><tr><th>案件名</th><th>上限額</th><th>受付締切</th><th>対象地域</th><th></th></tr></thead><tbody>';
         for(const it of show){
-          const gv = it.id ? giveMap[it.id] : null;
-          const badge = pjBadgeHtml(gv, it.subsidy_max_limit, false);
           html += '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'">'
-                + "<td>"+e(it.title || it.name || "（名称不明）")+badge+"</td>"
+                + "<td>"+e(it.title || it.name || "（名称不明）")+"</td>"
                 + "<td>"+fy(it.subsidy_max_limit)+"</td>"
                 + '<td class="dl">'+fd(it.acceptance_end_datetime)+"</td>"
                 + "<td>"+e(it.target_area_search || "—")+"</td>"
@@ -727,6 +725,18 @@
         out.innerHTML = html;
         lastShow = show;
         if(fullGateBtn) fullGateBtn.style.display = show.length ? "" : "none";
+        /* 第4段：給付方式・除外条件の一括判定（API数回・行ごとにバッジと見込み額を随時反映） */
+        if(company && show.length){
+          const baseMsg = st.textContent;
+          try{
+            await runGiveBatch(show, (done, total)=>{
+              st.textContent = baseMsg + "　／　見込み額を一括判定中…（"+done+"/"+total+"）";
+            });
+            st.textContent = baseMsg + "　／　見込み額の判定が完了しました。";
+          }catch(_){
+            st.textContent = baseMsg + "　／　見込み額の一括判定に失敗しました（個別の「AIゲート判定」は引き続き使えます）。";
+          }
+        }
       }catch(err){
         st.textContent = String(err && err.message ? err.message : err);
       }finally{
@@ -856,40 +866,46 @@
     }
     async function runGiveBatch(items, onProgress){
       const ids = items.map(it => it.id).filter(Boolean);
+      const itemById = {};
+      items.forEach(it => { if(it.id) itemById[it.id] = it; });
       const resultMap = {};
       for(let i = 0; i < ids.length; i += GIVE_CHUNK){
         const chunk = ids.slice(i, i + GIVE_CHUNK);
         if(onProgress) onProgress(i, ids.length);
+        let arr = null;
         try{
-          const arr = await aiGiveBatchCheck(chunk);
-          if(Array.isArray(arr)){
-            arr.forEach(g => { if(g && g.id) resultMap[g.id] = g; });
-          }
+          arr = await aiGiveBatchCheck(chunk);
         }catch(_){
           /* このチャンクは判定失敗として飛ばす。他チャンクの処理は継続する（見込み額は分かる範囲だけ反映） */
         }
+        if(Array.isArray(arr)){
+          arr.forEach(g => { if(g && g.id) resultMap[g.id] = g; });
+        }
+        /* このチャンク分を候補storageへ反映し、対応する行のバッジ・見込み額をその場で更新する
+           （一覧が既に表示された後に判定が追いついてくる形にするため、チャンク完了ごとに反映する） */
+        try{
+          let cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]");
+          chunk.forEach(id => {
+            if(!resultMap[id]) return;
+            const it = itemById[id];
+            const d = digDetails[id] || {};
+            const g = { "判定": "要確認", "給付方式": resultMap[id]["給付方式"], "除外条件抵触": !!resultMap[id]["除外条件抵触"] };
+            if(!cands.some(c => c.id === id)){
+              cands.push({ id: id, title: (it && (it.title || it.name)) || "", saved: new Date().toISOString() });
+            }
+            cands = cands.map(c => c.id === id
+              ? Object.assign(c, { gate: g, amount_max: (d.subsidy_max_limit != null ? d.subsidy_max_limit : null), gated: new Date().toISOString(), gate_lite: true })
+              : c);
+            setDigRowBadge(id, pjBadgeHtml(g, d.subsidy_max_limit, false));
+          });
+          localStorage.setItem("trisight_dig_candidates", JSON.stringify(cands));
+        }catch(_){}
+        if(typeof pjRenderFigs === "function"){
+          pjRenderFigs();
+          if($("pjDetail") && $("pjDetail").classList.contains("on")) pjRenderDetail();
+        }
       }
       if(onProgress) onProgress(ids.length, ids.length);
-      /* 候補storageへ反映：見込み額カウンター（pjRenderFigs等）はこのstorageを読む */
-      try{
-        let cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]");
-        items.forEach(it => {
-          if(!it.id || !resultMap[it.id]) return;
-          const d = digDetails[it.id] || {};
-          const g = { "判定": "要確認", "給付方式": resultMap[it.id]["給付方式"], "除外条件抵触": !!resultMap[it.id]["除外条件抵触"] };
-          if(!cands.some(c => c.id === it.id)){
-            cands.push({ id: it.id, title: it.title || it.name || "", saved: new Date().toISOString() });
-          }
-          cands = cands.map(c => c.id === it.id
-            ? Object.assign(c, { gate: g, amount_max: (d.subsidy_max_limit != null ? d.subsidy_max_limit : null), gated: new Date().toISOString(), gate_lite: true })
-            : c);
-        });
-        localStorage.setItem("trisight_dig_candidates", JSON.stringify(cands));
-      }catch(_){}
-      if(typeof pjRenderFigs === "function"){
-        pjRenderFigs();
-        if($("pjDetail") && $("pjDetail").classList.contains("on")) pjRenderDetail();
-      }
       return resultMap;
     }
 
@@ -1023,22 +1039,9 @@
       fullGateBtn.addEventListener("click", async ()=>{
         if(!lastShow.length) return;
         const items = lastShow.slice();
-        const titleMap = {};
-        items.forEach(it => { titleMap[it.id] = it.title || it.name || "（名称不明）"; });
 
-        function findRow(id){
-          const rows = out.querySelectorAll("tr[data-id]");
-          for(const row of rows){ if(row.dataset.id === id) return row; }
-          return null;
-        }
-        function setRowBadge(id, html){
-          const row = findRow(id);
-          if(!row) return;
-          const cell = row.querySelector("td:first-child");
-          if(cell) cell.innerHTML = e(titleMap[id] || "") + html;
-        }
         function updateOpenDetailGate(id, g){
-          const row = findRow(id);
+          const row = findDigRow(id);
           if(!row) return;
           const next = row.nextElementSibling;
           if(next && next.classList && next.classList.contains("digdetail")){
@@ -1074,14 +1077,14 @@
                   : c);
                 localStorage.setItem("trisight_dig_candidates", JSON.stringify(cands));
               }catch(_){}
-              setRowBadge(it.id, pjBadgeHtml(g, d.subsidy_max_limit, true));
+              setDigRowBadge(it.id, pjBadgeHtml(g, d.subsidy_max_limit, true));
               updateOpenDetailGate(it.id, g);
               if(typeof pjRenderFigs === "function"){
                 pjRenderFigs();
                 if($("pjDetail") && $("pjDetail").classList.contains("on")) pjRenderDetail();
               }
             }catch(err){
-              setRowBadge(it.id, '<br><span style="font-size:11px;color:var(--fix)">判定失敗：'+e(String(err && err.message ? err.message : err)).slice(0,40)+'</span>');
+              setDigRowBadge(it.id, '<br><span style="font-size:11px;color:var(--fix)">判定失敗：'+e(String(err && err.message ? err.message : err)).slice(0,40)+'</span>');
             }
             done++;
             fullGateBtn.textContent = "詳細AIゲート判定を実行中…（"+done+"/"+total+"）";

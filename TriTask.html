@@ -197,6 +197,11 @@
   }
   .gitem .gstatus.done{background:#eef5ef;color:var(--ok)}
   .gitem .gstatus.doing{background:#fbf3e8;color:var(--amber)}
+  .gitem .gdel{
+    margin-left:auto;font-size:11px;padding:2px 9px;border:1px solid var(--line);border-radius:99px;
+    background:var(--white);color:var(--ink-soft);cursor:pointer;
+  }
+  .gitem .gdel:hover{border-color:#c0546a;color:#b0203a}
   .srcbadge{
     display:inline-block;font-size:11px;font-weight:700;padding:2px 10px;border-radius:99px;
     background:var(--ink);color:var(--paper);letter-spacing:.03em;
@@ -483,24 +488,52 @@
       hint.textContent = "まだありません。トライゲイトなど各システムの判定結果画面で「TriTaskへ送る」を押すと、ここに集まります。";
       return;
     }
-    hint.textContent = grants.length + "件の案件があります。クリックすると作業ステップを表示します。";
-    grants.slice().reverse().forEach(g=>{
-      const li = document.createElement("li");
-      li.className = "gitem";
-      const statusCls = g.status === "完了" ? "done" : (g.status === "進行中" ? "doing" : "");
-      const due = (g.reverse_tasks && g.reverse_tasks[0] && g.reverse_tasks[0].due_text)
-                || (g.deadlines && g.deadlines[0]) || "期限記載なし";
-      li.innerHTML =
-        '<div class="gname"></div>'+
-        '<div class="gmeta"><span class="srcbadge"></span><span class="gco"></span><span class="gdue"></span><span class="gstatus '+statusCls+'"></span></div>';
-      li.querySelector(".gname").textContent = g.program_name || "（名称不明）";
-      li.querySelector(".srcbadge").textContent = g.source_product || "外部システム";
-      li.querySelector(".gco").textContent = g.company_name ? ("送付元：" + g.company_name) : "";
-      li.querySelector(".gdue").textContent = "期限：" + due;
-      li.querySelector(".gstatus").textContent = g.status || "未着手";
-      li.addEventListener("click", ()=>openGrant(g.id));
-      ul.appendChild(li);
+    const active = grants.filter(g => g.status !== "完了");
+    const done = grants.filter(g => g.status === "完了");
+    hint.textContent = active.length + "件が進行中です" + (done.length ? "（完了済み" + done.length + "件は下にたたんであります）" : "") + "。クリックすると作業ステップを表示します。";
+
+    active.slice().reverse().forEach(g => ul.appendChild(gitemEl(g)));
+
+    if(done.length){
+      const details = document.createElement("details");
+      details.style.marginTop = "10px";
+      details.innerHTML = '<summary style="cursor:pointer;font-size:13px;color:var(--ink-soft)">完了済み（'+done.length+'件）を表示</summary>';
+      const doneUl = document.createElement("ul");
+      doneUl.className = "glist";
+      doneUl.style.marginTop = "8px";
+      done.slice().reverse().forEach(g => doneUl.appendChild(gitemEl(g)));
+      details.appendChild(doneUl);
+      ul.appendChild(details);
+    }
+  }
+  function gitemEl(g){
+    const li = document.createElement("li");
+    li.className = "gitem";
+    const statusCls = g.status === "完了" ? "done" : (g.status === "進行中" ? "doing" : "");
+    const due = (g.reverse_tasks && g.reverse_tasks[0] && g.reverse_tasks[0].due_text)
+              || (g.deadlines && g.deadlines[0]) || "期限記載なし";
+    li.innerHTML =
+      '<div class="gname"></div>'+
+      '<div class="gmeta"><span class="srcbadge"></span><span class="gco"></span><span class="gdue"></span><span class="gstatus '+statusCls+'"></span><button type="button" class="gdel" title="この案件を削除">削除</button></div>';
+    li.querySelector(".gname").textContent = g.program_name || "（名称不明）";
+    li.querySelector(".srcbadge").textContent = g.source_product || "外部システム";
+    li.querySelector(".gco").textContent = g.company_name ? ("送付元：" + g.company_name) : "";
+    li.querySelector(".gdue").textContent = "期限：" + due;
+    li.querySelector(".gstatus").textContent = g.status || "未着手";
+    li.addEventListener("click", ()=>openGrant(g.id));
+    li.querySelector(".gdel").addEventListener("click", (ev)=>{
+      ev.stopPropagation();
+      if(confirm("「"+(g.program_name||"（名称不明）")+"」を削除します。よろしいですか？（元に戻せません）")){
+        deleteGrantItem(g.id);
+      }
     });
+    return li;
+  }
+  function deleteGrantItem(id){
+    const list = allInbox().filter(x => x.id !== id);
+    saveInbox(list);
+    if(currentGrantId === id) currentGrantId = null;
+    renderGrantList();
   }
   function inboxSourceLabel(id){
     const item = allInbox().find(x=>x.id===id);

@@ -443,6 +443,22 @@
     <span id="taskMsg" class="rmsg" style="display:none"></span>
   </div>
 
+  <!-- TriTask送信前の確認・編集パネル（AI出力を無検証で流さないための人の確認工程） -->
+  <div id="sendReview" class="no-print" style="display:none;border:2px solid #c9772a;border-radius:10px;padding:18px 20px;margin:14px 0;background:#fffaf3">
+    <h3 style="margin:0 0 4px;font-size:16px">送信内容の確認（AIが出した工程です。必要に応じて修正してから送ってください）</h3>
+    <p style="margin:0 0 14px;font-size:12.5px;color:#7a5a30">ここで内容を確認・修正しない限り、TriTaskへは送信されません。</p>
+    <label style="display:block;margin-bottom:8px">制度名<br><input type="text" id="srProgramName" style="width:100%;padding:6px"></label>
+    <label style="display:block;margin-bottom:12px">交付元<br><input type="text" id="srIssuer" style="width:100%;padding:6px"></label>
+    <div style="font-weight:bold;margin-bottom:6px">工程（期限・やること・要確認）</div>
+    <div id="srTasks"></div>
+    <button type="button" id="srAddTask" style="margin:6px 0 16px;padding:5px 12px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer">＋ 工程を追加</button>
+    <div id="srDocsRO" style="font-size:12.5px;color:#666;margin-bottom:14px"></div>
+    <div>
+      <button type="button" id="srConfirmBtn" class="rbtn">この内容でTriTaskへ送る</button>
+      <button type="button" id="srCancelBtn" class="rbtn ghost">キャンセル</button>
+    </div>
+  </div>
+
   <!-- 結果 -->
   <div id="out"></div>
 
@@ -528,10 +544,8 @@
       required_documents: [{ name: "テスト用ダミー書類", note: "動作確認用のため実際の提出は不要です" }],
       verify_items: []
     };
-    tgToTask();
-    const m = document.getElementById('testSendMsg');
-    const src = document.getElementById('taskMsg');
-    if(m && src){ m.textContent = src.textContent; m.style.color = src.style.color || '#3f7d57'; }
+    resetTaskBtn();
+    autoSendToTask(TG_LAST);
   });
 
   /* ===== 発掘（新着探索・Jグランツ）2026-07-13 ===== */
@@ -1411,14 +1425,27 @@
   $("printBtn").addEventListener("click", ()=>window.print());
   $("resetBtn").addEventListener("click", resetAll);
 
-  // ---- TriTaskへ送る -------------------------------------------
+  // ---- TriTaskへ送る（送信前に人が内容を確認・編集する） --------
   // 親機（トライサイト本体）フル契約の判定規則：認証コードが「-FAMILY」で終わるものを親機扱いとする
   function isFamilyTier(code){
     return /-FAMILY$/i.test(code || "");
   }
   let TG_LAST = null;
-  $("taskBtn").addEventListener("click", tgToTask);
-  function tgToTask(){
+  let __lastSentId = null; // 自動送信済みレコードのID（後から修正する際の上書き対象）
+
+  // 判定完了時に自動でTriTaskへ送る（AIの出力を人が転送する作業は発生しない）
+  function autoSendToTask(d){
+    let __authCode = "";
+    try{ __authCode = localStorage.getItem('trisight_access_code') || ""; }catch(e){ __authCode = ""; }
+    __lastSentId = null;
+    if(!isFamilyTier(__authCode)) return; // 対象外契約では自動連携なし（ボタン押下時に案内）
+    const card = doSendToTask(d, null);
+    if(card) __lastSentId = card.id;
+  }
+
+  $("taskBtn").addEventListener("click", openSendReview);
+
+  function openSendReview(){
     if(!TG_LAST){ alert("先に判定を実行してください。"); return; }
     let __authCode = "";
     try{ __authCode = localStorage.getItem('trisight_access_code') || ""; }catch(e){ __authCode = ""; }
@@ -1427,6 +1454,70 @@
       return;
     }
     const d = TG_LAST;
+    $("srProgramName").value = d.program_name || "（名称不明）";
+    $("srIssuer").value = d.issuer || "";
+    renderSrTasks(d.reverse_tasks || []);
+    const docs = (d.required_documents || []).map(x => "・" + (x.name||"") + (x.note ? "（"+x.note+"）" : "")).join("<br>");
+    $("srDocsRO").innerHTML = docs ? ("必要書類（参考・この画面では編集できません）：<br>" + docs) : "";
+    $("sendReview").style.display = "";
+    $("sendReview").scrollIntoView({behavior:"smooth", block:"start"});
+  }
+
+  function srRowHtml(t){
+    t = t || { due_text:"", action:"", must_verify:false };
+    return '<div class="sr-row" style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;padding:8px;border:1px solid #e5d9c3;border-radius:8px;background:#fff">'+
+      '<input type="text" class="sr-due" placeholder="期限（例：8/20まで）" style="width:130px;padding:5px" value="'+esc(t.due_text||'')+'">'+
+      '<textarea class="sr-action" placeholder="やること" style="flex:1;padding:5px;min-height:38px">'+esc(t.action||'')+'</textarea>'+
+      '<label style="font-size:12px;white-space:nowrap;padding-top:8px"><input type="checkbox" class="sr-verify"'+(t.must_verify?' checked':'')+'> 要確認</label>'+
+      '<button type="button" class="sr-remove" style="padding:5px 8px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer">削除</button>'+
+    '</div>';
+  }
+  function renderSrTasks(tasks){
+    const box = $("srTasks");
+    box.innerHTML = (tasks.length ? tasks : [null]).map(srRowHtml).join("");
+    box.querySelectorAll(".sr-remove").forEach(btn=>{
+      btn.addEventListener("click", ()=>{ btn.closest(".sr-row").remove(); });
+    });
+  }
+  $("srAddTask").addEventListener("click", ()=>{
+    $("srTasks").insertAdjacentHTML("beforeend", srRowHtml(null));
+    const rows = $("srTasks").querySelectorAll(".sr-row");
+    const last = rows[rows.length-1];
+    last.querySelector(".sr-remove").addEventListener("click", ()=>{ last.remove(); });
+  });
+  $("srCancelBtn").addEventListener("click", ()=>{
+    $("sendReview").style.display = "none";
+  });
+  $("srConfirmBtn").addEventListener("click", ()=>{
+    const rows = [...$("srTasks").querySelectorAll(".sr-row")];
+    const editedTasks = rows.map(r=>({
+      due_text: r.querySelector(".sr-due").value.trim(),
+      action: r.querySelector(".sr-action").value.trim(),
+      must_verify: r.querySelector(".sr-verify").checked
+    })).filter(t=>t.due_text || t.action);
+    const payload = {
+      program_name: $("srProgramName").value.trim() || "（名称不明）",
+      issuer: $("srIssuer").value.trim(),
+      summary: (TG_LAST && TG_LAST.summary) || "",
+      deadlines: (TG_LAST && TG_LAST.deadlines) || [],
+      reverse_tasks: editedTasks,
+      required_documents: (TG_LAST && TG_LAST.required_documents) || [],
+      verify_items: (TG_LAST && TG_LAST.verify_items) || [],
+      contact: (TG_LAST && TG_LAST.contact) || ""
+    };
+    const card = doSendToTask(payload, __lastSentId);
+    if(card) __lastSentId = card.id;
+    $("sendReview").style.display = "none";
+  });
+
+  // d＝送信する内容。existingId を渡すと新規作成ではなく既存レコードを上書きする（後からの修正用）
+  function doSendToTask(d, existingId){
+    let __authCode = "";
+    try{ __authCode = localStorage.getItem('trisight_access_code') || ""; }catch(e){ __authCode = ""; }
+    if(!isFamilyTier(__authCode)){
+      showTaskMsg("この契約プランでは自動連携はご利用いただけません。判定結果をコピーし、TriTaskの「その他」欄から貼り付けてご利用ください。", false);
+      return null;
+    }
     let list = [];
     try{ list = JSON.parse(localStorage.getItem("tritask_inbox") || "[]"); }catch(e){ list = []; }
     let __companyName = "";
@@ -1434,45 +1525,69 @@
       const __co = JSON.parse(localStorage.getItem("trisight_dig_company") || "null");
       __companyName = (__co && __co["会社"] && __co["会社"]["名称"]) || "";
     }catch(e){ __companyName = ""; }
-    const card = {
-      id: "TG-" + Date.now(),
-      created_at: new Date().toISOString(),
-      source_product: "TriGate®",
-      auth_code: __authCode,
-      company_name: __companyName,
-      program_name: d.program_name || "（名称不明）",
-      issuer: d.issuer || "",
-      summary: d.summary || "",
-      deadlines: d.deadlines || [],
-      reverse_tasks: d.reverse_tasks || [],
-      required_documents: d.required_documents || [],
-      verify_items: d.verify_items || [],
-      contact: d.contact || "",
-      amount_expected: null,
-      status: "未着手",
-      paid_confirmed_at: null
-    };
-    list.push(card);
+
+    let card = null, idx = -1;
+    if(existingId){ idx = list.findIndex(x => x.id === existingId); }
+
+    if(idx >= 0){
+      // 既存レコードの内容を更新（人が確認・修正した場合はhuman_reviewedをtrueに）
+      card = Object.assign({}, list[idx], {
+        program_name: d.program_name || "（名称不明）",
+        issuer: d.issuer || "",
+        summary: d.summary || "",
+        deadlines: d.deadlines || [],
+        reverse_tasks: d.reverse_tasks || [],
+        required_documents: d.required_documents || [],
+        verify_items: d.verify_items || [],
+        contact: d.contact || "",
+        human_reviewed: true,
+        updated_at: new Date().toISOString()
+      });
+      list[idx] = card;
+    }else{
+      card = {
+        id: "TG-" + Date.now(),
+        created_at: new Date().toISOString(),
+        source_product: "TriGate®",
+        auth_code: __authCode,
+        company_name: __companyName,
+        program_name: d.program_name || "（名称不明）",
+        issuer: d.issuer || "",
+        summary: d.summary || "",
+        deadlines: d.deadlines || [],
+        reverse_tasks: d.reverse_tasks || [],
+        required_documents: d.required_documents || [],
+        verify_items: d.verify_items || [],
+        contact: d.contact || "",
+        amount_expected: null,
+        status: "未着手",
+        paid_confirmed_at: null,
+        human_reviewed: false // 自動送信のみ・まだ人が内容を確認・修正していない
+      };
+      list.push(card);
+    }
+
     try{
       localStorage.setItem("tritask_inbox", JSON.stringify(list));
     }catch(e){
       showTaskMsg("× 保存できませんでした（" + (e && e.name ? e.name : "不明") + "）", false);
-      return;
+      return null;
     }
     // 保存できたか読み直して確かめる（書けたつもりを潰す）
     let saved = 0;
     try{ saved = (JSON.parse(localStorage.getItem("tritask_inbox") || "[]")).length; }catch(e){ saved = 0; }
     if(!saved){
       showTaskMsg("× 保存を確認できませんでした", false);
-      return;
+      return null;
     }
     const t = new Date();
     const hhmm = ("0"+t.getHours()).slice(-2) + ":" + ("0"+t.getMinutes()).slice(-2);
-    showTaskMsg("✓ TriTaskへ送信済み " + hhmm + "（未処理 " + saved + " 件）", true);
+    showTaskMsg((existingId && idx>=0 ? "✓ 修正内容を保存しました " : "✓ 自動でTriTaskへ送信されました ") + hhmm, true);
     const b = $("taskBtn");
-    b.disabled = true;
-    b.textContent = "送信済み";
+    b.disabled = false;
+    b.textContent = "送信内容を確認・修正する";
     b.title = card.program_name;
+    return card;
   }
 
   function showTaskMsg(text, ok){
@@ -1484,6 +1599,8 @@
     }else{
       m.style.color = ""; m.style.background = ""; m.style.borderColor = "";
     }
+    const t = $("testSendMsg");
+    if(t){ t.textContent = text; t.style.color = ok ? "#3f7d57" : "#b0203a"; }
   }
 
   function resetTaskBtn(){
@@ -2094,6 +2211,7 @@
   function render(d){
     TG_LAST = d;
     resetTaskBtn();
+    autoSendToTask(d);
     const parts=[];
     parts.push(`<p class="prog-head">${esc(d.issuer||"")}</p>`);
     parts.push(`<p class="prog-name">${esc(d.program_name||"（名称不明）")}</p>`);

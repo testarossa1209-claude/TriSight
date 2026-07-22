@@ -343,6 +343,9 @@
       <span class="digstatus" id="digCompanyStatus" style="margin-top:0">未読み込み（機械足切りに必要です）</span>
     </div>
     <div class="digstatus" id="digStatus"></div>
+    <div class="digrow" style="margin-top:8px">
+      <button id="digFullGateBtn" class="dbtn" style="display:none">この一覧すべてで詳細AIゲート判定を実行する（API複数回・時間がかかります）</button>
+    </div>
     <div id="digOut"></div>
   </div>
 
@@ -453,6 +456,8 @@
     /* ---- 企業基礎情報（ローカルJSON読み込み・端末内のみ保持） ---- */
     const digDetails = {};
     let company = null;
+    let lastShow = [];   // 直近の検索結果（精密足切り通過分）。全件詳細AIゲート判定ボタンから参照する
+    const fullGateBtn = document.getElementById("digFullGateBtn");
     try{ company = JSON.parse(localStorage.getItem("trisight_dig_company") || "null"); }catch(_){ company = null; }
     const compSt = document.getElementById("digCompanyStatus");
     const compIn = document.getElementById("digCompanyFile");
@@ -586,6 +591,8 @@
       btn.disabled = true;
       st.textContent = "Jグランツへ探しに行っています…";
       out.innerHTML = "";
+      if(fullGateBtn) fullGateBtn.style.display = "none";
+      lastShow = [];
       try{
         const res = await fetch(JG_RELAY, {
           method:"POST",
@@ -696,6 +703,8 @@
         }
         html += "</tbody></table>";
         out.innerHTML = html;
+        lastShow = show;
+        if(fullGateBtn) fullGateBtn.style.display = show.length ? "" : "none";
       }catch(err){
         st.textContent = String(err && err.message ? err.message : err);
       }finally{
@@ -986,6 +995,91 @@
         }
       }
       return "<dl>"+rows.join("")+"</dl>"+ovHtml + act;
+    }
+
+    if(fullGateBtn){
+      fullGateBtn.addEventListener("click", async ()=>{
+        if(!lastShow.length) return;
+        const items = lastShow.slice();
+        const titleMap = {};
+        items.forEach(it => { titleMap[it.id] = it.title || it.name || "（名称不明）"; });
+
+        function findRow(id){
+          const rows = out.querySelectorAll("tr[data-id]");
+          for(const row of rows){ if(row.dataset.id === id) return row; }
+          return null;
+        }
+        function setRowBadge(id, html){
+          const row = findRow(id);
+          if(!row) return;
+          const cell = row.querySelector("td:first-child");
+          if(cell) cell.innerHTML = e(titleMap[id] || "") + html;
+        }
+        function updateOpenDetailGate(id, g){
+          const row = findRow(id);
+          if(!row) return;
+          const next = row.nextElementSibling;
+          if(next && next.classList && next.classList.contains("digdetail")){
+            const box = next.querySelector(".diggate");
+            if(box) box.innerHTML = gateHtml(g);
+            const gbtn = next.querySelector('button[data-act="gate"]');
+            if(gbtn) gbtn.textContent = "AIゲート判定を再実行（API利用）";
+          }
+        }
+        function badgeForFull(g){
+          if(g["除外条件抵触"] === true){
+            return '<br><span style="font-size:11px;color:var(--fix)">除外条件に抵触</span>';
+          }
+          const v = g["判定"] || "要確認";
+          const col = v === "追う" ? "var(--ok)" : (v === "見送り" ? "var(--fix)" : "var(--muted)");
+          let label = "詳細判定：" + v;
+          if(g["適合度"] != null) label += "（適合度" + g["適合度"] + "）";
+          if(g["給付方式"] === "要件充足型") label += "・見込み額に反映済";
+          return '<br><span style="font-size:11px;color:'+col+'">'+e(label)+'</span>';
+        }
+
+        fullGateBtn.disabled = true;
+        const origLabel = fullGateBtn.textContent;
+        let done = 0;
+        const total = items.length;
+        fullGateBtn.textContent = "詳細AIゲート判定を実行中…（0/"+total+"）";
+        const queue = items.slice();
+
+        async function worker(){
+          while(queue.length){
+            const it = queue.shift();
+            if(!it.id){ done++; continue; }
+            try{
+              let d = digDetails[it.id];
+              if(!d){ d = await fetchDetail(it.id); digDetails[it.id] = d; }
+              const g = await aiGateCheck(d);
+              try{
+                let cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]");
+                if(!cands.some(c => c.id === it.id)){
+                  cands.push({ id: it.id, title: titleMap[it.id], saved: new Date().toISOString() });
+                }
+                cands = cands.map(c => c.id === it.id
+                  ? Object.assign(c, { gate: g, amount_max: (d.subsidy_max_limit != null ? d.subsidy_max_limit : null), gated: new Date().toISOString(), gate_lite: false })
+                  : c);
+                localStorage.setItem("trisight_dig_candidates", JSON.stringify(cands));
+              }catch(_){}
+              setRowBadge(it.id, badgeForFull(g));
+              updateOpenDetailGate(it.id, g);
+              if(typeof pjRenderFigs === "function"){
+                pjRenderFigs();
+                if($("pjDetail") && $("pjDetail").classList.contains("on")) pjRenderDetail();
+              }
+            }catch(err){
+              setRowBadge(it.id, '<br><span style="font-size:11px;color:var(--fix)">判定失敗：'+e(String(err && err.message ? err.message : err)).slice(0,40)+'</span>');
+            }
+            done++;
+            fullGateBtn.textContent = "詳細AIゲート判定を実行中…（"+done+"/"+total+"）";
+          }
+        }
+        await Promise.all([worker(), worker(), worker()]);
+        fullGateBtn.textContent = "詳細AIゲート判定が完了しました（"+total+"件）";
+        setTimeout(()=>{ fullGateBtn.textContent = origLabel; fullGateBtn.disabled = false; }, 3000);
+      });
     }
 
     out.addEventListener("click", async ev=>{
@@ -1617,6 +1711,7 @@
   rcTryRestoreFolder();
 
   // ---- 見込み額カウンター（2026-07-22導入）：発掘の候補のうち、給付方式=要件充足型・除外条件抵触なしのみを合算 ----
+  const PJ_OUTLIER_MAX = 50000000; // 5,000万円。多くの中小企業向け補助金・助成金の上限額を大きく超える金額は、単純合計に含めず要確認扱いにする
   function pjYen(n){
     n = Number(n); if(!isFinite(n)) n = 0;
     return "¥" + n.toLocaleString("ja-JP");
@@ -1632,7 +1727,9 @@
   function pjRenderFigs(){
     const list = pjEligible();
     const withAmt = list.filter(c => c.amount_max != null && isFinite(Number(c.amount_max)));
-    const total = withAmt.reduce((s,c)=> s + Number(c.amount_max), 0);
+    const normal  = withAmt.filter(c => Number(c.amount_max) <= PJ_OUTLIER_MAX);
+    const outlier = withAmt.filter(c => Number(c.amount_max) >  PJ_OUTLIER_MAX);
+    const total = normal.reduce((s,c)=> s + Number(c.amount_max), 0);
     const unknown = list.length - withAmt.length;
     if(list.length === 0){
       const judgedCount = pjCandidates().filter(c => c.gate).length;
@@ -1641,9 +1738,12 @@
         : '<span class="rc-fig" style="color:var(--muted)">現時点で「要件を満たせば確実に取れる」案件はありません。補助金の多くは審査・採択枠のある競争的な制度のため、0件は想定内の結果です。</span>';
       return;
     }
+    let notes = [];
+    if(unknown) notes.push('金額不明 '+unknown+'件は含まず');
+    if(outlier.length) notes.push('上限額が'+pjYen(PJ_OUTLIER_MAX)+'超の '+outlier.length+'件は要確認のため含まず');
     $("pjFigs").innerHTML =
       '<span class="rc-fig"><b>'+list.length+'件</b>要件充足・除外条件なし</span>'+
-      '<span class="rc-fig"><b>'+pjYen(total)+'</b>見込み額合計'+(unknown ? '（金額不明 '+unknown+'件は含まず）' : '')+'</span>';
+      '<span class="rc-fig"><b>'+pjYen(total)+'</b>見込み額合計（各制度の上限額の単純合計・実際の受給額とは異なります'+(notes.length ? '／'+notes.join('／') : '')+'）</span>';
   }
   function pjRenderDetail(){
     const detail = $("pjDetail");
@@ -1652,16 +1752,23 @@
       detail.innerHTML = '<div class="rc-empty">該当する案件はまだありません（発掘→詳細→AIゲート判定を実行すると、ここに反映されます）。</div>';
       return;
     }
-    const rows = list.map(c =>
-      '<tr>'+
+    const rows = list.map(c => {
+      const amt = c.amount_max;
+      const isOutlier = amt != null && isFinite(Number(amt)) && Number(amt) > PJ_OUTLIER_MAX;
+      const amtCell = amt == null ? "金額不明" : pjYen(amt);
+      const flag = isOutlier
+        ? '<span style="color:var(--fix);font-weight:700">要確認（合計に含めず）</span>'
+        : '<span style="color:var(--ok)">合計に含む</span>';
+      return '<tr>'+
         '<td>'+esc(c.title||"")+'</td>'+
-        '<td class="amt">'+(c.amount_max!=null ? pjYen(c.amount_max) : "金額不明")+'</td>'+
+        '<td class="amt">'+amtCell+'</td>'+
+        '<td>'+flag+'</td>'+
         '<td>'+esc((c.gated||"").slice(0,10))+'</td>'+
-      '</tr>'
-    ).join("");
+      '</tr>';
+    }).join("");
     detail.innerHTML =
-      '<table class="rctbl"><thead><tr><th>案件名</th><th>見込み額（上限額）</th><th>判定日</th></tr></thead><tbody>'+rows+'</tbody></table>'+
-      '<div class="rc-empty" style="margin-top:8px">※上限額は制度の上限であり、実際の交付額とは異なる場合があります。給付方式・除外条件の判定はJグランツ掲載情報と企業基礎情報の宣言のみが根拠です。</div>';
+      '<table class="rctbl"><thead><tr><th>案件名</th><th>見込み額（上限額）</th><th>合計への算入</th><th>判定日</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+      '<div class="rc-empty" style="margin-top:8px">※上限額は制度の上限であり、実際の交付額とは異なる場合があります。'+pjYen(PJ_OUTLIER_MAX)+'を超える案件は外れ値の可能性があるため自動集計から除外し、人の目での確認をお願いしています。給付方式・除外条件の判定はJグランツ掲載情報と企業基礎情報の宣言のみが根拠です。</div>';
   }
   $("pjToggleBtn").addEventListener("click", ()=>{
     const on = $("pjDetail").classList.toggle("on");

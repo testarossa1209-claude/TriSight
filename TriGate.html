@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>TriGate ── 補助金・助成金の受付</title>
 <link rel="manifest" href="manifest_trigate.json">
 <meta name="theme-color" content="#16213a">
@@ -2125,9 +2128,28 @@
 
   // ---- アプリ化（PWA）----------------------------------------
   // インストール可能にするためのサービスワーカー登録（失敗しても通常動作に影響なし）
+  // 2026-07-22追記：TriGate.html更新のたびに「鳥居アイコンが古い版のまま」になり、
+  // その都度edge://appsでの手動アンインストール等が必要になっていた問題への恒久対応。
+  // 起動のたびに新しいsw.jsが無いか強制チェックし、新版が有効化されたら自動で1回だけ再読み込みする。
   if('serviceWorker' in navigator){
     window.addEventListener('load', ()=>{
-      navigator.serviceWorker.register('sw.js').catch(()=>{});
+      navigator.serviceWorker.register('sw.js').then(reg=>{
+        reg.update().catch(()=>{}); // 起動のたびに強制チェック（ブラウザの通常間隔を待たない）
+        reg.addEventListener('updatefound', ()=>{
+          const nw = reg.installing;
+          if(!nw) return;
+          nw.addEventListener('statechange', ()=>{
+            if(nw.state === 'activated'){
+              // 新しいService Workerに切り替わった＝ページの中身も更新されているはずなので、
+              // 無限リロードを避けるため「このセッションで1回だけ」自動的に読み込み直す
+              if(!sessionStorage.getItem('trigate_sw_reloaded')){
+                sessionStorage.setItem('trigate_sw_reloaded', '1');
+                location.reload();
+              }
+            }
+          });
+        });
+      }).catch(()=>{});
     });
   }
   // File Handling：アイコンに落とされたPDFを受け取り、そのまま読み取り画面へ載せる

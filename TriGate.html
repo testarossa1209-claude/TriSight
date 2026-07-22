@@ -279,6 +279,13 @@
     border-radius:5px;padding:3px 9px;font-size:11.5px;cursor:pointer;font-family:inherit}
   .rctbl button.rcdel:hover{border-color:var(--fix);color:var(--fix)}
   .rc-empty{font-size:13px;color:var(--muted);padding:4px 0}
+  .rc-thresh{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;
+    border-top:1px dashed var(--line);padding-top:10px}
+  .rc-thresh-label{font-size:12px;color:var(--muted)}
+  .rc-threshbtn,.rc-threshminbtn{border:1.5px solid var(--line);background:#fff;color:var(--ink-soft);
+    border-radius:14px;padding:3px 11px;font-size:12px;cursor:pointer;font-family:inherit}
+  .rc-threshbtn:hover,.rc-threshminbtn:hover{border-color:var(--ink);color:var(--ink)}
+  .rc-threshbtn.on,.rc-threshminbtn.on{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:700}
 </style>
 </head>
 <body>
@@ -356,6 +363,24 @@
       <button type="button" class="rc-toggle" id="pjToggleBtn">内訳を見る</button>
     </div>
     <div class="rc-figs" id="pjFigs"></div>
+    <div class="rc-thresh" id="pjThreshRow">
+      <span class="rc-thresh-label" id="pjThreshLabel">上限の目安（この管理コードごとに設定）：</span>
+      <button type="button" class="rc-threshbtn" data-amt="10000000">1,000万円</button>
+      <button type="button" class="rc-threshbtn" data-amt="30000000">3,000万円</button>
+      <button type="button" class="rc-threshbtn" data-amt="50000000">5,000万円</button>
+      <button type="button" class="rc-threshbtn" data-amt="100000000">1億円</button>
+      <button type="button" class="rc-threshbtn" data-amt="500000000">5億円</button>
+      <button type="button" class="rc-threshbtn" data-amt="1000000000">10億円</button>
+    </div>
+    <div class="rc-thresh" id="pjThreshMinRow">
+      <span class="rc-thresh-label" id="pjThreshMinLabel">下限の目安（書類労力に見合うか）：</span>
+      <button type="button" class="rc-threshminbtn" data-amt="0">なし</button>
+      <button type="button" class="rc-threshminbtn" data-amt="50000">5万円</button>
+      <button type="button" class="rc-threshminbtn" data-amt="100000">10万円</button>
+      <button type="button" class="rc-threshminbtn" data-amt="300000">30万円</button>
+      <button type="button" class="rc-threshminbtn" data-amt="500000">50万円</button>
+      <button type="button" class="rc-threshminbtn" data-amt="1000000">100万円</button>
+    </div>
     <div class="rc-detail" id="pjDetail"></div>
   </div>
 
@@ -686,14 +711,7 @@
         let html = '<table class="digtbl"><thead><tr><th>案件名</th><th>上限額</th><th>受付締切</th><th>対象地域</th><th></th></tr></thead><tbody>';
         for(const it of show){
           const gv = it.id ? giveMap[it.id] : null;
-          let badge = "";
-          if(gv && gv["給付方式"] === "要件充足型" && gv["除外条件抵触"] === false){
-            badge = '<br><span style="font-size:11px;color:var(--ok);font-weight:700">要件充足・見込み額に反映済</span>';
-          }else if(gv && gv["除外条件抵触"] === true){
-            badge = '<br><span style="font-size:11px;color:var(--fix)">除外条件に抵触</span>';
-          }else if(gv && gv["給付方式"] === "審査・採択枠あり"){
-            badge = '<br><span style="font-size:11px;color:var(--muted)">審査・採択枠あり</span>';
-          }
+          const badge = pjBadgeHtml(gv, it.subsidy_max_limit, false);
           html += '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'">'
                 + "<td>"+e(it.title || it.name || "（名称不明）")+badge+"</td>"
                 + "<td>"+fy(it.subsidy_max_limit)+"</td>"
@@ -1026,17 +1044,6 @@
             if(gbtn) gbtn.textContent = "AIゲート判定を再実行（API利用）";
           }
         }
-        function badgeForFull(g){
-          if(g["除外条件抵触"] === true){
-            return '<br><span style="font-size:11px;color:var(--fix)">除外条件に抵触</span>';
-          }
-          const v = g["判定"] || "要確認";
-          const col = v === "追う" ? "var(--ok)" : (v === "見送り" ? "var(--fix)" : "var(--muted)");
-          let label = "詳細判定：" + v;
-          if(g["適合度"] != null) label += "（適合度" + g["適合度"] + "）";
-          if(g["給付方式"] === "要件充足型") label += "・見込み額に反映済";
-          return '<br><span style="font-size:11px;color:'+col+'">'+e(label)+'</span>';
-        }
 
         fullGateBtn.disabled = true;
         const origLabel = fullGateBtn.textContent;
@@ -1063,7 +1070,7 @@
                   : c);
                 localStorage.setItem("trisight_dig_candidates", JSON.stringify(cands));
               }catch(_){}
-              setRowBadge(it.id, badgeForFull(g));
+              setRowBadge(it.id, pjBadgeHtml(g, d.subsidy_max_limit, true));
               updateOpenDetailGate(it.id, g);
               if(typeof pjRenderFigs === "function"){
                 pjRenderFigs();
@@ -1711,7 +1718,37 @@
   rcTryRestoreFolder();
 
   // ---- 見込み額カウンター（2026-07-22導入）：発掘の候補のうち、給付方式=要件充足型・除外条件抵触なしのみを合算 ----
-  const PJ_OUTLIER_MAX = 50000000; // 5,000万円。多くの中小企業向け補助金・助成金の上限額を大きく超える金額は、単純合計に含めず要確認扱いにする
+  const PJ_THRESH_KEY = "trigate_pj_threshold";
+  const PJ_THRESH_MAX_DEFAULT = 50000000; // 5,000万円。業種・会社の取扱額に応じて代理店ごとに変更できる
+  const PJ_THRESH_MIN_DEFAULT = 0;        // 下限なし。書類労力に見合わない少額を除きたい代理店向けに変更できる
+  const PJ_THRESH_MAX_OPTIONS = [10000000, 30000000, 50000000, 100000000, 500000000, 1000000000];
+  const PJ_THRESH_MIN_OPTIONS = [0, 50000, 100000, 300000, 500000, 1000000];
+  function pjThreshMap(){
+    let m = {};
+    try{ m = JSON.parse(localStorage.getItem(PJ_THRESH_KEY) || "{}"); }catch(e){ m = {}; }
+    return (m && typeof m === "object" && !Array.isArray(m)) ? m : {};
+  }
+  function pjThresholds(){
+    const code = rcCurrentCode();
+    let entry = pjThreshMap()[code];
+    if(typeof entry === "number") entry = { min: PJ_THRESH_MIN_DEFAULT, max: entry }; // 旧形式（上限のみ）からの移行
+    if(!entry || typeof entry !== "object") entry = {};
+    const min = PJ_THRESH_MIN_OPTIONS.includes(Number(entry.min)) ? Number(entry.min) : PJ_THRESH_MIN_DEFAULT;
+    const max = PJ_THRESH_MAX_OPTIONS.includes(Number(entry.max)) ? Number(entry.max) : PJ_THRESH_MAX_DEFAULT;
+    return { min, max };
+  }
+  function pjSetThresholdMax(amt){
+    const code = rcCurrentCode();
+    const m = pjThreshMap();
+    m[code] = { min: pjThresholds().min, max: amt };
+    try{ localStorage.setItem(PJ_THRESH_KEY, JSON.stringify(m)); }catch(e){}
+  }
+  function pjSetThresholdMin(amt){
+    const code = rcCurrentCode();
+    const m = pjThreshMap();
+    m[code] = { min: amt, max: pjThresholds().max };
+    try{ localStorage.setItem(PJ_THRESH_KEY, JSON.stringify(m)); }catch(e){}
+  }
   function pjYen(n){
     n = Number(n); if(!isFinite(n)) n = 0;
     return "¥" + n.toLocaleString("ja-JP");
@@ -1724,11 +1761,82 @@
   function pjEligible(){
     return pjCandidates().filter(c => c.gate && c.gate["給付方式"] === "要件充足型" && c.gate["除外条件抵触"] === false);
   }
+  /* 一覧バッジ・見込み額パネルの両方から呼ぶ共通のバッジ生成（2026-07-22：閾値を選択式に変更） */
+  function pjBadgeHtml(gv, amt, isFull){
+    if(!gv) return "";
+    const {min, max} = pjThresholds();
+    const amtNum = (amt != null && isFinite(Number(amt))) ? Number(amt) : null;
+    const tooHigh = amtNum != null && amtNum > max;
+    const tooLow  = amtNum != null && amtNum < min;
+    if(gv["除外条件抵触"] === true){
+      return '<br><span style="font-size:11px;color:var(--fix)">除外条件に抵触</span>';
+    }
+    if(isFull){
+      const v = gv["判定"] || "要確認";
+      const col = v === "追う" ? "var(--ok)" : (v === "見送り" ? "var(--fix)" : "var(--muted)");
+      let label = "詳細判定：" + v;
+      if(gv["適合度"] != null) label += "（適合度" + gv["適合度"] + "）";
+      if(gv["給付方式"] === "要件充足型"){
+        if(tooHigh) label += "・上限額が"+pjYen(max)+"超のため要確認（見込み額には含めず）";
+        else if(tooLow) label += "・上限額が"+pjYen(min)+"未満のため見込み額には含めず（書類労力とのバランス要確認）";
+        else label += "・見込み額に反映済";
+      }
+      return '<br><span style="font-size:11px;color:'+col+'">'+esc(label)+'</span>';
+    }
+    if(gv["給付方式"] === "要件充足型" && tooHigh){
+      return '<br><span style="font-size:11px;color:var(--fix)">上限額が'+pjYen(max)+'超のため要確認（見込み額には含めず）</span>';
+    }
+    if(gv["給付方式"] === "要件充足型" && tooLow){
+      return '<br><span style="font-size:11px;color:var(--muted)">上限額が'+pjYen(min)+'未満のため見込み額には含めず</span>';
+    }
+    if(gv["給付方式"] === "要件充足型"){
+      return '<br><span style="font-size:11px;color:var(--ok);font-weight:700">要件充足・見込み額に反映済</span>';
+    }
+    if(gv["給付方式"] === "審査・採択枠あり"){
+      return '<br><span style="font-size:11px;color:var(--muted)">審査・採択枠あり</span>';
+    }
+    return "";
+  }
+  /* 閾値変更後、既に描画済みの発掘結果一覧のバッジだけを更新する（金額の再取得はしない） */
+  function pjRefreshRowBadges(){
+    const out = document.getElementById("digOut");
+    if(!out) return;
+    const map = {};
+    pjCandidates().forEach(c => { map[c.id] = c; });
+    out.querySelectorAll("tr[data-id]").forEach(row=>{
+      const c = map[row.dataset.id];
+      if(!c || !c.gate) return;
+      const cell = row.querySelector("td:first-child");
+      if(!cell) return;
+      cell.innerHTML = esc(row.dataset.title || "") + pjBadgeHtml(c.gate, c.amount_max, c.gate_lite === false);
+    });
+  }
+  function pjRenderThreshButtons(){
+    const {min, max} = pjThresholds();
+    const maxRow = $("pjThreshRow");
+    const minRow = $("pjThreshMinRow");
+    if(maxRow){
+      maxRow.querySelectorAll(".rc-threshbtn").forEach(b=>{
+        b.classList.toggle("on", Number(b.dataset.amt) === max);
+      });
+    }
+    if(minRow){
+      minRow.querySelectorAll(".rc-threshminbtn").forEach(b=>{
+        b.classList.toggle("on", Number(b.dataset.amt) === min);
+      });
+    }
+    const code = rcCurrentCode();
+    const codeLabel = code ? rcMaskCode(code) : "未設定分";
+    if($("pjThreshLabel")) $("pjThreshLabel").textContent = "上限の目安（管理コード："+codeLabel+"）：";
+    if($("pjThreshMinLabel")) $("pjThreshMinLabel").textContent = "下限の目安（管理コード："+codeLabel+"）：";
+  }
   function pjRenderFigs(){
     const list = pjEligible();
+    const {min, max} = pjThresholds();
     const withAmt = list.filter(c => c.amount_max != null && isFinite(Number(c.amount_max)));
-    const normal  = withAmt.filter(c => Number(c.amount_max) <= PJ_OUTLIER_MAX);
-    const outlier = withAmt.filter(c => Number(c.amount_max) >  PJ_OUTLIER_MAX);
+    const normal  = withAmt.filter(c => Number(c.amount_max) >= min && Number(c.amount_max) <= max);
+    const tooHigh = withAmt.filter(c => Number(c.amount_max) >  max);
+    const tooLow  = withAmt.filter(c => Number(c.amount_max) <  min);
     const total = normal.reduce((s,c)=> s + Number(c.amount_max), 0);
     const unknown = list.length - withAmt.length;
     if(list.length === 0){
@@ -1740,13 +1848,15 @@
     }
     let notes = [];
     if(unknown) notes.push('金額不明 '+unknown+'件は含まず');
-    if(outlier.length) notes.push('上限額が'+pjYen(PJ_OUTLIER_MAX)+'超の '+outlier.length+'件は要確認のため含まず');
+    if(tooHigh.length) notes.push('上限額が'+pjYen(max)+'超の '+tooHigh.length+'件は要確認のため含まず');
+    if(tooLow.length) notes.push('上限額が'+pjYen(min)+'未満の '+tooLow.length+'件は書類労力に見合わない可能性があるため含まず');
     $("pjFigs").innerHTML =
       '<span class="rc-fig"><b>'+list.length+'件</b>要件充足・除外条件なし</span>'+
       '<span class="rc-fig"><b>'+pjYen(total)+'</b>見込み額合計（各制度の上限額の単純合計・実際の受給額とは異なります'+(notes.length ? '／'+notes.join('／') : '')+'）</span>';
   }
   function pjRenderDetail(){
     const detail = $("pjDetail");
+    const {min, max} = pjThresholds();
     const list = pjEligible().slice().sort((a,b)=>(b.gated||"").localeCompare(a.gated||""));
     if(!list.length){
       detail.innerHTML = '<div class="rc-empty">該当する案件はまだありません（発掘→詳細→AIゲート判定を実行すると、ここに反映されます）。</div>';
@@ -1754,11 +1864,14 @@
     }
     const rows = list.map(c => {
       const amt = c.amount_max;
-      const isOutlier = amt != null && isFinite(Number(amt)) && Number(amt) > PJ_OUTLIER_MAX;
+      const amtNum = (amt != null && isFinite(Number(amt))) ? Number(amt) : null;
+      const tooHigh = amtNum != null && amtNum > max;
+      const tooLow  = amtNum != null && amtNum < min;
       const amtCell = amt == null ? "金額不明" : pjYen(amt);
-      const flag = isOutlier
-        ? '<span style="color:var(--fix);font-weight:700">要確認（合計に含めず）</span>'
-        : '<span style="color:var(--ok)">合計に含む</span>';
+      let flag;
+      if(tooHigh) flag = '<span style="color:var(--fix);font-weight:700">要確認（合計に含めず・上限超）</span>';
+      else if(tooLow) flag = '<span style="color:var(--muted);font-weight:700">合計に含めず（下限未満）</span>';
+      else flag = '<span style="color:var(--ok)">合計に含む</span>';
       return '<tr>'+
         '<td>'+esc(c.title||"")+'</td>'+
         '<td class="amt">'+amtCell+'</td>'+
@@ -1768,13 +1881,36 @@
     }).join("");
     detail.innerHTML =
       '<table class="rctbl"><thead><tr><th>案件名</th><th>見込み額（上限額）</th><th>合計への算入</th><th>判定日</th></tr></thead><tbody>'+rows+'</tbody></table>'+
-      '<div class="rc-empty" style="margin-top:8px">※上限額は制度の上限であり、実際の交付額とは異なる場合があります。'+pjYen(PJ_OUTLIER_MAX)+'を超える案件は外れ値の可能性があるため自動集計から除外し、人の目での確認をお願いしています。給付方式・除外条件の判定はJグランツ掲載情報と企業基礎情報の宣言のみが根拠です。</div>';
+      '<div class="rc-empty" style="margin-top:8px">※上限額は制度の上限であり、実際の交付額とは異なる場合があります。'+pjYen(max)+'を超える案件は外れ値の可能性があるため、'+pjYen(min)+'未満の案件は書類準備の労力に見合わない可能性があるため、それぞれ自動集計から除外し、人の目での確認をお願いしています。給付方式・除外条件の判定はJグランツ掲載情報と企業基礎情報の宣言のみが根拠です。</div>';
   }
   $("pjToggleBtn").addEventListener("click", ()=>{
     const on = $("pjDetail").classList.toggle("on");
     $("pjToggleBtn").textContent = on ? "内訳を閉じる" : "内訳を見る";
     if(on) pjRenderDetail();
   });
+  if($("pjThreshRow")){
+    $("pjThreshRow").querySelectorAll(".rc-threshbtn").forEach(b=>{
+      b.addEventListener("click", ()=>{
+        pjSetThresholdMax(Number(b.dataset.amt));
+        pjRenderThreshButtons();
+        pjRenderFigs();
+        if($("pjDetail").classList.contains("on")) pjRenderDetail();
+        pjRefreshRowBadges();
+      });
+    });
+  }
+  if($("pjThreshMinRow")){
+    $("pjThreshMinRow").querySelectorAll(".rc-threshminbtn").forEach(b=>{
+      b.addEventListener("click", ()=>{
+        pjSetThresholdMin(Number(b.dataset.amt));
+        pjRenderThreshButtons();
+        pjRenderFigs();
+        if($("pjDetail").classList.contains("on")) pjRenderDetail();
+        pjRefreshRowBadges();
+      });
+    });
+  }
+  pjRenderThreshButtons();
   pjRenderFigs();
 
   async function run(){

@@ -257,6 +257,10 @@
     <div class="badge">TriSight® Family ／ 共通基盤</div>
     <h1>TriTask<span class="reg">®</span></h1>
     <p class="tagline">理論を、現場の行動へ。完走まで、となりで。</p>
+    <div class="codebar" style="margin-top:10px;font-size:13px;color:var(--ink-soft)">
+      認証コード：<span id="authCodeLabel">確認中…</span>
+      <button type="button" id="authCodeChangeBtn" style="margin-left:8px;font-size:12.5px;padding:3px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer;font-family:'Noto Sans JP',sans-serif">認証コードを確認・変更する</button>
+    </div>
   </header>
 
   <!-- 完遂実績（発見元を問わず、トライタスクが完走まで導いた成果） -->
@@ -378,6 +382,37 @@
     }
     return false;
   }
+
+  /* ===== 認証コードの画面上での確認・変更（開発者ツール不要） ===== */
+  function refreshAuthCodeLabel(){
+    const c = localStorage.getItem('trisight_access_code') || '';
+    const el = document.getElementById('authCodeLabel');
+    if(el) el.textContent = c ? c : '（未設定）';
+  }
+  function changeAuthCode(){
+    const cur = localStorage.getItem('trisight_access_code') || '';
+    const next = prompt(
+      '今の認証コードが下の欄に表示されています。\n\n' +
+      '変更しない場合はそのまま「OK」、または「キャンセル」を押してください。\n' +
+      '末尾に -FAMILY を追加すると、受信箱・完遂実績などフル機能が使えるようになります。\n' +
+      '（例：現在が「ABC123」なら「ABC123-FAMILY」に書き換えてOK）',
+      cur
+    );
+    if(next === null) return; // キャンセル
+    const trimmed = next.trim();
+    if(trimmed === '' || /[^\x21-\x7E]/.test(trimmed)){
+      alert('認証コードは半角英数字・記号のみで入力してください（全角・日本語・空白は使えません）。');
+      return;
+    }
+    localStorage.setItem('trisight_access_code', trimmed);
+    refreshAuthCodeLabel();
+    renderGrantList();
+    renderResultsSummary();
+    alert('認証コードを更新しました：' + trimmed);
+  }
+  refreshAuthCodeLabel();
+  const __authBtn2 = document.getElementById('authCodeChangeBtn');
+  if(__authBtn2) __authBtn2.addEventListener('click', changeAuthCode);
 
 
   const $ = id => document.getElementById(id);

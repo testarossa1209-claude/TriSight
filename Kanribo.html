@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>TriSight ── トークン利用管理簿</title>
+<meta name="theme-color" content="#16213a">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#16213a; --ink-soft:#3a4a63; --bg:#eef1f5; --surface:#ffffff;
+    --line:#d6dbe3; --muted:#69748a; --fix:#b4452f; --soft:#c8742a;
+    --verify:#8a6d1f; --verify-bg:#fbf6e6; --ok:#2f6b4f;
+    --shadow:0 1px 2px rgba(22,33,58,.06),0 8px 24px rgba(22,33,58,.07);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",system-ui,sans-serif;
+    line-height:1.7;font-size:15px;}
+  .wrap{max-width:980px;margin:0 auto;padding:28px 20px 80px}
+  header{margin-bottom:22px}
+  .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .brand h1{font-size:24px;letter-spacing:.04em;margin:0;font-weight:800}
+  .brand .sub{font-size:13px;color:var(--muted);letter-spacing:.08em}
+  .lead{margin:10px 0 0;color:var(--ink-soft);font-size:14px}
+  .rule{height:3px;background:linear-gradient(90deg,var(--ink) 0 64px,var(--line) 64px);margin:16px 0 0}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+    box-shadow:var(--shadow);padding:18px 20px;margin-top:18px}
+  label{font-size:13px;font-weight:700;color:var(--ink-soft)}
+  input[type=password],input[type=number]{border:1.5px solid var(--line);border-radius:8px;
+    padding:9px 12px;font-size:15px;width:260px;max-width:100%}
+  button{background:var(--ink);color:#fff;border:none;border-radius:8px;
+    padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer}
+  button.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+  button:disabled{opacity:.5;cursor:default}
+  table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13.5px}
+  th{background:var(--ink);color:#fff;padding:8px 10px;text-align:left;font-weight:700;white-space:nowrap}
+  td{border-bottom:1px solid var(--line);padding:8px 10px;vertical-align:middle}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .bar{height:8px;background:#e6eaf0;border-radius:4px;overflow:hidden;min-width:120px}
+  .bar>i{display:block;height:100%;background:var(--ok)}
+  .bar>i.warn{background:var(--soft)}
+  .bar>i.over{background:var(--fix)}
+  .warnband{margin-top:14px;background:var(--verify-bg);border:1px solid var(--verify);
+    border-radius:8px;padding:10px 14px;font-size:14px;color:var(--verify);font-weight:700;display:none}
+  .msg{margin-top:10px;font-size:13px;color:var(--muted)}
+  .roleTag{font-size:12px;font-weight:800;letter-spacing:.1em;color:#fff;background:var(--ink);
+    border-radius:3px;padding:3px 8px;margin-left:8px;display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>トークン利用管理簿</h1>
+      <span class="sub">TriSight® USAGE LEDGER</span>
+      <span class="roleTag" id="roleTag"></span>
+    </div>
+    <p class="lead">認証コード別のAPIトークン使用量を表示します。表示範囲は入力された認証コードにより自動で切り替わります（管理コード＝全契約先／代理店コード＝自社顧客分のみ）。</p>
+    <div class="rule"></div>
+  </header>
+
+  <div class="card">
+    <label for="code">認証コード</label><br>
+    <input type="password" id="code" placeholder="認証コードを入力" autocomplete="off">
+    <button id="loadBtn" onclick="load()">表示する</button>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <div class="warnband" id="warnband"></div>
+
+  <div class="card" id="tableCard" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <div style="font-weight:800" id="monthLabel"></div>
+      <div>
+        <button class="ghost" onclick="load()">再読込</button>
+        <button onclick="exportXlsx()">Excel出力</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto"><table id="tbl">
+      <thead><tr>
+        <th>認証コード</th><th>呼出回数</th><th>入力トークン</th><th>出力トークン</th>
+        <th>合計</th><th>月間上限</th><th>使用率</th><th>先月合計</th><th>最終利用</th>
+        <th id="thLimit" style="display:none">上限設定</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+    <div class="msg">使用量は当社リレーの記録をもって確定値とします。上限の80%を超えた契約は上部に予告表示されます。Excel出力はその時点のスナップショットです。</div>
+  </div>
+</div>
+
+<script>
+const USAGE_API = "https://trisight-relay.vercel.app/api/usage";
+let lastData = null;
+
+function fmt(n){ return (n||0).toLocaleString("ja-JP"); }
+function maskCode(c){ return c.length<=4 ? c : c.slice(0,3)+"****"+c.slice(-2); }
+
+async function load(){
+  const code = document.getElementById("code").value.trim();
+  const msg = document.getElementById("msg");
+  if(!code){ msg.textContent = "認証コードを入力してください。"; return; }
+  msg.textContent = "読み込み中…";
+  try{
+    const r = await fetch(USAGE_API, { headers: { "x-trisight-code": code } });
+    const j = await r.json();
+    if(!r.ok){ msg.textContent = j.error || "読み込みに失敗しました。"; return; }
+    lastData = j; msg.textContent = "";
+    render(j, code);
+  }catch(e){ msg.textContent = "通信に失敗しました。ネットワークをご確認ください。"; }
+}
+
+function render(j, code){
+  const isAdmin = j.role === "admin";
+  const tag = document.getElementById("roleTag");
+  tag.style.display = "inline-block";
+  tag.textContent = isAdmin ? "トライサイト（全体）" : "代理店閲覧窓";
+  document.getElementById("thLimit").style.display = isAdmin ? "" : "none";
+  document.getElementById("tableCard").style.display = "block";
+
+  const tb = document.getElementById("tbody"); tb.innerHTML = "";
+  const warns = [];
+  let monthLabel = "";
+  for(const row of j.rows){
+    monthLabel = row.month;
+    const total = (row.current.in||0)+(row.current.out||0);
+    const prevTotal = (row.previous.in||0)+(row.previous.out||0);
+    const pct = row.limit ? Math.min(999, Math.round(total/row.limit*100)) : null;
+    if(pct!==null && pct>=80) warns.push({code:row.code, pct});
+    const barCls = pct===null? "" : pct>=100? "over" : pct>=80? "warn" : "";
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      `<td>${isAdmin? row.code : maskCode(row.code)}</td>`+
+      `<td class="num">${fmt(row.current.calls)}</td>`+
+      `<td class="num">${fmt(row.current.in)}</td>`+
+      `<td class="num">${fmt(row.current.out)}</td>`+
+      `<td class="num"><b>${fmt(total)}</b></td>`+
+      `<td class="num">${row.limit? fmt(row.limit) : "―"}</td>`+
+      `<td>${pct===null? '<span style="color:var(--muted)">上限なし</span>' :
+         `<div class="bar"><i class="${barCls}" style="width:${Math.min(pct,100)}%"></i></div><span style="font-size:12px">${pct}%</span>`}</td>`+
+      `<td class="num">${fmt(prevTotal)}</td>`+
+      `<td style="font-size:12px;white-space:nowrap">${row.current.last? row.current.last.slice(0,16).replace("T"," ") : "―"}</td>`+
+      (isAdmin? `<td><input type="number" style="width:110px" placeholder="上限" value="${row.limit||""}" id="lim_${row.code}">
+        <button class="ghost" style="padding:6px 10px;font-size:12px" onclick="saveLimit('${row.code}')">保存</button></td>` : "");
+    tb.appendChild(tr);
+  }
+  document.getElementById("monthLabel").textContent = `対象月：${monthLabel}（日本時間）`;
+  const band = document.getElementById("warnband");
+  if(warns.length){
+    band.style.display = "block";
+    band.textContent = "【超過前予告】上限の80%に到達した契約があります： " +
+      warns.map(w=>`${isAdmin? w.code : maskCode(w.code)}（${w.pct}%）`).join(" ／ ");
+  } else band.style.display = "none";
+}
+
+async function saveLimit(target){
+  const code = document.getElementById("code").value.trim();
+  const v = document.getElementById("lim_"+target).value;
+  const r = await fetch(USAGE_API, {
+    method:"POST",
+    headers:{ "Content-Type":"application/json", "x-trisight-code": code },
+    body: JSON.stringify({ code: target, limit: v===""? null : +v })
+  });
+  if(r.ok) load(); else alert("上限の保存に失敗しました。");
+}
+
+function exportXlsx(){
+  if(!lastData) return;
+  const rows = lastData.rows.map(r=>({
+    "対象月": r.month,
+    "認証コード": r.code,
+    "呼出回数": r.current.calls||0,
+    "入力トークン": r.current.in||0,
+    "出力トークン": r.current.out||0,
+    "合計トークン": (r.current.in||0)+(r.current.out||0),
+    "月間上限": r.limit||"",
+    "先月合計": (r.previous.in||0)+(r.previous.out||0),
+    "最終利用": r.current.last||""
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "トークン利用明細");
+  const d = new Date(); const jst = new Date(d.getTime()+9*3600*1000);
+  const stamp = jst.toISOString().slice(0,10);
+  XLSX.writeFile(wb, `トークン利用明細_${stamp}.xlsx`);
+}
+</script>
+</body>
+</html>

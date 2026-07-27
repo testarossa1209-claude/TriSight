@@ -429,7 +429,7 @@
     tsPlanSaveAll(all);
   }
   function tsPlanName(plan){
-    return plan === "family" ? "トライサイトファミリー（親機）" : "廉価版トライサイトシステム";
+    return plan === "family" ? "トライサイトシステム（親機・トライゲイトを含む）" : "廉価版トライサイトシステム（トライゲイト＋トライタスク）";
   }
   function tsPlanLabel(code){ return tsPlanName(tsPlan(code)); }
   function tsPlanIsLocked(code){
@@ -638,6 +638,27 @@
       ul.appendChild(details);
     }
   }
+  // 案件が届いた日時（2026-07-27追加）。同名の制度が複数届いても取り違えないよう、日付＋時刻で出す。
+  // created_at が無い旧データは、ID（"TG-<ミリ秒>"）から復元する。
+  function arrivedAt(g){
+    if(g && g.created_at){
+      const d = new Date(g.created_at);
+      if(!isNaN(d.getTime())) return d;
+    }
+    const m = (g && g.id) ? String(g.id).match(/-(\d{10,})$/) : null;
+    if(m){
+      const d = new Date(Number(m[1]));
+      if(!isNaN(d.getTime())) return d;
+    }
+    return null;
+  }
+  function arrivedLabel(g){
+    const d = arrivedAt(g);
+    if(!d) return "不明";
+    const p = n => String(n).padStart(2,"0");
+    return d.getFullYear() + "/" + p(d.getMonth()+1) + "/" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+  }
+
   function gitemEl(g){
     const li = document.createElement("li");
     li.className = "gitem";
@@ -646,9 +667,10 @@
               || (g.deadlines && g.deadlines[0]) || "期限記載なし";
     li.innerHTML =
       '<div class="gname"></div>'+
-      '<div class="gmeta"><span class="srcbadge"></span><span class="gco"></span><span class="gdue"></span><span class="gstatus '+statusCls+'"></span><button type="button" class="gdel" title="この案件を削除">削除</button></div>';
+      '<div class="gmeta"><span class="srcbadge"></span><span class="garr"></span><span class="gco"></span><span class="gdue"></span><span class="gstatus '+statusCls+'"></span><button type="button" class="gdel" title="この案件を削除">削除</button></div>';
     li.querySelector(".gname").textContent = g.program_name || "（名称不明）";
     li.querySelector(".srcbadge").textContent = g.source_product || "外部システム";
+    li.querySelector(".garr").textContent = "届いた日：" + arrivedLabel(g);
     li.querySelector(".gco").textContent = g.company_name ? ("送付元：" + g.company_name) : "";
     li.querySelector(".gdue").textContent = "期限：" + due;
     li.querySelector(".gstatus").textContent = g.status || "未着手";

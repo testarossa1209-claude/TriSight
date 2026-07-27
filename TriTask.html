@@ -265,6 +265,7 @@
     <div class="codebar" style="margin-top:10px;font-size:13px;color:var(--ink-soft)">
       認証コード：<span id="authCodeLabel">確認中…</span>
       <button type="button" id="authCodeChangeBtn" style="margin-left:8px;font-size:12.5px;padding:3px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer;font-family:'Noto Sans JP',sans-serif">認証コードを確認・変更する</button>
+      <button type="button" id="planChangeBtn" style="margin-left:6px;font-size:12.5px;padding:3px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer;font-family:'Noto Sans JP',sans-serif">契約プラン</button>
     </div>
   </header>
 
@@ -388,19 +389,136 @@
     return false;
   }
 
+
+  /* ===== 契約プラン（ティア）の保持　2026-07-27 =====================
+     【設計方針】
+     認証コードは「お客様の識別」と「データの仕切りキー」だけを担う。
+     契約ティア（親機フル／廉価版）は、コードの文字列とは切り離してここで保持する。
+     従来の「コード末尾が -FAMILY なら親機」という規則は、
+       ①コードを書き換えるとデータの箱ごと変わって過去の実績が見えなくなる
+       ②利用者が画面から編集できるため制限として機能しない
+       ③顧客に商品ティア名を含んだコードを名乗らせる形が不自然
+     という3つの問題があったため廃止する（後方互換のため判定だけは残す）。
+
+     プランの決定順位：
+       ①リレー（サーバー側）が返すプラン　←　これが正。利用者は改変できない
+       ②この端末の設定
+       ③既定＝親機
+     端末側の設定は利用者が変更できるので、契約上の制限として実効性を持たせるには
+     リレー側に api/plan を用意する必要がある（用意されるまでは黙って②③で動く）。 */
+  const TS_PLAN_URL = "https://trisight-relay.vercel.app/api/plan";
+  const TS_PLAN_KEY = "trisight_plan";
+  const TS_PLAN_DEF = "family";
+
+  function tsPlanAll(){
+    try{ return JSON.parse(localStorage.getItem(TS_PLAN_KEY) || "{}"); }catch(e){ return {}; }
+  }
+  function tsPlanSaveAll(o){
+    try{ localStorage.setItem(TS_PLAN_KEY, JSON.stringify(o)); }catch(e){}
+  }
+  function tsPlan(code){
+    code = code || "";
+    const rec = tsPlanAll()[code];
+    if(rec && (rec.plan === "family" || rec.plan === "lite")) return rec.plan;
+    if(/-FAMILY$/i.test(code)) return "family";   // 旧規則との後方互換
+    return TS_PLAN_DEF;
+  }
+  function tsSetPlan(code, plan, src){
+    const all = tsPlanAll();
+    all[code || ""] = { plan: plan, src: src || "local", at: Date.now() };
+    tsPlanSaveAll(all);
+  }
+  function tsPlanName(plan){
+    return plan === "family" ? "トライサイトファミリー（親機）" : "廉価版トライサイトシステム";
+  }
+  function tsPlanLabel(code){ return tsPlanName(tsPlan(code)); }
+  function tsPlanIsLocked(code){
+    const rec = tsPlanAll()[code || ""];
+    return !!(rec && rec.src === "relay");
+  }
+  // リレーへプランを問い合わせる。api/plan が未実装（404等）なら何もしない
+  async function tsSyncPlan(code){
+    if(!code) return false;
+    try{
+      const r = await fetch(TS_PLAN_URL, { headers: { "x-trisight-code": code } });
+      if(!r.ok) return false;
+      const j = await r.json();
+      if(j && (j.plan === "family" || j.plan === "lite")){
+        const before = tsPlan(code);
+        tsSetPlan(code, j.plan, "relay");
+        return before !== j.plan;
+      }
+    }catch(e){}
+    return false;
+  }
+
+  /* ===== 認証コードを変更したときのデータ引き継ぎ =====================
+     認証コードはデータの仕切りキーを兼ねているため、コードを変えると
+     旧コードの箱に入った実績・設定が見えなくなる。それを移し替える。 */
+  const TS_CODE_SCOPED_KEYS = ["trigate_results", "trigate_pj_threshold", "tritask_results"];
+  function tsMigrateCodeData(oldCode, newCode){
+    if(!oldCode || !newCode || oldCode === newCode) return 0;
+    let moved = 0;
+    TS_CODE_SCOPED_KEYS.forEach(function(k){
+      let o;
+      try{ o = JSON.parse(localStorage.getItem(k) || "null"); }catch(e){ o = null; }
+      if(!o || typeof o !== "object" || Array.isArray(o)) return;
+      if(!(oldCode in o)) return;
+      if(newCode in o){
+        // 移し先に既にデータがある場合、配列なら重複を避けて結合、それ以外は触らない
+        if(Array.isArray(o[newCode]) && Array.isArray(o[oldCode])){
+          const seen = {};
+          o[newCode].forEach(function(r){ if(r && r.id) seen[r.id] = 1; });
+          o[oldCode].forEach(function(r){ if(!r || !r.id || !seen[r.id]) o[newCode].push(r); });
+        }else{ return; }
+      }else{
+        o[newCode] = o[oldCode];
+      }
+      try{ localStorage.setItem(k, JSON.stringify(o)); moved++; }catch(e){}
+    });
+    // 受信箱は各レコードが auth_code を持つ形式
+    try{
+      const list = JSON.parse(localStorage.getItem("tritask_inbox") || "[]");
+      if(Array.isArray(list)){
+        let n = 0;
+        list.forEach(function(g){ if(g && g.auth_code === oldCode){ g.auth_code = newCode; n++; } });
+        if(n){ localStorage.setItem("tritask_inbox", JSON.stringify(list)); moved++; }
+      }
+    }catch(e){}
+    // プラン設定も引き継ぐ
+    const pa = tsPlanAll();
+    if(pa[oldCode] && !pa[newCode]){ pa[newCode] = pa[oldCode]; tsPlanSaveAll(pa); }
+    return moved;
+  }
+
+  /* ===== 契約プランの確認・変更（画面上で完結） ===== */
+  function changePlan(){
+    const code = localStorage.getItem('trisight_access_code') || '';
+    if(!code){ alert('先に認証コードを設定してください。'); return; }
+    if(tsPlanIsLocked(code)){
+      alert('この認証コードの契約プランはトライサイト側で設定されているため、この画面からは変更できません。\n\n現在のプラン：' + tsPlanLabel(code));
+      return;
+    }
+    const now  = tsPlan(code);
+    const next = (now === 'family') ? 'lite' : 'family';
+    if(!confirm('契約プランを切り替えます。\n\n現在　：' + tsPlanName(now) + '\n変更後：' + tsPlanName(next) + '\n\nよろしいですか。')) return;
+    tsSetPlan(code, next, 'local');
+    alert('契約プランを「' + tsPlanName(next) + '」に変更しました。\nページを再読み込みします。');
+    location.reload();
+  }
+
   /* ===== 認証コードの画面上での確認・変更（開発者ツール不要） ===== */
   function refreshAuthCodeLabel(){
     const c = localStorage.getItem('trisight_access_code') || '';
     const el = document.getElementById('authCodeLabel');
-    if(el) el.textContent = c ? c : '（未設定）';
+    if(el) el.textContent = (c ? c : '（未設定）') + '　／　プラン：' + tsPlanLabel(c) + (tsPlanIsLocked(c) ? '（トライサイト設定）' : '');
   }
   function changeAuthCode(){
     const cur = localStorage.getItem('trisight_access_code') || '';
     const next = prompt(
-      '今の認証コードが下の欄に表示されています。\n\n' +
-      '変更しない場合はそのまま「OK」、または「キャンセル」を押してください。\n' +
-      '末尾に -FAMILY を追加すると、受信箱・完遂実績などフル機能が使えるようになります。\n' +
-      '（例：現在が「ABC123」なら「ABC123-FAMILY」に書き換えてOK）',
+      '認証コードは、お客様を識別し、この端末の実績データを仕切るための番号です。\n' +
+      '契約プラン（親機／廉価版）とは関係ありません。プランは「契約プラン」ボタンから確認・変更できます。\n\n' +
+      '変更しない場合はそのまま「OK」、または「キャンセル」を押してください。',
       cur
     );
     if(next === null) return; // キャンセル
@@ -409,13 +527,27 @@
       alert('認証コードは半角英数字・記号のみで入力してください（全角・日本語・空白は使えません）。');
       return;
     }
+    if(cur && trimmed !== cur){
+      const ok = confirm(
+        '認証コードを「' + cur + '」から「' + trimmed + '」に変更します。\n\n' +
+        '認証コードは実績データの仕切りキーを兼ねているため、このままでは旧コードで記録した獲得実績や設定が表示されなくなります。\n\n' +
+        '「OK」＝旧コードのデータを新しいコードへ引き継ぐ\n' +
+        '「キャンセル」＝引き継がない（データは旧コードの中に残ります）'
+      );
+      if(ok) tsMigrateCodeData(cur, trimmed);
+    }
     localStorage.setItem('trisight_access_code', trimmed);
-    refreshAuthCodeLabel();
-    renderGrantList();
-    renderResultsSummary();
-    alert('認証コードを更新しました：' + trimmed);
+    alert('認証コードを更新しました：' + trimmed + '\nページを再読み込みします。');
+    location.reload();
   }
   refreshAuthCodeLabel();
+  const __planBtn2 = document.getElementById('planChangeBtn');
+  if(__planBtn2) __planBtn2.addEventListener('click', changePlan);
+  (function(){
+    var __c = '';
+    try{ __c = localStorage.getItem('trisight_access_code') || ''; }catch(e){}
+    if(__c) tsSyncPlan(__c).then(function(changed){ refreshAuthCodeLabel(); if(changed) location.reload(); });
+  })();
   const __authBtn2 = document.getElementById('authCodeChangeBtn');
   if(__authBtn2) __authBtn2.addEventListener('click', changeAuthCode);
 
@@ -464,10 +596,10 @@
   function myAuthCode(){
     try{ return localStorage.getItem('trisight_access_code') || ""; }catch(e){ return ""; }
   }
-  // 親機（トライサイト本体）フル契約の判定規則：認証コードが「-FAMILY」で終わるものを親機扱いとする
+  // 親機（トライサイト本体）フル契約かどうか。2026-07-27より契約プラン（tsPlan）で判定する。
   // （TriGate.htmlのisFamilyTier()と同一規則）
   function isFamilyTier(code){
-    return /-FAMILY$/i.test(code || "");
+    return tsPlan(code) === "family";
   }
   function visibleInbox(){
     const code = myAuthCode();
@@ -601,10 +733,7 @@
       '<div class="ramt">¥'+amt.toLocaleString()+'</div></div>';
   }
   function renderResultsSummary(){
-    if(!isFamilyTier(myAuthCode())){
-      $("resultsCard").style.display = "none";
-      return;
-    }
+    // 2026-07-23の決定：完遂実績は廉価版でも記録・表示できる（親機限定ゲートは撤廃）
     $("resultsCard").style.display = "";
     const list = myResultsList();
     const now = new Date();
@@ -802,7 +931,7 @@
     else{ az.classList.remove("show"); }
 
     // 獲得実績の記録フォーム（完走時のみ表示・任意入力・親機フル契約限定）
-    if(total>0 && done===total && isFamilyTier(myAuthCode())){
+    if(total>0 && done===total){  // 2026-07-23の決定：獲得記録は全ティアで可能
       $("achieve").classList.add("show");
       if(!achievePrefilled){
         $("aSource").value = currentGrantId ? inboxSourceLabel(currentGrantId) : selectedSrc;

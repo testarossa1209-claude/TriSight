@@ -10,7 +10,13 @@
 <link rel="manifest" href="manifest_trigate.json">
 <meta name="theme-color" content="#16213a">
 <link rel="apple-touch-icon" href="TriGate_icon_192.png">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<!-- 2026-07-27：PDF部品を外部CDN（cdnjs）から自前配信へ切り替えた。
+     旧構成は <script src="https://cdnjs.cloudflare.com/.../pdf.min.js"></script> を head で同期読み込みしていたため、
+     回線側でcdnjsが応答しないまま止まる環境では、ブラウザがここで解析を止め、
+     ページ下部の本体スクリプトへ一度も到達しなかった（＝ボタンは絵として見えるが何も動かず、
+     認証コード欄が「確認中…」のまま固まる）。2026-07-27にトライサイト事務所の回線で発生。
+     自前配信＋deferにすることで、解析を止めず、外部回線にも依存しない。 -->
+<script src="pdf.min.js" defer></script>
 <style>
   :root{
     --ink:#16213a;          /* 濃紺・本文/見出し（ファミリー統一色） */
@@ -469,6 +475,34 @@
   </footer>
 
 </div>
+
+<script>
+/* ===== 保存領域の安全弁　2026-07-27 =============================
+   ファイルをローカルに保存して直接開いた場合（file:// で開いた場合）、
+   ブラウザは localStorage へのアクセスを SecurityError で拒否する。
+   旧構成ではその一行でスクリプト全体が停止し、認証コード欄が
+   「確認中…」のまま固まり、ボタンもドラッグも一切効かなくなっていた。
+   ここで先に受け止め、使えない環境では「その場限りの記憶」に差し替える。
+   （データは保存されないが、動作は止めない。GitHub上で開けば従来どおり保存される） */
+(function(){
+  var ok = false;
+  try{ window.localStorage.setItem('__ts_probe','1'); window.localStorage.removeItem('__ts_probe'); ok = true; }catch(e){ ok = false; }
+  if(ok) return;
+  var mem = {};
+  var shim = {
+    getItem:    function(k){ return Object.prototype.hasOwnProperty.call(mem,k) ? mem[k] : null; },
+    setItem:    function(k,v){ mem[k] = String(v); },
+    removeItem: function(k){ delete mem[k]; },
+    clear:      function(){ mem = {}; },
+    key:        function(i){ return Object.keys(mem)[i] || null; }
+  };
+  Object.defineProperty(shim,'length',{ get:function(){ return Object.keys(mem).length; } });
+  try{
+    Object.defineProperty(window,'localStorage',{ configurable:true, value:shim });
+    console.warn('この開き方では保存領域が使えないため、その場限りの記憶で動作します。');
+  }catch(e){}
+})();
+</script>
 
 <script>
   // ---- 設定 ----------------------------------------------------
@@ -1377,15 +1411,22 @@
   })();
 
   const MODEL = "claude-sonnet-4-6";
+  // pdf.min.js は defer で読み込むため、この時点ではまだ未読込のことがある。
+  // 判定と worker の設定は、実際にPDFを扱う直前に行う（下の ensurePdfJs）。
   let PDFJS_OK = true;
-  try{
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-  }catch(e){
-    // PDF.jsの外部読み込みが遮断された環境（プレビュー等）でも、
-    // 印刷・TriTask送出・獲得実績カウンターなど他の機能は止めない
-    PDFJS_OK = false;
-    console.error("pdfjsLibの読み込みに失敗しました。PDF読み取り機能のみ無効化します。", e);
+  function ensurePdfJs(){
+    try{
+      if(typeof pdfjsLib === "undefined"){ PDFJS_OK = false; return false; }
+      if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "pdf.worker.min.js";
+      }
+      PDFJS_OK = true;
+      return true;
+    }catch(e){
+      PDFJS_OK = false;
+      console.error("pdf.jsの初期化に失敗しました。PDF読み取り機能のみ無効化します。", e);
+      return false;
+    }
   }
 
   let extracted = "";    // PDFから抜いたテキスト（文字PDFのとき）
@@ -1441,8 +1482,8 @@
     // type が空で返る環境（PWAのファイルハンドラ経由・MIME関連付けの壊れた端末）があるため拡張子でも許容する
     const __isPdf = (f.type === "application/pdf") || /\.pdf$/i.test(f.name || "");
     if(!__isPdf){ showErr("PDFファイルを入れてください。"); return; }
-    if(!PDFJS_OK){
-      showErr("PDF読み取り機能が読み込めていません（外部ライブラリの取得に失敗）。ネットワーク環境を変えて再読み込みしてください。他の機能（獲得実績カウンター等）は通常どおり使えます。");
+    if(!ensurePdfJs()){
+      showErr("PDF読み取り部品（pdf.min.js）が読み込めていません。TriGate.html と同じ場所に pdf.min.js と pdf.worker.min.js が置かれているかご確認ください。他の機能（獲得実績カウンター等）は通常どおり使えます。");
       return;
     }
     hideErr(); outEl.style.display="none";

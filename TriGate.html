@@ -320,11 +320,20 @@
     <div class="rule"></div>
   </header>
 
-  <!-- 獲得実績カウンター（2026-07-22導入） -->
+  <style>
+    .rc-subhead{font-size:12px;font-weight:700;opacity:.75;margin:10px 0 4px}
+    .rc-subhead:first-child{margin-top:0}
+    #rcScopeSelect{margin-left:6px}
+  </style>
+  <!-- 獲得実績カウンター（2026-07-22導入／2026-07-29 段構造・記録者対応） -->
   <div class="resultCounter">
     <div class="rc-head">
       <h3>獲得実績</h3>
       <span class="rc-code" id="rcCodeLabel"></span>
+      <select class="rc-threshsel" id="rcScopeSelect" style="display:none">
+        <option value="company">この会社の実績</option>
+        <option value="agency">代理店全体の実績</option>
+      </select>
       <button type="button" class="rc-add" id="rcAddBtn">＋ 実績を登録</button>
       <button type="button" class="rc-toggle" id="rcToggleBtn">内訳を見る</button>
     </div>
@@ -343,6 +352,7 @@
         <label>確定日（入金・受理確認日）<input type="date" id="rcDate"></label>
       </div>
       <div class="rcf-row">
+        <label>記録者<input type="text" id="rcRecorder" placeholder="例：野木（次回から自動で入ります）"></label>
         <label style="flex:1">メモ（任意）<input type="text" id="rcNote"></label>
       </div>
       <div class="rc-err" id="rcErr"></div>
@@ -600,7 +610,7 @@
   /* ===== 認証コードを変更したときのデータ引き継ぎ =====================
      認証コードはデータの仕切りキーを兼ねているため、コードを変えると
      旧コードの箱に入った実績・設定が見えなくなる。それを移し替える。 */
-  const TS_CODE_SCOPED_KEYS = ["trigate_results", "trigate_pj_threshold", "tritask_results"];
+  const TS_CODE_SCOPED_KEYS = ["trigate_results", "trigate_pj_threshold", "tritask_results", "trisight_recorder"];
   function tsMigrateCodeData(oldCode, newCode){
     if(!oldCode || !newCode || oldCode === newCode) return 0;
     let moved = 0;
@@ -1870,6 +1880,66 @@
     return Array.isArray(data[code]) ? data[code] : [];
   }
 
+  // ---- 認証コードの段構造（2026-07-29導入） ----
+  // 形式：「代理店段-会社段」。段が1つだけのコードは直販（代理店段なし）として扱う。
+  // 末尾の -FAMILY は旧ティア表記なので段としては数えない。
+  // 個人（記録者）は段に載せない——人は入れ替わるため、段に載せるとデータの箱が割れる。
+  function rcStripTier(code){ return String(code||"").replace(/-FAMILY$/i, ""); }
+  function rcCodeSegs(code){
+    const c = rcStripTier(code);
+    return c ? c.split("-").filter(x => x !== "") : [];
+  }
+  function rcAgencyOf(code){
+    const segs = rcCodeSegs(code);
+    return segs.length >= 2 ? segs[0] : "";
+  }
+  function rcCompanyLabel(code){
+    const segs = rcCodeSegs(code);
+    if(!segs.length) return "未設定分";
+    return segs.length >= 2 ? segs.slice(1).join("-") : segs[0];
+  }
+  function rcScope(){
+    const sel = $("rcScopeSelect");
+    return (sel && sel.value === "agency") ? "agency" : "company";
+  }
+  function rcCodesInScope(scope){
+    const cur = rcCurrentCode();
+    if(scope !== "agency") return [cur];
+    const ag = rcAgencyOf(cur);
+    if(!ag) return [cur];
+    const data = rcLoadAll();
+    const codes = Object.keys(data).filter(c => rcAgencyOf(c) === ag || rcStripTier(c) === ag);
+    if(codes.indexOf(cur) < 0) codes.push(cur);
+    return codes;
+  }
+  function rcRecordsInScope(scope){
+    const data = rcLoadAll();
+    const out = [];
+    rcCodesInScope(scope).forEach(c => {
+      (Array.isArray(data[c]) ? data[c] : []).forEach(r => {
+        const copy = Object.assign({}, r);
+        copy.__code = c;
+        out.push(copy);
+      });
+    });
+    return out;
+  }
+
+  // ---- 記録者（この端末の既定値。認証コードごとに保持） ----
+  const RC_RECORDER_KEY = "trisight_recorder";
+  function rcRecorderMap(){
+    try{
+      const m = JSON.parse(localStorage.getItem(RC_RECORDER_KEY) || "{}");
+      return (m && typeof m === "object" && !Array.isArray(m)) ? m : {};
+    }catch(e){ return {}; }
+  }
+  function rcGetRecorder(){ return rcRecorderMap()[rcCurrentCode()] || ""; }
+  function rcSetRecorder(name){
+    const m = rcRecorderMap();
+    if(name) m[rcCurrentCode()] = name; else delete m[rcCurrentCode()];
+    try{ localStorage.setItem(RC_RECORDER_KEY, JSON.stringify(m)); }catch(e){}
+  }
+
   // ---- 共有フォルダ（File System Access API）関連 ----
   async function rcFileRead(dirHandle){
     const fh = await dirHandle.getFileHandle(RC_FILE_NAME, {create:true});
@@ -2014,10 +2084,21 @@
   }
   function rcRenderCodeLabel(){
     const code = rcCurrentCode();
-    $("rcCodeLabel").textContent = code ? ("管理コード：" + rcMaskCode(code)) : "管理コード：未設定分";
+    const ag = rcAgencyOf(code);
+    let label = code ? ("管理コード：" + rcMaskCode(code)) : "管理コード：未設定分";
+    if(ag) label += "（代理店：" + ag + " ／ 会社：" + rcCompanyLabel(code) + "）";
+    $("rcCodeLabel").textContent = label;
+  }
+  function rcRenderScopeSel(){
+    const sel = $("rcScopeSelect");
+    if(!sel) return;
+    const ag = rcAgencyOf(rcCurrentCode());
+    if(!ag){ sel.value = "company"; sel.style.display = "none"; }
+    else{ sel.style.display = ""; }
   }
   function rcRenderFigs(){
-    const arr = rcRecordsForCurrentCode();
+    rcRenderScopeSel();
+    const arr = rcRecordsInScope(rcScope());
     const now = new Date();
     const ym = now.getFullYear() + "-" + ("0"+(now.getMonth()+1)).slice(-2);
     const y  = String(now.getFullYear());
@@ -2032,24 +2113,55 @@
   }
   function rcRenderDetail(){
     const detail = $("rcDetail");
-    const arr = rcRecordsForCurrentCode().slice().sort((a,b)=>(b.acquired_at||"").localeCompare(a.acquired_at||""));
+    const scope = rcScope();
+    const cur = rcCurrentCode();
+    const arr = rcRecordsInScope(scope).slice().sort((a,b)=>(b.acquired_at||"").localeCompare(a.acquired_at||""));
     if(!arr.length){
-      detail.innerHTML = '<div class="rc-empty">この管理コードでの実績登録はまだありません。</div>';
+      detail.innerHTML = '<div class="rc-empty">'+(scope==="agency"
+        ? "この代理店の配下で、まだ実績が登録されていません。"
+        : "この管理コードでの実績登録はまだありません。")+'</div>';
       return;
     }
+    // 記録者別の集計（誰が記録したかの切り口。評価に使うかどうかは利用者会社の判断）
+    const byRec = new Map();
+    arr.forEach(r=>{
+      const k = (r.recorder||"").trim() || "（記録者なし）";
+      const cur2 = byRec.get(k) || {count:0, total:0};
+      cur2.count += 1; cur2.total += (Number(r.amount)||0);
+      byRec.set(k, cur2);
+    });
+    const recRows = Array.from(byRec.entries())
+      .sort((a,b)=> b[1].total - a[1].total)
+      .map(e => '<tr><td>'+esc(e[0])+'</td><td>'+e[1].count+'件</td><td class="amt">'+rcYen(e[1].total)+'</td></tr>')
+      .join("");
+    const recTbl =
+      '<div class="rc-subhead">記録者別</div>'+
+      '<table class="rctbl"><thead><tr><th>記録者</th><th>件数</th><th>金額</th></tr></thead><tbody>'+
+      recRows+'</tbody></table>';
+
+    const compCol = (scope === "agency");
     const rows = arr.map(r =>
       '<tr>'+
         '<td>'+esc(r.acquired_at||"")+'</td>'+
+        (compCol ? '<td>'+esc(rcCompanyLabel(r.__code))+'</td>' : '')+
         '<td>'+esc(r.program_name||"")+'</td>'+
         '<td>'+esc(r.issuer||"")+'</td>'+
+        '<td>'+esc(r.recorder||"")+'</td>'+
         '<td class="amt">'+rcYen(r.amount)+'</td>'+
         '<td>'+esc(r.note||"")+'</td>'+
-        '<td><button type="button" class="rcdel" data-id="'+esc(r.id)+'">削除</button></td>'+
+        '<td>'+(r.__code === cur
+          ? '<button type="button" class="rcdel" data-id="'+esc(r.id)+'">削除</button>'
+          : '')+'</td>'+
       '</tr>'
     ).join("");
     detail.innerHTML =
-      '<table class="rctbl"><thead><tr><th>確定日</th><th>制度名</th><th>交付元</th><th>金額</th><th>メモ</th><th></th></tr></thead><tbody>'+
-      rows+'</tbody></table>';
+      recTbl +
+      '<div class="rc-subhead">明細</div>'+
+      '<table class="rctbl"><thead><tr><th>確定日</th>'+
+      (compCol ? '<th>会社</th>' : '')+
+      '<th>制度名</th><th>交付元</th><th>記録者</th><th>金額</th><th>メモ</th><th></th></tr></thead><tbody>'+
+      rows+'</tbody></table>'+
+      (compCol ? '<div class="rc-empty">代理店全体の表示では、他社の実績は削除できません。</div>' : '');
     detail.querySelectorAll(".rcdel").forEach(btn=>{
       btn.addEventListener("click", async ()=>{
         if(!confirm("この実績を削除しますか？（元に戻せません）")) return;
@@ -2068,6 +2180,7 @@
     $("rcIssuer").value = (prefill && prefill.issuer) || "";
     $("rcAmount").value = "";
     $("rcDate").value   = new Date().toISOString().slice(0,10);
+    $("rcRecorder").value = rcGetRecorder();
     $("rcNote").value   = "";
     $("rcForm").classList.add("on");
     $("rcForm").scrollIntoView({behavior:"smooth",block:"center"});
@@ -2075,6 +2188,10 @@
   function rcCloseForm(){
     $("rcForm").classList.remove("on");
   }
+  $("rcScopeSelect").addEventListener("change", ()=>{
+    rcRenderFigs();
+    if($("rcDetail").classList.contains("on")) rcRenderDetail();
+  });
   $("rcAddBtn").addEventListener("click", ()=> rcOpenForm(null));
   $("resultRegBtn").addEventListener("click", ()=> rcOpenForm(TG_LAST));
   $("rcCancelBtn").addEventListener("click", rcCloseForm);
@@ -2090,6 +2207,7 @@
     if(!name){ $("rcErr").textContent="制度名を入力してください。"; $("rcErr").style.display="block"; return; }
     if(!amount || amount <= 0){ $("rcErr").textContent="獲得金額を正しく入力してください。"; $("rcErr").style.display="block"; return; }
     if(!date){ $("rcErr").textContent="確定日を入力してください。"; $("rcErr").style.display="block"; return; }
+    const recorder = $("rcRecorder").value.trim();
     const rec = {
       id: "TR-" + Date.now(),
       created_at: new Date().toISOString(),
@@ -2097,8 +2215,10 @@
       issuer: $("rcIssuer").value.trim(),
       amount: amount,
       acquired_at: date,
+      recorder: recorder,
       note: $("rcNote").value.trim()
     };
+    rcSetRecorder(recorder);
     const data = rcLoadAll();
     const code = rcCurrentCode();
     if(!Array.isArray(data[code])) data[code] = [];

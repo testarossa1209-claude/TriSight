@@ -209,6 +209,13 @@
 
   /* ── 完遂実績パネル ── */
   .rsummary{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px}
+  .rscope{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px}
+  .rscope-label{opacity:.75}
+  .rbyrec{margin-top:10px;font-size:12.5px}
+  .rbyrec table{border-collapse:collapse;width:100%;max-width:520px}
+  .rbyrec th,.rbyrec td{border-bottom:1px solid rgba(0,0,0,.08);padding:4px 8px;text-align:left}
+  .rbyrec td.amt{text-align:right;font-variant-numeric:tabular-nums}
+  .rbyrec .rbyrec-h{font-weight:700;opacity:.75;margin-bottom:4px}
   .rbox{
     flex:1;min-width:130px;background:var(--paper);border:1px solid var(--line);
     border-radius:12px;padding:14px 16px;
@@ -273,7 +280,15 @@
   <section class="card" id="resultsCard">
     <div class="card-label">TriTask 完遂実績</div>
     <div class="card-hint">発見元のシステムを問わず、トライタスクで完走まで導いた成果です。</div>
+    <div class="rscope" id="rScopeRow" style="display:none">
+      <span class="rscope-label" id="rScopeLabel"></span>
+      <select id="rScopeSelect">
+        <option value="company">この会社の実績</option>
+        <option value="agency">代理店全体の実績</option>
+      </select>
+    </div>
     <div class="rsummary" id="rsummary"></div>
+    <div class="rbyrec" id="rByRecorder"></div>
   </section>
 
   <!-- 受信箱（各親システムから届いた案件） -->
@@ -331,6 +346,9 @@
         <input type="text" id="aSource" placeholder="出どころ（例：TriGate®／外部システム）">
         <input type="number" id="aAmount" placeholder="金額（円・任意）">
         <input type="date" id="aDate">
+      </div>
+      <div class="arow">
+        <input type="text" id="aRecorder" placeholder="記録者（例：野木／次回から自動で入ります）">
       </div>
       <input type="text" id="aMemo" class="afull" placeholder="メモ（任意）">
       <button class="asave" id="aSaveBtn">実績として記録する</button>
@@ -455,7 +473,7 @@
   /* ===== 認証コードを変更したときのデータ引き継ぎ =====================
      認証コードはデータの仕切りキーを兼ねているため、コードを変えると
      旧コードの箱に入った実績・設定が見えなくなる。それを移し替える。 */
-  const TS_CODE_SCOPED_KEYS = ["trigate_results", "trigate_pj_threshold", "tritask_results"];
+  const TS_CODE_SCOPED_KEYS = ["trigate_results", "trigate_pj_threshold", "tritask_results", "trisight_recorder"];
   function tsMigrateCodeData(oldCode, newCode){
     if(!oldCode || !newCode || oldCode === newCode) return 0;
     let moved = 0;
@@ -749,6 +767,67 @@
     const all = allResults();
     return all[myAuthCode()] || [];
   }
+
+  // ── 認証コードの段構造（2026-07-29導入・TriGate.htmlと同一規則） ──
+  // 形式「代理店段-会社段」。段が1つなら直販（代理店段なし）。末尾 -FAMILY は旧ティア表記で段に数えない。
+  // 個人（記録者）は段に載せない——人は入れ替わるため、段に載せるとデータの箱が割れる。
+  function ttStripTier(code){ return String(code||"").replace(/-FAMILY$/i, ""); }
+  function ttCodeSegs(code){
+    const c = ttStripTier(code);
+    return c ? c.split("-").filter(x=>x!=="") : [];
+  }
+  function ttAgencyOf(code){
+    const segs = ttCodeSegs(code);
+    return segs.length >= 2 ? segs[0] : "";
+  }
+  function ttCompanyLabel(code){
+    const segs = ttCodeSegs(code);
+    if(!segs.length) return "未設定分";
+    return segs.length >= 2 ? segs.slice(1).join("-") : segs[0];
+  }
+  function ttScope(){
+    const sel = $("rScopeSelect");
+    return (sel && sel.value === "agency") ? "agency" : "company";
+  }
+  function ttCodesInScope(scope){
+    const cur = myAuthCode();
+    if(scope !== "agency") return [cur];
+    const ag = ttAgencyOf(cur);
+    if(!ag) return [cur];
+    const all = allResults();
+    const codes = Object.keys(all).filter(c => ttAgencyOf(c) === ag || ttStripTier(c) === ag);
+    if(codes.indexOf(cur) < 0) codes.push(cur);
+    return codes;
+  }
+  function ttResultsInScope(scope){
+    const all = allResults();
+    const out = [];
+    ttCodesInScope(scope).forEach(c=>{
+      (Array.isArray(all[c]) ? all[c] : []).forEach(r=>{
+        const copy = Object.assign({}, r); copy.__code = c; out.push(copy);
+      });
+    });
+    return out;
+  }
+
+  // ── 記録者（この端末の既定値。認証コードごとに保持。TriGateと同じ保存キー） ──
+  function ttEsc(v){
+    return String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+  }
+  const RECORDER_KEY = "trisight_recorder";
+  function recorderMap(){
+    try{
+      const m = JSON.parse(localStorage.getItem(RECORDER_KEY) || "{}");
+      return (m && typeof m === "object" && !Array.isArray(m)) ? m : {};
+    }catch(e){ return {}; }
+  }
+  function getRecorder(){ return recorderMap()[myAuthCode()] || ""; }
+  function setRecorder(name){
+    const m = recorderMap();
+    if(name) m[myAuthCode()] = name; else delete m[myAuthCode()];
+    try{ localStorage.setItem(RECORDER_KEY, JSON.stringify(m)); }catch(e){}
+  }
   function rbox(label, count, amt){
     return '<div class="rbox"><div class="rk">'+label+'</div>'+
       '<div class="rv">'+count+'<small> 件</small></div>'+
@@ -757,7 +836,12 @@
   function renderResultsSummary(){
     // 2026-07-23の決定：完遂実績は廉価版でも記録・表示できる（親機限定ゲートは撤廃）
     $("resultsCard").style.display = "";
-    const list = myResultsList();
+    const ag = ttAgencyOf(myAuthCode());
+    $("rScopeRow").style.display = ag ? "" : "none";
+    if(!ag && $("rScopeSelect")) $("rScopeSelect").value = "company";
+    if(ag) $("rScopeLabel").textContent = "代理店：" + ag + " ／ 会社：" + ttCompanyLabel(myAuthCode());
+    const scope = ttScope();
+    const list = ttResultsInScope(scope);
     const now = new Date();
     const thisMonthKey = now.getFullYear()+"-"+now.getMonth();
     const thisYear = now.getFullYear();
@@ -773,7 +857,25 @@
       }
     });
     $("rsummary").innerHTML = rbox("今月",mCount,mAmt) + rbox("今年",yCount,yAmt) + rbox("累計",tCount,tAmt);
+    renderByRecorder(list, scope);
   }
+  function renderByRecorder(list, scope){
+    const box = $("rByRecorder");
+    if(!list.length){ box.innerHTML = ""; return; }
+    const by = new Map();
+    list.forEach(r=>{
+      const k = (r.recorder||"").trim() || "（記録者なし）";
+      const c = by.get(k) || {count:0,total:0};
+      c.count += 1; c.total += (Number(r.amount)||0);
+      by.set(k, c);
+    });
+    const rows = Array.from(by.entries()).sort((a,b)=> b[1].total - a[1].total)
+      .map(e=> '<tr><td>'+ttEsc(e[0])+'</td><td>'+e[1].count+' 件</td><td class="amt">¥'+e[1].total.toLocaleString()+'</td></tr>')
+      .join("");
+    box.innerHTML = '<div class="rbyrec-h">記録者別'+(scope==="agency"?"（代理店全体）":"")+'</div>'+
+      '<table><thead><tr><th>記録者</th><th>件数</th><th>金額</th></tr></thead><tbody>'+rows+'</tbody></table>';
+  }
+  $("rScopeSelect").addEventListener("change", renderResultsSummary);
   $("aSaveBtn").addEventListener("click", ()=>{
     const rec = {
       id: "TT-" + Date.now(),
@@ -782,8 +884,10 @@
       program_name: $("goalText").textContent,
       amount: Number($("aAmount").value) || 0,
       confirmed_date: $("aDate").value || "",
+      recorder: $("aRecorder").value.trim(),
       memo: $("aMemo").value.trim()
     };
+    setRecorder(rec.recorder);
     const all = allResults();
     const code = myAuthCode();
     if(!all[code]) all[code] = [];
@@ -955,6 +1059,7 @@
     // 獲得実績の記録フォーム（完走時のみ表示・任意入力・親機フル契約限定）
     if(total>0 && done===total){  // 2026-07-23の決定：獲得記録は全ティアで可能
       $("achieve").classList.add("show");
+      if($("aRecorder") && !$("aRecorder").value) $("aRecorder").value = getRecorder();
       if(!achievePrefilled){
         $("aSource").value = currentGrantId ? inboxSourceLabel(currentGrantId) : selectedSrc;
         $("aDate").value = new Date().toISOString().slice(0,10);

@@ -412,6 +412,7 @@
         <option value="1000000">100万円</option>
       </select>
     </div>
+    <div id="pjOutlierBox"></div>
     <div class="rc-detail" id="pjDetail"></div>
   </div>
 
@@ -2337,6 +2338,27 @@
     if($("pjThreshLabel")) $("pjThreshLabel").textContent = "上限の目安（管理コード："+codeLabel+"）：";
     if($("pjThreshMinLabel")) $("pjThreshMinLabel").textContent = "下限の目安（管理コード："+codeLabel+"）：";
   }
+  /* 範囲外別枠（2026-08-01導入）：合計に算入しなかった案件だけを、内訳を開かずに常時見せる */
+  function pjRenderOutliers(list, min, max){
+    const box = $("pjOutlierBox");
+    if(!box) return;
+    const rows = [];
+    (list||[]).forEach(c => {
+      const n = (c.amount_max != null && isFinite(Number(c.amount_max))) ? Number(c.amount_max) : null;
+      let reason = null, color = "var(--fix)";
+      if(n === null){ reason = "上限額が読み取れないため"; color = "var(--muted)"; }
+      else if(n > max){ reason = "上限額が" + pjYen(max) + "超のため（外れ値の可能性）"; }
+      else if(n < min){ reason = "上限額が" + pjYen(min) + "未満のため（書類労力とのバランス）"; color = "var(--muted)"; }
+      if(!reason) return;
+      rows.push('<li style="margin:2px 0"><span style="font-weight:700">'+esc(c.title||"")+'</span>'
+        + '<span style="margin-left:6px">'+(n===null?"金額不明":pjYen(n))+'</span>'
+        + '<span style="margin-left:6px;font-size:11px;color:'+color+'">'+reason+'／人の目での確認をお願いします</span></li>');
+    });
+    if(!rows.length){ box.innerHTML = ""; return; }
+    box.innerHTML = '<div style="margin-top:8px;padding:8px 10px;border:1px solid var(--fix);border-radius:6px">'
+      + '<div style="font-weight:700;font-size:12px;margin-bottom:4px">合計に算入しなかった案件（'+rows.length+'件）</div>'
+      + '<ul style="margin:0;padding-left:18px;font-size:12px">'+rows.join("")+'</ul></div>';
+  }
   function pjRenderFigs(){
     const list = pjEligible();
     const {min, max} = pjThresholds();
@@ -2351,6 +2373,7 @@
       $("pjFigs").innerHTML = judgedCount === 0
         ? '<span class="rc-fig" style="color:var(--muted)">まだAIゲート判定を実行していません。実行すると、ここに確実に取れる見込み額が積み上がります。</span>'
         : '<span class="rc-fig" style="color:var(--muted)">現時点で「要件を満たせば確実に取れる」案件はありません。補助金の多くは審査・採択枠のある競争的な制度のため、0件は想定内の結果です。</span>';
+      pjRenderOutliers([], min, max);
       return;
     }
     let notes = [];
@@ -2360,6 +2383,7 @@
     $("pjFigs").innerHTML =
       '<span class="rc-fig"><b>'+list.length+'件</b>要件充足・除外条件なし</span>'+
       '<span class="rc-fig"><b>'+pjYen(total)+'</b>見込み額合計（各制度の上限額の単純合計・実際の受給額とは異なります'+(notes.length ? '／'+notes.join('／') : '')+'）</span>';
+    pjRenderOutliers(list, min, max);
   }
   function pjRenderDetail(){
     const detail = $("pjDetail");
@@ -2666,7 +2690,7 @@
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-07-31-01';
+  const TRIGATE_VERSION = '2026-08-01-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

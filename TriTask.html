@@ -573,6 +573,7 @@
   const $ = id => document.getElementById(id);
   let selectedSrc = "TriSight®（経営理論）";
   let stepState = []; // true=完了
+  let stepMeta  = []; // 各工程の付帯情報（要確認か／確認事項／必要書類／確認先）
   let currentGrantId = null; // 受信箱から開いた案件のID（未使用時はnull）
   let achievePrefilled = false;
   const INBOX_KEY = "tritask_inbox";
@@ -712,19 +713,97 @@
     if(!item) return "";
     return (item.source_product || "TriGate®") + (item.company_name ? "／" + item.company_name : "");
   }
-  function reverseTasksToSteps(tasks){
+  /* 送付元から届いた確認事項・必要書類・問合せ先を、捨てずに各工程へ配る（2026-08-01改修）。
+     従来は must_verify を「詳細画面を参照」の一文に潰していたため、
+     人が何を確かめればよいのかが工程の中で分からなかった。 */
+  /* 日本語は語の間に空白が無いため、記号で切る方式では語の重なりを拾えない。
+     ひらがな・記号を除いた2文字の連なり（漢字・カタカナ・英数）で重なりを数える。 */
+  function ttGrams(text){
+    const t = String(text||"").replace(/[^\u4E00-\u9FFF\u30A0-\u30FFA-Za-z0-9]+/g, " ");
+    const out = [];
+    t.split(" ").forEach(seg=>{
+      for(let i=0; i+2<=seg.length; i++) out.push(seg.slice(i, i+2));
+    });
+    return out;
+  }
+  function ttOverlap(a, b){
+    const ga = ttGrams(a), gb = ttGrams(b);
+    if(!ga.length || !gb.length) return 0;
+    let n = 0;
+    ga.forEach(g=>{ if(gb.indexOf(g) >= 0) n++; });
+    return n;
+  }
+  function reverseTasksToSteps(g){
+    const tasks = (g && g.reverse_tasks) || null;
     if(!tasks || !tasks.length) return null;
-    return tasks.map((t,i)=>({
-      title: t.due_text ? (t.due_text + "まで") : ("工程" + (i+1)),
-      action: t.action || "",
-      verify: t.must_verify ? "内容の要確認あり（送付元システムの詳細画面を参照）" : "期限内に完了していること"
-    }));
+    const vItems = (g && g.verify_items) || [];
+    const docs   = (g && g.required_documents) || [];
+    const gContact = (g && g.contact) || "";
+    const vIdx = tasks.map((t,i)=> t.must_verify ? i : -1).filter(i=>i>=0);
+    const firstV = vIdx.length ? vIdx[0] : 0;
+
+    /* 確認事項を工程へ割り当てる：作業文と語がかぶる工程へ。
+       かぶらなければ、要確認の工程のうち先頭へ（どこにも出ない状態を作らない）。 */
+    const vFor = tasks.map(()=>[]);
+    vItems.forEach(v=>{
+      const text = (v && v.item) || "";
+      let best = -1, bestScore = 0;
+      /* まず要確認の工程の中から、次に全工程から、最も語の重なる工程を選ぶ */
+      tasks.forEach((t,i)=>{
+        if(vIdx.indexOf(i) < 0) return;
+        const sc = ttOverlap(text, t.action);
+        if(sc > bestScore){ bestScore = sc; best = i; }
+      });
+      if(best < 0){
+        tasks.forEach((t,i)=>{
+          const sc = ttOverlap(text, t.action);
+          if(sc > bestScore){ bestScore = sc; best = i; }
+        });
+      }
+      vFor[best < 0 ? firstV : best].push(v);
+    });
+    /* 必要書類は、書類名が作業文に出てくる工程へ。出てこなければ配らない（散らかるため） */
+    const dFor = tasks.map(()=>[]);
+    docs.forEach(d=>{
+      const nm = (d && d.name) || "";
+      const at = tasks.findIndex(t => nm && String(t.action||"").indexOf(nm) >= 0);
+      if(at >= 0) dFor[at].push(d);
+    });
+
+    return tasks.map((t,i)=>{
+      const mine = vFor[i], myDocs = dFor[i];
+      let verify;
+      if(mine.length){
+        verify = mine.map(v=>{
+          let line = "◇ " + (v.item || "");
+          if(v.why) line += "（" + v.why + "）";
+          const c = v.contact || gContact;
+          if(c) line += "　確認先：" + c;
+          return line;
+        }).join("\n");
+      }else if(t.must_verify){
+        verify = "この作業には、ご自身での確認・判断が必要です。"
+               + (gContact ? "　確認先：" + gContact : "");
+      }else{
+        verify = "期限内に完了していること";
+      }
+      if(myDocs.length){
+        verify += "\n□ 使う書類：" + myDocs.map(d => (d.name||"") + (d.note ? "（"+d.note+"）" : "")).join("／");
+      }
+      return {
+        title: t.due_text ? (/まで$/.test(t.due_text) ? t.due_text : t.due_text + "まで") : ("工程" + (i+1)),
+        action: t.action || "",
+        verify: verify,
+        must_verify: !!t.must_verify,
+        verify_count: mine.length
+      };
+    });
   }
   async function openGrant(id){
     const g = allInbox().find(x=>x.id===id);
     if(!g) return;
     currentGrantId = id;
-    const steps = reverseTasksToSteps(g.reverse_tasks);
+    const steps = reverseTasksToSteps(g);
     if(steps){
       renderPlan({ goal: g.program_name || "（名称不明）", steps: steps });
       $("grantListCard").style.display = "none";
@@ -964,6 +1043,12 @@
   function renderPlan(plan){
     $("goalText").textContent = plan.goal || "（到達点の記述なし）";
     stepState = plan.steps.map(()=>false);
+    stepMeta  = plan.steps.map(s=>({
+      title: s.title || "",
+      action: s.action || "",
+      must_verify: !!s.must_verify,
+      verify_count: s.verify_count || 0
+    }));
     achievePrefilled = false;
     $("achieve").classList.remove("show");
     $("aDoneMsg").style.display = "none";
@@ -984,7 +1069,10 @@
         '</div>';
       li.querySelector(".title").textContent = s.title||("作業"+(i+1));
       li.querySelector(".action").textContent = s.action||"";
-      li.querySelector(".verify span").textContent = s.verify||"";
+      const vSpan = li.querySelector(".verify span");
+      vSpan.textContent = s.verify||"";
+      vSpan.style.whiteSpace = "pre-line";
+      if(s.must_verify) li.querySelector(".verify").style.borderLeft = "3px solid var(--ok)";
       li.querySelector(".num").addEventListener("click",()=>toggle(i));
       ul.appendChild(li);
     });
@@ -1041,17 +1129,30 @@
       nt.innerHTML = "次にやることは <b>「"+title+"」</b> です。終わったら、左の番号を押してチェックしてください。";
     }
 
-    // 伴走者あずさ：節目だけ浮かび上がり、承認の声をかける（判断には踏み込まない）
+    /* 伴走者あずさ（2026-08-01改修）：節目だけ浮かび上がる原則はそのまま、
+       声の中身をいま手をつけている作業に結びつける。件数だけを見ていたため
+       「隣で見ている」ではなく「ただ指摘している」ように映っていた。
+       加えて、次が人の確認を要する作業のときは節目でなくても一度だけ声をかける。
+       そこが出口品質保証の要であり、伴走者が黙っていてよい場所ではない。 */
     const az = $("azusa"), azl = $("azusaLine");
+    const nowMeta = (nowIdx>=0 && stepMeta[nowIdx]) ? stepMeta[nowIdx] : null;
+    /* 期日ではなく作業の中身を指す。期日を読み上げても「隣で見ている」ことにはならない。 */
+    let nowAct = nowMeta ? (nowMeta.action || nowMeta.title) : "";
+    if(nowAct.length > 28) nowAct = nowAct.slice(0, 28) + "…";
+    const nowName = nowAct ? "「"+nowAct+"」" : "次の作業";
     let amsg = "";
     if(total>0 && done===total){
       amsg = "完走です。お疲れさまでした。ここから先の判断は、あなたの手の中に。";
     }else if(total>1 && done===total-1){
-      amsg = "あと一つで完走です。ここまで、よく運んできましたね。";
+      amsg = "残るは"+nowName+"だけです。ここまで、よく運んできましたね。";
     }else if(done>0 && done===Math.ceil(total/2)){
-      amsg = "ちょうど半分まで来ました。いい流れです。";
+      amsg = "ちょうど半分まで来ました。次は"+nowName+"ですね。";
     }else if(done===0){
-      amsg = "ここからですね。一作業ずつ、横で見ています。";
+      amsg = "まずは"+nowName+"からですね。一作業ずつ、横で見ています。";
+    }else if(nowMeta && nowMeta.must_verify){
+      amsg = nowName + "は、ご自身で確かめていただく必要がある作業です。"
+           + (nowMeta.verify_count ? "確認することは工程の中に出しています。" : "")
+           + "ここは急がずに。";
     }
     if(amsg){ azl.textContent = amsg; az.classList.add("show"); }
     else{ az.classList.remove("show"); }

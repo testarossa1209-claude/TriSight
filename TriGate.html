@@ -713,17 +713,33 @@
   /* ===== 動作確認用：仮の補助金案件をTriTaskへ送る ===== */
   const __testBtn = document.getElementById('testSendBtn');
   if(__testBtn) __testBtn.addEventListener('click', function(){
+    /* 2026-08-01：verify_items が空のままだと、トライタスク側の
+       「確認事項を工程へ配る」表示を確かめられないため、題材を作り込んだ。
+       ・要確認の工程／通常の工程を両方含む
+       ・確認事項は、作業文と語がかぶるもの／かぶらないものを混ぜる
+       ・確認先が入っているもの／空のもの（案件の問合せ先で補われる）を混ぜる
+       ・書類名が作業文に出てくるもの／出てこないものを混ぜる */
     TG_LAST = {
       program_name: "【テスト】仮の補助金案件（動作確認用）",
       issuer: "テスト用（実在の制度ではありません）",
-      summary: "これはトライゲイト→トライタスクの自動連携ルートを確認するために作成したテストデータです。",
+      summary: "これはトライゲイト→トライタスクの自動連携ルートを確認するために作成したテストデータです。実在の制度ではありません。",
       deadlines: ["2026-09-30まで"],
       reverse_tasks: [
-        { due_text: "9/10まで", action: "必要書類を準備する（テスト工程1）", must_verify: false },
-        { due_text: "9/30まで", action: "申請書を提出する（テスト工程2）", must_verify: true }
+        { due_text: "9/10まで", action: "交付要綱を読み、自事業所が対象区分に入るか確認する", must_verify: true },
+        { due_text: "9/20まで", action: "事業所一覧表と申請書を作成する", must_verify: false },
+        { due_text: "9/30まで", action: "見積書を添えて申請書を提出する", must_verify: true }
       ],
-      required_documents: [{ name: "テスト用ダミー書類", note: "動作確認用のため実際の提出は不要です" }],
-      verify_items: []
+      required_documents: [
+        { name: "事業所一覧表", note: "指定番号の記載が必要", must_verify: false },
+        { name: "見積書", note: "2社以上の相見積もりが必要", must_verify: true },
+        { name: "誓約書", note: "様式は交付元のサイトから取得", must_verify: false }
+      ],
+      verify_items: [
+        { item: "休止中の事業所が対象区分に含まれるか", why: "休止中の扱いが要綱に明記されていない", contact: "テスト窓口 000-0000-0000" },
+        { item: "対象経費に自事業所の設備が当たるか", why: "経費区分の線引きが文書だけでは判断できない", contact: "" },
+        { item: "相見積もりの2社は資本関係が無い会社である必要があるか", why: "要綱に条件の記載が無く、運用で判断される可能性がある", contact: "" }
+      ],
+      contact: "テスト窓口（実在しません） 000-0000-0000"
     };
     resetTaskBtn();
     autoSendToTask(TG_LAST);
@@ -2690,7 +2706,7 @@
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-01-01';
+  const TRIGATE_VERSION = '2026-08-01-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

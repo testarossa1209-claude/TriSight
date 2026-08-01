@@ -983,9 +983,48 @@ try{ window.trwWritesProbe = trwWrites; }catch(e){}
         (r.miss.length? '<br>※ 見つからなかった欄：'+r.miss.join('、') : '')+
         '<br>Excelで開いて数式が再計算されたことを確認し、そのまま提出フォームへ上げてください。'+
         '<details style="margin-top:8px"><summary>書き込んだ内容</summary><div style="margin-top:6px">'+r.log.join('<br>')+'</div></details>';
+      trwSendToTriForm(log);
     });
   });
 })();
+
+
+/* TriFormへの受け渡し（2026-08-01）。
+   様式は書き出せたが、提出までの段取り（添付書類の用意・提出先・受付の控え）は
+   別の仕事として残る。そこをTriFormが工程に開き、TriTaskが完了まで伴走する。 */
+function trwSendToTriForm(host){
+  if(!window.TriSightSend || !host) return;
+  try{
+    var box = document.createElement('div');
+    box.style.marginTop = '10px';
+    window.TriSightSend.button(box, function(){
+      return {
+        source_product: 'TriReward\u00ae',
+        program_name: '介護職員等処遇改善加算 実績報告（' + (new Date().getFullYear()) + '年提出）',
+        issuer: '都道府県・指定権者',
+        summary: '別紙様式3への記入は完了。ここから先は添付書類を整えて提出する段取り。',
+        required_documents: [
+          { name: '賃金台帳', note: '対象期間分。様式の数字と一致すること' },
+          { name: '就業規則', note: '賃金規程を含む。改定した場合は受理印のある控え' },
+          { name: '別紙様式3（記入済み）', note: 'この画面で書き出したもの' }
+        ],
+        reverse_tasks: [
+          { action: '書き出した様式をExcelで開き、数式が再計算されていることを確認する',
+            inputs: '記入済みの別紙様式3', output: '確認済みの様式',
+            must_verify: true, why: '数式が再計算されないまま提出すると、集計欄が空のまま提出されることがある' },
+          { action: '添付書類を揃え、提出フォームから提出する',
+            inputs: '確認済みの様式、賃金台帳、就業規則',
+            output: '提出用一式', submit_to: '都道府県または指定権者の提出フォーム',
+            receive: '提出完了の控え（受付番号・受信通知）',
+            must_verify: true, why: '提出先と提出方法（電子・郵送）は指定権者ごとに違うため確認が要る' },
+          { action: '提出の控えを保管する', inputs: '提出完了の控え', output: '保管済みの控え' }
+        ],
+        contact: ''
+      };
+    }, 'この先の段取りをTriFormへ送る');
+    host.appendChild(box);
+  }catch(e){}
+}
 
 function trwSaveJ(){ /* 実績側はマスターを書き換えない（読み取り専用） */ }
 var _rsvcJ = renderSvc;
@@ -1024,5 +1063,6 @@ render();
   for(var i=0;i<els.length;i++) els[i].innerHTML = html;
 })();
 </script>
+<script src="triform-send.js"></script>
 </body>
 </html>

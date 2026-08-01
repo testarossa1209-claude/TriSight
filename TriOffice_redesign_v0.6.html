@@ -323,6 +323,38 @@ alert("Word生成中にエラーが発生しました。ページを再読込（
 })
 }
 
+/* TriFormへの受け渡し（2026-08-01）。
+   書類は出来上がったが、それを行政へ持っていくところは別の仕事として残る。
+   その先の段取りをTriFormが工程に開き、TriTaskが完了まで伴走する。 */
+function sendToTriForm(oc){
+if(!window.TriSightSend)return
+try{
+let host=document.createElement("div");host.style.marginTop="8px"
+let jobName=(oc&&oc.noun)||"事務文書"
+let payload={
+source_product:"TriRule",
+program_name:jobName+"の改正（"+new Date().toLocaleDateString("ja-JP")+"）",
+issuer:"",
+summary:(oc&&oc.desc)||"",
+required_documents:pendingDocs.map(d=>({name:d.name.replace(/\.docx$/,""),note:"この画面で作成済み"})),
+reverse_tasks:(oc&&oc.third==="todoke")?[
+{action:"作成した"+jobName+"と変更届の内容を、決裁者が確認する",inputs:"修正版"+jobName+"、変更インデックス",output:"決裁済みの"+jobName,must_verify:true,why:"改正内容が実際の運営と一致しているかは、現場を知る人でないと判断できない"},
+{action:"変更届に押印し、指定の添付書類を添えて所管の行政庁へ提出する",inputs:"変更届、修正版"+jobName,output:"提出用一式",submit_to:"所管の行政庁（指定権者）",receive:"受付印のある変更届の控え",must_verify:true,why:"提出先・提出期限・添付書類は指定権者ごとに違うため、事前の確認が要る"},
+{action:"受付印のある控えを保管し、関係者へ改正内容を周知する",inputs:"受付印のある控え",output:"周知の記録"}
+]:[
+{action:"作成した"+jobName+"の内容を、決裁者が確認する",inputs:"修正版"+jobName+"、変更インデックス",output:"決裁済みの"+jobName,must_verify:true,why:"改正内容が実際の運営と一致しているかは、現場を知る人でないと判断できない"},
+{action:"利用者へ変更内容を交付・説明する",inputs:"利用者向け変更お知らせ",output:"交付・説明の記録"}
+],
+contact:""
+}
+/* log() は innerHTML への追記なので、押せるボタンは要素として直接足す */
+let box=document.getElementById("status")||document.body
+box.classList.add("show")
+window.TriSightSend.button(host,()=>payload,"この先の段取りをTriFormへ送る")
+box.appendChild(host)
+}catch(e){}
+}
+
 function renderDlButtons(){
 let html=pendingDocs.map((d,i)=>"<button class='dlbtn' onclick='dlDoc("+i+")'>📄 "+d.name+"</button>").join(" ")
 log("<div style='margin-top:8px'>"+html+"</div>")
@@ -478,6 +510,7 @@ if(oc.third==="notice"){createDoc("利用者向け変更お知らせ.docx",creat
 
 renderDlButtons()
 log("<span class='ok'>✓ 完了:"+docCount+"つの書類が用意できました。上のボタンを押すと1つずつダウンロードされます</span>")
+sendToTriForm(oc)
 
 }catch(e){
 log("<span class='err'>✗ エラー:"+e+"</span>")
@@ -491,4 +524,5 @@ log("<span class='err'>✗ エラー:"+e+"</span>")
 document.addEventListener('DOMContentLoaded',function(){sync();['gen','ver','jdg'].forEach(function(r){var k=document.getElementById(r+'Key');if(k)k.addEventListener('input',sync);});});
 setTimeout(sync,400);})();
 </script>
+<script src="triform-send.js"></script>
 </body></html>

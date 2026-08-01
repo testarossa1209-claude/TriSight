@@ -958,6 +958,7 @@ function showChecklist() {
               ✓ 必要書類はすべて社内保有想定です。即座に申請準備に入れます。
             </div>
           `}
+          <div class="tf-send" data-gid="${fullGrant.grant_id}" data-co="${m.company_name}" style="margin-top:10px"></div>
         </div>
       `;
     }
@@ -966,6 +967,40 @@ function showChecklist() {
   }
   
   document.getElementById('resultsContent').innerHTML = html;
+  attachTriFormButtons();
+}
+
+/* TriFormへの受け渡し（2026-08-01）。
+   ここで作るのは「制度名・交付元・期限・必要書類・要件」までで、
+   その書類をどう用意するのかはTriForm側が手続きの型から展開する。 */
+function attachTriFormButtons(){
+  if(!window.TriSightSend) return;
+  document.querySelectorAll('.tf-send').forEach(function(host){
+    if(host.dataset.done) return;
+    host.dataset.done = "1";
+    var g = grants.find(function(x){ return x.grant_id === host.dataset.gid; });
+    if(!g) return;
+    window.TriSightSend.button(host, function(){
+      return {
+        source_product: "TriGrant\u00ae",
+        program_name: g.grant_name,
+        issuer: g.ministry || "",
+        company_name: host.dataset.co || "",
+        summary: (g.key_requirements || []).join("／"),
+        deadlines: g.application_deadline ? [g.application_deadline + "まで"] : [],
+        required_documents: (g.required_documents || []).map(function(d){
+          return { name: d, note: (typeof documentObtainMethod !== "undefined" && documentObtainMethod[d]) || "" };
+        }),
+        reverse_tasks: (g.key_requirements || []).map(function(k){
+          return { due_text: g.application_deadline || "", action: k, must_verify: true };
+        }),
+        verify_items: (g.exclusion_conditions || []).map(function(c){
+          return { item: "この除外条件に当たらないか：" + c, why: "除外条件の判定は事実関係の確認が要る", contact: "" };
+        }),
+        contact: g.ministry || ""
+      };
+    }, "TriFormへ送る");
+  });
 }
 
 // ===== マッチング根拠説明 =====
@@ -1061,5 +1096,6 @@ function showExplanation() {
   `;
 }
 </script>
+<script src="triform-send.js"></script>
 </body>
 </html>

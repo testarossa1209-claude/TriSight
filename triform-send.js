@@ -105,6 +105,9 @@
       required_documents: normDocs(payload.required_documents),
       verify_items:   normVerify(payload.verify_items),
       contact:        payload.contact || "",
+      /* 公募要領などの原文。TriFormが「この分解でよいか」の基準を作るときの根拠になる。
+         無ければ空でよいが、その場合の基準は推測混じりになる。 */
+      source_text:    payload.source_text || "",
       human_reviewed: false,
       updated_at:     new Date().toISOString()
     };

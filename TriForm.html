@@ -153,7 +153,18 @@
     <div class="v" id="wName"></div>
   </div>
 
+  <div id="matchBox"></div>
   <div id="noMatchBox"></div>
+
+  <div class="tsec">
+    <h3>この分解でよいかを確かめる</h3>
+    <div class="h">
+      工程の並びは、書類の名前に型を当てて機械的に出したものです。<b>当たったこと自体は、正しさの保証ではありません。</b>
+      交付元の要領に照らして確かめる点を作らせ、<b>ひとつずつご自身で確かめてください</b>。判断するのはあなたです。
+    </div>
+    <button class="go ghost" id="critBtn">確かめる点を作る</button>
+    <div id="critBox"></div>
+  </div>
 
   <div class="tsec">
     <h3>工程</h3>
@@ -181,7 +192,7 @@
 
 <footer>
   合同会社トライサイト　TriSight&reg; ファミリー
-  <div class="verline">版 <span id="verLabel">2026-08-01-03</span></div>
+  <div class="verline">版 <span id="verLabel">2026-08-01-04</span></div>
 </footer>
 </div>
 
@@ -377,17 +388,19 @@
     if(i>=0) user[i]=p; else user.push(p);
     try{ localStorage.setItem(PATTERN_KEY, JSON.stringify(user)); }catch(e){}
   }
+  /* 引き当ては書類名の部分一致だけで動く決定論的な処理。当たったかどうかは正しさの保証ではないので、
+     どの語で当たったのかを必ず持ち帰り、画面に出して人が却下できるようにする（2026-08-01）。 */
   function matchPattern(docName){
     const n = String(docName||"");
     if(!n) return null;
     const all = loadPatterns();
-    let best = null, bestLen = 0;
+    let best = null, bestKey = "", bestLen = 0;
     all.forEach(p=>{
       (p.keys||[]).forEach(k=>{
-        if(k && n.indexOf(k) >= 0 && k.length > bestLen){ best = p; bestLen = k.length; }
+        if(k && n.indexOf(k) >= 0 && k.length > bestLen){ best = p; bestKey = k; bestLen = k.length; }
       });
     });
-    return best;
+    return best ? { pattern: best, key: bestKey } : null;
   }
 
   /* ===== 受信箱 ===== */
@@ -440,6 +453,8 @@
   /* ===== 分解 ===== */
   let current = null;   // 編集中の案件
   let rows = [];        // 画面上の工程
+  let matchLog = [];    // どの書類のどの語がどの型に当たったか
+  let criteria = [];    // AIが作った「確かめる基準」。判断するのは人間
 
   function openGrant(id){
     const g = visibleInbox().find(x=>x.id===id);
@@ -447,8 +462,11 @@
     current = g;
     rows = buildRows(g);
     $("wName").textContent = g.program_name || "（名称不明）";
+    criteria = [];
     renderRows();
+    renderMatchLog();
     renderNoMatch(g);
+    renderCrit();
     $("work").classList.add("show");
     $("msg").className = "msg";
     window.scrollTo({top: $("work").offsetTop - 20, behavior:"smooth"});
@@ -466,13 +484,15 @@
       });
     });
     const seen = new Set();
+    matchLog = [];
     (g.required_documents||[]).forEach(d=>{
-      const p = matchPattern(d.name);
-      if(!p || seen.has(p.id)) return;
-      seen.add(p.id);
-      (p.steps||[]).forEach(s=>{
+      const m = matchPattern(d.name);
+      if(!m || !m.pattern || seen.has(m.pattern.id)) return;
+      seen.add(m.pattern.id);
+      matchLog.push({ doc:d.name||"", key:m.key, pattern:m.pattern.name, id:m.pattern.id });
+      (m.pattern.steps||[]).forEach(s=>{
         out.push({
-          from:p.name, due_text:"", action:s.action||"",
+          from:m.pattern.name, pid:m.pattern.id, due_text:"", action:s.action||"",
           inputs:s.inputs||"", output:s.output||"", submit_to:s.submit_to||"",
           receive:s.receive||"", must_verify:!!s.must_verify, why:s.why||""
         });
@@ -481,9 +501,34 @@
     return out;
   }
 
+  /* どの書類のどの語がどの型に当たったのかを出す。当てはめが違うと思ったらその場で外せる。 */
+  function renderMatchLog(){
+    const box = $("matchBox");
+    if(!matchLog.length){ box.innerHTML = ""; return; }
+    box.innerHTML = '<div style="background:var(--white);border:1px solid var(--line);border-radius:10px;'
+      + 'padding:13px 16px;margin-top:14px;font-size:13px">'
+      + '<div style="font-weight:700;margin-bottom:6px">型を当てた根拠（' + matchLog.length + '件）</div>'
+      + matchLog.map((m,i)=>
+          '<div style="margin:5px 0">「' + esc(m.doc) + '」の中の<b>' + esc(m.key) + '</b>で、'
+          + '<b>' + esc(m.pattern) + '</b>に当てました。'
+          + '<button type="button" class="sbtn danger" data-unmatch="' + i + '" style="margin-left:8px">この当てはめは違う</button></div>'
+        ).join("")
+      + '</div>';
+    box.querySelectorAll("button[data-unmatch]").forEach(el=>{
+      el.addEventListener("click", ()=>{
+        const m = matchLog[Number(el.dataset.unmatch)];
+        if(!m) return;
+        rows = rows.filter(r => r.pid !== m.id);
+        matchLog = matchLog.filter(x => x.id !== m.id);
+        criteria = [];
+        renderMatchLog(); renderRows(); renderCrit();
+      });
+    });
+  }
+
   function renderNoMatch(g){
     const box = $("noMatchBox");
-    const un = (g.required_documents||[]).filter(d=>!matchPattern(d.name));
+    const un = (g.required_documents||[]).filter(d=>!matchPattern(d.name));   /* nullなら型なし */
     if(!un.length){ box.innerHTML = ""; return; }
     box.innerHTML = '<div class="nomatch"><b>型がまだ無い書類が' + un.length + '件あります。</b><br>'
       + un.map(d=>"・"+esc(d.name||"")).join("<br>")
@@ -557,6 +602,77 @@
       + '" value="' + esc(val||"") + '"></div>';
   }
 
+  /* ===== 確かめる基準（AIが作り、人が判断する） =====
+     ここでAIがするのは「何を確かめるべきか」を要領から拾って並べることまで。
+     当てはめが正しいかどうかの結論は出さない。○×を付けるのは人。
+     根拠が要領に見つからない項目は「根拠なし」として区別し、推測を根拠のように見せない。 */
+  const RELAY = "https://trisight-relay.vercel.app/api/anthropic";
+  const MODEL = "claude-sonnet-4-6";
+
+  function renderCrit(){
+    const box = $("critBox");
+    if(!criteria.length){ box.innerHTML = ""; return; }
+    box.innerHTML = criteria.map((c,i)=>
+      '<div style="background:var(--white);border:1px solid var(--line);border-left:4px solid '
+      + (c.found ? "var(--ok)" : "var(--amber)") + ';border-radius:10px;padding:12px 15px;margin-top:10px">'
+      + '<label style="display:block;cursor:pointer;font-size:13.5px">'
+      + '<input type="checkbox" data-crit="' + i + '"' + (c.ok?" checked":"") + '> '
+      + '<b>' + esc(c.q||"") + '</b></label>'
+      + '<div style="font-size:12px;color:var(--ink-soft);margin-top:5px;padding-left:22px">'
+      + (c.found ? "要領の該当箇所：" + esc(c.basis||"") : "<b>要領に根拠が見つかりませんでした。</b>" + (c.basis?"（"+esc(c.basis)+"）":"") + " ご自身で交付元へお確かめください。")
+      + '</div></div>'
+    ).join("");
+    box.querySelectorAll("input[data-crit]").forEach(el=>{
+      el.addEventListener("change", ()=>{ criteria[Number(el.dataset.crit)].ok = el.checked; });
+    });
+  }
+
+  $("critBtn").addEventListener("click", async function(){
+    if(!current) return;
+    const btn = this, m = $("msg");
+    const src = String(current.source_text || "");
+    btn.disabled = true; btn.textContent = "作っています…";
+    m.className = "msg";
+    try{
+      const plan = rows.map((r,i)=>(i+1)+"．"+(r.action||"")).join("\n");
+      const docs = (current.required_documents||[]).map(d=>"・"+(d.name||"")+(d.note?"（"+d.note+"）":"")).join("\n");
+      const sys = "あなたは、ある制度の申請作業の分解が妥当かどうかを人が確かめるための「確認項目」を作る役です。"
+        + "あなた自身は妥当かどうかの結論を出しません。○×を付けるのは人間です。"
+        + "確認項目は、与えられた要領本文に書かれている事柄からのみ作り、"
+        + "本文に根拠が見当たらない場合は found を false にして、推測を根拠のように書かないでください。"
+        + "とくに、書類の要件・提出先・提出期限・時期の前後関係（いつまでに何が整っている必要があるか）に着目してください。"
+        + "出力はJSONのみ。前置きもコードブロックも付けないでください。"
+        + '形式：{"items":[{"q":"確かめること（一文）","basis":"要領の該当箇所（見出しや条項番号など短く）","found":true}]}'
+        + "項目は多くて8件までにしてください。";
+      const user = (src ? "■ 要領本文\n" + src + "\n\n" : "■ 要領本文\n（本文が渡されていません。本文に基づく根拠は作れないため、found はすべて false にしてください）\n\n")
+        + "■ 制度名\n" + (current.program_name||"") + "\n\n"
+        + "■ 添付書類\n" + (docs||"（なし）") + "\n\n"
+        + "■ いまの分解（この並びが妥当かを人が確かめます）\n" + plan;
+      let code = ""; try{ code = localStorage.getItem("trisight_access_code") || ""; }catch(e){}
+      const res = await fetch(RELAY, {
+        method:"POST",
+        headers:{"Content-Type":"application/json","x-trisight-code":code},
+        body:JSON.stringify({ model:MODEL, max_tokens:2000, system:sys, messages:[{role:"user",content:user}] })
+      });
+      if(!res.ok) throw new Error("リレー応答 " + res.status + (res.status===401?"（認証コードをご確認ください）":""));
+      const data = await res.json();
+      const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
+      const j = JSON.parse(text.replace(/^```(json)?/i,"").replace(/```$/,"").trim());
+      criteria = (j.items||[]).map(x=>({ q:x.q||"", basis:x.basis||"", found:!!x.found, ok:false }));
+      if(!criteria.length) throw new Error("確認項目が返りませんでした。");
+      renderCrit();
+      if(!src){
+        m.className = "msg ng show";
+        m.textContent = "△ この案件には要領の本文が付いていません（古い案件か、本文を読み取れないPDFだった場合）。確認項目は制度名と書類名からの推測です。要領を手元でご確認ください。";
+      }
+    }catch(e){
+      m.className = "msg ng show";
+      m.textContent = "× 確認項目を作れませんでした：" + (e && e.message ? e.message : e);
+    }finally{
+      btn.disabled = false; btn.textContent = criteria.length ? "作り直す" : "確かめる点を作る";
+    }
+  });
+
   /* ===== 書き戻し ===== */
   $("applyBtn").addEventListener("click", function(){
     if(!current) return;
@@ -564,12 +680,31 @@
     const list = allInbox();
     const idx = list.findIndex(x=>x.id===current.id);
     if(idx < 0){ m.className="msg ng show"; m.textContent="× 案件が見つかりませんでした。一覧に戻ってやり直してください。"; return; }
+    /* 分解そのものを、人が確かめる対象として先頭に置く（2026-08-01）。
+       型が当たったことは正しさの保証ではないため、分解を信じさせず、まず疑わせる工程を作る。
+       未確認の項目があればその中身を理由に載せ、トライタスク側でも見えるようにする。 */
+    const unchecked = criteria.filter(c=>!c.ok);
+    const guard = {
+      due_text: "着手前",
+      action: "この分解が制度の要件に合っているか、交付元の要領で確かめる",
+      must_verify: true,
+      inputs: "交付元の公募要領",
+      output: "確かめ終えた工程の並び",
+      submit_to: "", receive: "", from: "確認",
+      why: criteria.length
+        ? (unchecked.length
+            ? "未確認の項目：" + unchecked.map(c=>c.q + (c.found ? "" : "（要領に根拠が見つからず。交付元へ要確認）")).join("／")
+            : "確認項目はすべて確かめ済みです。要領の改訂がないかだけ見てください。")
+        : "工程は書類の名前に型を当てて機械的に出したものです。当たったこと自体は正しさの保証ではないため、要領の該当箇所で確かめてください。"
+    };
     list[idx] = Object.assign({}, list[idx], {
-      reverse_tasks: rows.map(r=>({
+      reverse_tasks: [guard].concat(rows.map(r=>({
         due_text:r.due_text||"", action:r.action||"", must_verify:!!r.must_verify,
         inputs:r.inputs||"", output:r.output||"", submit_to:r.submit_to||"",
         receive:r.receive||"", why:r.why||"", from:r.from||""
-      })),
+      }))),
+      triform_criteria: criteria,
+      triform_match_log: matchLog,
       triform_applied: true,
       triform_at: new Date().toISOString(),
       human_reviewed: true
@@ -577,7 +712,8 @@
     if(!saveInbox(list)){ m.className="msg ng show"; m.textContent="× 保存できませんでした。"; return; }
     current = list[idx];
     m.className = "msg ok show";
-    m.textContent = "○ " + rows.length + "件の工程をトライタスクへ渡しました。トライタスクを開くと、この内容で並びます。";
+    m.textContent = "○ " + (rows.length + 1) + "件の工程をトライタスクへ渡しました（先頭に「要領で確かめる」工程を入れています）。"
+      + (unchecked.length ? "未確認の項目が" + unchecked.length + "件あり、その工程の中に書き出してあります。" : "");
     renderList();
   });
   $("backBtn").addEventListener("click", function(){

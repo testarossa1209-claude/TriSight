@@ -1732,6 +1732,19 @@
     $("sendReview").style.display = "none";
   });
 
+  /* 公募要領の本文を受信箱へ一緒に運ぶ（2026-08-01）。
+     TriFormが「この分解でよいか」の基準を作るとき、根拠を要綱の記載に求められるようにするため。
+     本文が無いと基準は制度名からの推測になり、もっともらしいだけの確認事項が並ぶ。
+     保存容量に配慮して上限を設ける（超える場合は先頭から切る＝要件は前半に書かれることが多い）。 */
+  const SRC_TEXT_LIMIT = 60000;
+  function srcTextForTask(){
+    try{
+      const t = (typeof extracted === "string") ? extracted : "";
+      if(!t) return "";
+      return t.length > SRC_TEXT_LIMIT ? t.slice(0, SRC_TEXT_LIMIT) : t;
+    }catch(e){ return ""; }
+  }
+
   // d＝送信する内容。existingId を渡すと新規作成ではなく既存レコードを上書きする（後からの修正用）
   function doSendToTask(d, existingId){
     let __authCode = "";
@@ -1762,6 +1775,7 @@
         required_documents: d.required_documents || [],
         verify_items: d.verify_items || [],
         contact: d.contact || "",
+        source_text: srcTextForTask(),
         human_reviewed: true,
         updated_at: new Date().toISOString()
       });
@@ -1781,6 +1795,7 @@
         required_documents: d.required_documents || [],
         verify_items: d.verify_items || [],
         contact: d.contact || "",
+        source_text: srcTextForTask(),
         amount_expected: null,
         status: "未着手",
         paid_confirmed_at: null,
@@ -2707,7 +2722,7 @@
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-01-04';
+  const TRIGATE_VERSION = '2026-08-01-05';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

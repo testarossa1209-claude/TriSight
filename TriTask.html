@@ -798,10 +798,10 @@
       /* TriFormが分解した工程は、材料・出来上がるもの・提出先・受け取るものを持つ（2026-08-01）。
          「何を元に、何を作り、どこへ持っていき、何を受け取るか」が見えて初めて伴走になる。 */
       const chain = [];
-      if(t.inputs)    chain.push("材料：" + t.inputs);
-      if(t.output)    chain.push("出来上がるもの：" + t.output);
-      if(t.submit_to) chain.push("提出先：" + t.submit_to);
-      if(t.receive)   chain.push("受け取るもの：" + t.receive);
+      if(t.inputs)    chain.push("手元に要るもの：" + t.inputs);
+      if(t.output)    chain.push("この工程でできるもの：" + t.output);
+      if(t.submit_to) chain.push("持っていく先：" + t.submit_to);
+      if(t.receive)   chain.push("持ち帰るもの：" + t.receive);
       if(chain.length) verify = chain.join("\n") + "\n" + verify;
       return {
         title: t.due_text ? (/まで$/.test(t.due_text) ? t.due_text : t.due_text + "まで")

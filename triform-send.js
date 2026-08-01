@@ -65,8 +65,10 @@
       return {
         due_text:(t && t.due_text) || "", action:(t && t.action) || "",
         must_verify: !!(t && t.must_verify),
-        inputs:(t && t.inputs) || "", output:(t && t.output) || "",
-        submit_to:(t && t.submit_to) || "", receive:(t && t.receive) || "",
+        inputs:(t && t.inputs) || "",   /* 手元に要るもの */
+        output:(t && t.output) || "",   /* この工程でできるもの */
+        submit_to:(t && t.submit_to) || "", /* 持っていく先 */
+        receive:(t && t.receive) || "",     /* 持ち帰るもの */
         why:(t && t.why) || "", from:(t && t.from) || ""
       };
     }).filter(function(t){ return t.action; });

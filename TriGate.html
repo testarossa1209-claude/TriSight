@@ -726,7 +726,7 @@
       summary: "これはトライゲイト→トライタスクの自動連携ルートを確認するために作成したテストデータです。実在の制度ではありません。",
       deadlines: ["2026-09-30まで"],
       reverse_tasks: [
-        { due_text: "9/10まで", action: "交付要綱を読み、自事業所が対象区分に入るか確認する", must_verify: true },
+        { due_text: "9/10まで", action: "この案件の仕分けが正しいか、交付要綱の該当箇所で確かめる", must_verify: true },
         { due_text: "9/20まで", action: "事業所一覧表と申請書を作成する", must_verify: false },
         { due_text: "9/30まで", action: "見積書を添えて申請書を提出する", must_verify: true }
       ],
@@ -2707,7 +2707,7 @@
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-01-03';
+  const TRIGATE_VERSION = '2026-08-01-04';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -158,6 +158,14 @@
   <div class="tsec">
     <h3>工程</h3>
     <div class="h" id="tHint"></div>
+    <div style="font-size:12px;color:var(--ink-soft);background:var(--paper-deep);
+                border-radius:8px;padding:10px 13px;margin-bottom:12px;line-height:1.9">
+      <b>手元に要るもの</b>＝始める前に揃っていないといけない現物　／
+      <b>この工程でできるもの</b>＝終えたときに新しく手元にあるもの<br>
+      <b>持っていく先</b>＝役所や取引先など。社内で済む工程は空欄　／
+      <b>持ち帰るもの</b>＝そこから受け取って戻るもの（受理印のある控え・受付番号など）<br>
+      ある工程で<b>できたもの</b>や<b>持ち帰ったもの</b>が、次の工程で<b>手元に要るもの</b>になります。
+    </div>
     <div id="tList"></div>
   </div>
 
@@ -167,13 +175,13 @@
 </div>
 
 <div class="creed">
-  <b>手続きの型は、その都度考えるものではありません。</b><br>
-  同じ書類には同じ手順が要ります。だから型として持ち、毎回そこから引きます。
+  TriForm が示すのは、<b>どの順で手を動かすか</b>までです。<br>
+  内容が正しいかどうか、この工程で足りるかどうかは、<b>あなたが確かめます</b>。
 </div>
 
 <footer>
   合同会社トライサイト　TriSight&reg; ファミリー
-  <div class="verline">版 <span id="verLabel">2026-08-01-01</span></div>
+  <div class="verline">版 <span id="verLabel">2026-08-01-03</span></div>
 </footer>
 </div>
 
@@ -189,13 +197,13 @@
 
 <dialog id="editDlg"><div class="dlg">
   <h3>型を作る</h3>
-  <p class="h">工程は1行に1つ。「やること｜材料｜出来上がるもの｜提出先｜受け取るもの」を縦棒で区切ります。後ろの4つは無いものを空けて構いません。</p>
+  <p class="h">工程は1行に1つ。「やること｜手元に要るもの｜この工程でできるもの｜持っていく先｜持ち帰るもの」を縦棒で区切ります。後ろの4つは、無いものを空けて構いません（社内で済む工程は持っていく先・持ち帰るものが空になります）。</p>
   <label>この型を引き当てる語（書類名に含まれる語・読点区切り）</label>
   <input type="text" id="pKeys" placeholder="就業規則, 就業規則の写し">
   <label>型の名前</label>
   <input type="text" id="pName" placeholder="就業規則の改定と労基署への届出">
   <label>工程</label>
-  <textarea id="pSteps" placeholder="現行の就業規則の原本を用意する｜｜現行の就業規則｜｜"></textarea>
+  <textarea id="pSteps" placeholder="様式を交付元のサイトから取得する｜｜未記入の誓約書｜｜&#10;記入し、代表者印を押す｜未記入の誓約書｜押印済みの誓約書｜｜"></textarea>
   <label>要確認にする工程の番号（読点区切り・無ければ空欄）</label>
   <input type="text" id="pVerify" placeholder="2, 4">
   <div class="btns">
@@ -498,10 +506,10 @@
         + '<div class="fgrid">'
         + fRow(i,"action","やること",r.action)
         + fRow(i,"due_text","期限",r.due_text)
-        + fRow(i,"inputs","材料",r.inputs)
-        + fRow(i,"output","出来上がるもの",r.output)
-        + fRow(i,"submit_to","提出先",r.submit_to)
-        + fRow(i,"receive","受け取るもの",r.receive)
+        + fRow(i,"inputs","手元に要るもの",r.inputs)
+        + fRow(i,"output","この工程でできるもの",r.output)
+        + fRow(i,"submit_to","持っていく先",r.submit_to)
+        + fRow(i,"receive","持ち帰るもの",r.receive)
         + '</div>'
         + '<div class="vflag"><label><input type="checkbox" data-i="' + i + '" data-f="must_verify"'
         + (r.must_verify?" checked":"") + '> 人の確認が要る工程にする</label>'

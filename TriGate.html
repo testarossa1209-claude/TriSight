@@ -314,6 +314,7 @@
       <button type="button" id="authCodeChangeBtn" style="margin-left:8px;font-size:12.5px;padding:3px 10px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer">認証コードを確認・変更する</button>
       <button type="button" id="planChangeBtn" style="margin-left:6px;font-size:12.5px;padding:3px 10px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer">契約プラン</button>
       <button type="button" id="testSendBtn" style="margin-left:8px;font-size:12.5px;padding:3px 10px;border:1px solid #c9772a;border-radius:6px;background:#fff8ef;color:#a45a1a;cursor:pointer">仮の補助金案件をTriTaskへ送る（動作確認用）</button>
+      <a href="TriForm.html" style="margin-left:8px;font-size:12.5px;color:#c9772a">TriForm で工程に分解する</a>
       <span id="testSendMsg" style="margin-left:8px;font-size:12.5px"></span>
       <span class="vertag" style="margin-left:10px;font-size:12px;color:#8a93a5">版 <b id="verLabel">-</b></span>
     </div>
@@ -2706,7 +2707,7 @@
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-01-02';
+  const TRIGATE_VERSION = '2026-08-01-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

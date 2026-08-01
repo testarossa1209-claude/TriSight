@@ -295,6 +295,10 @@
   <section class="card" id="grantListCard">
     <div class="card-label">各システムから届いた案件</div>
     <div class="card-hint" id="grantListHint">読み込み中…</div>
+    <div style="font-size:12.5px;margin:-8px 0 14px">
+      <a href="TriForm.html" style="color:var(--amber)">TriForm で工程に分解する</a>
+      <span style="color:var(--ink-soft)">　添付書類の用意のしかたまで工程に開きます</span>
+    </div>
     <ul class="glist" id="grantList"></ul>
   </section>
 
@@ -782,16 +786,26 @@
           return line;
         }).join("\n");
       }else if(t.must_verify){
-        verify = "この作業には、ご自身での確認・判断が必要です。"
-               + (gContact ? "　確認先：" + gContact : "");
+        verify = t.why
+               ? ("◇ " + t.why + (gContact ? "　確認先：" + gContact : ""))
+               : ("この作業には、ご自身での確認・判断が必要です。" + (gContact ? "　確認先：" + gContact : ""));
       }else{
         verify = "期限内に完了していること";
       }
       if(myDocs.length){
         verify += "\n□ 使う書類：" + myDocs.map(d => (d.name||"") + (d.note ? "（"+d.note+"）" : "")).join("／");
       }
+      /* TriFormが分解した工程は、材料・出来上がるもの・提出先・受け取るものを持つ（2026-08-01）。
+         「何を元に、何を作り、どこへ持っていき、何を受け取るか」が見えて初めて伴走になる。 */
+      const chain = [];
+      if(t.inputs)    chain.push("材料：" + t.inputs);
+      if(t.output)    chain.push("出来上がるもの：" + t.output);
+      if(t.submit_to) chain.push("提出先：" + t.submit_to);
+      if(t.receive)   chain.push("受け取るもの：" + t.receive);
+      if(chain.length) verify = chain.join("\n") + "\n" + verify;
       return {
-        title: t.due_text ? (/まで$/.test(t.due_text) ? t.due_text : t.due_text + "まで") : ("工程" + (i+1)),
+        title: t.due_text ? (/まで$/.test(t.due_text) ? t.due_text : t.due_text + "まで")
+             : (t.from && t.from !== "制度" ? t.from : ("工程" + (i+1))),
         action: t.action || "",
         verify: verify,
         must_verify: !!t.must_verify,

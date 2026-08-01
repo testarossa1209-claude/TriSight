@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TriForm — 制度の言葉を、手の動く工程へ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#10243b; --ink-soft:#2a4866;
+    --paper:#f4f1ea; --paper-deep:#e9e3d6;
+    --amber:#c9772a; --amber-soft:#e3a55c;
+    --line:#cfc6b4; --ok:#3f7d57; --white:#ffffff;
+    --shadow:0 1px 2px rgba(16,36,59,.06),0 8px 28px rgba(16,36,59,.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--paper);color:var(--ink)}
+  body{
+    font-family:"Noto Sans JP",sans-serif;line-height:1.75;-webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(circle at 12% -10%, rgba(201,119,42,.08), transparent 40%),
+      radial-gradient(circle at 90% 0%, rgba(16,36,59,.06), transparent 45%);
+    min-height:100vh;
+  }
+  .wrap{max-width:880px;margin:0 auto;padding:0 24px 80px}
+  header{padding:54px 0 26px;text-align:center;position:relative}
+  .badge{display:inline-block;font-size:11px;letter-spacing:.28em;color:var(--amber);
+    font-weight:700;margin-bottom:14px;text-transform:uppercase}
+  h1{font-family:"Shippori Mincho",serif;font-weight:800;
+    font-size:clamp(38px,7vw,58px);letter-spacing:.02em;line-height:1.1;color:var(--ink)}
+  .tagline{font-family:"Shippori Mincho",serif;font-size:clamp(15px,2.4vw,19px);
+    color:var(--ink-soft);margin-top:14px;font-weight:500;letter-spacing:.04em}
+  .authline{margin-top:16px;font-size:12.5px;color:var(--ink-soft)}
+  .minibtn{margin-left:8px;font-size:12.5px;padding:3px 10px;border:1px solid var(--line);
+    border-radius:6px;background:#fff;cursor:pointer;font-family:'Noto Sans JP',sans-serif}
+
+  .card{background:var(--white);border:1px solid var(--line);border-radius:14px;
+    box-shadow:var(--shadow);padding:30px;margin-top:24px}
+  .card-label{font-family:"Shippori Mincho",serif;font-weight:700;font-size:18px;
+    margin-bottom:4px;color:var(--ink)}
+  .card-hint{font-size:13px;color:var(--ink-soft);margin-bottom:16px}
+
+  .glist{list-style:none}
+  .gitem{background:var(--white);border:1px solid var(--line);border-radius:12px;
+    padding:16px 18px;margin-bottom:10px;cursor:pointer;transition:all .18s}
+  .gitem:hover{border-color:var(--amber-soft);transform:translateX(2px)}
+  .gitem .gname{font-family:"Shippori Mincho",serif;font-weight:700;font-size:16px}
+  .gitem .gmeta{font-size:12.5px;color:var(--ink-soft);margin-top:5px}
+  .gbadge{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;
+    background:var(--ink);color:var(--paper);letter-spacing:.04em;margin-right:8px}
+  .gbadge.done{background:var(--ok)}
+  .gbadge.todo{background:var(--amber)}
+
+  .work{display:none;margin-top:24px}
+  .work.show{display:block;animation:rise .45s ease both}
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+  .goal-box{background:var(--ink);color:var(--paper);border-radius:14px;padding:22px 26px}
+  .goal-box .k{font-size:11px;letter-spacing:.2em;color:var(--amber-soft);font-weight:700}
+  .goal-box .v{font-family:"Shippori Mincho",serif;font-size:19px;font-weight:600;margin-top:6px;line-height:1.6}
+
+  .tsec{margin-top:22px}
+  .tsec h3{font-family:"Shippori Mincho",serif;font-size:16px;margin-bottom:6px}
+  .tsec .h{font-size:12.5px;color:var(--ink-soft);margin-bottom:12px}
+
+  .tcard{background:var(--white);border:1px solid var(--line);border-radius:12px;
+    padding:16px 18px;margin-bottom:12px}
+  .tcard.expanded{border-left:4px solid var(--amber)}
+  .tcard .tt{font-family:"Shippori Mincho",serif;font-weight:700;font-size:15.5px}
+  .tcard .tsrc{font-size:11.5px;color:var(--amber);font-weight:700;margin-bottom:4px}
+  .fgrid{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin-top:10px;font-size:13px}
+  .fgrid .fk{color:var(--ink-soft);white-space:nowrap;font-weight:700}
+  .fgrid input{width:100%;border:1px solid var(--line);border-radius:7px;padding:6px 9px;
+    font-family:'Noto Sans JP',sans-serif;font-size:13px;background:var(--paper);color:var(--ink)}
+  .fgrid input:focus{outline:none;border-color:var(--amber);background:var(--white)}
+  .vflag{font-size:12px;color:var(--ink-soft);margin-top:8px}
+  .vflag label{cursor:pointer}
+  .rowbtns{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+  .sbtn{border:1px solid var(--line);background:var(--paper);border-radius:7px;
+    padding:5px 12px;font-size:12.5px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;color:var(--ink-soft)}
+  .sbtn:hover{border-color:var(--amber-soft);color:var(--ink)}
+  .sbtn.danger:hover{border-color:#c07070;color:#8a2b2b}
+
+  .nomatch{background:#fbf3e8;border:1px solid var(--amber-soft);border-radius:10px;
+    padding:14px 16px;margin-bottom:12px;font-size:13.5px}
+  .nomatch b{font-family:"Shippori Mincho",serif}
+
+  .go{margin-top:20px;width:100%;border:none;cursor:pointer;background:var(--ink);color:var(--paper);
+    font-family:"Shippori Mincho",serif;font-weight:700;font-size:17px;padding:16px;
+    border-radius:10px;letter-spacing:.06em;transition:all .2s}
+  .go:hover{background:#0a1a2e}
+  .go:disabled{opacity:.5;cursor:not-allowed}
+  .go.ghost{background:var(--paper);color:var(--ink);border:1px solid var(--line);font-size:15px;padding:12px}
+  .go.ghost:hover{background:var(--paper-deep)}
+
+  .msg{display:none;border-radius:10px;padding:13px 16px;margin-top:14px;font-size:14px}
+  .msg.show{display:block}
+  .msg.ok{background:#eef5ef;border:1px solid var(--ok);color:#22503a}
+  .msg.ng{background:#fbecec;border:1px solid #e0a3a3;color:#8a2b2b}
+
+  dialog{border:none;border-radius:14px;padding:0;max-width:640px;width:92%;box-shadow:var(--shadow)}
+  dialog::backdrop{background:rgba(16,36,59,.42)}
+  .dlg{padding:26px;background:var(--white)}
+  .dlg h3{font-family:"Shippori Mincho",serif;font-size:19px;margin-bottom:6px}
+  .dlg p.h{font-size:13px;color:var(--ink-soft);margin-bottom:16px}
+  .dlg label{display:block;font-size:12.5px;font-weight:700;color:var(--ink-soft);margin:12px 0 4px}
+  .dlg input,.dlg textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 11px;
+    font-family:'Noto Sans JP',sans-serif;font-size:14px;background:var(--paper);color:var(--ink)}
+  .dlg textarea{min-height:120px;resize:vertical;line-height:1.7}
+  .dlg .btns{display:flex;gap:10px;margin-top:20px}
+  .dlg .btns button{flex:1;padding:11px;border-radius:9px;cursor:pointer;
+    font-family:'Noto Sans JP',sans-serif;font-size:14px;border:1px solid var(--line);background:var(--paper)}
+  .dlg .btns button.primary{background:var(--ink);color:var(--paper);border-color:var(--ink);font-weight:700}
+
+  .plist{list-style:none;margin-top:12px}
+  .pitem{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:9px;background:var(--white)}
+  .pitem .pn{font-family:"Shippori Mincho",serif;font-weight:700;font-size:14.5px}
+  .pitem .pm{font-size:12px;color:var(--ink-soft);margin-top:3px}
+  .pitem .pc{font-size:12px;color:var(--ink-soft);margin-top:5px}
+
+  .creed{margin-top:30px;text-align:center;font-family:"Shippori Mincho",serif;
+    font-size:14px;color:var(--ink-soft);line-height:1.9;padding:0 10px}
+  .creed b{color:var(--ink)}
+  footer{margin-top:36px;text-align:center;font-size:12px;color:var(--ink-soft);opacity:.8}
+  .verline{margin-top:6px;font-size:11px;color:var(--ink-soft);opacity:.75}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="badge">TriSight Family</div>
+  <h1>TriForm</h1>
+  <div class="tagline">制度の言葉を、手の動く工程へ</div>
+  <div class="authline">
+    <span id="authLabel">認証コード：（未設定）</span>
+    <button type="button" id="authCodeChangeBtn" class="minibtn">認証コードを確認・変更する</button>
+    <button type="button" id="patternBtn" class="minibtn">手続きの型を見る</button>
+  </div>
+</header>
+
+<div class="card" id="listCard">
+  <div class="card-label">各システムから届いた案件</div>
+  <div class="card-hint" id="listHint">読み込んでいます…</div>
+  <ul class="glist" id="gList"></ul>
+</div>
+
+<div class="work" id="work">
+  <div class="goal-box">
+    <div class="k">分解する案件</div>
+    <div class="v" id="wName"></div>
+  </div>
+
+  <div id="noMatchBox"></div>
+
+  <div class="tsec">
+    <h3>工程</h3>
+    <div class="h" id="tHint"></div>
+    <div id="tList"></div>
+  </div>
+
+  <button class="go" id="applyBtn">この内容でトライタスクへ渡す</button>
+  <button class="go ghost" id="backBtn">一覧へ戻る</button>
+  <div class="msg" id="msg"></div>
+</div>
+
+<div class="creed">
+  <b>手続きの型は、その都度考えるものではありません。</b><br>
+  同じ書類には同じ手順が要ります。だから型として持ち、毎回そこから引きます。
+</div>
+
+<footer>
+  合同会社トライサイト　TriSight&reg; ファミリー
+  <div class="verline">版 <span id="verLabel">2026-08-01-01</span></div>
+</footer>
+</div>
+
+<dialog id="patternDlg"><div class="dlg">
+  <h3>手続きの型</h3>
+  <p class="h">添付書類の名前から、実際にやることの並びを引き当てるための型です。使うほど増やせます。</p>
+  <div id="patternList"></div>
+  <div class="btns">
+    <button type="button" id="addPatternBtn">型を新しく作る</button>
+    <button type="button" class="primary" id="closePatternBtn">閉じる</button>
+  </div>
+</div></dialog>
+
+<dialog id="editDlg"><div class="dlg">
+  <h3>型を作る</h3>
+  <p class="h">工程は1行に1つ。「やること｜材料｜出来上がるもの｜提出先｜受け取るもの」を縦棒で区切ります。後ろの4つは無いものを空けて構いません。</p>
+  <label>この型を引き当てる語（書類名に含まれる語・読点区切り）</label>
+  <input type="text" id="pKeys" placeholder="就業規則, 就業規則の写し">
+  <label>型の名前</label>
+  <input type="text" id="pName" placeholder="就業規則の改定と労基署への届出">
+  <label>工程</label>
+  <textarea id="pSteps" placeholder="現行の就業規則の原本を用意する｜｜現行の就業規則｜｜"></textarea>
+  <label>要確認にする工程の番号（読点区切り・無ければ空欄）</label>
+  <input type="text" id="pVerify" placeholder="2, 4">
+  <div class="btns">
+    <button type="button" id="cancelEditBtn">やめる</button>
+    <button type="button" class="primary" id="saveEditBtn">保存する</button>
+  </div>
+</div></dialog>
+
+<script>
+(function(){
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+  const INBOX_KEY = "tritask_inbox";
+  const LEGACY_INBOX_KEY = "tritask_grants";
+  const PATTERN_KEY = "triform_patterns";
+
+  /* ===== 認証コードと契約プラン（TriGate/TriTaskと同一規則） ===== */
+  const TS_PLAN_URL = "https://trisight-relay.vercel.app/api/plan";
+  const TS_PLAN_KEY = "trisight_plan";
+  function tsPlanAll(){ try{ return JSON.parse(localStorage.getItem(TS_PLAN_KEY) || "{}"); }catch(e){ return {}; } }
+  function tsPlan(code){
+    code = code || "";
+    const rec = tsPlanAll()[code];
+    if(rec && (rec.plan === "family" || rec.plan === "lite")) return rec.plan;
+    if(/-FAMILY$/i.test(code)) return "family";
+    return "family";
+  }
+  function isFamilyTier(code){ return tsPlan(code) === "family"; }
+  function myAuthCode(){ try{ return localStorage.getItem("trisight_access_code") || ""; }catch(e){ return ""; } }
+  function refreshAuthLabel(){
+    const c = myAuthCode();
+    $("authLabel").textContent = "認証コード：" + (c || "（未設定）");
+  }
+  $("authCodeChangeBtn").addEventListener("click", function(){
+    const cur = myAuthCode();
+    const v = window.prompt("認証コードを確認・変更します。", cur);
+    if(v === null) return;
+    try{ localStorage.setItem("trisight_access_code", v.trim()); }catch(e){}
+    refreshAuthLabel();
+    renderList();
+  });
+
+  /* ===== 手続きの型（組み込み） =====
+     公募要領には書かれない「その書類をどうやって用意するのか」を型として持つ。
+     AIにその都度考えさせず、同じ書類には必ず同じ並びが出るようにするための仕組み。
+     steps の各要素： action / inputs / output / submit_to / receive / must_verify / why */
+  const BUILT_IN = [
+    {
+      id: "shugyo-kisoku",
+      name: "就業規則の改定と労基署への届出",
+      keys: ["就業規則"],
+      steps: [
+        { action:"現行の就業規則の原本と、直近の届出控えを手元に出す",
+          inputs:"現行の就業規則", output:"改定前の内容が分かる控え" },
+        { action:"制度が求める条項を書き起こし、規則本体へ反映する",
+          inputs:"現行の就業規則、制度が求める要件", output:"改定後の就業規則案",
+          must_verify:true, why:"条項の書きぶりが制度の要件を満たしているかは、要綱の文面だけでは断定できない" },
+        { action:"労働者の過半数を代表する者から意見を聴き、意見書を作成する",
+          inputs:"改定後の就業規則案", output:"労働者代表の意見書（署名または記名押印）",
+          must_verify:true, why:"代表者の選び方（投票・挙手等の民主的な手続き）が要件を満たしているか確認が要る（労働基準法第90条）" },
+        { action:"就業規則変更届に改定後の規則と意見書を添えて、所轄の労働基準監督署へ届け出る",
+          inputs:"改定後の就業規則、意見書", output:"就業規則変更届",
+          submit_to:"所轄の労働基準監督署", receive:"受理印のある就業規則の控え",
+          must_verify:true, why:"常時10人未満の事業場には届出義務がない（労働基準法第89条）。その場合に何を添付するかは交付元へ確認が要る" },
+        { action:"受理印のある控えを、申請書の添付書類として綴じる",
+          inputs:"受理印のある就業規則の控え", output:"申請書に添付する就業規則（写し）" }
+      ]
+    },
+    {
+      id: "chingin-kitei",
+      name: "賃金規程の改定と届出",
+      keys: ["賃金規程", "賃金規定", "給与規程"],
+      steps: [
+        { action:"現行の賃金規程と、直近の賃金台帳を突き合わせる",
+          inputs:"現行の賃金規程、賃金台帳", output:"現行の支給実態が分かる控え" },
+        { action:"制度が求める改定内容を反映した賃金規程案を作る",
+          inputs:"現行の賃金規程", output:"改定後の賃金規程案",
+          must_verify:true, why:"改定後の支給額が制度の要件（引上げ幅・対象者の範囲等）を満たすかは計算して確かめる必要がある" },
+        { action:"労働者の過半数を代表する者から意見を聴き、意見書を作成する",
+          inputs:"改定後の賃金規程案", output:"労働者代表の意見書" },
+        { action:"就業規則の一部として、所轄の労働基準監督署へ届け出る",
+          inputs:"改定後の賃金規程、意見書", output:"就業規則変更届",
+          submit_to:"所轄の労働基準監督署", receive:"受理印のある賃金規程の控え" }
+      ]
+    },
+    {
+      id: "koyou-keiyaku",
+      name: "雇用契約書・労働条件通知書の整備",
+      keys: ["雇用契約書", "労働条件通知書", "労働契約書"],
+      steps: [
+        { action:"対象となる従業員を特定し、現在の契約内容を確認する",
+          inputs:"賃金台帳、出勤簿、現行の雇用契約書", output:"対象者の一覧",
+          must_verify:true, why:"誰が制度の対象人材に当たるかは、雇用形態と在籍期間の両方を見ないと決められない" },
+        { action:"改定後の労働条件を反映した契約書を作り、本人の署名を受ける",
+          inputs:"対象者の一覧、改定後の労働条件", output:"署名済みの雇用契約書",
+          receive:"本人が署名した契約書（正本1通・写し1通）" },
+        { action:"写しを申請書の添付書類として綴じる",
+          inputs:"署名済みの雇用契約書（写し）", output:"申請書に添付する雇用契約書" }
+      ]
+    },
+    {
+      id: "chingin-daicho",
+      name: "賃金台帳・出勤簿の準備",
+      keys: ["賃金台帳", "出勤簿", "タイムカード", "給与明細"],
+      steps: [
+        { action:"対象期間の賃金台帳と出勤簿を印刷し、対象者の分を抜き出す",
+          inputs:"給与ソフトの記録", output:"対象期間・対象者の賃金台帳と出勤簿" },
+        { action:"支給額と勤務実績が、申請書に書く数字と一致しているか突き合わせる",
+          inputs:"賃金台帳、出勤簿、申請書の記載", output:"突合の済んだ添付書類一式",
+          must_verify:true, why:"台帳の数字と申請書の数字が合わないことが、差し戻しの最も多い原因" }
+      ]
+    },
+    {
+      id: "gbizid",
+      name: "GビズIDプライムの取得",
+      keys: ["GビズID", "gBizID", "Gビズ"],
+      steps: [
+        { action:"GビズIDのサイトで申請書を作成し、印刷する",
+          inputs:"法人番号、代表者の情報", output:"GビズIDプライム申請書" },
+        { action:"印鑑証明書を取得する",
+          submit_to:"法務局", receive:"印鑑証明書（発行から3か月以内のもの）" },
+        { action:"申請書に登録印を押し、印鑑証明書を添えて郵送する",
+          inputs:"申請書、印鑑証明書", submit_to:"GビズID運用センター",
+          receive:"審査完了の通知メール（1〜2週間程度かかる）",
+          must_verify:true, why:"審査に要する日数が申請期限に間に合うかは、早い段階で見ておく必要がある" }
+      ]
+    },
+    {
+      id: "mitsumori",
+      name: "見積書（相見積もり）の取得",
+      keys: ["見積書", "相見積", "見積り"],
+      steps: [
+        { action:"導入する設備・役務の仕様を書き出す",
+          output:"仕様書またはメモ" },
+        { action:"複数の業者へ同じ仕様で見積もりを依頼する",
+          inputs:"仕様書", output:"各社の見積書",
+          must_verify:true, why:"必要な社数と、業者間に資本関係がないことの要否は制度ごとに違う" },
+        { action:"金額と内容を比較した一覧を作る",
+          inputs:"各社の見積書", output:"比較表（選定理由を記載）" }
+      ]
+    },
+    {
+      id: "toki-nozei",
+      name: "登記事項証明書・納税証明書の取得",
+      keys: ["登記事項証明書", "履歴事項全部証明書", "納税証明書", "登記簿"],
+      steps: [
+        { action:"登記事項証明書を取得する",
+          submit_to:"法務局（またはオンライン請求）", receive:"履歴事項全部証明書",
+          must_verify:true, why:"有効期間（発行から3か月以内など）が制度ごとに違うため、取得の時期を合わせる必要がある" },
+        { action:"納税証明書を取得する",
+          submit_to:"所轄の税務署・都道府県税事務所・市区町村", receive:"納税証明書",
+          must_verify:true, why:"国税・地方税のどれが要るかは制度ごとに違う" }
+      ]
+    }
+  ];
+
+  function loadPatterns(){
+    let user = [];
+    try{ user = JSON.parse(localStorage.getItem(PATTERN_KEY) || "[]"); }catch(e){ user = []; }
+    if(!Array.isArray(user)) user = [];
+    const ids = new Set(user.map(p=>p.id));
+    return user.concat(BUILT_IN.filter(p=>!ids.has(p.id)));
+  }
+  function saveUserPattern(p){
+    let user = [];
+    try{ user = JSON.parse(localStorage.getItem(PATTERN_KEY) || "[]"); }catch(e){ user = []; }
+    if(!Array.isArray(user)) user = [];
+    const i = user.findIndex(x=>x.id===p.id);
+    if(i>=0) user[i]=p; else user.push(p);
+    try{ localStorage.setItem(PATTERN_KEY, JSON.stringify(user)); }catch(e){}
+  }
+  function matchPattern(docName){
+    const n = String(docName||"");
+    if(!n) return null;
+    const all = loadPatterns();
+    let best = null, bestLen = 0;
+    all.forEach(p=>{
+      (p.keys||[]).forEach(k=>{
+        if(k && n.indexOf(k) >= 0 && k.length > bestLen){ best = p; bestLen = k.length; }
+      });
+    });
+    return best;
+  }
+
+  /* ===== 受信箱 ===== */
+  function allInbox(){
+    let a = [], b = [];
+    try{ a = JSON.parse(localStorage.getItem(INBOX_KEY) || "[]"); }catch(e){ a = []; }
+    try{ b = JSON.parse(localStorage.getItem(LEGACY_INBOX_KEY) || "[]"); }catch(e){ b = []; }
+    if(!Array.isArray(a)) a = [];
+    if(!Array.isArray(b)) b = [];
+    const ids = new Set(a.map(x=>x.id));
+    return a.concat(b.filter(x=>!ids.has(x.id)));
+  }
+  function saveInbox(list){
+    try{ localStorage.setItem(INBOX_KEY, JSON.stringify(list)); return true; }catch(e){ return false; }
+  }
+  function visibleInbox(){
+    const code = myAuthCode();
+    return allInbox().filter(g => !g.auth_code || g.auth_code === code);
+  }
+
+  /* ===== 一覧 ===== */
+  function renderList(){
+    const ul = $("gList"), hint = $("listHint");
+    ul.innerHTML = "";
+    if(!isFamilyTier(myAuthCode())){
+      hint.textContent = "TriForm はトライサイトシステム（親機）の機能です。現在の契約プランではご利用いただけません。";
+      return;
+    }
+    const items = visibleInbox();
+    if(!items.length){
+      hint.textContent = "まだありません。トライゲイトなど各システムで判定を行うと、ここに集まります。";
+      return;
+    }
+    hint.textContent = items.length + "件あります。分解する案件を選んでください。";
+    items.slice().reverse().forEach(g=>{
+      const li = document.createElement("li");
+      li.className = "gitem";
+      const applied = !!g.triform_applied;
+      const docs = (g.required_documents||[]).length;
+      li.innerHTML =
+        '<div><span class="gbadge ' + (applied?"done":"todo") + '">' + (applied?"分解済み":"未分解") + '</span>'
+        + '<span class="gname">' + esc(g.program_name||"（名称不明）") + '</span></div>'
+        + '<div class="gmeta">' + esc(g.source_product||"") + (g.issuer?"／"+esc(g.issuer):"")
+        + '　工程' + ((g.reverse_tasks||[]).length) + '件・添付書類' + docs + '件</div>';
+      li.addEventListener("click", ()=>openGrant(g.id));
+      ul.appendChild(li);
+    });
+  }
+
+  /* ===== 分解 ===== */
+  let current = null;   // 編集中の案件
+  let rows = [];        // 画面上の工程
+
+  function openGrant(id){
+    const g = visibleInbox().find(x=>x.id===id);
+    if(!g) return;
+    current = g;
+    rows = buildRows(g);
+    $("wName").textContent = g.program_name || "（名称不明）";
+    renderRows();
+    renderNoMatch(g);
+    $("work").classList.add("show");
+    $("msg").className = "msg";
+    window.scrollTo({top: $("work").offsetTop - 20, behavior:"smooth"});
+  }
+
+  /* 元の工程を残したまま、添付書類に型が当たるものを展開して差し込む。
+     元の工程を消さないのは、制度側が指定した順序や期限がそこにあるため。 */
+  function buildRows(g){
+    const out = [];
+    (g.reverse_tasks||[]).forEach(t=>{
+      out.push({
+        from:"制度", due_text:t.due_text||"", action:t.action||"",
+        inputs:t.inputs||"", output:t.output||"", submit_to:t.submit_to||"",
+        receive:t.receive||"", must_verify:!!t.must_verify, why:t.why||""
+      });
+    });
+    const seen = new Set();
+    (g.required_documents||[]).forEach(d=>{
+      const p = matchPattern(d.name);
+      if(!p || seen.has(p.id)) return;
+      seen.add(p.id);
+      (p.steps||[]).forEach(s=>{
+        out.push({
+          from:p.name, due_text:"", action:s.action||"",
+          inputs:s.inputs||"", output:s.output||"", submit_to:s.submit_to||"",
+          receive:s.receive||"", must_verify:!!s.must_verify, why:s.why||""
+        });
+      });
+    });
+    return out;
+  }
+
+  function renderNoMatch(g){
+    const box = $("noMatchBox");
+    const un = (g.required_documents||[]).filter(d=>!matchPattern(d.name));
+    if(!un.length){ box.innerHTML = ""; return; }
+    box.innerHTML = '<div class="nomatch"><b>型がまだ無い書類が' + un.length + '件あります。</b><br>'
+      + un.map(d=>"・"+esc(d.name||"")).join("<br>")
+      + '<br><br>この書類をどう用意するかの型を作っておくと、次に同じ書類が出てきたときも同じ並びが自動で出ます。'
+      + '<button type="button" class="sbtn" id="mkPatternBtn" style="margin-top:8px">この書類の型を作る</button></div>';
+    const b = $("mkPatternBtn");
+    if(b) b.addEventListener("click", ()=>openEdit(un[0].name||""));
+  }
+
+  function renderRows(){
+    const wrap = $("tList");
+    wrap.innerHTML = "";
+    $("tHint").textContent = rows.length + "件。内容はここで直せます。直したものがトライタスクへ渡ります。";
+    rows.forEach((r,i)=>{
+      const div = document.createElement("div");
+      div.className = "tcard" + (r.from!=="制度" ? " expanded" : "");
+      div.innerHTML =
+        (r.from!=="制度" ? '<div class="tsrc">型：' + esc(r.from) + '</div>' : '')
+        + '<div class="tt">' + (i+1) + '．' + esc(r.action||"（未記入）") + '</div>'
+        + '<div class="fgrid">'
+        + fRow(i,"action","やること",r.action)
+        + fRow(i,"due_text","期限",r.due_text)
+        + fRow(i,"inputs","材料",r.inputs)
+        + fRow(i,"output","出来上がるもの",r.output)
+        + fRow(i,"submit_to","提出先",r.submit_to)
+        + fRow(i,"receive","受け取るもの",r.receive)
+        + '</div>'
+        + '<div class="vflag"><label><input type="checkbox" data-i="' + i + '" data-f="must_verify"'
+        + (r.must_verify?" checked":"") + '> 人の確認が要る工程にする</label>'
+        + (r.why ? '<div style="margin-top:4px">理由：' + esc(r.why) + '</div>' : '')
+        + '</div>'
+        + '<div class="rowbtns">'
+        + '<button type="button" class="sbtn" data-mv="' + i + '" data-d="-1">↑</button>'
+        + '<button type="button" class="sbtn" data-mv="' + i + '" data-d="1">↓</button>'
+        + '<button type="button" class="sbtn danger" data-del="' + i + '">この工程を消す</button>'
+        + '</div>';
+      wrap.appendChild(div);
+    });
+    const add = document.createElement("button");
+    add.type = "button"; add.className = "sbtn"; add.textContent = "工程を足す";
+    add.addEventListener("click", ()=>{
+      rows.push({from:"手入力",due_text:"",action:"",inputs:"",output:"",submit_to:"",receive:"",must_verify:false,why:""});
+      renderRows();
+    });
+    wrap.appendChild(add);
+
+    wrap.querySelectorAll("input[data-f]").forEach(el=>{
+      el.addEventListener("change", ()=>{
+        const i = Number(el.dataset.i), f = el.dataset.f;
+        rows[i][f] = (el.type === "checkbox") ? el.checked : el.value;
+        if(f === "action") renderRows();
+      });
+    });
+    wrap.querySelectorAll("button[data-mv]").forEach(el=>{
+      el.addEventListener("click", ()=>{
+        const i = Number(el.dataset.mv), d = Number(el.dataset.d), j = i + d;
+        if(j < 0 || j >= rows.length) return;
+        const t = rows[i]; rows[i] = rows[j]; rows[j] = t;
+        renderRows();
+      });
+    });
+    wrap.querySelectorAll("button[data-del]").forEach(el=>{
+      el.addEventListener("click", ()=>{
+        rows.splice(Number(el.dataset.del),1);
+        renderRows();
+      });
+    });
+  }
+  function fRow(i,f,label,val){
+    return '<div class="fk">' + label + '</div><div><input type="text" data-i="' + i + '" data-f="' + f
+      + '" value="' + esc(val||"") + '"></div>';
+  }
+
+  /* ===== 書き戻し ===== */
+  $("applyBtn").addEventListener("click", function(){
+    if(!current) return;
+    const m = $("msg");
+    const list = allInbox();
+    const idx = list.findIndex(x=>x.id===current.id);
+    if(idx < 0){ m.className="msg ng show"; m.textContent="× 案件が見つかりませんでした。一覧に戻ってやり直してください。"; return; }
+    list[idx] = Object.assign({}, list[idx], {
+      reverse_tasks: rows.map(r=>({
+        due_text:r.due_text||"", action:r.action||"", must_verify:!!r.must_verify,
+        inputs:r.inputs||"", output:r.output||"", submit_to:r.submit_to||"",
+        receive:r.receive||"", why:r.why||"", from:r.from||""
+      })),
+      triform_applied: true,
+      triform_at: new Date().toISOString(),
+      human_reviewed: true
+    });
+    if(!saveInbox(list)){ m.className="msg ng show"; m.textContent="× 保存できませんでした。"; return; }
+    current = list[idx];
+    m.className = "msg ok show";
+    m.textContent = "○ " + rows.length + "件の工程をトライタスクへ渡しました。トライタスクを開くと、この内容で並びます。";
+    renderList();
+  });
+  $("backBtn").addEventListener("click", function(){
+    $("work").classList.remove("show");
+    current = null;
+    window.scrollTo({top:0,behavior:"smooth"});
+  });
+
+  /* ===== 型の一覧・追加 ===== */
+  $("patternBtn").addEventListener("click", function(){
+    renderPatternList();
+    $("patternDlg").showModal();
+  });
+  $("closePatternBtn").addEventListener("click", ()=>$("patternDlg").close());
+  $("addPatternBtn").addEventListener("click", ()=>{ $("patternDlg").close(); openEdit(""); });
+
+  function renderPatternList(){
+    const all = loadPatterns();
+    $("patternList").innerHTML = '<ul class="plist">' + all.map(p=>
+      '<li class="pitem"><div class="pn">' + esc(p.name||"") + '</div>'
+      + '<div class="pm">引き当てる語：' + esc((p.keys||[]).join("、")) + '</div>'
+      + '<div class="pc">' + (p.steps||[]).map((s,i)=>(i+1)+"．"+esc(s.action||"")).join("<br>") + '</div></li>'
+    ).join("") + '</ul>';
+  }
+
+  function openEdit(prefillKey){
+    $("pKeys").value = prefillKey || "";
+    $("pName").value = "";
+    $("pSteps").value = "";
+    $("pVerify").value = "";
+    $("editDlg").showModal();
+  }
+  $("cancelEditBtn").addEventListener("click", ()=>$("editDlg").close());
+  $("saveEditBtn").addEventListener("click", function(){
+    const keys = $("pKeys").value.split(/[、,]/).map(s=>s.trim()).filter(Boolean);
+    const name = $("pName").value.trim();
+    const lines = $("pSteps").value.split("\n").map(s=>s.trim()).filter(Boolean);
+    if(!keys.length || !name || !lines.length){
+      window.alert("引き当てる語・型の名前・工程は、いずれも必要です。");
+      return;
+    }
+    const vset = new Set($("pVerify").value.split(/[、,]/).map(s=>Number(s.trim())).filter(n=>n>0));
+    const steps = lines.map((ln,i)=>{
+      const c = ln.split("｜").map(s=>s.trim());
+      return { action:c[0]||"", inputs:c[1]||"", output:c[2]||"",
+               submit_to:c[3]||"", receive:c[4]||"", must_verify:vset.has(i+1) };
+    });
+    saveUserPattern({ id:"u-"+Date.now(), name:name, keys:keys, steps:steps });
+    $("editDlg").close();
+    if(current) { rows = buildRows(current); renderRows(); renderNoMatch(current); }
+    window.alert("型を保存しました。次に同じ書類が出てきたときも、この並びが出ます。");
+  });
+
+  /* ===== 起動 ===== */
+  refreshAuthLabel();
+  renderList();
+  fetch("version.json", {cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{
+    if(j && j.triform && j.triform !== $("verLabel").textContent){
+      const d = document.createElement("div");
+      d.style.cssText = "background:#fbf3e8;border:1px solid var(--amber-soft);border-radius:10px;padding:12px 16px;margin-top:14px;font-size:13.5px;text-align:center";
+      d.textContent = "新しい版が公開されています（" + j.triform + "）。画面を開き直すと切り替わります。";
+      $("listCard").parentNode.insertBefore(d, $("listCard"));
+    }
+  }).catch(()=>{});
+})();
+</script>
+</body>
+</html>

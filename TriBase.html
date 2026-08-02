@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache">
+<title>事業所基本情報シート ｜ TriSight&reg;</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700;800&family=Zen+Kaku+Gothic+Antique:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+
+  :root{
+    --navy:#0f1d3a; --navy2:#1a2f54; --navy3:#26416e;
+    --gold:#c8a24a; --gold-soft:#e6cd8f;
+    --paper:#faf8f2; --card:#ffffff; --ink:#172033; --soft:#5c6781; --line:#e6e0d0;
+    --ok:#1f6d3a; --ok-bg:#e9f4ec; --ng:#b3261e; --ng-bg:#fbeceb; --warn:#9a6b00; --warn-bg:#fdf4e0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Zen Kaku Gothic Antique",sans-serif;background:var(--paper);color:var(--ink);
+    font-size:16px;font-weight:500;line-height:1.7;letter-spacing:.01em;
+    background-image:radial-gradient(circle at 12% -10%,rgba(40,65,110,.05),transparent 45%),radial-gradient(circle at 100% 0,rgba(200,162,74,.06),transparent 40%);}
+  .wrap{max-width:1020px;margin:0 auto;padding:0 20px 90px}
+  /* header */
+  header{background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);color:#fff;
+    border-bottom:3px solid var(--gold);padding:26px 0 22px;margin-bottom:8px}
+  .hd{max-width:1020px;margin:0 auto;padding:0 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  .brand{font-family:"Shippori Mincho",serif;font-weight:800;font-size:27px;letter-spacing:.02em}
+  .brand .reg{font-size:14px;vertical-align:super;color:var(--gold-soft);margin-left:2px}
+  .sub{font-size:13.5px;color:#cdd6e6;font-weight:500;margin-top:3px}
+  .hd-tag{font-size:13px;background:rgba(255,255,255,.10);border:1px solid rgba(230,205,143,.4);
+    color:var(--gold-soft);padding:7px 14px;border-radius:999px;font-weight:700}
+  /* sample banner */
+  .banner{background:var(--warn-bg);border:1px solid #ecd9a8;border-left:5px solid var(--gold);
+    border-radius:10px;padding:13px 16px;margin:18px 0;font-size:14px;color:#6e5414;font-weight:700}
+  /* steps */
+  .step{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:20px 0;
+    box-shadow:0 2px 10px rgba(15,29,58,.05);overflow:hidden}
+  .step>h2{font-family:"Shippori Mincho",serif;font-size:19px;font-weight:700;color:var(--navy);
+    padding:16px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;
+    background:linear-gradient(90deg,rgba(26,47,84,.04),transparent)}
+  .stepnum{flex:none;width:30px;height:30px;border-radius:8px;background:var(--navy);color:var(--gold-soft);
+    font-family:"Shippori Mincho",serif;font-weight:800;font-size:16px;display:grid;place-items:center}
+  .step>.who{font-size:12.5px;font-weight:700;margin-left:auto;padding:4px 11px;border-radius:999px}
+  .who.input{background:#eef3fb;color:var(--navy3)}
+  .who.auto{background:var(--ok-bg);color:var(--ok)}
+  .who.human{background:#f4eeff;color:#5b3fa3}
+  .body{padding:18px 22px 22px}
+  .note{font-size:13px;color:var(--soft);margin:2px 0 14px;font-weight:500}
+  /* service cards */
+  .svc{border:1px solid var(--line);border-radius:11px;padding:14px 16px;margin-bottom:12px;background:#fcfbf7}
+  .svc-h{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .svc-h input.nm{font-family:"Shippori Mincho",serif;font-weight:700;font-size:16px;color:var(--navy);
+    border:none;border-bottom:1.5px dashed var(--line);background:transparent;padding:2px 4px;flex:1;min-width:120px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:11px 14px}
+  .fld label{display:block;font-size:12.5px;font-weight:700;color:var(--soft);margin-bottom:4px}
+  .fld input,.fld select{width:100%;font-family:inherit;font-size:15px;font-weight:500;color:var(--ink);
+    padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:#fff}
+  .fld input:focus,.fld select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(200,162,74,.15)}
+  .fld input[type=number]{text-align:right}
+  .yen::after{content:"円";font-size:12px;color:var(--soft);margin-left:4px}
+  .rm{border:none;background:#f3ede0;color:#8a7a55;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer}
+  .rm:hover{background:#ecdfc6}
+  .addbtn{border:1.5px dashed var(--navy3);background:#fff;color:var(--navy3);border-radius:9px;
+    padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;width:100%}
+  .addbtn:hover{background:#f3f6fc}
+  /* calc readout */
+  .calc{display:grid;grid-template-columns:1fr;gap:0;border:1px solid var(--line);border-radius:11px;overflow:hidden}
+  .row{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .row:last-child{border-bottom:none}
+  .row .lbl{flex:1;min-width:200px;font-size:14.5px;font-weight:700}
+  .row .lbl small{display:block;font-size:12px;color:var(--soft);font-weight:500;margin-top:2px}
+  .row .val{font-family:"Shippori Mincho",serif;font-weight:700;font-size:19px;color:var(--navy);white-space:nowrap}
+  .row .val.muted{color:var(--soft);font-size:16px}
+  .row.lead{background:linear-gradient(90deg,rgba(200,162,74,.09),transparent)}
+  .row input.ed{width:170px;text-align:right;font-family:"Shippori Mincho",serif;font-size:18px;font-weight:700;
+    color:var(--navy);border:1px solid var(--gold);border-radius:8px;padding:7px 10px;background:#fffdf7}
+  /* badge */
+  .badge{font-family:"Shippori Mincho",serif;font-weight:800;font-size:16px;padding:5px 16px;border-radius:999px;white-space:nowrap}
+  .badge.ok{background:var(--ok-bg);color:var(--ok);border:1px solid #b9dcc4}
+  .badge.ng{background:var(--ng-bg);color:var(--ng);border:1px solid #ecbcb8}
+  .badge.dash{background:#eef0f4;color:var(--soft);border:1px solid #dfe3ea}
+  /* human Q */
+  .q{display:flex;align-items:flex-start;gap:13px;padding:13px 0;border-bottom:1px dashed var(--line)}
+  .q:last-child{border-bottom:none}
+  .q .qt{flex:1;font-size:14.5px;font-weight:700}
+  .q .qt small{display:block;font-size:12.5px;color:var(--soft);font-weight:500;margin-top:2px}
+  .seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;flex:none}
+  .seg button{border:none;background:#fff;padding:8px 15px;font-family:inherit;font-size:13.5px;font-weight:700;color:var(--soft);cursor:pointer}
+  .seg button+button{border-left:1px solid var(--line)}
+  .seg button.sel-y{background:var(--ok);color:#fff}
+  .seg button.sel-n{background:var(--ng);color:#fff}
+  .seg button.sel-w{background:var(--gold);color:#3a2c06}
+  /* result */
+  .verdict{border-radius:14px;padding:22px;margin:22px 0 14px;border:1px solid var(--line)}
+  .verdict.all-ok{background:linear-gradient(135deg,#eef6f0,#fff);border-color:#bcdcc6}
+  .verdict.has-ng{background:linear-gradient(135deg,#fdf0ef,#fff);border-color:#ecc4c0}
+  .verdict h3{font-family:"Shippori Mincho",serif;font-size:21px;margin-bottom:6px}
+  .verdict.all-ok h3{color:var(--ok)}
+  .verdict.has-ng h3{color:var(--ng)}
+  .verdict p{font-size:14px;color:var(--soft);font-weight:500}
+  .flags{list-style:none;margin-top:14px;display:grid;gap:9px}
+  .flags li{background:var(--ng-bg);border:1px solid #ecbcb8;border-left:5px solid var(--ng);border-radius:9px;
+    padding:11px 14px;font-size:14px;font-weight:600;color:#7a1f19}
+  .flags li b{color:var(--ng)}
+  .flags li .fix{display:block;margin-top:4px;font-size:13px;color:#5c6781;font-weight:500}
+  /* guide */
+  .guide{background:#fbfaf6;border:1px solid var(--line);border-radius:12px;padding:6px 0;margin-top:16px}
+  .guide .gh{font-family:"Shippori Mincho",serif;font-weight:700;color:var(--navy);padding:12px 18px 6px;font-size:16px}
+  .gtbl{width:100%;border-collapse:collapse;font-size:13.5px}
+  .gtbl th,.gtbl td{text-align:left;padding:9px 18px;border-bottom:1px solid var(--line);vertical-align:top}
+  .gtbl th{color:var(--soft);font-weight:700;font-size:12.5px;background:rgba(26,47,84,.03)}
+  .gtbl td .cell{font-family:"Shippori Mincho",serif;font-weight:700;color:var(--navy3)}
+  .gtbl td .amt{font-family:"Shippori Mincho",serif;font-weight:700;color:var(--navy)}
+  footer{text-align:center;color:var(--soft);font-size:12px;margin-top:30px}
+  footer .r{color:var(--gold)}
+  @media(max-width:560px){ .row .val{font-size:17px} .brand{font-size:22px} }
+
+  .calcbox{background:#f4f7fc;border:1px solid #dde6f3;border-radius:9px;padding:10px 13px;margin-top:6px;font-size:13px;color:var(--navy3);font-weight:700}
+  .calcbox b{font-family:"Shippori Mincho",serif;color:var(--navy);font-size:15px}
+  .layer-note{background:#eef0f4;border:1px dashed #c4ccd8;border-radius:9px;padding:11px 14px;margin-top:14px;font-size:13px;color:var(--soft);font-weight:600}
+
+  .tabbar{display:flex;max-width:1020px;margin:-2px auto 0;padding:0 20px}
+  .tab{flex:1;border:none;background:transparent;font-family:"Shippori Mincho",serif;font-weight:700;
+    font-size:17px;color:var(--soft);padding:15px 10px;cursor:pointer;border-bottom:3px solid transparent;transition:.15s}
+  .tab:hover{color:var(--navy)}
+  .tab.active{color:var(--navy);border-bottom-color:var(--gold);background:linear-gradient(180deg,rgba(200,162,74,.06),transparent)}
+  .tabpane{animation:fade .2s ease}@keyframes fade{from{opacity:0}to{opacity:1}}
+
+.tbwrap{overflow-x:auto;background:#fff;border:1px solid var(--line);border-radius:10px}
+table.mtbl{border-collapse:collapse;width:100%;min-width:1160px;font-size:13px}
+table.mtbl th{background:var(--navy);color:#fff;font-weight:700;padding:8px 6px;white-space:nowrap}
+table.mtbl td{border-bottom:1px solid var(--line);padding:4px 5px;vertical-align:middle}
+table.mtbl input,table.mtbl select{width:100%;min-width:96px;border:1px solid var(--line);border-radius:6px;padding:5px 6px;font:inherit;font-size:13px;background:#fffdf8}
+table.mtbl input:focus,table.mtbl select:focus{outline:2px solid var(--gold);background:#fff}
+table.mtbl tr:nth-child(even) td{background:#fbf8f1}
+td.no{text-align:center;font-weight:700;color:var(--navy);width:34px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}
+.bar .btn{border:1px solid var(--navy);background:#fff;color:var(--navy);border-radius:8px;padding:9px 16px;font:inherit;font-weight:700;cursor:pointer}
+.bar .btn.primary{background:var(--navy);color:#fff}
+.savenote{font-size:12.5px;color:var(--soft);line-height:1.9}
+.linkcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.lc{display:block;border:1px solid var(--line);border-radius:10px;padding:14px;background:#fff;text-decoration:none;color:var(--ink)}
+.lc b{font-family:'Shippori Mincho',serif;color:var(--navy);display:block;margin-bottom:4px}
+.lc span{font-size:12.5px;color:var(--soft)}
+.segbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.segbtn{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:999px;padding:7px 15px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.segbtn.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.segbtn .c{font-weight:400;opacity:.75;margin-left:5px}
+.seglist{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}
+.segcard{border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px 12px;display:flex;gap:8px;align-items:center}
+.segcard input{flex:1;min-width:80px;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit;background:#fffdf8}
+.segcard select{border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit;background:#fffdf8}
+.segcard .rm{margin-left:auto}
+@media print{.bar,.addbtn,.rm,.segbar,#segEdit{display:none}}
+
+</style>
+</head>
+<body>
+<header>
+  <div class="hd">
+    <div>
+      <div class="brand">事業所基本情報シート</div>
+      <div class="sub">TriSight&reg; 共通 ／ 一度入れれば各システムが読みます</div>
+    </div>
+    <div class="hd-tag">共通マスター</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="banner">
+    &#9660; このシートは<b>トライサイト各システム共通の土台</b>です。ここに入れた法人・事業所の情報を、トライリワード（処遇改善加算）をはじめ各システムが読み込みます。<br>
+    入力すると<b>自動で保存</b>されます。別のパソコンでも使う場合は「書き出し」でファイルにして持ち運んでください。
+  </div>
+
+  <section class="step">
+    <h2><span class="stepnum">1</span> 法人情報<span class="who input">1回だけ入力</span></h2>
+    <div class="body">
+      <p class="note">政府様式の「基本情報入力シート」に入る項目です。年度が変わっても基本的に変わりません。</p>
+      <div class="grid" id="corp"></div>
+    </div>
+  </section>
+
+  <section class="step">
+    <h2><span class="stepnum">2</span> 事業区分<span class="who input">選択・追加</span></h2>
+    <div class="body">
+      <p class="note">
+        高齢（介護保険）・障害福祉のほか、<b>御社が行っている事業を自由に追加</b>できます。<br>
+        「サービス表」は、事業所一覧でサービス名を選ぶときの候補の出どころです。介護保険系なら<b>介護</b>、障害福祉系なら<b>障害</b>、それ以外の事業は<b>自由入力</b>を選んでください（自由入力でも、過去に入れた名前は候補に出ます）。
+      </p>
+      <div class="seglist" id="segEdit"></div>
+      <button class="addbtn" id="segAdd">&#65291; 事業区分を追加</button>
+    </div>
+  </section>
+
+  <section class="step">
+    <h2><span class="stepnum">3</span> 事業所・サービス一覧<span class="who input">1回だけ入力</span></h2>
+    <div class="body">
+      <p class="note">
+        処遇改善加算の個票は<b>事業所&times;サービスで1行</b>です。同じ事業所で複数サービスを算定している場合は、サービスごとに行を作ってください。<br>
+        下のボタンで<b>事業区分を切り替えて表示</b>できます。追加した行は、そのとき選んでいる事業区分に入ります。<br><b>加算区分</b>は期間ごとに持ちます。制度改正で区分が変わるため、「適用期間」を切り替えると、その期間の区分表から選ぶ形になります。
+      </p>
+      <div class="segbar" id="segBar"></div>
+      <div class="bar" style="margin-top:0">
+        <label style="font-weight:700;color:var(--navy)">加算区分の適用期間</label>
+        <select id="periodSel" style="border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;background:#fffdf8"></select>
+        <span class="savenote" id="periodNote"></span>
+      </div>
+      <div class="tbwrap">
+        <table class="mtbl">
+          <thead>
+            <tr>
+              <th>No</th><th>事業区分</th><th>サービス種別</th><th>加算区分</th><th>事業所番号</th><th>事業所名</th>
+              <th>都道府県</th><th>市区町村</th><th>指定権者</th><th>所在地</th><th>電話</th><th>管理者</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <button class="addbtn" id="add">&#65291; 事業所・サービスを追加</button>
+      <datalist id="dl_kaigo"></datalist>
+      <datalist id="dl_shogai"></datalist>
+      <datalist id="dl_free"></datalist>
+    </div>
+  </section>
+
+  <section class="step">
+    <h2><span class="stepnum">4</span> 保存と持ち運び<span class="who auto">自動</span></h2>
+    <div class="body">
+      <div class="bar">
+        <button class="btn primary" id="exp">ファイルに書き出す</button>
+        <button class="btn" id="impBtn">ファイルから読み込む</button>
+        <input type="file" id="imp" accept="application/json,.json" style="display:none">
+        <button class="btn" id="prt">印刷する</button>
+        <button class="btn" id="clr">この端末の内容を消す</button>
+      </div>
+      <div class="savenote" id="stat"></div>
+    </div>
+  </section>
+
+  <section class="step">
+    <h2><span class="stepnum">&#10003;</span> このシートを使うシステム<span class="who auto">出口</span></h2>
+    <div class="body">
+      <div class="linkcards">
+        <a class="lc" href="TriReward_kourei.html"><b>トライリワード 高齢版</b><span>サービス表が「介護」の事業区分を読みます</span></a>
+        <a class="lc" href="TriReward_shogai.html"><b>トライリワード 障害版</b><span>サービス表が「障害」の事業区分を読みます</span></a>
+        <a class="lc" href="index.html"><b>TriSight ファミリー</b><span>表札に戻る</span></a>
+      </div>
+      <div class="layer-note">&#8251; 紐づけは同じブラウザの中で行われます。各システムをこのシートと同じ場所（同じサイト）から開いてください。</div>
+    </div>
+  </section>
+
+  <footer>TriSight<span class="r">&reg;</span> は合同会社トライサイトの登録商標です ／ &copy; 2026 合同会社トライサイト ／ 事業所基本情報シート v4</footer>
+</div>
+
+<script>
+var MKEY = 'trisight_office_master_v1';
+
+/* 保存領域の安全弁 */
+var store;
+try{
+  var _t='__t__'; window.localStorage.setItem(_t,'1'); window.localStorage.removeItem(_t);
+  store = window.localStorage;
+}catch(e){
+  var _m={};
+  store = { getItem:function(k){return (k in _m)?_m[k]:null;},
+            setItem:function(k,v){_m[k]=String(v);},
+            removeItem:function(k){delete _m[k];} };
+}
+
+var SVC = {"kaigo": ["訪問介護", "夜間対応型訪問介護", "定期巡回・随時対応型訪問介護看護", "訪問入浴介護", "介護予防訪問入浴介護", "通所介護", "地域密着型通所介護", "通所リハビリテーション", "介護予防通所リハビリテーション", "特定施設入居者生活介護", "特定施設入居者生活介護（短期利用型）", "介護予防特定施設入居者生活介護", "地域密着型特定施設入居者生活介護", "地域密着型特定施設入居者生活介護（短期利用型）", "認知症対応型通所介護", "介護予防認知症対応型通所介護", "小規模多機能型居宅介護", "小規模多機能型居宅介護（短期利用型）", "介護予防小規模多機能型居宅介護", "介護予防小規模多機能型居宅介護（短期利用型）", "複合型サービス（看護小規模多機能型居宅介護）", "複合型サービス（看護小規模多機能型居宅介護・短期利用型）", "認知症対応型共同生活介護", "認知症対応型共同生活介護（短期利用型）", "介護予防認知症対応型共同生活介護", "介護予防認知症対応型共同生活介護（短期利用型）", "介護老人福祉施設サービス", "地域密着型介護老人福祉施設", "短期入所生活介護", "介護予防短期入所生活介護", "介護老人保健施設サービス", "短期入所療養介護（介護老人保健施設）", "介護予防短期入所療養介護（介護老人保健施設）", "短期入所療養介護 （病院等（老健以外）)", "介護予防短期入所療養介護 （病院等（老健以外）)", "介護医療院サービス", "短期入所療養介護（介護医療院）", "介護予防短期入所療養介護（介護医療院）", "訪問型サービス（独自）", "訪問型サービス（独自／定率）", "訪問型サービス（独自／定額）", "通所型サービス（独自）", "通所型サービス（独自／定率）", "通所型サービス（独自／定額）"], "shogai": ["居宅介護", "重度訪問介護", "同行援護", "行動援護", "重度障害者等包括支援", "生活介護", "施設入所支援", "短期入所", "療養介護", "自立訓練（機能訓練）", "自立訓練（生活訓練）", "宿泊型自立訓練", "就労選択支援", "就労移行支援", "就労移行支援（養成施設）", "就労継続支援Ａ型", "就労継続支援Ｂ型", "就労定着支援", "自立生活援助", "共同生活援助（介護サービス包括型）", "共同生活援助（日中サービス支援型）", "共同生活援助（外部サービス利用型）", "児童発達支援", "医療型児童発達支援", "放課後等デイサービス", "居宅訪問型児童発達支援", "保育所等訪問支援", "福祉型障害児入所施設", "医療型障害児入所施設", "障害者支援施設：生活介護", "障害者支援施設：自立訓練（機能訓練）", "障害者支援施設：自立訓練（生活訓練）", "障害者支援施設：就労移行支援", "障害者支援施設：就労継続支援Ａ型", "障害者支援施設：就労継続支援Ｂ型"]};
+var TABLES = [['kaigo','介護'],['shogai','障害'],['free','自由入力']];
+
+/* 処遇改善加算の区分（介護保険・障害福祉とも同じ区分名）
+   出典：厚生労働省「介護職員等処遇改善加算に関する基本的考え方並びに事務処理手順及び様式例の提示について（令和8年度分）」別紙1
+         令和8年度障害福祉サービス等報酬改定における改定事項について
+   確認日：2026-07-31
+   令和8年6月から 加算Ⅰ・Ⅱが「イ（従来要件）」「ロ（生産性向上・協働化＝令和8年度特例要件）」に分かれ計6区分。Ⅲ・Ⅳに上位区分はない */
+var PERIODS = [
+  {id:'R7',    label:'令和7年度（R7.4〜R8.3）', kubun:['処遇改善加算Ⅰ','処遇改善加算Ⅱ','処遇改善加算Ⅲ','処遇改善加算Ⅳ','（算定なし）']},
+  {id:'R8_45', label:'令和8年4〜5月',           kubun:['処遇改善加算Ⅰ','処遇改善加算Ⅱ','処遇改善加算Ⅲ','処遇改善加算Ⅳ','（算定なし）']},
+  {id:'R8_06', label:'令和8年6月以降',           kubun:['処遇改善加算Ⅰイ','処遇改善加算Ⅰロ','処遇改善加算Ⅱイ','処遇改善加算Ⅱロ','処遇改善加算Ⅲ','処遇改善加算Ⅳ','（算定なし）']}
+];
+var period = 'R8_06';
+function periodDef(id){ return PERIODS.filter(function(p){ return p.id===id; })[0] || PERIODS[0]; }
+
+var CORP_FIELDS = [
+  ['name','法人名'],['kana','法人名フリガナ'],['corpNo','法人番号（13桁）'],
+  ['zip','郵便番号'],['addr','住所'],['addr2','建物名等'],
+  ['repTitle','代表者 職名'],['repName','代表者 氏名'],
+  ['tantoName','担当者 氏名'],['tantoKana','担当者 フリガナ'],
+  ['tel','電話番号'],['fax','FAX'],['email','E-mail']
+];
+
+function defSegments(){
+  return [
+    {id:'s_kaigo',  name:'介護保険', table:'kaigo'},
+    {id:'s_sogo',   name:'総合事業', table:'kaigo'},
+    {id:'s_shogai', name:'障害福祉', table:'shogai'},
+    {id:'s_jido',   name:'障害児',   table:'shogai'}
+  ];
+}
+function uid(){ return 's' + Date.now().toString(36) + Math.floor(Math.random()*1000).toString(36); }
+function blankOrg(id, name){
+  var c={}; CORP_FIELDS.forEach(function(f){ c[f[0]]=''; });
+  if(name) c.name = name;
+  return { id: id||'org1', corp:c, segments:defSegments(), offices:[] };
+}
+/* 保存の形（v2）：複数法人を入れられる器。画面は当面 activeOrg の1法人だけを扱う。
+   コンサル用（複数法人）の窓を後から足すとき、データ移行が要らないようにしてある。 */
+function blankDoc(){
+  return { version:2, activeOrg:'org1', orgs:[blankOrg('org1')], updated:'' };
+}
+function blank(){ return blankDoc().orgs[0]; }
+function newRow(segId){
+  return { segId: segId || (M.segments[0]&&M.segments[0].id) || '', svc:'', bizNo:'', name:'',
+           pref:'', city:'', shitei:'', addr:'', tel:'', kanri:'', kubun:{} };
+}
+var NEEDSAVE = false;
+function load(){
+  var d;
+  try{ var raw = store.getItem(MKEY); d = raw? JSON.parse(raw) : null; }catch(e){ d=null; }
+  if(!d) return blankDoc();
+
+  /* v1（法人1件が直置き）→ v2（法人の配列）へ移行 */
+  if(!d.orgs){
+    var o = blankOrg('org1');
+    o.corp = Object.assign(o.corp, d.corp||{});
+    if(d.segments && d.segments.length) o.segments = d.segments;
+    o.offices = d.offices||[];
+    d = { version:2, activeOrg:'org1', orgs:[o], updated:d.updated||'' };
+    NEEDSAVE = true;
+  }
+  if(!d.orgs.length) d.orgs = [blankOrg('org1')];
+  if(!d.activeOrg || !d.orgs.some(function(x){ return x.id===d.activeOrg; })) d.activeOrg = d.orgs[0].id;
+
+  d.orgs.forEach(function(o){
+    var b = blankOrg(o.id);
+    o.corp = Object.assign(b.corp, o.corp||{});
+    if(!o.segments || !o.segments.length) o.segments = defSegments();
+    o.offices = o.offices||[];
+    o.offices.forEach(function(x){
+      if(!x.kubun || typeof x.kubun!=='object'){ x.kubun={}; NEEDSAVE = true; }
+      if(x.segId) return;
+      NEEDSAVE = true;
+      var nm = x.seido || '介護保険';
+      var hit = o.segments.filter(function(sg){ return sg.name===nm; })[0];
+      if(!hit){ hit = {id:uid(), name:nm, table:'free'}; o.segments.push(hit); }
+      x.segId = hit.id;
+      delete x.seido;
+    });
+  });
+  return d;
+}
+
+var DOC = load();
+function curOrg(){
+  for(var i=0;i<DOC.orgs.length;i++){ if(DOC.orgs[i].id===DOC.activeOrg) return DOC.orgs[i]; }
+  return DOC.orgs[0];
+}
+var M = curOrg();
+if(!M.offices.length) M.offices = [newRow()];
+var view = 'ALL';
+
+function seg(id){ return M.segments.filter(function(s){ return s.id===id; })[0] || null; }
+function tableOf(o){ var s=seg(o.segId); return s? s.table : 'free'; }
+var SVC_GROUPS = {"kaigo": [["訪問系", ["訪問介護", "夜間対応型訪問介護", "定期巡回・随時対応型訪問介護看護", "訪問入浴介護", "介護予防訪問入浴介護"]], ["通所系", ["通所介護", "地域密着型通所介護", "通所リハビリテーション", "介護予防通所リハビリテーション", "認知症対応型通所介護", "介護予防認知症対応型通所介護"]], ["特定施設系", ["特定施設入居者生活介護", "特定施設入居者生活介護（短期利用型）", "介護予防特定施設入居者生活介護", "地域密着型特定施設入居者生活介護", "地域密着型特定施設入居者生活介護（短期利用型）"]], ["多機能系", ["小規模多機能型居宅介護", "小規模多機能型居宅介護（短期利用型）", "介護予防小規模多機能型居宅介護", "介護予防小規模多機能型居宅介護（短期利用型）", "複合型サービス（看護小規模多機能型居宅介護）", "複合型サービス（看護小規模多機能型居宅介護・短期利用型）"]], ["認知症対応型共同生活介護", ["認知症対応型共同生活介護", "認知症対応型共同生活介護（短期利用型）", "介護予防認知症対応型共同生活介護", "介護予防認知症対応型共同生活介護（短期利用型）"]], ["施設・短期入所系", ["介護老人福祉施設サービス", "地域密着型介護老人福祉施設", "短期入所生活介護", "介護予防短期入所生活介護", "介護老人保健施設サービス", "短期入所療養介護（介護老人保健施設）", "介護予防短期入所療養介護（介護老人保健施設）", "短期入所療養介護 （病院等（老健以外）)", "介護予防短期入所療養介護 （病院等（老健以外）)", "介護医療院サービス", "短期入所療養介護（介護医療院）", "介護予防短期入所療養介護（介護医療院）"]], ["総合事業", ["訪問型サービス（独自）", "訪問型サービス（独自／定率）", "訪問型サービス（独自／定額）", "通所型サービス（独自）", "通所型サービス（独自／定率）", "通所型サービス（独自／定額）"]]], "shogai": [["訪問系", ["居宅介護", "重度訪問介護", "同行援護", "行動援護", "重度障害者等包括支援"]], ["日中活動・施設系", ["生活介護", "施設入所支援", "短期入所", "療養介護"]], ["訓練・地域生活支援", ["自立訓練（機能訓練）", "自立訓練（生活訓練）", "宿泊型自立訓練", "自立生活援助"]], ["就労系", ["就労選択支援", "就労移行支援", "就労移行支援（養成施設）", "就労継続支援Ａ型", "就労継続支援Ｂ型", "就労定着支援"]], ["共同生活援助・障害者支援施設", ["共同生活援助（介護サービス包括型）", "共同生活援助（日中サービス支援型）", "共同生活援助（外部サービス利用型）", "障害者支援施設：生活介護", "障害者支援施設：自立訓練（機能訓練）", "障害者支援施設：自立訓練（生活訓練）", "障害者支援施設：就労移行支援", "障害者支援施設：就労継続支援Ａ型", "障害者支援施設：就労継続支援Ｂ型"]], ["障害児", ["児童発達支援", "医療型児童発達支援", "放課後等デイサービス", "居宅訪問型児童発達支援", "保育所等訪問支援", "福祉型障害児入所施設", "医療型障害児入所施設"]]]};
+
+function listFor(t){ return t==='free' ? freeNames() : (SVC[t]||[]); }
+function freeNames(){
+  var seen={}, out=[];
+  M.offices.forEach(function(o){ if(tableOf(o)==='free' && o.svc && !seen[o.svc]){ seen[o.svc]=1; out.push(o.svc); } });
+  return out;
+}
+function save(){
+  DOC.updated = M.updated = new Date().toLocaleString('ja-JP');
+  try{ store.setItem(MKEY, JSON.stringify(DOC)); }catch(e){}
+  stat();
+}
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+function renderCorp(){
+  document.getElementById('corp').innerHTML = CORP_FIELDS.map(function(f){
+    return '<div class="fld"><label>'+f[1]+'</label><input data-c="'+f[0]+'" value="'+esc(M.corp[f[0]])+'"></div>';
+  }).join('');
+}
+
+function renderSegEdit(){
+  document.getElementById('segEdit').innerHTML = M.segments.map(function(s,i){
+    var opts = TABLES.map(function(t){ return '<option value="'+t[0]+'" '+(t[0]===s.table?'selected':'')+'>'+t[1]+'</option>'; }).join('');
+    return '<div class="segcard">'+
+      '<input data-sg="'+i+'" data-f="name" value="'+esc(s.name)+'">'+
+      '<select data-sg="'+i+'" data-f="table">'+opts+'</select>'+
+      (M.segments.length>1?'<button class="rm" data-sgrm="'+i+'">削除</button>':'')+
+    '</div>';
+  }).join('');
+}
+
+function renderSegBar(){
+  var cnt = {};
+  M.offices.forEach(function(o){ cnt[o.segId]=(cnt[o.segId]||0)+1; });
+  var html = '<button class="segbtn '+(view==='ALL'?'on':'')+'" data-v="ALL">すべて<span class="c">'+M.offices.length+'</span></button>';
+  html += M.segments.map(function(s){
+    return '<button class="segbtn '+(view===s.id?'on':'')+'" data-v="'+s.id+'">'+esc(s.name)+'<span class="c">'+(cnt[s.id]||0)+'</span></button>';
+  }).join('');
+  document.getElementById('segBar').innerHTML = html;
+}
+
+function renderDatalists(){
+  document.getElementById('dl_kaigo').innerHTML  = SVC.kaigo.map(function(n){ return '<option value="'+esc(n)+'">'; }).join('');
+  document.getElementById('dl_shogai').innerHTML = SVC.shogai.map(function(n){ return '<option value="'+esc(n)+'">'; }).join('');
+  document.getElementById('dl_free').innerHTML   = freeNames().map(function(n){ return '<option value="'+esc(n)+'">'; }).join('');
+}
+
+function kubunOpts(o){
+  var cur = (o.kubun && o.kubun[period]) || '';
+  var list = periodDef(period).kubun;
+  var out = '<option value="">（未選択）</option>';
+  if(cur && list.indexOf(cur)<0) out += '<option value="'+esc(cur)+'" selected>'+esc(cur)+'（旧区分）</option>';
+  out += list.map(function(k){ return '<option '+(k===cur?'selected':'')+'>'+k+'</option>'; }).join('');
+  return out;
+}
+
+function renderPeriod(){
+  document.getElementById('periodSel').innerHTML =
+    PERIODS.map(function(p){ return '<option value="'+p.id+'" '+(p.id===period?'selected':'')+'>'+p.label+'</option>'; }).join('');
+  var n = M.offices.filter(function(o){ return o.kubun && o.kubun[period]; }).length;
+  document.getElementById('periodNote').innerHTML =
+    'この期間の区分を入力済み：<b>'+n+'</b>／'+M.offices.length+'行　'+
+    '（令和8年6月から加算Ⅰ・Ⅱが「イ・ロ」に分かれ6区分。厚労省通知 別紙1／令和8年度障害報酬改定資料・2026-07-31確認）';
+}
+
+function svcCell(o,i,tbl){
+  if(tbl==='free'){
+    return '<input list="dl_free" data-i="'+i+'" data-f="svc" value="'+esc(o.svc)+'" style="min-width:190px" placeholder="直接入力">';
+  }
+  var gs = SVC_GROUPS[tbl] || [];
+  var cur = o.svc || '';
+  var known = false;
+  gs.forEach(function(g){ if(g[1].indexOf(cur)>=0) known = true; });
+  var out = '<option value="">（選択してください）</option>';
+  if(cur && !known) out += '<option value="'+esc(cur)+'" selected>'+esc(cur)+'（一覧外）</option>';
+  out += gs.map(function(g){
+    return '<optgroup label="'+esc(g[0])+'">'+ g[1].map(function(n){
+      return '<option value="'+esc(n)+'" '+(n===cur?'selected':'')+'>'+esc(n)+'</option>';
+    }).join('') +'</optgroup>';
+  }).join('');
+  return '<select data-i="'+i+'" data-f="svc" style="min-width:230px">'+out+'</select>';
+}
+
+function renderRows(){
+  var ae=document.activeElement, key=null, pos=null;
+  if(ae && ae.dataset && ae.dataset.i!==undefined && ae.dataset.f!==undefined){
+    key=ae.dataset.i+'|'+ae.dataset.f;
+    try{ pos=ae.selectionStart; }catch(e){}
+  }
+  var html = '';
+  M.offices.forEach(function(o,i){
+    if(view!=='ALL' && o.segId!==view) return;
+    var t = tableOf(o);
+    var sSeg = M.segments.map(function(s){ return '<option value="'+s.id+'" '+(s.id===o.segId?'selected':'')+'>'+esc(s.name)+'</option>'; }).join('');
+    function inp(f,w){ return '<input data-i="'+i+'" data-f="'+f+'" value="'+esc(o[f])+'"'+(w?' style="min-width:'+w+'px"':'')+'>'; }
+    html += '<tr>'+
+      '<td class="no">'+(i+1)+'</td>'+
+      '<td><select data-i="'+i+'" data-f="segId" style="min-width:120px">'+sSeg+'</select></td>'+
+      '<td>'+svcCell(o,i,t)+'</td>'+
+      '<td><select data-i="'+i+'" data-f="kubun" style="min-width:150px">'+kubunOpts(o)+'</select></td>'+
+      '<td>'+inp('bizNo',110)+'</td>'+
+      '<td>'+inp('name',150)+'</td>'+
+      '<td>'+inp('pref',90)+'</td>'+
+      '<td>'+inp('city',100)+'</td>'+
+      '<td>'+inp('shitei',110)+'</td>'+
+      '<td>'+inp('addr',180)+'</td>'+
+      '<td>'+inp('tel',120)+'</td>'+
+      '<td>'+inp('kanri',100)+'</td>'+
+      '<td>'+(M.offices.length>1?'<button class="rm" data-rm="'+i+'">削除</button>':'')+'</td>'+
+    '</tr>';
+  });
+  if(!html) html = '<tr><td colspan="13" style="padding:18px;text-align:center;color:var(--soft)">この事業区分の行はまだありません。下の「＋ 事業所・サービスを追加」で作れます。</td></tr>';
+  document.getElementById('rows').innerHTML = html;
+  if(key){
+    var q=key.split('|');
+    var el=document.querySelector('#rows [data-i="'+q[0]+'"][data-f="'+q[1]+'"]');
+    if(el){ try{ el.focus(); if(pos!=null && el.setSelectionRange) el.setSelectionRange(pos,pos); }catch(e){} }
+  }
+}
+
+function stat(){
+  var per = M.segments.map(function(s){
+    var n = M.offices.filter(function(o){ return o.segId===s.id; }).length;
+    return esc(s.name)+' '+n;
+  }).join('・');
+  var byTable = TABLES.map(function(t){
+    var n = M.offices.filter(function(o){ return tableOf(o)===t[0]; }).length;
+    return t[1]+' '+n;
+  }).join('・');
+  document.getElementById('stat').innerHTML =
+    '法人名：<b>'+(esc(M.corp.name)||'（未入力）')+'</b>　／　全'+M.offices.length+'行<br>'+
+    '事業区分別：'+per+'<br>'+
+    'サービス表別：'+byTable+
+    (M.updated? '<br>最終保存：'+esc(M.updated) : '');
+}
+
+function render(){ renderCorp(); renderSegEdit(); renderSegBar(); renderDatalists(); renderPeriod(); renderRows(); stat(); }
+
+document.addEventListener('input', function(e){
+  var t=e.target;
+  if(t.dataset.c!==undefined){ M.corp[t.dataset.c]=t.value; save(); }
+  else if(t.dataset.sg!==undefined && t.dataset.f==='name'){
+    M.segments[+t.dataset.sg].name=t.value; save(); renderSegBar(); renderRows();
+  }
+  else if(t.dataset.i!==undefined && t.dataset.f!=='segId' && t.dataset.f!=='kubun'){
+    var o=M.offices[+t.dataset.i]; if(!o) return;
+    o[t.dataset.f]=t.value; save();
+    if(t.dataset.f==='svc') renderDatalists();
+  }
+});
+document.addEventListener('change', function(e){
+  var t=e.target;
+  if(t.dataset.sg!==undefined && t.dataset.f==='table'){
+    M.segments[+t.dataset.sg].table=t.value; save(); render();
+  }
+  else if(t.id==='periodSel'){ period=t.value; renderPeriod(); renderRows(); }
+  else if(t.dataset.i!==undefined && t.dataset.f==='kubun'){
+    var oo=M.offices[+t.dataset.i]; if(!oo) return;
+    if(!oo.kubun) oo.kubun={};
+    if(t.value) oo.kubun[period]=t.value; else delete oo.kubun[period];
+    save(); renderPeriod();
+  }
+  else if(t.dataset.i!==undefined && t.dataset.f==='svc'){
+    var os=M.offices[+t.dataset.i]; if(!os) return;
+    os.svc=t.value; save(); renderDatalists();
+  }
+  else if(t.dataset.i!==undefined && t.dataset.f==='segId'){
+    var o=M.offices[+t.dataset.i]; if(!o) return;
+    var before = tableOf(o);
+    o.segId=t.value;
+    if(tableOf(o)!==before && listFor(tableOf(o)).indexOf(o.svc)<0 && tableOf(o)!=='free') o.svc='';
+    save(); render();
+  }
+});
+document.addEventListener('click', function(e){
+  var t=e.target;
+  if(t.dataset.v!==undefined){ view=t.dataset.v; renderSegBar(); renderRows(); }
+  else if(t.dataset.rm!==undefined){
+    M.offices.splice(+t.dataset.rm,1);
+    if(!M.offices.length) M.offices=[newRow()];
+    save(); render();
+  }
+  else if(t.dataset.sgrm!==undefined){
+    var s=M.segments[+t.dataset.sgrm];
+    var used=M.offices.filter(function(o){ return o.segId===s.id; }).length;
+    if(used && !window.confirm('「'+s.name+'」には'+used+'行あります。区分を消すと、その行は先頭の区分へ移ります。よろしいですか。')) return;
+    M.segments.splice(+t.dataset.sgrm,1);
+    if(!M.segments.length) M.segments=defSegments();
+    var first=M.segments[0].id;
+    M.offices.forEach(function(o){ if(!seg(o.segId)) o.segId=first; });
+    if(view===s.id) view='ALL';
+    save(); render();
+  }
+  else if(t.id==='segAdd'){
+    M.segments.push({id:uid(), name:'新しい事業', table:'free'});
+    save(); render();
+  }
+  else if(t.id==='add'){
+    M.offices.push(newRow(view==='ALL'? null : view));
+    save(); render();
+  }
+  else if(t.id==='prt'){ window.print(); }
+  else if(t.id==='exp'){
+    var blob=new Blob([JSON.stringify(DOC,null,2)],{type:'application/json'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='TriSight_office_master.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+  else if(t.id==='impBtn'){ document.getElementById('imp').click(); }
+  else if(t.id==='clr'){
+    if(window.confirm('この端末に保存されている事業所基本情報を消します。よろしいですか。')){
+      DOC=blankDoc(); M=curOrg(); M.offices=[newRow()]; view='ALL'; save(); render();
+    }
+  }
+});
+document.getElementById('imp').addEventListener('change', function(e){
+  var f=e.target.files && e.target.files[0]; if(!f) return;
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var d=JSON.parse(r.result);
+      if(!d.orgs){                       /* 旧形式のファイルも読める */
+        var o=blankOrg('org1');
+        o.corp=Object.assign(o.corp,d.corp||{});
+        if(d.segments&&d.segments.length) o.segments=d.segments;
+        o.offices=d.offices||[];
+        d={ version:2, activeOrg:'org1', orgs:[o], updated:'' };
+      }
+      DOC=d; M=curOrg();
+      if(!M.offices.length) M.offices=[newRow()];
+      M.offices.forEach(function(o){ if(!seg(o.segId)) o.segId=M.segments[0].id; });
+      view='ALL'; save(); render();
+      window.alert('読み込みました。');
+    }catch(err){ window.alert('このファイルは読み込めませんでした。'); }
+  };
+  r.readAsText(f);
+  e.target.value='';
+});
+
+if(NEEDSAVE) save();
+render();
+</script>
+</body>
+</html>

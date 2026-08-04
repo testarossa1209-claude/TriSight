@@ -580,13 +580,31 @@ function stat(){
 
 function render(){ renderCorp(); renderSegEdit(); renderSegBar(); renderDatalists(); renderPeriod(); renderRows(); stat(); }
 
+
+/* 旧版のバグで staff440 が文字列になっている場合の自動修復（開いた時点で器へ戻す） */
+(function(){
+  try{
+    var ch=false;
+    (M.offices||[]).forEach(function(o){
+      if(o.staff440!=null && typeof o.staff440!=='object'){
+        var v=String(o.staff440).replace(/[^0-9]/g,'');
+        o.staff440 = v==='' ? {} : {R7:+v};
+        ch=true;
+      }else if(o.staff440==null){ o.staff440={}; ch=true; }
+    });
+    if(ch) save();
+  }catch(e){}
+})();
+
 document.addEventListener('input', function(e){
   var t=e.target;
   if(t.dataset.c!==undefined){ M.corp[t.dataset.c]=t.value; save(); }
   else if(t.dataset.sg!==undefined && t.dataset.f==='name'){
     M.segments[+t.dataset.sg].name=t.value; save(); renderSegBar(); renderRows();
   }
-  else if(t.dataset.i!==undefined && t.dataset.f!=='segId' && t.dataset.f!=='kubun'){
+  /* staff440 は期間別のオブジェクト（{R7:1, …}）なので、ここで文字列を代入すると器ごと壊れる。change側で個別に扱う */
+  else if(t.dataset.i!==undefined && t.dataset.f!=='segId' && t.dataset.f!=='kubun'
+          && t.dataset.f!=='staff440'){
     var o=M.offices[+t.dataset.i]; if(!o) return;
     o[t.dataset.f]=t.value; save();
     if(t.dataset.f==='svc') renderDatalists();

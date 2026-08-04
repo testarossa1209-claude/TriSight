@@ -124,6 +124,8 @@
   .tab:hover{color:var(--navy)}
   .tab.active{color:var(--navy);border-bottom-color:var(--gold);background:linear-gradient(180deg,rgba(200,162,74,.06),transparent)}
   .tabpane{animation:fade .2s ease}@keyframes fade{from{opacity:0}to{opacity:1}}</style>
+<script src="TriReward_years.js"></script>
+<script>var TRW_DOMAIN="kaigo"; var TRW_YEAR="R7";</script>
 </head>
 <body data-edition="kourei">
 <header>
@@ -160,9 +162,9 @@
     <div class="body">
       <div class="calc">
         <div class="row"><div class="lbl">① 加算見込額の合計 <small>各事業所の見込額（報酬単位×加算率×単価×月数）の合計</small></div><div class="val" id="k_v1">¥0</div></div>
-        <div class="row"><div class="lbl">② 前年から繰り越す賃金改善額 <small>無ければ 0</small></div><div class="val muted"><input class="ed" id="k_carry" type="number" value="0"></div></div>
+        <div class="row"><div class="lbl">② 前年から繰り越す賃金改善額 <small>無ければ 0</small></div><div class="val muted"><input class="ed trw-money" id="k_carry" type="text" inputmode="numeric" placeholder="0" autocomplete="off"></div></div>
         <div class="row"><div class="lbl">③ 賃金改善が必要な額 <small>① ＋ ②</small></div><div class="val" id="k_v3">¥0</div></div>
-        <div class="row lead"><div class="lbl">④ 賃金改善の見込額 <small>システム提案＝③以上。承認・上書き可</small></div><div class="val"><input class="ed" id="k_improve" type="number" value="0"></div></div>
+        <div class="row lead"><div class="lbl">④ 賃金改善の見込額 <small>システム提案＝③以上。承認・上書き可</small></div><div class="val"><input class="ed trw-money" id="k_improve" type="text" inputmode="numeric" placeholder="0" autocomplete="off"></div></div>
         <div class="row lead"><div class="lbl">判定 加算以上の賃金改善（見込） <small>④ ≧ ③ なら ○</small></div><div id="k_jMain"></div></div>
       </div>
     </div>
@@ -217,24 +219,24 @@
     <div class="body">
       <div class="calc">
         <div class="row"><div class="lbl">① 当該年度の加算額 <small>各事業所の加算総額（期間①＋②）の合計</small></div><div class="val" id="j_v1">¥0</div></div>
-        <div class="row"><div class="lbl">② 前年から繰り越した賃金改善充当額 <small>無ければ 0</small></div><div class="val muted"><input class="ed" id="j_carry" type="number" value="0"></div></div>
+        <div class="row"><div class="lbl">② 前年から繰り越した賃金改善充当額 <small>無ければ 0</small></div><div class="val muted"><input class="ed trw-money" id="j_carry" type="text" inputmode="numeric" placeholder="0" autocomplete="off"></div></div>
         <div class="row"><div class="lbl">③ 賃金改善が必要な額 <small>① ＋ ②</small></div><div class="val" id="j_v3">¥0</div></div>
-        <div class="row lead"><div class="lbl">④ 当該年度の賃金改善額 <small>システム提案＝③以上（補助金で人件費に充てた額は除く）。承認・上書き可</small></div><div class="val"><input class="ed" id="j_improve" type="number" value="0"></div></div>
-        <div class="row"><div class="lbl">　うち 月額賃金改善による額 <small>基本給・毎月決まって支払われる手当による分（要件Ⅰの判定に使います）／様式3-1 T50</small></div><div class="val muted"><input class="ed" id="j_monthly" type="number" value="0"></div></div>
+        <div class="row lead"><div class="lbl">④ 当該年度の賃金改善額 <small>システム提案＝③以上（補助金で人件費に充てた額は除く）。承認・上書き可</small></div><div class="val"><input class="ed trw-money" id="j_improve" type="text" inputmode="numeric" placeholder="0" autocomplete="off"></div></div>
+        <div class="row"><div class="lbl">　うち 月額賃金改善による額 <small>基本給・毎月決まって支払われる手当による分（要件Ⅰの判定に使います）／様式3-1 T50</small></div><div class="val muted"><input class="ed trw-money" id="j_monthly" type="text" inputmode="numeric" placeholder="0" autocomplete="off"></div></div>
         <div class="row lead"><div class="lbl">判定（1）加算額以上の賃金改善 <small>④ ≧ ③ なら ○</small></div><div id="j_jMain"></div></div>
       </div>
 
       <div class="calc" style="margin-top:14px">
-        <div class="row"><div class="lbl">（ア）当該年度の賃金の総額 <small>様式3-1 Q27</small></div><div class="val muted"><input class="ed" id="j_wgTotal" type="number" value="0"></div></div>
+        <div class="row"><div class="lbl">（ア）当該年度の賃金の総額 <small>様式3-1 Q27</small></div><div class="val muted"><input class="ed trw-money" id="j_wgTotal" type="text" inputmode="numeric" placeholder="0" autocomplete="off"></div></div>
         <div class="row"><div class="lbl">（イ）当該年度の賃金改善額（再掲） <small>④から自動</small></div><div class="val" id="j_wgImp">¥0</div></div>
-        <div class="row"><div class="lbl">（ウ）補助金から人件費に充てた額 <small>無ければ 0／様式3-1 Q29</small></div><div class="val muted"><input class="ed" id="j_wgSubsidy" type="number" value="0"></div></div>
+        <div class="row"><div class="lbl">（ウ）補助金から人件費に充てた額 <small>無ければ 0／様式3-1 Q29</small></div><div class="val muted"><input class="ed trw-money" id="j_wgSubsidy" type="text" inputmode="numeric" placeholder="0" autocomplete="off"></div></div>
         <div class="row lead"><div class="lbl">① 加算の影響を除いた賃金額（当該年度） <small>（ア）−（イ）−（ウ）</small></div><div class="val" id="j_vWageNow">¥0</div></div>
-        <div class="row"><div class="lbl">（ア）前年度の賃金の総額 <small>様式3-1 Q31</small></div><div class="val muted"><input class="ed" id="j_pvTotal" type="number" value="0"></div></div>
-        <div class="row"><div class="lbl">　うち 職員構成の変動による調整額 <small>当年度に退職した職員の前年度賃金など。（ア）から差し引いた額を様式へ書き出します</small></div><div class="val muted"><input class="ed" id="j_pvAdj" type="number" value="0"></div></div>
+        <div class="row"><div class="lbl">（ア）前年度の賃金の総額 <small>様式3-1 Q31</small></div><div class="val muted"><input class="ed trw-money" id="j_pvTotal" type="text" inputmode="numeric" placeholder="0" autocomplete="off"></div></div>
+        <div class="row"><div class="lbl">　うち 職員構成の変動による調整額 <small>当年度に退職した職員の前年度賃金など。（ア）から差し引いた額を様式へ書き出します</small></div><div class="val muted"><input class="ed trw-money" id="j_pvAdj" type="text" inputmode="numeric" placeholder="0" autocomplete="off"></div></div>
         <div class="row"><div class="lbl">　調整の理由 <small>記録用。様式には書き出しません</small></div><div class="val muted"><input class="ed" id="j_pvAdjWhy" type="text" value="" placeholder="例：令和7年度中の退職者◯名分を控除"></div></div>
-        <div class="row"><div class="lbl">（イ）前年度の旧3加算及び処遇改善加算の総額 <small>様式3-1 Q32</small></div><div class="val muted"><input class="ed" id="j_pvKasan" type="number" value="0"></div></div>
-        <div class="row"><div class="lbl">（ウ）前年度4・5月分の処遇改善臨時特例交付金 <small>無ければ 0／様式3-1 Q33</small></div><div class="val muted"><input class="ed" id="j_pvGrant" type="number" value="0"></div></div>
-        <div class="row"><div class="lbl">（エ）前年度の独自の賃金改善額 <small>無ければ 0／様式3-1 Q34</small></div><div class="val muted"><input class="ed" id="j_pvOwn" type="number" value="0"></div></div>
+        <div class="row"><div class="lbl">（イ）前年度の旧3加算及び処遇改善加算の総額 <small>様式3-1 Q32</small></div><div class="val muted"><input class="ed trw-money" id="j_pvKasan" type="text" inputmode="numeric" placeholder="0" autocomplete="off"></div></div>
+        <div class="row"><div class="lbl">（ウ）前年度4・5月分の処遇改善臨時特例交付金 <small>無ければ 0／様式3-1 Q33</small></div><div class="val muted"><input class="ed trw-money" id="j_pvGrant" type="text" inputmode="numeric" placeholder="0" autocomplete="off"></div></div>
+        <div class="row"><div class="lbl">（エ）前年度の独自の賃金改善額 <small>無ければ 0／様式3-1 Q34</small></div><div class="val muted"><input class="ed trw-money" id="j_pvOwn" type="text" inputmode="numeric" placeholder="0" autocomplete="off"></div></div>
         <div class="row lead"><div class="lbl">② 前年度の加算等の影響を除いた賃金額 <small>（ア−調整）−（イ）−（ウ）−（エ）</small></div><div class="val" id="j_vWagePrev">¥0</div></div>
         <div class="row"><div class="lbl">判定（2）前年から賃金水準を下げていない <small>当年 ≧ 前年 なら ○</small></div><div id="j_jPrev"></div></div>
       </div>
@@ -661,7 +663,9 @@ function calc(){
   const carry = Number(document.getElementById("k_carry").value)||0;
   const need = a + carry;
   const improveEl = document.getElementById("k_improve");
-  if(!touched){ improveEl.value = need; }
+  /* A-5：③と同額だと判定が「≧」の境界で通るものの、実務では＋1円で出している。
+     毎回人が打ち替えていたので、提案値そのものを ③＋1円 にする。 */
+  if(!touched){ improveEl.value = need>0 ? (need+1) : ''; }
   const improve = Number(improveEl.value)||0;
   const mainOK = improve >= need && need>0;
   const reqI_OK = services.every(s=>s.reqI===true);
@@ -769,9 +773,14 @@ render();
 <script>(function(){
 const root=document.getElementById('tab-jisseki');
 
-const KUBUN_PERIOD = ["処遇加算Ⅰ","処遇加算Ⅱ","処遇加算Ⅲ","処遇加算Ⅳ","処遇加算なし","―"];
-const V_LIST = Array.from({length:14},(_,i)=>"処遇加算Ⅴ（"+(i+1)+"）");
-const KUBUN_MARCH = ["処遇加算Ⅰ","処遇加算Ⅱ","処遇加算Ⅲ","処遇加算Ⅳ",...V_LIST,"処遇加算なし"];
+/* 選択肢は年度定義（＝様式のドロップダウンの正式表記）から作る。
+   Ⅴ（１）〜（９）は全角数字、（10）〜（14）は半角。ここを取り違えると
+   様式のVLOOKUP（表7）が外れ、月額賃金改善要件Ⅱの判定が立たない。
+   算定期間①（P列）に「なし」は無い。②（Y列）だけが「―」を持つ。 */
+const TRW_DEF7     = (typeof TRWY!=='undefined') ? TRWY.def(TRW_DOMAIN, TRW_YEAR) : null;
+const KUBUN_PERIOD = TRW_DEF7 ? TRWY.period1List(TRW_DEF7) : ["処遇加算Ⅰ","処遇加算Ⅱ","処遇加算Ⅲ","処遇加算Ⅳ"];
+const KUBUN_PERIOD2= TRW_DEF7 ? TRWY.period2List(TRW_DEF7) : KUBUN_PERIOD.concat(["―"]);
+const KUBUN_MARCH  = TRW_DEF7 ? TRWY.marchList(TRW_DEF7)   : KUBUN_PERIOD.concat(["処遇加算なし"]);
 // サンプル（R6実績）。お知らせ到着後に差し替え。
 let services = trwSeedJ();
 function trwSeedJ(){
@@ -780,7 +789,7 @@ function trwSeedJ(){
   return os.map(function(o,i){
     var p = TRW.planRow(TRW.rowKey(o,i)) || {};
     var kb = TRW.kubunOf(o,'R7') || (p.kubun? '処遇改善加算'+p.kubun : '');
-    kb = kb.replace('処遇改善加算','処遇加算');
+    if(TRW_DEF7) kb = TRWY.toForm(TRW_DEF7, kb);
     if(KUBUN_PERIOD.indexOf(kb)<0) kb = KUBUN_PERIOD[0];
     return { name: TRW.officeLabel(o), march: kb, k1: kb, amount1:0, staff440:0,
              k2:'―', amount2:0,
@@ -808,7 +817,7 @@ function renderSvc(){
         <div class="fld"><label class="yen">算定期間① 加算総額（お知らせ）</label><input type="number" data-i="${i}" data-f="amount1" value="${s.amount1}"></div>
         <div class="fld"><label>計画の加算見込額（参考）</label><input value="${yen(s.planEst||0)}" disabled></div>
         <div class="fld"><label>年額440万円以上の職員数［人］</label><input type="number" data-i="${i}" data-f="staff440" value="${s.staff440}"></div>
-        <div class="fld"><label>算定期間② 加算区分（無ければ「―」）</label><select data-i="${i}" data-f="k2">${opt(s.k2)}</select></div>
+        <div class="fld"><label>算定期間② 加算区分（無ければ「―」）</label><select data-i="${i}" data-f="k2">${opt(s.k2, KUBUN_PERIOD2)}</select></div>
         <div class="fld"><label class="yen">算定期間② 加算総額</label><input type="number" data-i="${i}" data-f="amount2" value="${s.amount2}"></div>
         <div class="fld"><label>月額賃金改善要件Ⅰを満たす</label><select data-i="${i}" data-f="reqI"><option value="true" ${s.reqI?"selected":""}>○ 満たす</option><option value="false" ${!s.reqI?"selected":""}>× 満たさない</option></select></div>
         <div class="fld"><label>月額賃金改善要件Ⅱを満たす</label><select data-i="${i}" data-f="reqII"><option value="true" ${s.reqII?"selected":""}>○ 満たす</option><option value="false" ${!s.reqII?"selected":""}>× 満たさない</option></select></div>
@@ -839,9 +848,11 @@ function calc(){
   const a = services.reduce((t,s)=>t+(Number(s.amount1)||0)+(Number(s.amount2)||0),0);
   const carry = Number(document.getElementById("j_carry").value)||0;
   const need = a + carry;                       // ③
+  try{ window.trwNeed3 = function(){ return need; }; }catch(e){}
   const improveEl = document.getElementById("j_improve");
   // 未操作なら③以上を自動提案
-  if(!touched){ improveEl.value = need; }
+  /* A-5：③と同額では毎回＋1円へ打ち替えていた。提案値そのものを ③＋1円 にする */
+  if(!touched){ improveEl.value = need>0 ? (need+1) : ''; }
   const improve = Number(improveEl.value)||0;   // ④
   const mainOK = improve >= need && need>0;     // 判定(1)
 
@@ -861,7 +872,25 @@ function calc(){
   const reqI_OK = services.every(s=>s.reqI===true);
   const reqII_OK = services.every(s=>s.reqII===true);
   // 要件Ⅳ：440万人数 ≧ 加算Ⅰ・Ⅱ算定事業所数
-  const cnt12 = services.filter(s=>["処遇加算Ⅰ","処遇加算Ⅱ"].includes(s.k1)||["処遇加算Ⅰ","処遇加算Ⅱ"].includes(s.k2)).length;
+  /* 要件Ⅳ：440万人数 ≧ 加算Ⅰ・Ⅱ算定事業所数
+     様式の【参考】数式用「表8」で対象外とされるサービス（総合事業・予防・短期入所など）は
+     様式側の集計から除かれる。ここで除外を持たないと、総合事業の行に実人数どおり0を入れた
+     だけで画面が誤って赤警告を出す（2026-08-04のOJTで判明）。 */
+  const _def440 = (typeof TRWY!=='undefined') ? TRWY.def(TRW_DOMAIN, TRW_YEAR) : null;
+  const _isI_II = k => ['Ⅰ','Ⅱ'].includes(
+        (typeof TRWY!=='undefined' && _def440) ? TRWY.fromForm(_def440, k)
+        : String(k||'').replace(/^処遇(改善)?加算/,''));
+  const cnt12 = services.filter(s=>{
+    if(_def440){
+      const svc = (s._o && s._o.svc) || s.svc || '';
+      const ex1 = TRWY.exclude440(_def440, svc, 1);
+      const ex2 = TRWY.exclude440(_def440, svc, 2);
+      const c1 = _isI_II(s.k1) && !ex1.excluded;   /* 算定期間①＝表8で判定 */
+      const c2 = _isI_II(s.k2) && !ex2.excluded;   /* 算定期間②＝様式の直書きリストで判定 */
+      return c1 || c2;
+    }
+    return _isI_II(s.k1) || _isI_II(s.k2);
+  }).length;
   const staff = services.reduce((t,s)=>t+(Number(s.staff440)||0),0);
   const cpIV_dataOK = cnt12===0 ? true : staff>=cnt12;
 
@@ -989,7 +1018,7 @@ function trwCompare(){
 /* --- 官製様式3への書き込み --- */
 function trwWrites(){
   /* 様式側の加算区分の呼称へ合わせる */
-  var KB = function(v){ return String(v==null?'':v).replace(/^処遇加算/, '処遇改善加算'); };
+  var KB = function(v){ return (typeof TRWY!=='undefined' && TRW_DEF7) ? TRWY.toForm(TRW_DEF7, v) : String(v==null?'':v); };
   var corp = TRW.corp(), w = [];
   if(corp.name)      w.push({sheet:['基本情報'], ref:'M23', value:corp.name,      label:'法人名'});
   if(corp.kana)      w.push({sheet:['基本情報'], ref:'M22', value:corp.kana,      label:'法人名フリガナ'});
@@ -1009,7 +1038,9 @@ function trwWrites(){
   /* 提出先は様式側がG18を読む（C18ではない）。未設定なら1件目の指定権者を使う */
   var _os0 = TRW.offices()[0] || {};
   var _teishutsu = corp.teishutsu || _os0.shitei || '';
-  if(_teishutsu) w.push({sheet:['基本情報'], ref:'G18', value:_teishutsu, label:'提出先の指定権者名'});
+  /* 提出先のセルは分野で違う（介護G18／障害C18）。年度定義から引く */
+  var _toRef = (TRW_DEF7 && TRW_DEF7.cellmap) ? TRW_DEF7.cellmap.base.submitTo : 'G18';
+  if(_teishutsu) w.push({sheet:['基本情報'], ref:_toRef, value:_teishutsu, label:'提出先の指定権者名'});
   var os = TRW.offices();
   services.forEach(function(s,i){
     var o = os[i] || {};
@@ -1022,9 +1053,16 @@ function trwWrites(){
     if(o.svc)   w.push({sheet:['基本情報'], ref:'Y'+br, value:o.svc,   label:'サービス名'});
     w.push({sheet:['3-2','個票'], ref:'O'+kr, value:KB(s.march), label:'R7.3時点の算定状況'});
     w.push({sheet:['3-2','個票'], ref:'P'+kr, value:KB(s.k1),    label:'算定期間①区分'});
-    w.push({sheet:['3-2','個票'], ref:'T'+kr, value:(s.reqI? '○':'×'), label:'月額賃金改善要件Ⅰ'});
-    if(/Ⅴ/.test(String(s.march||''))){
-      w.push({sheet:['3-2','個票'], ref:'V'+kr, value:(s.reqII? '○':'×'), label:'月額賃金改善要件Ⅱ'});
+    /* 要件欄の選択肢は「○」の1択のみ。満たさない場合は空欄が正解で、
+       「×」を書くと様式の入力規則に反する（集計は COUNTIF(…,"○")）。 */
+    var _mk = TRW_DEF7 ? TRWY.reqValue(TRW_DEF7, !!s.reqI) : (s.reqI? '○':'');
+    w.push({sheet:['3-2','個票'], ref:'T'+kr, value:_mk, label:'月額賃金改善要件Ⅰ'});
+    /* 要件Ⅱは「令和7年3月時点の区分が表7に載る場合」だけ。Ⅴなら一律ではない */
+    var _needII = TRW_DEF7 ? TRWY.needsReqII(TRW_DEF7, s.march) : /Ⅴ/.test(String(s.march||''));
+    if(_needII){
+      w.push({sheet:['3-2','個票'], ref:'V'+kr,
+              value:(TRW_DEF7? TRWY.reqValue(TRW_DEF7, !!s.reqII) : (s.reqII? '○':'')),
+              label:'月額賃金改善要件Ⅱ'});
     }
     w.push({sheet:['3-2','個票'], ref:'Q'+kr, value:s.amount1, num:true, label:'算定期間①加算総額'});
     w.push({sheet:['3-2','個票'], ref:'W'+kr, value:s.staff440, num:true, label:'年額440万以上の職員数'});
@@ -1180,5 +1218,260 @@ render();
   load();
 })();
 </script>
+
+<!-- ===== 金額入力欄（TRWMoney） =========================================
+  ・上下カウンター（スピナー）を出さない：1千万単位の金額を1ずつ増減させる矢印は不要
+  ・初期値0で埋めない：空欄＋プレースホルダで0相当を示し、打鍵がそのまま値になる
+  ・フォーカスで全選択：打鍵で置き換わる
+  ・入力中は数字のみ（value は素の数値文字列のまま＝既存の読み取り処理を壊さない）
+  ・3桁区切りは欄の直後に読み取り用として表示する
+ ====================================================================== -->
+<style>
+  input.trw-money{ text-align:right; }
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  input[type=number]{ -moz-appearance:textfield; }
+  .trw-money-hint{ font-size:11px; color:#888; margin-left:4px; white-space:nowrap; }
+</style>
+<script>
+(function(){
+  var MONEY_FIELDS = ["amount1", "amount2", "units"];
+  function isMoney(el){
+    if(!el || el.tagName!=='INPUT') return false;
+    if(el.classList.contains('trw-money')) return true;
+    var f = el.getAttribute('data-f');
+    return !!f && MONEY_FIELDS.indexOf(f)>=0;
+  }
+  function comma(v){
+    v = String(v==null?'':v).replace(/[^0-9]/g,'');
+    if(!v) return '';
+    return v.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+  function decorate(el){
+    if(el.__trwMoney) return;
+    el.__trwMoney = true;
+    el.type = 'text';
+    el.setAttribute('inputmode','numeric');
+    el.setAttribute('autocomplete','off');
+    el.classList.add('trw-money');
+    if(!el.getAttribute('placeholder')) el.setAttribute('placeholder','0');
+    if(el.value === '0') el.value = '';          /* 初期値の0を消す手間をなくす */
+    var hint = document.createElement('span');
+    hint.className = 'trw-money-hint';
+    if(el.parentNode) el.parentNode.insertBefore(hint, el.nextSibling);
+    el.__trwHint = hint;
+    refresh(el);
+  }
+  function refresh(el){
+    var h = el.__trwHint; if(!h) return;
+    var v = String(el.value||'').replace(/[^0-9]/g,'');
+    h.textContent = v ? comma(v) + ' 円' : '';
+  }
+  document.addEventListener('focusin', function(e){
+    if(isMoney(e.target)){ decorate(e.target); try{ e.target.select(); }catch(_){} }
+  }, true);
+  document.addEventListener('input', function(e){
+    var el = e.target; if(!isMoney(el)) return;
+    var v = String(el.value||'').replace(/[^0-9]/g,'');
+    if(el.value !== v){ el.value = v; }           /* value は素の数値のまま保つ */
+    refresh(el);
+  }, true);
+  function scan(){
+    var list = document.querySelectorAll('input.trw-money, input[data-f]');
+    for(var i=0;i<list.length;i++){ if(isMoney(list[i])) decorate(list[i]); }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', scan);
+  else scan();
+  try{
+    new MutationObserver(function(){ scan(); })
+      .observe(document.documentElement, {childList:true, subtree:true});
+  }catch(_){}
+  window.TRWMoney = { scan: scan, comma: comma };
+})();
+</script>
+
+
+<!-- ===== A系（出所表示・判定×の導線・必要資料）TRWGuide ==================== -->
+<style>
+  .trw-src{ font-size:11px; color:#7a7a7a; margin-top:2px; line-height:1.5; }
+  .trw-note{ border:1px solid #d9b38c; background:#fdf6ec; padding:10px 12px;
+             border-radius:6px; margin:8px 0; font-size:13px; line-height:1.7; }
+  .trw-note b{ color:#9a5b1a; }
+  .trw-docs{ border:1px solid #cfd6dd; background:#f7f9fb; padding:10px 12px;
+             border-radius:6px; margin:10px 0; font-size:13px; line-height:1.8; }
+  .trw-docs h4{ margin:0 0 6px; font-size:13px; }
+  .trw-docs ul{ margin:0; padding-left:1.2em; }
+  .trw-btn{ font-size:12px; padding:2px 8px; margin-left:6px; cursor:pointer; }
+</style>
+<script>
+(function(){
+  /* --- 数字の出所（A-3）。各欄が「どこから来た数字か」を欄の下に出す ------- */
+  var SRC = {
+    j_carry    : '前年度の実績報告書 様式3-1 の繰越額。無ければ0',
+    j_improve  : 'システム提案＝③（加算実績額＋繰越）＋1円。上書き可',
+    j_monthly  : '基本給・毎月決まって支払われる手当による分。様式3-1 T50。要件Ⅰの判定に使う',
+    j_wgTotal  : '当該年度に支払った賃金の総額。給与計算の集計（労働月ベース）',
+    j_wgSubsidy: '補助金から人件費に充てた額。補助金の実績報告書の「人件費改善」欄',
+    j_pvTotal  : '前年度の実績報告書 様式3-1（ア）の額',
+    j_pvAdj    : '当年度に退職した職員の前年度賃金額の合計。記入上の注意(j)による調整',
+    j_pvKasan  : '前年度の実績報告書 様式3-1（イ）の額',
+    j_pvGrant  : '前年度の実績報告書 様式3-1（ウ）の額',
+    j_pvOwn    : '前年度の実績報告書 様式3-1（エ）の額'
+  };
+  function addSrc(){
+    Object.keys(SRC).forEach(function(id){
+      var el=document.getElementById(id); if(!el || el.__trwSrc) return;
+      el.__trwSrc=true;
+      var d=document.createElement('div'); d.className='trw-src'; d.textContent='出所：'+SRC[id];
+      var box=el.parentNode; if(box) box.appendChild(d);
+    });
+  }
+
+  /* --- ④を③＋1円に戻すボタン（A-5の手動側）------------------------------- */
+  function addPlusOne(){
+    var el=document.getElementById('j_improve'); if(!el || el.__trwP1) return;
+    el.__trwP1=true;
+    var b=document.createElement('button'); b.type='button'; b.className='trw-btn';
+    b.textContent='③＋1円に戻す';
+    b.addEventListener('click', function(){
+      var n=(window.trwNeed3 && window.trwNeed3())||0;
+      if(n>0){ el.value=String(n+1); el.dispatchEvent(new Event('input',{bubbles:true}));
+               el.dispatchEvent(new Event('change',{bubbles:true})); }
+    });
+    if(el.parentNode) el.parentNode.appendChild(b);
+  }
+
+  /* --- 判定(2)が×のときの逃げ道を画面に出す（A-4）------------------------ */
+  function watchJudge(){
+    var t=document.getElementById('j_jPrev'); if(!t) return;
+    var host=document.getElementById('trw-note-prev');
+    if(!host){
+      host=document.createElement('div'); host.id='trw-note-prev'; host.style.display='none';
+      host.className='trw-note';
+      host.innerHTML='<b>判定（2）が×のときの手当て</b><br>'+
+        '様式の【記入上の注意】(j) は、職員構成が変わった場合、<b>本年度に入職（退職）した職員と'+
+        '同等の賃金水準の職員が前年度から在籍していた（いなかった）ものと仮定して計算する</b>など'+
+        'の方法で、前年度側の額を比較に適した値へ修正してよいと定めています。<br>'+
+        '退職による総額の減少は、これで×にはなりません。'+
+        '上の「職員構成の変動による調整額」に、当年度に退職した職員の<b>前年度</b>の賃金額を入れてください。'+
+        '<button type="button" class="trw-btn" id="trw-goadj">調整額の欄へ</button>';
+      if(t.parentNode && t.parentNode.parentNode) t.parentNode.parentNode.insertBefore(host, t.parentNode.nextSibling);
+      document.addEventListener('click', function(e){
+        if(e.target && e.target.id==='trw-goadj'){
+          var a=document.getElementById('j_pvAdj');
+          if(a){ a.scrollIntoView({block:'center'}); a.focus(); }
+        }
+      });
+    }
+    var show=/×/.test(t.textContent||'');
+    host.style.display = show ? '' : 'none';
+  }
+
+  /* --- 必要資料の一覧（A-6）。依頼先（人名）は製品に持たせない ------------- */
+  function addDocs(){
+    var root=document.getElementById('tab-jisseki'); if(!root || document.getElementById('trw-docs')) return;
+    var d=document.createElement('div'); d.id='trw-docs'; d.className='trw-docs';
+    d.innerHTML='<h4>この実績報告に必要な資料</h4><ul>'+
+      '<li>国保連の「処遇改善加算等 総額／内訳のお知らせ」（当年度の全月分）── ③加算実績額の根拠</li>'+
+      '<li>当該年度の賃金総額の集計（労働月ベース・年度を通した同じ切り方）── （ア）</li>'+
+      '<li>当年度に退職した職員の<b>前年度</b>の賃金額（氏名と入職日が分かるもの）── 判定（2）の調整に使う</li>'+
+      '<li>前年度の実績報告書（提出済みのExcel）── 前年度側（ア）〜（エ）の転記元</li>'+
+      '<li>補助金を受けている場合は、その実績報告書（人件費に充てた額が分かるもの）── （ウ）</li>'+
+      '</ul><div class="trw-src">依頼先はこの画面では指定していません。社内の担当は各社で異なるため、'+
+      '資料の内容だけを示しています。</div>';
+    root.insertBefore(d, root.firstChild);
+  }
+
+  function tick(){ addSrc(); addPlusOne(); addDocs(); watchJudge(); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', tick);
+  else tick();
+  try{ new MutationObserver(tick).observe(document.documentElement,{childList:true,subtree:true}); }catch(e){}
+  [0,120,400,1200].forEach(function(ms){ setTimeout(tick, ms); });
+})();
+</script>
+
+
+<!-- ===== C-2 単価の自動計算 / C-4 賃金総額の按分方針（法人単位） ============ -->
+<script>
+(function(){
+  var DEF = (typeof TRWY!=='undefined') ? TRWY.def(TRW_DOMAIN, TRW_YEAR) : null;
+
+  /* --- C-2：計画書タブの単価を、基本情報の級地とサービスから自動で入れる ---- */
+  function fillPrice(){
+    if(!DEF || typeof TRW==='undefined' || !TRW.offices) return;
+    var os = TRW.offices();
+    document.querySelectorAll('input[data-f="price"]').forEach(function(el){
+      if(el.__trwPriced) return;
+      var i = +el.getAttribute('data-i');
+      var o = os[i]; if(!o || !o.chiiki) return;
+      var pr = TRWY.unitPrice(DEF, o.chiiki, o.svc);
+      if(pr==null) return;
+      el.__trwPriced = true;
+      /* 既定値（10）のままなら級地から求めた単価に入れ替える。手で変えてあれば触らない */
+      if(!el.value || Number(el.value)===10){
+        el.value = pr;
+        el.dispatchEvent(new Event('input',{bubbles:true}));
+        el.dispatchEvent(new Event('change',{bubbles:true}));
+      }
+      if(!el.__trwPriceNote){
+        el.__trwPriceNote = true;
+        var d=document.createElement('div'); d.className='trw-src';
+        d.textContent='出所：基本情報の地域区分 '+TRWY.chiikiLabel(o.chiiki)+
+                      ' × 人件費割合 '+Math.round(TRWY.jinkenhi(DEF,o.svc)*100)+'% ＝ '+pr+'円/単位';
+        if(el.parentNode) el.parentNode.appendChild(d);
+      }
+    });
+  }
+
+  /* --- C-4：賃金総額は法人単位で1回決め、介護・障害の両様式へ同じ値を配る ---
+     混合介護（同じ職員で介護保険と障害福祉を回す）では、どちらの土俵に何を乗せたかを
+     年をまたいで持っていないと整合が取れなくなる。方針と実額をここで共有する。 */
+  var KEY = 'trisight_wage_policy_v1';
+  function load(){ try{ return JSON.parse(localStorage.getItem(KEY)||'{}'); }catch(e){ return {}; } }
+  function save(o){ try{ localStorage.setItem(KEY, JSON.stringify(o)); }catch(e){} }
+
+  var FIELDS = ['j_wgTotal','j_wgSubsidy','j_pvAdj'];   /* 法人共通で使う額 */
+  function syncFrom(){
+    var st = load(); var y = TRW_YEAR;
+    st[y] = st[y] || {};
+    FIELDS.forEach(function(id){
+      var el=document.getElementById(id); if(!el) return;
+      var v = Number(el.value)||0;
+      if(v>0){ st[y][id] = v; st[y]._from = TRW_DOMAIN; }
+    });
+    save(st);
+  }
+  function syncTo(){
+    var st = load(); var d = st[TRW_YEAR]; if(!d) return;
+    FIELDS.forEach(function(id){
+      var el=document.getElementById(id); if(!el || el.__trwSynced) return;
+      if((!el.value || Number(el.value)===0) && d[id]>0){
+        el.__trwSynced = true;
+        el.value = d[id];
+        el.dispatchEvent(new Event('input',{bubbles:true}));
+        el.dispatchEvent(new Event('change',{bubbles:true}));
+        var n=document.createElement('div'); n.className='trw-src';
+        n.textContent = '※ 法人共通の値として、'+(d._from==='kaigo'?'介護':'障害')+
+                        '側で入力された額を引いています（賃金総額は両様式で同じ値を使う方針）';
+        if(el.parentNode) el.parentNode.appendChild(n);
+      }
+    });
+  }
+  function hook(){
+    FIELDS.forEach(function(id){
+      var el=document.getElementById(id); if(!el || el.__trwHook) return;
+      el.__trwHook = true;
+      el.addEventListener('change', syncFrom);
+    });
+  }
+
+  function tick(){ fillPrice(); syncTo(); hook(); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', tick);
+  else tick();
+  try{ new MutationObserver(tick).observe(document.documentElement,{childList:true,subtree:true}); }catch(e){}
+  [0,150,500,1500].forEach(function(ms){ setTimeout(tick, ms); });
+})();
+</script>
+
 </body>
 </html>

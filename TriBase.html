@@ -155,6 +155,7 @@ td.no{text-align:center;font-weight:700;color:var(--navy);width:34px}
 @media print{.bar,.addbtn,.rm,.segbar,#segEdit{display:none}}
 
 </style>
+<script src="TriReward_years.js"></script>
 </head>
 <body>
 <header>
@@ -211,7 +212,7 @@ td.no{text-align:center;font-weight:700;color:var(--navy);width:34px}
           <thead>
             <tr>
               <th>No</th><th>事業区分</th><th>サービス種別</th><th>加算区分</th><th>事業所番号</th><th>事業所名</th>
-              <th>都道府県</th><th>市区町村</th><th>指定権者</th><th>所在地</th><th>電話</th><th>管理者</th><th></th>
+              <th>都道府県</th><th>市区町村</th><th>地域区分<br><span style="font-weight:normal;font-size:11px">（級地）</span></th><th>特定事業所<br><span style="font-weight:normal;font-size:11px">加算</span></th><th>指定権者</th><th>所在地</th><th>電話</th><th>管理者</th><th></th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>
@@ -314,7 +315,8 @@ function blankDoc(){
 function blank(){ return blankDoc().orgs[0]; }
 function newRow(segId){
   return { segId: segId || (M.segments[0]&&M.segments[0].id) || '', svc:'', bizNo:'', name:'',
-           pref:'', city:'', shitei:'', addr:'', tel:'', kanri:'', kubun:{} };
+           pref:'', city:'', shitei:'', addr:'', tel:'', kanri:'', kubun:{},
+           chiiki:'', tokutei:'' };
 }
 var NEEDSAVE = false;
 function load(){
@@ -454,6 +456,38 @@ function renderRows(){
     key=ae.dataset.i+'|'+ae.dataset.f;
     try{ pos=ae.selectionStart; }catch(e){}
   }
+
+/* 地域区分（級地）。1単位あたりの単価は「級地の上乗せ割合 × サービスの人件費割合」で決まる。
+   事業所ごとの属性なのでここに持ち、トライリワードの計画書はこれを読んで単価を自動計算する。 */
+var CHIIKI_OPTS = [['','（未設定）'],['1','1級地'],['2','2級地'],['3','3級地'],['4','4級地'],
+                   ['5','5級地'],['6','6級地'],['7','7級地'],['0','その他']];
+function chiikiCell(o,i){
+  var v = o.chiiki || '';
+  var op = CHIIKI_OPTS.map(function(x){
+    return '<option value="'+x[0]+'"'+(x[0]===v?' selected':'')+'>'+x[1]+'</option>'; }).join('');
+  var price = '';
+  try{
+    if(v!=='' && typeof TRWY!=='undefined'){
+      var dom = /障害|児/.test(segNameOf(o)) ? 'shogai' : 'kaigo';
+      var pr = TRWY.unitPrice(TRWY.def(dom,'R7'), v, o.svc);
+      if(pr!=null) price = '<div style="font-size:11px;color:#7a7a7a">'+pr+'円/単位</div>';
+    }
+  }catch(e){}
+  return '<select data-i="'+i+'" data-f="chiiki" style="min-width:100px">'+op+'</select>'+price;
+}
+function segNameOf(o){
+  for(var i=0;i<M.segments.length;i++){ if(M.segments[i].id===o.segId) return M.segments[i].name||''; }
+  return '';
+}
+/* 特定事業所加算。計画書のキャリアパス要件Ⅴの充足根拠として選ぶ欄があるため、ここで保持する */
+var TOKUTEI_OPTS = [['','（なし）'],['Ⅰ','Ⅰ'],['Ⅱ','Ⅱ'],['Ⅲ','Ⅲ'],['Ⅳ','Ⅳ'],['Ⅴ','Ⅴ']];
+function tokuteiCell(o,i){
+  var v = o.tokutei || '';
+  var op = TOKUTEI_OPTS.map(function(x){
+    return '<option value="'+x[0]+'"'+(x[0]===v?' selected':'')+'>'+x[1]+'</option>'; }).join('');
+  return '<select data-i="'+i+'" data-f="tokutei" style="min-width:80px">'+op+'</select>';
+}
+
   var html = '';
   M.offices.forEach(function(o,i){
     if(view!=='ALL' && o.segId!==view) return;
@@ -469,6 +503,8 @@ function renderRows(){
       '<td>'+inp('name',150)+'</td>'+
       '<td>'+inp('pref',90)+'</td>'+
       '<td>'+inp('city',100)+'</td>'+
+      '<td>'+chiikiCell(o,i)+'</td>'+
+      '<td>'+tokuteiCell(o,i)+'</td>'+
       '<td>'+inp('shitei',110)+'</td>'+
       '<td>'+inp('addr',180)+'</td>'+
       '<td>'+inp('tel',120)+'</td>'+
@@ -476,7 +512,7 @@ function renderRows(){
       '<td>'+(M.offices.length>1?'<button class="rm" data-rm="'+i+'">削除</button>':'')+'</td>'+
     '</tr>';
   });
-  if(!html) html = '<tr><td colspan="13" style="padding:18px;text-align:center;color:var(--soft)">この事業区分の行はまだありません。下の「＋ 事業所・サービスを追加」で作れます。</td></tr>';
+  if(!html) html = '<tr><td colspan="15" style="padding:18px;text-align:center;color:var(--soft)">この事業区分の行はまだありません。下の「＋ 事業所・サービスを追加」で作れます。</td></tr>';
   document.getElementById('rows').innerHTML = html;
   if(key){
     var q=key.split('|');

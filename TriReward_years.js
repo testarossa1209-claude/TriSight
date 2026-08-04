@@ -141,10 +141,15 @@ var JINKENHI_KAIGO_55 = ['通所リハビリテーション','介護予防通所
   '複合型サービス（看護小規模多機能型居宅介護・短期利用型）'];
 /* 上記以外は45%（通所介護・施設系・短期入所系など） */
 
-/* 障害福祉はサービスごとに単価が定められている。ノアの居宅介護・同行援護は
-   3級地で10.9円（＝人件費割合60%相当）であることを実額から確認済み。
-   他サービスの割合は未確認のため、既定は60%とし、画面で上書きできるようにする。 */
-var JINKENHI_SHOGAI_DEFAULT = 0.60;
+/* 障害福祉の人件費割合。
+   訪問系4サービス（居宅介護・重度訪問介護・同行援護・行動援護）は60%。
+   根拠＝この4サービスの地域単価は10円〜11.20円の8区分で、上限11.20円が1級地（上乗せ20%）
+   から成り立つため割合は60%。3級地なら 10+10×0.15×0.60 = 10.90円となり、
+   ノアの障害の請求データCSVの単位数単価「10900」（＝10.900円）と一致する。
+   それ以外のサービス（生活介護・就労系・共同生活援助など）は割合が異なり、未確認。
+   推測で単価を出すと誤った金額が計画書に載るため、null を返して手入力にする。
+   地域区分（級地）そのものは介護保険と障害福祉で共通（2026-08-05・宏史さん確認）。 */
+var JINKENHI_SHOGAI_60 = ['居宅介護','重度訪問介護','同行援護','行動援護'];
 
 var DEFS = {};
 
@@ -284,7 +289,9 @@ var TRWY = {
   chiikiList: function(){ return CHIIKI.slice(); },
   /* サービスの人件費割合 */
   jinkenhi: function(def, svc){
-    if(def.domain === 'shogai') return JINKENHI_SHOGAI_DEFAULT;
+    if(def.domain === 'shogai'){
+      return (JINKENHI_SHOGAI_60.indexOf(String(svc||'')) >= 0) ? 0.60 : null;
+    }
     var n = String(svc||'');
     if(JINKENHI_KAIGO_70.indexOf(n) >= 0) return 0.70;
     if(JINKENHI_KAIGO_55.indexOf(n) >= 0) return 0.55;
@@ -296,6 +303,7 @@ var TRWY = {
     for(var i=0;i<CHIIKI.length;i++){ if(CHIIKI[i].key === String(chiikiKey)) c = CHIIKI[i]; }
     if(!c) return null;                       /* 級地が未設定なら計算しない */
     var r = TRWY.jinkenhi(def, svc);
+    if(r == null) return null;      /* 人件費割合が未確認のサービスは自動計算しない */
     return Math.round((10 + 10 * c.rate * r) * 100) / 100;
   },
   chiikiLabel: function(chiikiKey){

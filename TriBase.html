@@ -470,9 +470,15 @@ function chiikiCell(o,i){
     if(v!=='' && typeof TRWY!=='undefined'){
       var dom = /障害|児/.test(segNameOf(o)) ? 'shogai' : 'kaigo';
       var pr = TRWY.unitPrice(TRWY.def(dom,'R7'), v, o.svc);
-      if(pr!=null) price = '<div style="margin-top:4px;font-size:12px;font-weight:700;color:#1F3556;'+
-        'background:#f4eedb;border:1px solid #e7d9ad;border-radius:6px;padding:2px 6px;display:inline-block">'+
-        pr+' 円/単位</div>';
+      if(pr!=null){
+        price = '<div style="margin-top:4px;font-size:12px;font-weight:700;color:#1F3556;'+
+          'background:#f4eedb;border:1px solid #e7d9ad;border-radius:6px;padding:2px 6px;display:inline-block">'+
+          pr+' 円/単位</div>';
+      }else{
+        /* 人件費割合が未確認のサービスは単価を出さない。推測値を出すより空欄のほうが安全 */
+        price = '<div style="margin-top:4px;font-size:11px;color:#9a5b1a">単価は未確認'+
+          '<br>（計画書で手入力してください）</div>';
+      }
     }
   }catch(e){}
   return '<select data-i="'+i+'" data-f="chiiki" style="min-width:100px">'+op+'</select>'+price;

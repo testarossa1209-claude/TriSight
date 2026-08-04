@@ -212,7 +212,7 @@ td.no{text-align:center;font-weight:700;color:var(--navy);width:34px}
           <thead>
             <tr>
               <th>No</th><th>事業区分</th><th>サービス種別</th><th>加算区分</th><th>事業所番号</th><th>事業所名</th>
-              <th>都道府県</th><th>市区町村</th><th>地域区分<br><span style="font-weight:normal;font-size:11px">（級地）</span></th><th>特定事業所<br><span style="font-weight:normal;font-size:11px">加算</span></th><th>年額440万円<br><span style="font-weight:normal;font-size:11px">以上の職員数</span></th><th>指定権者</th><th>所在地</th><th>電話</th><th>管理者</th><th></th>
+              <th>都道府県</th><th>市区町村</th><th>地域区分<br><span style="font-weight:normal;font-size:11px">（級地）</span></th><th>特定事業所<br><span style="font-weight:normal;font-size:11px">加算</span></th><th>年額440万円<br><span style="font-weight:normal;font-size:11px">以上の職員数</span><br><span style="font-weight:normal;font-size:10px;color:#8a8375">薄い字は他の期間から</span></th><th>指定権者</th><th>所在地</th><th>電話</th><th>管理者</th><th></th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>
@@ -482,12 +482,18 @@ function staff440Of(o, pid){
 }
 function staff440Cell(o,i){
   var r = staff440Of(o, period);
-  var note = r.inherited
-    ? '<div style="margin-top:3px;font-size:11px;color:#9a5b1a">'+esc(r.from)+'から引き継ぎ<br>'+
-      '<span style="color:#7a7a7a">（この期間で変わるなら上書きしてください）</span></div>' : '';
+  /* 引き継ぎ表示は行の下に文を足さない（表が縦に伸びるため）。
+     他の期間から引いた値は薄い文字で示し、由来はマウスを乗せたときだけ出す。 */
+  var st = 'min-width:70px;text-align:right';
+  var tip = '';
+  if(r.inherited){
+    st += ';color:#9a8f75;font-style:italic';
+    tip = ' title="'+esc(r.from)+'の値です。この期間で変わるなら上書きしてください"';
+  }
   return '<input data-i="'+i+'" data-f="staff440" inputmode="numeric" value="'+esc(r.v)+'"'+
-         ' style="min-width:70px;text-align:right">'+note;
+         tip+' style="'+st+'">';
 }
+
 
 /* 地域区分（級地）。1単位あたりの単価は「級地の上乗せ割合 × サービスの人件費割合」で決まる。
    事業所ごとの属性なのでここに持ち、トライリワードの計画書はこれを読んで単価を自動計算する。 */

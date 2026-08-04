@@ -220,6 +220,7 @@
         <div class="row"><div class="lbl">② 前年から繰り越した賃金改善充当額 <small>無ければ 0</small></div><div class="val muted"><input class="ed" id="j_carry" type="number" value="0"></div></div>
         <div class="row"><div class="lbl">③ 賃金改善が必要な額 <small>① ＋ ②</small></div><div class="val" id="j_v3">¥0</div></div>
         <div class="row lead"><div class="lbl">④ 当該年度の賃金改善額 <small>システム提案＝③以上（補助金で人件費に充てた額は除く）。承認・上書き可</small></div><div class="val"><input class="ed" id="j_improve" type="number" value="0"></div></div>
+        <div class="row"><div class="lbl">　うち 月額賃金改善による額 <small>基本給・毎月決まって支払われる手当による分（要件Ⅰの判定に使います）／様式3-1 T50</small></div><div class="val muted"><input class="ed" id="j_monthly" type="number" value="0"></div></div>
         <div class="row lead"><div class="lbl">判定（1）加算額以上の賃金改善 <small>④ ≧ ③ なら ○</small></div><div id="j_jMain"></div></div>
       </div>
 
@@ -408,7 +409,7 @@ window.TRWX = (function(){
       : '<c r="'+ref+'" t="inlineStr"><is><t xml:space="preserve">'+esc(value)+'</t></is></c>';
 
     /* 既存セルがあれば置換 */
-    var reCell = new RegExp('<c r="'+ref+'"(?:\\s[^>]*)?(?:/>|>[\\s\\S]*?</c>)');
+    var reCell = new RegExp('<c r="'+ref+'"(?:\\s[^>]*?)?(?:/>|>[\\s\\S]*?</c>)');
     if(reCell.test(xml)) return xml.replace(reCell, cellXml);
 
     /* 行があればその中の正しい位置に挿入 */
@@ -905,7 +906,7 @@ root.addEventListener("input",e=>{
     if(f==="reqI"||f==="reqII") val=(val==="true");
     services[i][f]=val;
     render();
-  } else if(["j_carry","j_wgTotal","j_wgSubsidy","j_pvTotal","j_pvAdj","j_pvAdjWhy","j_pvKasan","j_pvGrant","j_pvOwn"].includes(t.id)){
+  } else if(["j_carry","j_monthly","j_wgTotal","j_wgSubsidy","j_pvTotal","j_pvAdj","j_pvAdjWhy","j_pvKasan","j_pvGrant","j_pvOwn"].includes(t.id)){
     render();
   } else if(t.id==="j_improve"){
     touched=true; render();
@@ -958,9 +959,28 @@ function trwCompare(){
 
 /* --- 官製様式3への書き込み --- */
 function trwWrites(){
+  /* 様式側の加算区分の呼称へ合わせる */
+  var KB = function(v){ return String(v==null?'':v).replace(/^処遇加算/, '処遇改善加算'); };
   var corp = TRW.corp(), w = [];
   if(corp.name)      w.push({sheet:['基本情報'], ref:'M23', value:corp.name,      label:'法人名'});
-  if(corp.teishutsu) w.push({sheet:['基本情報'], ref:'C18', value:corp.teishutsu, label:'提出先'});
+  if(corp.kana)      w.push({sheet:['基本情報'], ref:'M22', value:corp.kana,      label:'法人名フリガナ'});
+  var _z = String(corp.zip||'').replace(/[^0-9]/g,'');
+  if(_z.length>=7){
+    w.push({sheet:['基本情報'], ref:'M24', value:_z.slice(0,3), label:'郵便番号（上3桁）'});
+    w.push({sheet:['基本情報'], ref:'Q24', value:_z.slice(3,7), label:'郵便番号（下4桁）'});
+  }
+  if(corp.addr)      w.push({sheet:['基本情報'], ref:'M25', value:corp.addr,      label:'住所１'});
+  if(corp.addr2)     w.push({sheet:['基本情報'], ref:'M26', value:corp.addr2,     label:'住所２'});
+  if(corp.repTitle)  w.push({sheet:['基本情報'], ref:'M27', value:corp.repTitle,  label:'代表者 職名'});
+  if(corp.repName)   w.push({sheet:['基本情報'], ref:'M28', value:corp.repName,   label:'代表者 氏名'});
+  if(corp.tantoKana) w.push({sheet:['基本情報'], ref:'M29', value:corp.tantoKana, label:'担当者 フリガナ'});
+  if(corp.tantoName) w.push({sheet:['基本情報'], ref:'M30', value:corp.tantoName, label:'担当者 氏名'});
+  if(corp.tel)       w.push({sheet:['基本情報'], ref:'M31', value:corp.tel,       label:'電話番号'});
+  if(corp.email)     w.push({sheet:['基本情報'], ref:'M32', value:corp.email,     label:'E-mail'});
+  /* 提出先は様式側がG18を読む（C18ではない）。未設定なら1件目の指定権者を使う */
+  var _os0 = TRW.offices()[0] || {};
+  var _teishutsu = corp.teishutsu || _os0.shitei || '';
+  if(_teishutsu) w.push({sheet:['基本情報'], ref:'G18', value:_teishutsu, label:'提出先の指定権者名'});
   var os = TRW.offices();
   services.forEach(function(s,i){
     var o = os[i] || {};
@@ -971,12 +991,16 @@ function trwWrites(){
     if(o.city)  w.push({sheet:['基本情報'], ref:'W'+br, value:o.city,  label:'市区町村'});
     if(o.name)  w.push({sheet:['基本情報'], ref:'X'+br, value:o.name,  label:'事業所名'});
     if(o.svc)   w.push({sheet:['基本情報'], ref:'Y'+br, value:o.svc,   label:'サービス名'});
-    w.push({sheet:['3-2','個票'], ref:'O'+kr, value:s.march, label:'R7.3時点の算定状況'});
-    w.push({sheet:['3-2','個票'], ref:'P'+kr, value:s.k1,    label:'算定期間①区分'});
+    w.push({sheet:['3-2','個票'], ref:'O'+kr, value:KB(s.march), label:'R7.3時点の算定状況'});
+    w.push({sheet:['3-2','個票'], ref:'P'+kr, value:KB(s.k1),    label:'算定期間①区分'});
+    w.push({sheet:['3-2','個票'], ref:'T'+kr, value:(s.reqI? '○':'×'), label:'月額賃金改善要件Ⅰ'});
+    if(/Ⅴ/.test(String(s.march||''))){
+      w.push({sheet:['3-2','個票'], ref:'V'+kr, value:(s.reqII? '○':'×'), label:'月額賃金改善要件Ⅱ'});
+    }
     w.push({sheet:['3-2','個票'], ref:'Q'+kr, value:s.amount1, num:true, label:'算定期間①加算総額'});
     w.push({sheet:['3-2','個票'], ref:'W'+kr, value:s.staff440, num:true, label:'年額440万以上の職員数'});
     if(s.k2 && s.k2!=='―'){
-      w.push({sheet:['3-2','個票'], ref:'Y'+kr, value:s.k2, label:'算定期間②区分'});
+      w.push({sheet:['3-2','個票'], ref:'Y'+kr, value:KB(s.k2), label:'算定期間②区分'});
       w.push({sheet:['3-2','個票'], ref:'Z'+kr, value:s.amount2, num:true, label:'算定期間②加算総額'});
     }
   });
@@ -989,6 +1013,9 @@ function trwWrites(){
   w.push({sheet:['3-1','総括'], ref:'Q32', value:g('j_pvKasan'), num:true, label:'（イ）前年度の旧3加算及び処遇改善加算の総額'});
   w.push({sheet:['3-1','総括'], ref:'Q33', value:g('j_pvGrant'), num:true, label:'（ウ）前年度4・5月分の処遇改善臨時特例交付金'});
   w.push({sheet:['3-1','総括'], ref:'Q34', value:g('j_pvOwn'),   num:true, label:'（エ）前年度の独自の賃金改善額'});
+  if(document.getElementById('j_monthly')){
+    w.push({sheet:['3-1','総括'], ref:'T50', value:g('j_monthly'), num:true, label:'②月額賃金改善による額'});
+  }
   return w;
 }
 try{ window.trwWritesProbe = trwWrites; }catch(e){}

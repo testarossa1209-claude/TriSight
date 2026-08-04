@@ -402,15 +402,44 @@ window.TRWX = (function(){
   function rowOf(ref){ return parseInt(ref.replace(/^[A-Z]+/,''),10); }
   function colNum(c){ var n=0; for(var i=0;i<c.length;i++){ n=n*26+(c.charCodeAt(i)-64); } return n; }
 
+  /* 同じ列の近い行にあるセルから書式（s=）を借りる。
+     様式は行ごとに同じ体裁で組まれているため、隣の行の書式が正しい体裁になる。 */
+  function borrowStyle(xml, ref){
+    var col = colOf(ref), r = rowOf(ref);
+    for(var d=1; d<=12; d++){
+      var cands = [r+d, r-d];
+      for(var i=0;i<cands.length;i++){
+        if(cands[i] < 1) continue;
+        var m = xml.match(new RegExp('<c r="'+col+cands[i]+'"((?:\\s[^>]*?)?)(?:/>|>[\\s\\S]*?</c>)'));
+        if(m){
+          var ms = m[1].match(/\ss="[0-9]+"/);
+          if(ms) return ms[0];
+        }
+      }
+    }
+    return '';
+  }
+
   /* シート1枚のXMLに対し、1セルの値を書き込む */
   function setCell(xml, ref, value, isNum){
+    /* 書式（罫線・塗り・表示形式）は s= に入っている。ここを落とすと様式の見た目が壊れるので必ず引き継ぐ。
+       セルが元から無い場合は、同じ列の近い行から書式を借りる。 */
+    var reCell = new RegExp('<c r="'+ref+'"((?:\\s[^>]*?)?)(?:/>|>[\\s\\S]*?</c>)');
+    var found  = xml.match(reCell);
+    var sAttr  = '';
+    if(found){
+      var ms = found[1].match(/\ss="[0-9]+"/);
+      if(ms) sAttr = ms[0];
+    }else{
+      sAttr = borrowStyle(xml, ref);
+    }
+
     var cellXml = isNum
-      ? '<c r="'+ref+'"><v>'+(Number(value)||0)+'</v></c>'
-      : '<c r="'+ref+'" t="inlineStr"><is><t xml:space="preserve">'+esc(value)+'</t></is></c>';
+      ? '<c r="'+ref+'"'+sAttr+'><v>'+(Number(value)||0)+'</v></c>'
+      : '<c r="'+ref+'"'+sAttr+' t="inlineStr"><is><t xml:space="preserve">'+esc(value)+'</t></is></c>';
 
     /* 既存セルがあれば置換 */
-    var reCell = new RegExp('<c r="'+ref+'"(?:\\s[^>]*?)?(?:/>|>[\\s\\S]*?</c>)');
-    if(reCell.test(xml)) return xml.replace(reCell, cellXml);
+    if(found) return xml.replace(reCell, cellXml);
 
     /* 行があればその中の正しい位置に挿入 */
     var r = rowOf(ref), myCol = colNum(colOf(ref));

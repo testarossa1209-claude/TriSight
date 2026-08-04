@@ -465,17 +465,26 @@ function renderRows(){
 function staff440Of(o, pid){
   var m = o.staff440 || {};
   if(m[pid]!=null && m[pid]!=='') return {v:m[pid], inherited:false};
-  var idx = PERIODS.map(function(p){return p.id;}).indexOf(pid);
+  var ids = PERIODS.map(function(p){return p.id;});
+  var idx = ids.indexOf(pid);
+  /* まず前の期間、無ければ後の期間から引き継ぐ。
+     頻繁に変わる情報ではないので、どこか1つ入っていれば他の期間にも出す。
+     変わった期間だけ上書きすれば、その期間から新しい値になる。 */
   for(var j=idx-1;j>=0;j--){
-    var q=PERIODS[j].id;
+    var q=ids[j];
     if(m[q]!=null && m[q]!=='') return {v:m[q], inherited:true, from:PERIODS[j].label};
+  }
+  for(var k=idx+1;k<ids.length;k++){
+    var r=ids[k];
+    if(m[r]!=null && m[r]!=='') return {v:m[r], inherited:true, from:PERIODS[k].label};
   }
   return {v:'', inherited:false};
 }
 function staff440Cell(o,i){
   var r = staff440Of(o, period);
   var note = r.inherited
-    ? '<div style="font-size:11px;color:#7a7a7a">'+esc(r.from)+'から引き継ぎ</div>' : '';
+    ? '<div style="margin-top:3px;font-size:11px;color:#9a5b1a">'+esc(r.from)+'から引き継ぎ<br>'+
+      '<span style="color:#7a7a7a">（この期間で変わるなら上書きしてください）</span></div>' : '';
   return '<input data-i="'+i+'" data-f="staff440" inputmode="numeric" value="'+esc(r.v)+'"'+
          ' style="min-width:70px;text-align:right">'+note;
 }

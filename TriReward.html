@@ -23,6 +23,7 @@
   .sub{color:#aeb9cf;font-size:14.5px;font-weight:500;margin-top:14px;text-align:center;max-width:560px;line-height:1.8}
   .rule{width:60px;height:3px;background:var(--gold);margin:26px auto 30px;border-radius:2px}
   .cards{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;width:100%;max-width:760px}
+  .btn.wide{flex:0 0 100%;width:100%}
   .btn{flex:1;min-width:280px;text-decoration:none;background:var(--card);border-radius:18px;padding:30px 28px;
     border:1px solid rgba(230,205,143,.25);box-shadow:0 18px 40px rgba(0,0,0,.32);transition:.18s;display:block}
   .btn:hover{transform:translateY(-4px);box-shadow:0 26px 54px rgba(0,0,0,.42);border-color:var(--gold)}
@@ -46,11 +47,10 @@
   <div class="rule"></div>
 
   <div class="cards">
-    <a class="btn" href="TriBase.html">
+    <a class="btn wide" href="TriBase.html">
       <div class="k">はじめに</div>
       <span class="law">事業所基本情報（TriBase）</span>
       <div class="desc">法人・事業所・サービス・加算区分・地域区分を登録します。ここが空だと計画書も実績報告も作れません。</div>
-      <div class="tabs"><span>法人情報</span><span>事業所一覧</span></div>
       <div class="go">OPEN &rsaquo;</div>
     </a>
 
@@ -58,14 +58,12 @@
       <div class="k">高齢版</div>
       <span class="law">介護保険サービス</span>
       <div class="desc">訪問介護・通所介護など、介護保険サービスの処遇改善加算。</div>
-      <div class="tabs"><span>計画書</span><span>実績報告</span></div>
       <div class="go">OPEN &rsaquo;</div>
     </a>
     <a class="btn" href="TriReward_shogai.html">
       <div class="k">障害版</div>
       <span class="law">障害福祉サービス</span>
       <div class="desc">居宅介護・同行援護など、障害福祉サービスの処遇改善加算。</div>
-      <div class="tabs"><span>計画書</span><span>実績報告</span></div>
       <div class="go">OPEN &rsaquo;</div>
     </a>
   </div>

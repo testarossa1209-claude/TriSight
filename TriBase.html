@@ -470,7 +470,9 @@ function chiikiCell(o,i){
     if(v!=='' && typeof TRWY!=='undefined'){
       var dom = /障害|児/.test(segNameOf(o)) ? 'shogai' : 'kaigo';
       var pr = TRWY.unitPrice(TRWY.def(dom,'R7'), v, o.svc);
-      if(pr!=null) price = '<div style="font-size:11px;color:#7a7a7a">'+pr+'円/単位</div>';
+      if(pr!=null) price = '<div style="margin-top:4px;font-size:12px;font-weight:700;color:#1F3556;'+
+        'background:#f4eedb;border:1px solid #e7d9ad;border-radius:6px;padding:2px 6px;display:inline-block">'+
+        pr+' 円/単位</div>';
     }
   }catch(e){}
   return '<select data-i="'+i+'" data-f="chiiki" style="min-width:100px">'+op+'</select>'+price;
@@ -562,6 +564,11 @@ document.addEventListener('change', function(e){
     if(!oo.kubun) oo.kubun={};
     if(t.value) oo.kubun[period]=t.value; else delete oo.kubun[period];
     save(); renderPeriod();
+  }
+  else if(t.dataset.i!==undefined && (t.dataset.f==='chiiki'||t.dataset.f==='tokutei')){
+    /* 級地を変えたら1単位あたりの単価が変わるので、その場で描き直して単価を出す */
+    var oc=M.offices[+t.dataset.i]; if(!oc) return;
+    oc[t.dataset.f]=t.value; save(); renderRows();
   }
   else if(t.dataset.i!==undefined && t.dataset.f==='svc'){
     var os=M.offices[+t.dataset.i]; if(!os) return;

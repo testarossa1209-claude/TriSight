@@ -627,7 +627,7 @@ function renderSvc(){
       </div>
       <div class="grid">
         <div class="fld"><label>サービス名</label><select data-i="${i}" data-f="svc">${SERVICES.map(n=>`<option ${n===s.svc?"selected":""}>${n}</option>`).join("")}</select></div>
-        <div class="fld"><label>一月あたり報酬総単位数（加算除く）[単位]</label><input type="number" data-i="${i}" data-f="units" value="${s.units}"></div>
+        <div class="fld"><label>一月あたり報酬総単位数（加算除く）[単位]</label><input type="number" data-i="${i}" data-f="units" value="${s.units||''}"></div>
         <div class="fld"><label>1単位あたり単価[円]（地域区分）</label><input type="number" step="0.01" data-i="${i}" data-f="price" value="${s.price}"></div>
         <div class="fld"><label>当該年度の加算区分</label><select data-i="${i}" data-f="kubun">${KUBUN.map(k=>`<option ${k===s.kubun?"selected":""}>処遇改善加算${k}</option>`).join("")}</select></div>
         <div class="fld"><label>算定月数（通常12）</label><input type="number" data-i="${i}" data-f="months" value="${s.months}"></div>
@@ -819,11 +819,11 @@ function renderSvc(){
       <div class="grid">
         <div class="fld"><label>令和7年3月時点の算定状況</label><select data-i="${i}" data-f="march">${opt(s.march, KUBUN_MARCH)}</select></div>
         <div class="fld"><label>算定期間① 加算区分</label><select data-i="${i}" data-f="k1">${opt(s.k1, KUBUN_PERIOD)}</select></div>
-        <div class="fld"><label class="yen">算定期間① 加算総額（お知らせ）</label><input type="number" data-i="${i}" data-f="amount1" value="${s.amount1}"></div>
+        <div class="fld"><label class="yen">算定期間① 加算総額（お知らせ）</label><input type="number" data-i="${i}" data-f="amount1" value="${s.amount1||''}"></div>
         <div class="fld"><label>計画の加算見込額（参考）</label><input value="${yen(s.planEst||0)}" disabled></div>
         <div class="fld"><label>年額440万円以上の職員数［人］</label><input type="number" data-i="${i}" data-f="staff440" value="${s.staff440}"></div>
         <div class="fld"><label>算定期間② 加算区分（無ければ「―」）</label><select data-i="${i}" data-f="k2">${opt(s.k2, KUBUN_PERIOD2)}</select></div>
-        <div class="fld"><label class="yen">算定期間② 加算総額</label><input type="number" data-i="${i}" data-f="amount2" value="${s.amount2}"></div>
+        <div class="fld"><label class="yen">算定期間② 加算総額</label><input type="number" data-i="${i}" data-f="amount2" value="${s.amount2||''}"></div>
         <div class="fld"><label>月額賃金改善要件Ⅰを満たす</label><select data-i="${i}" data-f="reqI"><option value="true" ${s.reqI?"selected":""}>○ 満たす</option><option value="false" ${!s.reqI?"selected":""}>× 満たさない</option></select></div>
         <div class="fld"><label>月額賃金改善要件Ⅱを満たす</label><select data-i="${i}" data-f="reqII"><option value="true" ${s.reqII?"selected":""}>○ 満たす</option><option value="false" ${!s.reqII?"selected":""}>× 満たさない</option></select></div>
       </div>

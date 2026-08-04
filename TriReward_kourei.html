@@ -791,7 +791,14 @@ function trwSeedJ(){
     var kb = TRW.kubunOf(o,'R7') || (p.kubun? '処遇改善加算'+p.kubun : '');
     if(TRW_DEF7) kb = TRWY.toForm(TRW_DEF7, kb);
     if(KUBUN_PERIOD.indexOf(kb)<0) kb = KUBUN_PERIOD[0];
-    return { name: TRW.officeLabel(o), march: kb, k1: kb, amount1:0, staff440:0,
+    /* 440万円以上の職員数は基本情報側の値を初期値にする（無ければ前の期間から引き継ぐ） */
+    var _s4 = (function(){
+      var m=(o.staff440||{}), order=['R7','R8_45','R8_06'], i=order.indexOf(TRW_YEAR==='R8'?'R8_06':'R7');
+      if(i<0) i=0;
+      for(var j=i;j>=0;j--){ var q=order[j]; if(m[q]!=null&&m[q]!=='') return +m[q]; }
+      return 0;
+    })();
+    return { name: TRW.officeLabel(o), march: kb, k1: kb, amount1:0, staff440:_s4,
              k2:'―', amount2:0,
              reqI: p.reqI!==false, reqII: p.reqII!==false,
              planEst: +p.est||0, _o:o };

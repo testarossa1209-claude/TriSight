@@ -212,7 +212,7 @@ td.no{text-align:center;font-weight:700;color:var(--navy);width:34px}
           <thead>
             <tr>
               <th>No</th><th>事業区分</th><th>サービス種別</th><th>加算区分</th><th>事業所番号</th><th>事業所名</th>
-              <th>都道府県</th><th>市区町村</th><th>地域区分<br><span style="font-weight:normal;font-size:11px">（級地）</span></th><th>特定事業所<br><span style="font-weight:normal;font-size:11px">加算</span></th><th>指定権者</th><th>所在地</th><th>電話</th><th>管理者</th><th></th>
+              <th>都道府県</th><th>市区町村</th><th>地域区分<br><span style="font-weight:normal;font-size:11px">（級地）</span></th><th>特定事業所<br><span style="font-weight:normal;font-size:11px">加算</span></th><th>年額440万円<br><span style="font-weight:normal;font-size:11px">以上の職員数</span></th><th>指定権者</th><th>所在地</th><th>電話</th><th>管理者</th><th></th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>
@@ -316,7 +316,7 @@ function blank(){ return blankDoc().orgs[0]; }
 function newRow(segId){
   return { segId: segId || (M.segments[0]&&M.segments[0].id) || '', svc:'', bizNo:'', name:'',
            pref:'', city:'', shitei:'', addr:'', tel:'', kanri:'', kubun:{},
-           chiiki:'', tokutei:'' };
+           chiiki:'', tokutei:'', staff440:{} };
 }
 var NEEDSAVE = false;
 function load(){
@@ -457,6 +457,29 @@ function renderRows(){
     try{ pos=ae.selectionStart; }catch(e){}
   }
 
+
+/* 年額440万円以上の職員数。頻繁に変わる情報ではないので基本情報側に持つ。
+   ただし昇給・退職で年度をまたげば変わりうるため、加算区分と同じく期間別に保持する。
+   その期間に値が無ければ、ひとつ前の期間の値をそのまま引き継いで表示する
+   （毎年入れ直させないため。変わったときだけ直せばよい）。 */
+function staff440Of(o, pid){
+  var m = o.staff440 || {};
+  if(m[pid]!=null && m[pid]!=='') return {v:m[pid], inherited:false};
+  var idx = PERIODS.map(function(p){return p.id;}).indexOf(pid);
+  for(var j=idx-1;j>=0;j--){
+    var q=PERIODS[j].id;
+    if(m[q]!=null && m[q]!=='') return {v:m[q], inherited:true, from:PERIODS[j].label};
+  }
+  return {v:'', inherited:false};
+}
+function staff440Cell(o,i){
+  var r = staff440Of(o, period);
+  var note = r.inherited
+    ? '<div style="font-size:11px;color:#7a7a7a">'+esc(r.from)+'から引き継ぎ</div>' : '';
+  return '<input data-i="'+i+'" data-f="staff440" inputmode="numeric" value="'+esc(r.v)+'"'+
+         ' style="min-width:70px;text-align:right">'+note;
+}
+
 /* 地域区分（級地）。1単位あたりの単価は「級地の上乗せ割合 × サービスの人件費割合」で決まる。
    事業所ごとの属性なのでここに持ち、トライリワードの計画書はこれを読んで単価を自動計算する。 */
 var CHIIKI_OPTS = [['','（未設定）'],['1','1級地'],['2','2級地'],['3','3級地'],['4','4級地'],
@@ -513,6 +536,7 @@ function tokuteiCell(o,i){
       '<td>'+inp('city',100)+'</td>'+
       '<td>'+chiikiCell(o,i)+'</td>'+
       '<td>'+tokuteiCell(o,i)+'</td>'+
+      '<td>'+staff440Cell(o,i)+'</td>'+
       '<td>'+inp('shitei',110)+'</td>'+
       '<td>'+inp('addr',180)+'</td>'+
       '<td>'+inp('tel',120)+'</td>'+
@@ -520,7 +544,7 @@ function tokuteiCell(o,i){
       '<td>'+(M.offices.length>1?'<button class="rm" data-rm="'+i+'">削除</button>':'')+'</td>'+
     '</tr>';
   });
-  if(!html) html = '<tr><td colspan="15" style="padding:18px;text-align:center;color:var(--soft)">この事業区分の行はまだありません。下の「＋ 事業所・サービスを追加」で作れます。</td></tr>';
+  if(!html) html = '<tr><td colspan="16" style="padding:18px;text-align:center;color:var(--soft)">この事業区分の行はまだありません。下の「＋ 事業所・サービスを追加」で作れます。</td></tr>';
   document.getElementById('rows').innerHTML = html;
   if(key){
     var q=key.split('|');
@@ -570,6 +594,13 @@ document.addEventListener('change', function(e){
     if(!oo.kubun) oo.kubun={};
     if(t.value) oo.kubun[period]=t.value; else delete oo.kubun[period];
     save(); renderPeriod();
+  }
+  else if(t.dataset.i!==undefined && t.dataset.f==='staff440'){
+    var o4=M.offices[+t.dataset.i]; if(!o4) return;
+    if(!o4.staff440) o4.staff440={};
+    var vv=String(t.value||'').replace(/[^0-9]/g,'');
+    if(vv==='') delete o4.staff440[period]; else o4.staff440[period]=+vv;
+    save(); renderRows();
   }
   else if(t.dataset.i!==undefined && (t.dataset.f==='chiiki'||t.dataset.f==='tokutei')){
     /* 級地を変えたら1単位あたりの単価が変わるので、その場で描き直して単価を出す */

@@ -182,7 +182,13 @@
     <h2><span class="stepnum">✓</span> 結果と、次にすること<span class="who auto">出口</span></h2>
     <div class="body">
       <div id="k_verdict"></div>
-      <div class="guide">
+      <div class="expbox" style="margin:14px 0;padding:14px 16px;border:1px solid var(--line,#d8d2c4);border-radius:10px;background:#fbf9f4">
+  <div style="font-weight:700;margin-bottom:8px">別紙様式2（処遇改善計画書）を作る</div>
+  <div id="k_expNote" class="layer-note" style="margin:0 0 10px"></div>
+  <div id="k_expBtns"></div>
+  <div id="k_expLog" class="layer-note" style="margin-top:8px"></div>
+</div>
+<div class="guide">
         <div class="gh">転記ガイド（別紙様式2のどこに何を入れるか）</div>
         <table class="gtbl">
           <thead><tr><th>様式・欄</th><th>セル</th><th>入れる値</th></tr></thead>
@@ -777,7 +783,84 @@ var _rK = render;
 render = function(){ _rK(); trwSaveK(); };
 render();
 
-})();</script>
+})();
+const TRW_DOMAIN='shogai', TRW_YEAR='R7';
+
+/* ---- 別紙様式2（計画書）への書き出し ------------------------------------
+   様式3と同じ TRWX を使う。官製様式のセル値だけを差し替え、数式・書式・
+   入力規則（ドロップダウン）には触れない。openpyxlで保存するとドロップダウンが
+   消えるため人が手で写していた作業は、この方式で不要になる。 */
+(function(){
+  function planDef(){
+    try{ return (window.TRWY && TRWY.def(TRW_DOMAIN, TRW_YEAR)) || null; }catch(e){ return null; }
+  }
+  function planMap(){
+    var d = planDef(); return (d && window.TRWY) ? TRWY.planMap(d) : null;
+  }
+  function paint(){
+    var note = document.getElementById('k_expNote'), btns = document.getElementById('k_expBtns');
+    if(!note || !btns) return;
+    var m = planMap(), d = planDef();
+    if(!m){
+      note.innerHTML = '<b>この年度・分野の様式2のセル位置は未確定です。</b>'
+        + '推測で書き出すと官製様式の計算式が壊れるため、書き出しは出しません。'
+        + '（確定しているのは ' + (d?d.yearLabel:'') + ' 以外の版です）';
+      btns.innerHTML = '';
+      return;
+    }
+    note.innerHTML = '出所：' + m.source
+      + (m.confirmed ? ' <b style="color:#2a6b3f">［現物照合済み］</b>'
+                     : ' <b style="color:#9a5b00">［現物未照合］</b>　書き出した後、Excelで開いて欄が合っているか一度確認してください。');
+    btns.innerHTML = '<button class="addbtn" id="k_pick" style="margin:0">別紙様式2のExcelを選ぶ</button>'
+      + '<input type="file" id="k_file" accept=".xlsx" style="display:none">';
+  }
+
+  /* 画面の入力 → 様式2のどのセルに何を書くか */
+  function buildWrites(){
+    var m = planMap(), d = planDef(), w = [];
+    if(!m) return w;
+    var carry   = +(document.getElementById('k_carry')||{}).value || 0;
+    var improve = +(document.getElementById('k_improve')||{}).value || 0;
+
+    if(m.style === 'kohyoDirect'){
+      var c = m.kohyo.cols;
+      services.forEach(function(s,i){
+        var row = m.kohyo.rowStart + i * (m.kohyo.rowStep||1);
+        w.push({sheet:m.kohyo.sheet, ref:c.svc+row,   value:s.svc,            label:'サービス名（事業所'+(i+1)+'）'});
+        w.push({sheet:m.kohyo.sheet, ref:c.units+row, value:+s.units||0, num:true, label:'報酬総単位数（事業所'+(i+1)+'）'});
+        w.push({sheet:m.kohyo.sheet, ref:c.price+row, value:+s.price||0, num:true, label:'単価（事業所'+(i+1)+'）'});
+        w.push({sheet:m.kohyo.sheet, ref:c.kubun+row, value:TRWY.toForm(d, s.kubun), label:'加算区分（事業所'+(i+1)+'）'});
+      });
+      w.push({sheet:m.soukatsu.sheet, ref:m.soukatsu.carry,   value:carry,   num:true, label:'②前年度からの繰越額'});
+      w.push({sheet:m.soukatsu.sheet, ref:m.soukatsu.improve, value:improve, num:true, label:'④賃金改善見込額'});
+    }
+    return w;
+  }
+
+  document.addEventListener('click', function(e){
+    if(e.target && e.target.id==='k_pick'){ var f=document.getElementById('k_file'); if(f) f.click(); }
+  });
+  document.addEventListener('change', function(e){
+    if(!e.target || e.target.id!=='k_file') return;
+    var file = e.target.files && e.target.files[0];
+    if(!file) return;
+    var log = document.getElementById('k_expLog');
+    log.innerHTML = '書き込み中…';
+    var writes = buildWrites();
+    if(!writes.length){ log.innerHTML = '書き込む内容がありません。ステップ1の入力を確認してください。'; return; }
+    TRWX.build(file, writes, function(r){
+      if(!r.ok){ log.innerHTML = '<b>書き出せませんでした：</b>' + (r.msg||'') ; return; }
+      TRWX.download(r.blob, file.name.replace(/\.xlsx$/i,'') + '_TriReward.xlsx');
+      var miss = (r.miss && r.miss.length) ? '<br><b>見つからなかった欄：</b>' + r.miss.join('、') : '';
+      log.innerHTML = '<b>書き出しました（' + r.log.length + '件）。</b><br>' + r.log.join('<br>') + miss;
+    });
+    e.target.value = '';
+  });
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', paint);
+  else paint();
+})();
+</script>
 <script>(function(){
 const root=document.getElementById('tab-jisseki');
 

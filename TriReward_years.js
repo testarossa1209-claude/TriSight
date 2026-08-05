@@ -151,6 +151,65 @@ var JINKENHI_KAIGO_55 = ['通所リハビリテーション','介護予防通所
    地域区分（級地）そのものは介護保険と障害福祉で共通（2026-08-05・宏史さん確認）。 */
 var JINKENHI_SHOGAI_60 = ['居宅介護','重度訪問介護','同行援護','行動援護'];
 
+
+/* --- 様式2（処遇改善計画書）のセルマップ ------------------------------------
+ * 様式3と違い、様式2は分野・年度で構造そのものが変わる。
+ *   介護R7 … 個票2-2へサービス名・報酬総単位数・単価・加算区分を直接書く
+ *   障害R8 … 基本情報シートの「一月あたり報酬総額／加算総額」が起点で、
+ *            個票のL列へ自動転記され、加算率×月数で個票AC列が計算される
+ * したがって共通の1枚のマップにまとめてはいけない。
+ *
+ * confirmed … 官製様式の現物で照合したか。
+ *   false のマップは書き出せるが、画面に「現物未照合」と出す。
+ *   出所を消して断定しないための表示であり、必ず source と対で持つ。
+ * ------------------------------------------------------------------------ */
+var PLAN_CELLMAP = {
+  kaigo: {
+    R7: {
+      confirmed: false,
+      source   : '画面の転記ガイドが保持していたセル位置。官製様式の現物との照合記録は無い。',
+      style    : 'kohyoDirect',          /* 個票へ直接書く方式 */
+      kohyo: {
+        sheet   : ['2-2','個票'],
+        rowStart: 16, rowStep: 2,        /* 事業所i → 行 16 + i*2 */
+        cols    : { svc:'K', units:'L', price:'M', kubun:'P' }
+      },
+      soukatsu: {
+        sheet  : ['2-1','総括'],
+        carry  : 'Q18',                  /* （1）② 前年度からの繰越額 */
+        improve: 'Q20'                   /* （1）④ 賃金改善見込額 */
+      }
+    }
+  },
+  shogai: {
+    R8: {
+      confirmed: true,
+      source   : 'R8都障_加算計画0408.xlsx（東京都配布の現物）を2026-06-01に解析して確定。',
+      style    : 'baseFirst',            /* 基本情報の月平均額が起点。個票は自動計算 */
+      base: {
+        sheet   : ['基本情報'],
+        rowStart: 35,
+        cols    : { monthlyRepo:'AD', monthlyKasan:'AE' }   /* AFは差額の数式 */
+      },
+      kohyo: {
+        /* 個票は2層（4・5月／6月以降）。L列は基本情報から自動転記、AC列は数式。
+           人が触るのはキャリアパス要件の2列だけ。 */
+        sheets  : [['2-2','４、５月'], ['2-3','６月以降']],
+        rowStart: 13,
+        cols    : { cpI_II:'AG', cpIII:'AH' },
+        formulaCols: ['L','AC']
+      },
+      soukatsu: {
+        sheet     : ['2-1','総括'],
+        improveAll: 'Q18',   /* ② 全体の賃金改善見込額（＝①＋1円） */
+        improveInc: 'Q22',   /* ④ 増加分の配分（＝③＋1円） */
+        monthly   : 'T32',   /* （1）② 月額賃金改善見込額（＝T31＋1円）。W111が参照 */
+        formulas  : { kasan:'Q16', inc:'Q21', halfIV:'T31' }
+      }
+    }
+  }
+};
+
 var DEFS = {};
 
 /* ========================= kaigo ========================= */
@@ -168,6 +227,7 @@ DEFS['kaigo']['R7'] = {
   grantLabel  : '令和6年4・5月分の処遇改善支援補助金の総額',
   subsidyLabel: '介護人材確保・職場環境改善等事業から人件費に充てた額',
   cellmap     : CELLMAP_R7,
+  planCellmap : PLAN_CELLMAP.kaigo.R7,
   exclude440  : STAFF440_EXCLUDE['kaigo'],
   req2Kubun   : REQ2_KUBUN_KAIGO,
   marchOptions  : MARCH_KAIGO,
@@ -237,6 +297,7 @@ DEFS['shogai']['R8'] = {
   grantLabel  : '令和6年4・5月分の処遇改善臨時特例交付金の総額',
   subsidyLabel: '障害福祉人材確保・職場環境改善等事業から人件費に充てた額',
   cellmap     : null,        /* 令和8年度様式の現物で確定させる */
+  planCellmap : PLAN_CELLMAP.shogai.R8,
   exclude440  : STAFF440_EXCLUDE['shogai'],
   services    : DEFS['shogai']['R7'].services,
   rates       : null,        /* 令和8年度の加算率は現物で確定させる */
@@ -284,6 +345,9 @@ var TRWY = {
   periodList: function(def){ return TRWY.period2List(def); },
   /* 要件欄（T・V列）へ書く値。満たさなければ空欄を返す（×を書くと様式の集計に乗らない） */
   reqValue: function(def, ok){ return ok ? (def.reqMark||'○') : ''; },
+
+  /* 様式2のセルマップ。無ければ null（画面は書き出しボタンを出さない） */
+  planMap: function(def){ return (def && def.planCellmap) || null; },
 
   /* 地域区分の一覧 */
   chiikiList: function(){ return CHIIKI.slice(); },

@@ -634,7 +634,15 @@ function renderSvc(){
         <div class="fld"><label>月額賃金改善要件Ⅰを満たす</label><select data-i="${i}" data-f="reqI"><option value="true" ${s.reqI?"selected":""}>○ 満たす</option><option value="false" ${!s.reqI?"selected":""}>× 満たさない</option></select></div>
         <div class="fld"><label>月額賃金改善要件Ⅱを満たす</label><select data-i="${i}" data-f="reqII"><option value="true" ${s.reqII?"selected":""}>○ 満たす</option><option value="false" ${!s.reqII?"selected":""}>× 満たさない</option></select></div>
       </div>
-      <div class="calcbox">加算率 <b>${rateTxt}</b> ／ 月額見込 <b>${yen(e.monthly)}</b> ／ 年間加算見込額 <b>${yen(e.est)}</b></div>
+      <div class="calcbox">加算率 <b>${rateTxt}</b> ／ 月額見込 <b>${yen(e.monthly)}</b> ／ 年間加算見込額 <b>${yen(e.est)}</b>
+        <div style="margin-top:4px;font-size:11px;color:#7a7a7a;line-height:1.6">
+          サービス費合計：${Number(s.units||0).toLocaleString("ja-JP")}単位 × ${Number(s.price)||0}円 ＝ ${yen(Math.round((Number(s.units)||0)*(Number(s.price)||0)))}<br>
+          加算分：${Number(s.units||0).toLocaleString("ja-JP")}単位 × ${rateTxt} ＝ ${Math.round((Number(s.units)||0)*(estOf(s).rate||0)).toLocaleString("ja-JP")}単位<br>
+          　　　　
+          　　　　${Math.round((Number(s.units)||0)*(estOf(s).rate||0)).toLocaleString("ja-JP")}単位 × ${Number(s.price)||0}円 ＝ ${yen(e.monthly)}（1か月）<br>
+          　　　　${yen(e.monthly)} × ${Number(s.months)||0}か月 ＝ ${yen(e.est)}（年間）
+        </div>
+      </div>
     </div>`;}).join("");
 }
 

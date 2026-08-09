@@ -8,7 +8,7 @@
 //   忘れたら黙って壊れる仕組みそのものが誤りだったため、
 //   当アプリ自身のHTML・JS・JSONについてはHTTPキャッシュを迂回して常に取り直す方式へ変更する。
 //   これにより、GitHubへ上げた内容が次回起動時に必ず反映される。VERSIONは識別用に残すのみ。
-const VERSION = 'trigate-v0.3.0-20260727';
+const VERSION = 'trigate-v0.4.0-20260809';
 
 // キャッシュを迂回して取り直す対象（同一オリジンの、このアプリ自身のファイル）
 function mustBeFresh(request){

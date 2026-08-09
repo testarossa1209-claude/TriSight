@@ -3,26 +3,26 @@
   "short_name": "TriGate",
   "description": "行政や外部から届いた補助金・助成金の案内PDFを入れると、当社が対象になりそうか・締切・逆算タスク・必要書類を返す受付。",
   "lang": "ja",
-  "start_url": "https://testarossa1209-claude.github.io/TriSight/TriGate.html",
-  "scope": "https://testarossa1209-claude.github.io/TriSight/TriGate.html",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#f3f2ef",
   "theme_color": "#16213a",
   "icons": [
     {
-      "src": "https://testarossa1209-claude.github.io/TriSight/TriGate_icon_192.png",
+      "src": "TriGate_icon_192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://testarossa1209-claude.github.io/TriSight/TriGate_icon_512.png",
+      "src": "TriGate_icon_512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://testarossa1209-claude.github.io/TriSight/TriGate_icon_512.png",
+      "src": "TriGate_icon_512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -30,7 +30,7 @@
   ],
   "file_handlers": [
     {
-      "action": "https://testarossa1209-claude.github.io/TriSight/TriGate.html",
+      "action": "./",
       "accept": {
         "application/pdf": [
           ".pdf"

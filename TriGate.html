@@ -387,7 +387,9 @@ body.presenMode table{font-size:1.02em}
       <button id="digBtn" class="rbtn">新着を掘る</button>
     </div>
     <div class="digrow" style="margin-top:8px">
-      <label class="digfile">企業基礎情報：<input type="file" id="digCompanyFile" accept=".json,application/json"></label>
+      <label class="digfile">企業基礎情報を追加：<input type="file" id="digCompanyFile" accept=".json,application/json"></label>
+        <label class="digfile" id="digCompanySelWrap">診断する会社：<select id="digCompanySel"></select></label>
+        <button type="button" class="rc-toggle" id="digCompanyDel" title="選んでいる会社の基礎情報を、この端末から消します">この会社を消す</button>
       <span class="digstatus" id="digCompanyStatus" style="margin-top:0">未読み込み（機械足切りに必要です）</span>
     </div>
     <div class="digstatus" id="digStatus"></div>
@@ -786,6 +788,36 @@ body.presenMode table{font-size:1.02em}
       cell.innerHTML = e(row.dataset.title || "") + badgeHtml;
     }
     try{ company = JSON.parse(localStorage.getItem("trisight_dig_company") || "null"); }catch(_){ company = null; }
+    /* 2026-08-13追加：会社ごとの基礎情報を端末に貯めて、選んで切り替えられるようにする。
+       協会や代理店が多数の会員企業を順に診断する使い方を想定（1社ずつ読み直す必要がなくなる） */
+    const TS_LIB_KEY = "trisight_dig_company_lib";
+    function tsLib(){
+      let m = {};
+      try{ m = JSON.parse(localStorage.getItem(TS_LIB_KEY) || "{}"); }catch(e){ m = {}; }
+      return (m && typeof m === "object" && !Array.isArray(m)) ? m : {};
+    }
+    function tsLibSave(name, obj){
+      if(!name) return;
+      const m = tsLib(); m[name] = obj;
+      try{ localStorage.setItem(TS_LIB_KEY, JSON.stringify(m)); }catch(e){
+        alert("この端末に保存できる容量を超えました。使わない会社を「この会社を消す」で整理してください。");
+      }
+    }
+    function tsLibDelete(name){
+      const m = tsLib(); delete m[name];
+      try{ localStorage.setItem(TS_LIB_KEY, JSON.stringify(m)); }catch(e){}
+    }
+    function tsRenderCompanySel(){
+      const sel = document.getElementById("digCompanySel");
+      if(!sel) return;
+      const m = tsLib(), names = Object.keys(m).sort();
+      const cur = tsCompanyName();
+      if(names.length === 0){
+        sel.innerHTML = '<option value="">（まだ登録がありません）</option>';
+      }else{
+        sel.innerHTML = names.map(n => '<option value="'+n.replace(/"/g,"&quot;")+'"'+(n===cur?" selected":"")+'>'+n+'</option>').join("");
+      }
+    }
     /* 2026-08-13追加：いま読み込んでいる会社の名前。候補・見込み額を会社ごとに分けるための鍵 */
     function tsCompanyName(){
       if(!company || !company["会社"]) return "";
@@ -804,6 +836,7 @@ body.presenMode table{font-size:1.02em}
         try{ localStorage.removeItem("trisight_dig_company_name"); }catch(e){}
       }
       if(typeof pjRenderFigs === "function"){ try{ pjRenderFigs(); }catch(e){} }
+      tsRenderCompanySel();
     }
     compLabel();
     if(compIn){
@@ -815,12 +848,53 @@ body.presenMode table{font-size:1.02em}
           try{
             company = JSON.parse(r.result);
             localStorage.setItem("trisight_dig_company", JSON.stringify(company));
+            const nm0 = tsCompanyName();
+            if(!nm0){
+              compSt.textContent = "会社の名称が入っていません。JSONの「会社」→「名称」を入れてから読み込んでください（会社ごとの仕分けができません）。";
+              return;
+            }
+            tsLibSave(nm0, company);
             compLabel();
           }catch(_){
             compSt.textContent = "JSONの読み込みに失敗しました。ファイルの形式を確認してください。";
           }
         };
         r.readAsText(f, "utf-8");
+        ev.target.value = "";
+      });
+    }
+    /* 会社の切替（2026-08-13追加）：登録済みの会社を選ぶと、基礎情報も見込み額もその会社のものに入れ替わる */
+    const compSel = document.getElementById("digCompanySel");
+    if(compSel){
+      compSel.addEventListener("change", ()=>{
+        const nm = compSel.value;
+        if(!nm) return;
+        const obj = tsLib()[nm];
+        if(!obj){ compSt.textContent = "この会社の基礎情報が見つかりませんでした。"; return; }
+        company = obj;
+        try{ localStorage.setItem("trisight_dig_company", JSON.stringify(company)); }catch(e){}
+        compLabel();
+        const st = document.getElementById("digStatus");
+        if(st) st.textContent = "診断する会社を「"+nm+"」に切り替えました。あらためて「新着を掘る」を押してください。";
+      });
+    }
+    const compDel = document.getElementById("digCompanyDel");
+    if(compDel){
+      compDel.addEventListener("click", ()=>{
+        const nm = (compSel && compSel.value) || "";
+        if(!nm){ alert("消す会社が選ばれていません。"); return; }
+        if(!confirm("「"+nm+"」の企業基礎情報を、この端末から消します。\n（判定済みの候補は残ります）\n\nよろしいですか？")) return;
+        tsLibDelete(nm);
+        const names = Object.keys(tsLib()).sort();
+        if(names.length){
+          company = tsLib()[names[0]];
+          try{ localStorage.setItem("trisight_dig_company", JSON.stringify(company)); }catch(e){}
+        }else{
+          company = null;
+          try{ localStorage.removeItem("trisight_dig_company"); localStorage.removeItem("trisight_dig_company_name"); }catch(e){}
+          compSt.textContent = "未読み込み（機械足切りに必要です）";
+        }
+        compLabel();
       });
     }
 

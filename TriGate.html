@@ -295,6 +295,18 @@
     border-radius:6px;padding:4px 10px;font-size:12.5px;cursor:pointer;font-family:inherit}
   .rc-threshsel:hover{border-color:var(--ink)}
   .rc-threshsel:focus{outline:none;border-color:var(--ink)}
+
+/* ===== 2026-08-13 追加：プレゼン表示・キーワード欄ラベル ===== */
+.digkwlabel{font-size:12px;color:var(--muted);align-self:center;margin-right:6px;white-space:nowrap}
+#tsPresenBtn{position:fixed;right:14px;bottom:14px;z-index:9999;padding:10px 16px;border-radius:8px;
+  border:1px solid #888;background:#fff;color:#222;font-size:13px;cursor:pointer;opacity:.85;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+#tsPresenBtn:hover{opacity:1}
+body.presenMode{font-size:120%}
+body.presenMode #tsPresenBtn{font-size:12px;opacity:.35}
+body.presenMode #tsPresenBtn:hover{opacity:1}
+body.presenMode .digfile,
+body.presenMode .presenHide{display:none !important}
+body.presenMode table{font-size:1.02em}
 </style>
 </head>
 <body>
@@ -370,7 +382,8 @@
   <div class="step"><span class="no">発掘</span><h2>新着の補助金を掘る</h2><span class="hint">Jグランツで受付中の案件を、リレー経由で探しに行きます</span></div>
   <div class="card">
     <div class="digrow">
-      <input type="text" id="digKeyword" value="事業" placeholder="キーワード（2文字以上・例：介護、看護、賃上げ）">
+      <label class="digkwlabel" for="digKeyword">検索する語</label>
+        <input type="text" id="digKeyword" value="事業" placeholder="制度名に出る語を入れます（例：事業、雇用、人材、賃上げ）">
       <button id="digBtn" class="rbtn">新着を掘る</button>
     </div>
     <div class="digrow" style="margin-top:8px">
@@ -389,6 +402,7 @@
     <div class="rc-head">
       <h3>見込み額（要件充足・除外条件なし）</h3>
       <button type="button" class="rc-toggle" id="pjToggleBtn">内訳を見る</button>
+        <button type="button" class="rc-toggle" id="pjClearBtn" title="別の会社を診断する前に押してください">この会社の分だけにする（候補をクリア）</button>
     </div>
     <div class="rc-figs" id="pjFigs"></div>
     <div class="rc-thresh" id="pjThreshRow">
@@ -891,7 +905,8 @@
       if(n==null || n==="") return "—";
       const v = Number(n);
       if(isNaN(v)) return e(n);
-      if(v >= 100000000) return (v/100000000).toLocaleString("ja-JP",{maximumFractionDigits:1})+"億円";
+      if(v === 0) return "記載なし";
+  if(v >= 100000000) return (v/100000000).toLocaleString("ja-JP",{maximumFractionDigits:1})+"億円";
       if(v >= 10000) return Math.round(v/10000).toLocaleString("ja-JP")+"万円";
       return v.toLocaleString("ja-JP")+"円";
     };
@@ -921,7 +936,7 @@
         const data = await res.json();
         const list = Array.isArray(data.result) ? data.result : [];
         if(list.length === 0){
-          st.textContent = "「"+kw+"」で受付中の補助金は見つかりませんでした。キーワードを変えてお試しください。";
+          st.textContent = "「"+kw+"」で受付中の補助金は見つかりませんでした。ここは業種名や団体名を入れる欄ではなく、制度そのものの名前に出てくる語を入れる欄です（例：事業、雇用、人材、賃上げ）。業種による絞り込みは、読み込んだ企業基礎情報の側で自動的に行われます。";
           return;
         }
         let show = list;
@@ -2367,8 +2382,9 @@
     if(minSel) minSel.value = String(min);
     const code = rcCurrentCode();
     const codeLabel = code ? rcMaskCode(code) : "未設定分";
-    if($("pjThreshLabel")) $("pjThreshLabel").textContent = "上限の目安（管理コード："+codeLabel+"）：";
-    if($("pjThreshMinLabel")) $("pjThreshMinLabel").textContent = "下限の目安（管理コード："+codeLabel+"）：";
+    const presen = document.body.classList.contains("presenMode");
+    if($("pjThreshLabel")) $("pjThreshLabel").textContent = presen ? "上限の目安：" : "上限の目安（管理コード："+codeLabel+"）：";
+    if($("pjThreshMinLabel")) $("pjThreshMinLabel").textContent = presen ? "下限の目安：" : "下限の目安（管理コード："+codeLabel+"）：";
   }
   /* 範囲外別枠（2026-08-01導入）：合計に算入しなかった案件だけを、内訳を開かずに常時見せる */
   function pjRenderOutliers(list, min, max){
@@ -2446,6 +2462,43 @@
       '<table class="rctbl"><thead><tr><th>案件名</th><th>見込み額（上限額）</th><th>合計への算入</th><th>判定日</th></tr></thead><tbody>'+rows+'</tbody></table>'+
       '<div class="rc-empty" style="margin-top:8px">※上限額は制度の上限であり、実際の交付額とは異なる場合があります。'+pjYen(max)+'を超える案件は外れ値の可能性があるため、'+pjYen(min)+'未満の案件は書類準備の労力に見合わない可能性があるため、それぞれ自動集計から除外し、人の目での確認をお願いしています。給付方式・除外条件の判定はJグランツ掲載情報と企業基礎情報の宣言のみが根拠です。</div>';
   }
+  /* 候補のクリア（2026-08-13追加）：別会社の判定結果が積み上がって見込み額が膨らむのを防ぐ */
+  function pjClearCandidates(){
+    const n = pjCandidates().length;
+    if(n === 0){ alert("クリアする候補はありません。"); return; }
+    if(!confirm("これまでに判定した候補 "+n+" 件を消します。\n見込み額は、いまから判定する会社の分だけになります。\n（獲得実績の記録は消えません）\n\nよろしいですか？")) return;
+    try{ localStorage.removeItem("trisight_dig_candidates"); }catch(e){}
+    pjRenderFigs();
+    if($("pjDetail") && $("pjDetail").classList.contains("on")) pjRenderDetail();
+    pjRefreshRowBadges();
+  }
+  if($("pjClearBtn")) $("pjClearBtn").addEventListener("click", pjClearCandidates);
+
+  /* プレゼン表示（2026-08-13追加）：全画面・文字大・管理コードなど内部表示を隠す */
+  function tsPresenToggle(){
+    const on = document.body.classList.toggle("presenMode");
+    const b = document.getElementById("tsPresenBtn");
+    if(b) b.textContent = on ? "プレゼン表示を終了" : "プレゼン表示";
+    try{
+      if(on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+      if(!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+    }catch(e){}
+    try{ pjRenderThreshButtons(); }catch(e){}
+  }
+  (function(){
+    const b = document.createElement("button");
+    b.id = "tsPresenBtn"; b.type = "button"; b.textContent = "プレゼン表示";
+    b.addEventListener("click", tsPresenToggle);
+    document.body.appendChild(b);
+    document.addEventListener("fullscreenchange", ()=>{
+      if(!document.fullscreenElement && document.body.classList.contains("presenMode")){
+        document.body.classList.remove("presenMode");
+        b.textContent = "プレゼン表示";
+        try{ pjRenderThreshButtons(); }catch(e){}
+      }
+    });
+  })();
+
   $("pjToggleBtn").addEventListener("click", ()=>{
     const on = $("pjDetail").classList.toggle("on");
     $("pjToggleBtn").textContent = on ? "内訳を閉じる" : "内訳を見る";

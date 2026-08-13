@@ -405,6 +405,7 @@ body.presenMode table{font-size:1.02em}
       <h3>見込み額（要件充足・除外条件なし）<span id="pjCompanyName" style="font-weight:400;font-size:12px;margin-left:8px"></span></h3>
       <button type="button" class="rc-toggle" id="pjToggleBtn">内訳を見る</button>
         <button type="button" class="rc-toggle" id="pjClearBtn" title="別の会社を診断する前に押してください">この会社の分だけにする（候補をクリア）</button>
+        <button type="button" class="rc-toggle" id="pjReJudgeBtn" title="企業基礎情報を直したあとは、ここを押してから発掘し直してください">判定をやり直す（記憶を消す）</button>
     </div>
     <div class="rc-figs" id="pjFigs"></div>
     <div class="rc-thresh" id="pjThreshRow">
@@ -955,7 +956,12 @@ body.presenMode table{font-size:1.02em}
 
       const ind = d.industry || "";
       const tokens = String(fil["業種"] || "").split(/[，,、\s]+/).filter(Boolean);
-      const indOk = !ind || ind.includes("指定なし") || tokens.some(tk => ind.includes(tk));
+      /* 2026-08-13：公募側が業種を限定していない表記（全業種・業種不問など）は、
+         会社側のトークンに頼らずコードで通す。以前は基礎情報に「全業種」等の語を入れて
+         代用していたが、その語が他の判定にも効いてしまい誤選択の一因になっていた。 */
+      const ANY_IND = ["指定なし","全業種","全ての業種","すべての業種","業種不問","不問","制限なし","限定なし","特に定めなし","問わない","全産業"];
+      const indAny = ANY_IND.some(w => ind.includes(w));
+      const indOk = !ind || indAny || tokens.some(tk => ind.includes(tk));
       results.push({k:"対象業種", v:(ind || "（指定なし）"), ok:indOk});
 
       const t = d.target_number_of_employees || "";
@@ -1038,9 +1044,21 @@ body.presenMode table{font-size:1.02em}
           if(show.length > 1){
             st.textContent = "受付中 "+list.length+" 件 → 粗足切り "+show.length+" 件 → 案件名をAIで一括仕分け中…（API 1回）";
             try{
-              const kept = await aiTitleSort(show);
-              if(Array.isArray(kept)){
-                show = show.filter((it, i) => kept.includes(i + 1));
+              /* 記憶済みの案件はAIに問い直さない（実行ごとの揺れを止めるため） */
+              const askList = show.filter(it => tsJudgeGet("sieve", it.id) === null);
+              let keptSet = null;
+              if(askList.length){
+                const keptIdx = await aiTitleSort(askList);
+                if(Array.isArray(keptIdx)){
+                  askList.forEach((it, i) => { tsJudgeSet("sieve", it.id, keptIdx.includes(i + 1)); });
+                  keptSet = true;
+                }
+              }else{
+                keptSet = true;
+              }
+              const kept = keptSet;
+              if(kept){
+                show = show.filter(it => tsJudgeGet("sieve", it.id) !== false);
                 if(show.length === 0){
                   st.textContent = "受付中 "+list.length+" 件　※案件名のAI仕分けで全件が無関係と判定されました。";
                   return;
@@ -1174,7 +1192,7 @@ body.presenMode table{font-size:1.02em}
       const res = await fetch(RELAY, {
         method: "POST",
         headers: {"Content-Type": "application/json", "x-trisight-code": code},
-        body: JSON.stringify({ model: GATE_MODEL, max_tokens: 1500, system: GATE_SYSTEM,
+        body: JSON.stringify({ model: GATE_MODEL, max_tokens: 1500, temperature: 0, system: GATE_SYSTEM,
           messages: [{ role: "user", content: userMsg }] })
       });
       if(tsAuthFail(res.status)) throw new Error("認証エラー（401）：認証コードを確認してください。");
@@ -1218,7 +1236,7 @@ body.presenMode table{font-size:1.02em}
       const res = await fetch(RELAY, {
         method: "POST",
         headers: {"Content-Type": "application/json", "x-trisight-code": code},
-        body: JSON.stringify({ model: GATE_MODEL, max_tokens: 4000, system: sys,
+        body: JSON.stringify({ model: GATE_MODEL, max_tokens: 4000, temperature: 0, system: sys,
           messages: [{ role: "user", content: userMsg }] })
       });
       if(tsAuthFail(res.status)) throw new Error("認証エラー（401）：認証コードを確認してください。");
@@ -1242,9 +1260,15 @@ body.presenMode table{font-size:1.02em}
       const itemById = {};
       items.forEach(it => { if(it.id) itemById[it.id] = it; });
       const resultMap = {};
-      for(let i = 0; i < ids.length; i += GIVE_CHUNK){
-        const chunk = ids.slice(i, i + GIVE_CHUNK);
-        if(onProgress) onProgress(i, ids.length);
+      /* 記憶済みの案件は問い直さない（同じ会社・同じ案件なら毎回同じ結果になる） */
+      const askIds = [];
+      ids.forEach(id => {
+        const memo = tsJudgeGet("give", id);
+        if(memo) resultMap[id] = memo; else askIds.push(id);
+      });
+      for(let i = 0; i < askIds.length; i += GIVE_CHUNK){
+        const chunk = askIds.slice(i, i + GIVE_CHUNK);
+        if(onProgress) onProgress(i, askIds.length);
         let arr = null;
         try{
           arr = await aiGiveBatchCheck(chunk);
@@ -1252,13 +1276,13 @@ body.presenMode table{font-size:1.02em}
           /* このチャンクは判定失敗として飛ばす。他チャンクの処理は継続する（見込み額は分かる範囲だけ反映） */
         }
         if(Array.isArray(arr)){
-          arr.forEach(g => { if(g && g.id) resultMap[g.id] = g; });
+          arr.forEach(g => { if(g && g.id){ resultMap[g.id] = g; tsJudgeSet("give", g.id, g); } });
         }
         /* このチャンク分を候補storageへ反映し、対応する行のバッジ・見込み額をその場で更新する
            （一覧が既に表示された後に判定が追いついてくる形にするため、チャンク完了ごとに反映する） */
         try{
           let cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]");
-          chunk.forEach(id => {
+          (i === 0 ? ids : chunk).forEach(id => {
             if(!resultMap[id]) return;
             const it = itemById[id];
             const d = digDetails[id] || {};
@@ -1278,7 +1302,28 @@ body.presenMode table{font-size:1.02em}
           if($("pjDetail") && $("pjDetail").classList.contains("on")) pjRenderDetail();
         }
       }
-      if(onProgress) onProgress(ids.length, ids.length);
+      if(askIds.length === 0){
+        /* 全件が記憶済み＝APIを呼んでいない。それでも一覧のバッジと候補には反映する */
+        try{
+          let cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]");
+          ids.forEach(id => {
+            if(!resultMap[id]) return;
+            const it = itemById[id];
+            const d = digDetails[id] || {};
+            const g = { "判定": "要確認", "給付方式": resultMap[id]["給付方式"], "除外条件抵触": !!resultMap[id]["除外条件抵触"] };
+            if(!cands.some(c => c.id === id)){
+              cands.push({ id: id, title: (it && (it.title || it.name)) || "", "会社": tsCompanyKey(), saved: new Date().toISOString() });
+            }
+            cands = cands.map(c => c.id === id
+              ? Object.assign(c, { gate: g, amount_max: (d.subsidy_max_limit != null ? d.subsidy_max_limit : null), gated: new Date().toISOString(), gate_lite: true })
+              : c);
+            setDigRowBadge(id, pjBadgeHtml(g, d.subsidy_max_limit, false));
+          });
+          localStorage.setItem("trisight_dig_candidates", JSON.stringify(cands));
+        }catch(_){}
+        if(typeof pjRenderFigs === "function"){ pjRenderFigs(); if($("pjDetail") && $("pjDetail").classList.contains("on")) pjRenderDetail(); }
+      }
+      if(onProgress) onProgress(askIds.length, askIds.length);
       return resultMap;
     }
 
@@ -1304,6 +1349,36 @@ body.presenMode table{font-size:1.02em}
       return h;
     }
 
+    /* ---- 判定の記憶（2026-08-13追加）----
+       AIの判定は同じ入力でも実行ごとに揺れる。同じ会社の同じ案件について一度出た判定を端末に記憶し、
+       次回以降はそれを使う。これにより「同じ会社・同じ条件なら何度実行しても同じ結果」になる。
+       記憶は会社ごとに分かれており、企業基礎情報を直した場合はやり直しボタンで消せる。 */
+    const TS_JUDGE_KEY = "trisight_judge_memo";
+    function tsJudgeMemo(){
+      let m = {};
+      try{ m = JSON.parse(localStorage.getItem(TS_JUDGE_KEY) || "{}"); }catch(e){ m = {}; }
+      return (m && typeof m === "object" && !Array.isArray(m)) ? m : {};
+    }
+    function tsJudgeKey(kind, id){
+      return (localStorage.getItem("trisight_dig_company_name") || "") + "\u0001" + kind + "\u0001" + String(id);
+    }
+    function tsJudgeGet(kind, id){
+      const v = tsJudgeMemo()[tsJudgeKey(kind, id)];
+      return (v === undefined) ? null : v;
+    }
+    function tsJudgeSet(kind, id, val){
+      const m = tsJudgeMemo();
+      m[tsJudgeKey(kind, id)] = val;
+      try{ localStorage.setItem(TS_JUDGE_KEY, JSON.stringify(m)); }catch(e){}
+    }
+    function tsJudgeClearCompany(){
+      const pre = (localStorage.getItem("trisight_dig_company_name") || "") + "\u0001";
+      const m = tsJudgeMemo(), out = {};
+      Object.keys(m).forEach(k => { if(k.indexOf(pre) !== 0) out[k] = m[k]; });
+      try{ localStorage.setItem(TS_JUDGE_KEY, JSON.stringify(out)); }catch(e){}
+    }
+    window.tsJudgeClearCompany = tsJudgeClearCompany;
+
     /* ---- 案件名の一括AI仕分け（1回のAPI呼び出しで題名を粗選別） 2026-07-13 ---- */
     async function aiTitleSort(items){
       const code = tsCode();
@@ -1323,7 +1398,7 @@ body.presenMode table{font-size:1.02em}
       const res = await fetch(RELAY, {
         method: "POST",
         headers: {"Content-Type": "application/json", "x-trisight-code": code},
-        body: JSON.stringify({ model: GATE_MODEL, max_tokens: 2000, system: sys,
+        body: JSON.stringify({ model: GATE_MODEL, max_tokens: 2000, temperature: 0, system: sys,
           messages: [{ role: "user", content: userMsg }] })
       });
       if(tsAuthFail(res.status)) throw new Error("認証エラー（401）");
@@ -2615,6 +2690,12 @@ body.presenMode table{font-size:1.02em}
     pjRefreshRowBadges();
   }
   if($("pjClearBtn")) $("pjClearBtn").addEventListener("click", pjClearCandidates);
+  if($("pjReJudgeBtn")) $("pjReJudgeBtn").addEventListener("click", ()=>{
+    const nm = tsCompanyKey();
+    if(!confirm((nm ? "「"+nm+"」" : "この端末")+"について記憶している判定結果を消します。\n次の発掘で、AIがすべて判定し直します（時間がかかります）。\n\n企業基礎情報を直したときは、こちらを押してください。\n\nよろしいですか？")) return;
+    try{ if(typeof tsJudgeClearCompany === "function") tsJudgeClearCompany(); }catch(e){}
+    alert("判定の記憶を消しました。あらためて「新着を掘る」を押してください。");
+  });
 
   /* プレゼン表示（2026-08-13追加）：全画面・文字大・管理コードなど内部表示を隠す */
   function tsPresenToggle(){

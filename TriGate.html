@@ -899,7 +899,38 @@ body.presenMode table{font-size:1.02em}
       });
     }
 
-    /* ---- 第一段：機械足切り（地域・業種・従業員規模） ---- */
+    /* ---- 2026-08-13追加：金額文字列（「4億2,000万円」等）を数値へ ---- */
+    function tsParseYen(v){
+      if(v == null) return null;
+      if(typeof v === "number" && isFinite(v)) return v;
+      let s = String(v).replace(/[，,\s　]/g, "").replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+      if(!s) return null;
+      let total = 0, matched = false;
+      const m1 = s.match(/([0-9]+(?:\.[0-9]+)?)兆/); if(m1){ total += Number(m1[1]) * 1e12; matched = true; }
+      const m2 = s.match(/([0-9]+(?:\.[0-9]+)?)億/); if(m2){ total += Number(m2[1]) * 1e8; matched = true; }
+      const m3 = s.match(/([0-9]+(?:\.[0-9]+)?)万/); if(m3){ total += Number(m3[1]) * 1e4; matched = true; }
+      if(matched){
+        const tail = s.split(/[兆億万]/).pop().match(/^([0-9]+)/);
+        if(tail) total += Number(tail[1]);
+        return total;
+      }
+      const m4 = s.match(/([0-9]+)/);
+      return m4 ? Number(m4[1]) : null;
+    }
+    function tsYenBrief(n){
+      n = Number(n); if(!isFinite(n)) return "—";
+      if(n >= 1e8) return (n / 1e8).toLocaleString("ja-JP", {maximumFractionDigits:1}) + "億円";
+      if(n >= 1e4) return Math.round(n / 1e4).toLocaleString("ja-JP") + "万円";
+      return n.toLocaleString("ja-JP") + "円";
+    }
+    /* いまの和暦年度（4月始まり） */
+    function tsCurrentWareki(){
+      const d = new Date();
+      const y = (d.getMonth() + 1 >= 4) ? d.getFullYear() : d.getFullYear() - 1;
+      return y - 2018;
+    }
+
+    /* ---- 第一段：機械足切り（地域・業種・従業員規模・除外語・制度規模・年度） ---- */
     const PREFS = ["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県","静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県","徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"];
     const REGIONS = {
       "東北":["青森県","岩手県","宮城県","秋田県","山形県","福島県"],
@@ -982,6 +1013,63 @@ body.presenMode table{font-size:1.02em}
         if(hit && !posList.some(w => w && title.includes(w))){ ngOk = false; ngHit = hit; }
       }
       results.push({k:"案件名の除外語", v:(ngOk ? "該当なし" : "「"+ngHit+"」を含む"), ok:ngOk});
+
+      /* ---- 2026-08-13追加：制度規模の照合 ----
+         制度の上限額が会社の年商を超えるものは、投資規模が桁違いで現実に申請できない。
+         年商が読み取れない場合は判定しない（無い規則を推測で作らない）。 */
+      const sales = tsParseYen(comp["年商"]);
+      const maxAmt = (d.subsidy_max_limit != null && isFinite(Number(d.subsidy_max_limit))) ? Number(d.subsidy_max_limit) : null;
+      let sizeOk = true, sizeV = "（判定なし）";
+      if(sales && maxAmt != null && maxAmt > 0){
+        sizeOk = maxAmt <= sales;
+        sizeV = "上限額 " + tsYenBrief(maxAmt) + " ／ 年商 " + tsYenBrief(sales) + (sizeOk ? "" : "（年商を超えるため規模が不相応）");
+      }
+      results.push({k:"制度規模", v:sizeV, ok:sizeOk});
+
+      /* ---- 2026-08-13追加：年度の照合 ----
+         案件名に和暦年度が入っている場合、当年度と前年度のものだけを残す。
+         それより古い年度は、受付締切が先でも実質的に過年度の制度である。 */
+      const fyNow = tsCurrentWareki();
+      const mfy = String(d.title || d.name || "").match(/(令和|平成)\s*([0-9０-９]+|元)\s*年度/);
+      let fyOk = true, fyV = "（記載なし）";
+      if(mfy){
+        const era = mfy[1];
+        const numRaw = (mfy[2] === "元") ? "1" : mfy[2].replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+        const n = Number(numRaw);
+        if(era === "平成"){ fyOk = false; fyV = "平成" + n + "年度（過年度）"; }
+        else{
+          fyOk = (n >= fyNow - 1);
+          fyV = "令和" + n + "年度" + (fyOk ? "" : "（当年度=令和" + fyNow + "年度より前のため過年度）");
+        }
+      }
+      results.push({k:"年度", v:fyV, ok:fyOk});
+
+      /* ---- 2026-08-13追加：継続申請（2年目・3年目申請用）の前提照合 ----
+         「2年目申請用」「3年目申請用」は、1年目を受給していることが申請の前提。
+         企業基礎情報の過去の申請実績に該当制度が無ければ、そもそも申請できないので選定しない。 */
+      const ttl = String(d.title || d.name || "");
+      const mYr = ttl.match(/([0-9０-９]+)\s*年目/);
+      let contOk = true, contV = "（該当なし）";
+      if(mYr){
+        const yn = Number(mYr[1].replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)));
+        if(yn >= 2){
+          const past = [].concat(comp["過去の申請実績"] || company["過去の申請実績"] || []);
+          const base = ttl
+            .replace(/[【】〔〕（）()\[\]]/g, "")
+            .replace(/(令和|平成)\s*[0-9０-９元]+\s*年度?/g, "")
+            .replace(/[0-9０-９]+\s*年目申請用/g, "")
+            .replace(/[～~]/g, "")
+            .replace(/[\s　]/g, "");
+          const core = base.slice(0, 12);
+          const hit = past.some(x => {
+            const t = (typeof x === "string") ? x : JSON.stringify(x);
+            return core && String(t).replace(/[\s　]/g, "").includes(core);
+          });
+          contOk = hit;
+          contV = yn + "年目申請用（" + (hit ? "前年度までの受給実績あり" : "前年度までの受給実績が基礎情報に無いため申請不可") + "）";
+        }
+      }
+      results.push({k:"継続申請の前提", v:contV, ok:contOk});
 
       return { pass: results.every(r => r.ok), results };
     }

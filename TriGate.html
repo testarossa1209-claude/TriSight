@@ -1271,7 +1271,19 @@ body.presenMode table{font-size:1.02em}
       throw new Error("判定結果をJSONとして読めませんでした。もう一度お試しください。");
     }
 
-    async function aiGateCheck(d){
+    async function aiGateCheck(d, _noMemo){
+      /* 2026-08-13：個別の詳細ゲート判定も会社×案件で記憶する。
+         候補を消して掘り直しても、同じ会社の同じ案件なら同じ判定が返る。 */
+      const _id = d && (d.id || d.subsidy_id);
+      if(_id && !_noMemo){
+        const memo = tsJudgeGet("gate", _id);
+        if(memo) return memo;
+      }
+      const g = await aiGateCheckRaw(d);
+      if(_id && g) tsJudgeSet("gate", _id, g);
+      return g;
+    }
+    async function aiGateCheckRaw(d){
       const code = tsCode();
       if(!code) throw new Error("認証コードが未入力です。");
       const userMsg = "■ 公募情報（Jグランツ）\n" + gateSourceText(d)
@@ -1606,7 +1618,7 @@ body.presenMode table{font-size:1.02em}
               try{
                 let cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]");
                 if(!cands.some(c => c.id === it.id)){
-                  cands.push({ id: it.id, title: titleMap[it.id], "会社": tsCompanyKey(), saved: new Date().toISOString() });
+                  cands.push({ id: it.id, title: (it.title || it.name || ""), "会社": tsCompanyKey(), saved: new Date().toISOString() });
                 }
                 cands = cands.map(c => c.id === it.id
                   ? Object.assign(c, { gate: g, amount_max: (d.subsidy_max_limit != null ? d.subsidy_max_limit : null), gated: new Date().toISOString(), gate_lite: false })
@@ -2598,20 +2610,20 @@ body.presenMode table{font-size:1.02em}
       let label = "詳細判定：" + v;
       if(gv["適合度"] != null) label += "（適合度" + gv["適合度"] + "）";
       if(gv["給付方式"] === "要件充足型"){
-        if(tooHigh) label += "・上限額が"+pjYen(max)+"超のため要確認（見込み額には含めず）";
-        else if(tooLow) label += "・上限額が"+pjYen(min)+"未満のため見込み額には含めず（書類労力とのバランス要確認）";
-        else label += "・見込み額に反映済";
+        if(tooHigh) label += "・上限額が"+pjYen(max)+"超のため要確認";
+        else if(tooLow) label += "・上限額が"+pjYen(min)+"未満（書類労力とのバランス要確認）";
+        else label += "・要件を満たせば原則支給";
       }
       return '<br><span style="font-size:11px;color:'+col+'">'+esc(label)+'</span>';
     }
     if(gv["給付方式"] === "要件充足型" && tooHigh){
-      return '<br><span style="font-size:11px;color:var(--fix)">上限額が'+pjYen(max)+'超のため要確認（見込み額には含めず）</span>';
+      return '<br><span style="font-size:11px;color:var(--fix)">上限額が'+pjYen(max)+'超のため要確認</span>';
     }
     if(gv["給付方式"] === "要件充足型" && tooLow){
-      return '<br><span style="font-size:11px;color:var(--muted)">上限額が'+pjYen(min)+'未満のため見込み額には含めず</span>';
+      return '<br><span style="font-size:11px;color:var(--muted)">上限額が'+pjYen(min)+'未満のため対象外</span>';
     }
     if(gv["給付方式"] === "要件充足型"){
-      return '<br><span style="font-size:11px;color:var(--ok);font-weight:700">要件充足・見込み額に反映済</span>';
+      return '<br><span style="font-size:11px;color:var(--ok);font-weight:700">要件充足（満たせば原則支給）</span>';
     }
     if(gv["給付方式"] === "審査・採択枠あり"){
       return '<br><span style="font-size:11px;color:var(--muted)">審査・採択枠あり</span>';
@@ -2752,7 +2764,7 @@ body.presenMode table{font-size:1.02em}
       if(tooHigh) flag = '<span style="color:var(--fix);font-weight:700">要確認（合計に含めず・上限超）</span>';
       else if(tooLow) flag = '<span style="color:var(--muted);font-weight:700">合計に含めず（下限未満）</span>';
       else if(!keptIds[String(c.id)]) flag = '<span style="color:var(--muted);font-weight:700">合計に含めず（同一制度の別区分）</span>';
-      else flag = '<span style="color:var(--ok)">合計に含む</span>';
+      else flag = '<span style="color:var(--ok)">対象</span>';
       return '<tr>'+
         '<td>'+esc(c.title||"")+'</td>'+
         '<td class="amt">'+amtCell+'</td>'+
@@ -2762,7 +2774,7 @@ body.presenMode table{font-size:1.02em}
     }).join("");
     detail.innerHTML =
       '<table class="rctbl"><thead><tr><th>案件名</th><th>見込み額（上限額）</th><th>合計への算入</th><th>判定日</th></tr></thead><tbody>'+rows+'</tbody></table>'+
-      '<div class="rc-empty" style="margin-top:8px">※上限額は制度の上限であり、実際の交付額とは異なる場合があります。'+pjYen(max)+'を超える案件は外れ値の可能性があるため、'+pjYen(min)+'未満の案件は書類準備の労力に見合わない可能性があるため、それぞれ自動集計から除外し、人の目での確認をお願いしています。給付方式・除外条件の判定はJグランツ掲載情報と企業基礎情報の宣言のみが根拠です。</div>';
+      '<div class="rc-empty" style="margin-top:8px">※上限額は制度の上限であり、実際の交付額とは異なります。金額の合計は出していません（併給調整があるため）。'+pjYen(max)+'を超える案件は規模が不相応の可能性があるため、'+pjYen(min)+'未満の案件は書類準備の労力に見合わない可能性があるため、それぞれ人の目での確認をお願いしています。給付方式・除外条件の判定はJグランツ掲載情報と企業基礎情報の宣言のみが根拠です。</div>';
   }
   /* 候補のクリア（2026-08-13追加）：別会社の判定結果が積み上がって見込み額が膨らむのを防ぐ */
   function pjClearCandidates(){

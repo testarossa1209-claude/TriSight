@@ -400,7 +400,7 @@ body.presenMode table{font-size:1.02em}
   <!-- 見込み額カウンター（2026-07-22導入） -->
   <div class="resultCounter" id="pjPanel">
     <div class="rc-head">
-      <h3>見込み額（要件充足・除外条件なし）</h3>
+      <h3>見込み額（要件充足・除外条件なし）<span id="pjCompanyName" style="font-weight:400;font-size:12px;margin-left:8px"></span></h3>
       <button type="button" class="rc-toggle" id="pjToggleBtn">内訳を見る</button>
         <button type="button" class="rc-toggle" id="pjClearBtn" title="別の会社を診断する前に押してください">この会社の分だけにする（候補をクリア）</button>
     </div>
@@ -786,12 +786,24 @@ body.presenMode table{font-size:1.02em}
       cell.innerHTML = e(row.dataset.title || "") + badgeHtml;
     }
     try{ company = JSON.parse(localStorage.getItem("trisight_dig_company") || "null"); }catch(_){ company = null; }
+    /* 2026-08-13追加：いま読み込んでいる会社の名前。候補・見込み額を会社ごとに分けるための鍵 */
+    function tsCompanyName(){
+      if(!company || !company["会社"]) return "";
+      const c = company["会社"];
+      return String(c["名称"] || c["法人名"] || c["会社名"] || "").trim();
+    }
+    window.tsCompanyName = tsCompanyName;
     const compSt = document.getElementById("digCompanyStatus");
     const compIn = document.getElementById("digCompanyFile");
     function compLabel(){
-      if(company && company["会社"] && company["会社"]["名称"]){
-        compSt.textContent = "読み込み済：" + company["会社"]["名称"];
+      const nm = tsCompanyName();
+      if(nm){
+        compSt.textContent = "読み込み済：" + nm;
+        try{ localStorage.setItem("trisight_dig_company_name", nm); }catch(e){}
+      }else{
+        try{ localStorage.removeItem("trisight_dig_company_name"); }catch(e){}
       }
+      if(typeof pjRenderFigs === "function"){ try{ pjRenderFigs(); }catch(e){} }
     }
     compLabel();
     if(compIn){
@@ -1178,7 +1190,7 @@ body.presenMode table{font-size:1.02em}
             const d = digDetails[id] || {};
             const g = { "判定": "要確認", "給付方式": resultMap[id]["給付方式"], "除外条件抵触": !!resultMap[id]["除外条件抵触"] };
             if(!cands.some(c => c.id === id)){
-              cands.push({ id: id, title: (it && (it.title || it.name)) || "", saved: new Date().toISOString() });
+              cands.push({ id: id, title: (it && (it.title || it.name)) || "", "会社": tsCompanyKey(), saved: new Date().toISOString() });
             }
             cands = cands.map(c => c.id === id
               ? Object.assign(c, { gate: g, amount_max: (d.subsidy_max_limit != null ? d.subsidy_max_limit : null), gated: new Date().toISOString(), gate_lite: true })
@@ -1357,7 +1369,7 @@ body.presenMode table{font-size:1.02em}
               try{
                 let cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]");
                 if(!cands.some(c => c.id === it.id)){
-                  cands.push({ id: it.id, title: titleMap[it.id], saved: new Date().toISOString() });
+                  cands.push({ id: it.id, title: titleMap[it.id], "会社": tsCompanyKey(), saved: new Date().toISOString() });
                 }
                 cands = cands.map(c => c.id === it.id
                   ? Object.assign(c, { gate: g, amount_max: (d.subsidy_max_limit != null ? d.subsidy_max_limit : null), gated: new Date().toISOString(), gate_lite: false })
@@ -1409,7 +1421,7 @@ body.presenMode table{font-size:1.02em}
       if(b.dataset.act === "pick"){
         const baseRow = tr.classList.contains("digdetail") ? tr.previousElementSibling : tr;
         const id = baseRow.dataset.id;
-        const item = { id: id, title: baseRow.dataset.title, saved: new Date().toISOString() };
+        const item = { id: id, title: baseRow.dataset.title, "会社": tsCompanyKey(), saved: new Date().toISOString() };
         let cands = [];
         try{ cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]"); }catch(_){ cands = []; }
         if(!cands.some(c => c.id === item.id)) cands.push(item);
@@ -1432,7 +1444,7 @@ body.presenMode table{font-size:1.02em}
             let cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]");
             if(!cands.some(c => c.id === id)){
               // 「候補に登録」を押していなくても、ゲート判定した以上は見込み額の対象にできるよう自動登録する
-              cands.push({ id: id, title: (baseRow && baseRow.dataset.title) || "", saved: new Date().toISOString() });
+              cands.push({ id: id, title: (baseRow && baseRow.dataset.title) || "", "会社": tsCompanyKey(), saved: new Date().toISOString() });
             }
             cands = cands.map(c => c.id === id
               ? Object.assign(c, { gate: g, amount_max: (d && d.subsidy_max_limit != null ? d.subsidy_max_limit : null), gated: new Date().toISOString() })
@@ -2316,10 +2328,19 @@ body.presenMode table{font-size:1.02em}
     n = Number(n); if(!isFinite(n)) n = 0;
     return "¥" + n.toLocaleString("ja-JP");
   }
-  function pjCandidates(){
+  /* 2026-08-13：いま読み込んでいる会社の分だけを見込み額の対象にする。
+     会社を読み込んでいないときは、会社名の付いていない過去分だけを出す（別会社の数字が混ざらないようにするため） */
+  function tsCompanyKey(){
+    try{ return String(localStorage.getItem("trisight_dig_company_name") || "").trim(); }catch(e){ return ""; }
+  }
+  function pjCandidatesAll(){
     let cands = [];
     try{ cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]"); }catch(e){ cands = []; }
     return Array.isArray(cands) ? cands : [];
+  }
+  function pjCandidates(){
+    const key = tsCompanyKey();
+    return pjCandidatesAll().filter(c => String((c && c["会社"]) || "") === key);
   }
   function pjEligible(){
     return pjCandidates().filter(c => c.gate && c.gate["給付方式"] === "要件充足型" && c.gate["除外条件抵触"] === false);
@@ -2385,6 +2406,12 @@ body.presenMode table{font-size:1.02em}
     const presen = document.body.classList.contains("presenMode");
     if($("pjThreshLabel")) $("pjThreshLabel").textContent = presen ? "上限の目安：" : "上限の目安（管理コード："+codeLabel+"）：";
     if($("pjThreshMinLabel")) $("pjThreshMinLabel").textContent = presen ? "下限の目安：" : "下限の目安（管理コード："+codeLabel+"）：";
+    const cn = $("pjCompanyName");
+    if(cn){
+      const key = tsCompanyKey();
+      cn.textContent = key ? "対象：" + key : "（企業基礎情報が未読み込みです）";
+      cn.style.color = key ? "var(--muted)" : "var(--fix)";
+    }
   }
   /* 範囲外別枠（2026-08-01導入）：合計に算入しなかった案件だけを、内訳を開かずに常時見せる */
   function pjRenderOutliers(list, min, max){
@@ -2464,10 +2491,13 @@ body.presenMode table{font-size:1.02em}
   }
   /* 候補のクリア（2026-08-13追加）：別会社の判定結果が積み上がって見込み額が膨らむのを防ぐ */
   function pjClearCandidates(){
-    const n = pjCandidates().length;
-    if(n === 0){ alert("クリアする候補はありません。"); return; }
-    if(!confirm("これまでに判定した候補 "+n+" 件を消します。\n見込み額は、いまから判定する会社の分だけになります。\n（獲得実績の記録は消えません）\n\nよろしいですか？")) return;
-    try{ localStorage.removeItem("trisight_dig_candidates"); }catch(e){}
+    const key = tsCompanyKey();
+    const all = pjCandidatesAll();
+    const mine = all.filter(c => String((c && c["会社"]) || "") === key);
+    if(mine.length === 0){ alert("この会社について、クリアする候補はありません。"); return; }
+    const who = key ? "「"+key+"」" : "会社名の付いていない過去分";
+    if(!confirm(who+"の判定済み候補 "+mine.length+" 件を消します。\n他の会社の分は残ります。\n（獲得実績の記録は消えません）\n\nよろしいですか？")) return;
+    try{ localStorage.setItem("trisight_dig_candidates", JSON.stringify(all.filter(c => String((c && c["会社"]) || "") !== key))); }catch(e){}
     pjRenderFigs();
     if($("pjDetail") && $("pjDetail").classList.contains("on")) pjRenderDetail();
     pjRefreshRowBadges();

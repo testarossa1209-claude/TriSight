@@ -1015,14 +1015,15 @@ body.presenMode table{font-size:1.02em}
       results.push({k:"案件名の除外語", v:(ngOk ? "該当なし" : "「"+ngHit+"」を含む"), ok:ngOk});
 
       /* ---- 2026-08-13追加：制度規模の照合 ----
-         制度の上限額が会社の年商を超えるものは、投資規模が桁違いで現実に申請できない。
-         年商が読み取れない場合は判定しない（無い規則を推測で作らない）。 */
-      const sales = tsParseYen(comp["年商"]);
+         制度の上限額が、会社が自ら申告した「予想年商（上限の目安）」を超えるものは、
+         投資規模が桁違いで現実に申請できない。値は事実の申告ではなく担当者の見積り。
+         読み取れない場合は判定しない（無い規則を推測で作らない）。 */
+      const sales = tsParseYen(comp["予想年商"] != null ? comp["予想年商"] : comp["年商"]);
       const maxAmt = (d.subsidy_max_limit != null && isFinite(Number(d.subsidy_max_limit))) ? Number(d.subsidy_max_limit) : null;
       let sizeOk = true, sizeV = "（判定なし）";
       if(sales && maxAmt != null && maxAmt > 0){
         sizeOk = maxAmt <= sales;
-        sizeV = "上限額 " + tsYenBrief(maxAmt) + " ／ 年商 " + tsYenBrief(sales) + (sizeOk ? "" : "（年商を超えるため規模が不相応）");
+        sizeV = "上限額 " + tsYenBrief(maxAmt) + " ／ 予想年商（上限） " + tsYenBrief(sales) + (sizeOk ? "" : "（お考えの上限を超えるため規模が不相応）");
       }
       results.push({k:"制度規模", v:sizeV, ok:sizeOk});
 
@@ -3098,7 +3099,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-01-05';
+  const TRIGATE_VERSION = '2026-08-14-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

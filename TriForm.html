@@ -154,6 +154,7 @@
   </div>
 
   <div id="matchBox"></div>
+  <div id="factBox"></div>
   <div id="noMatchBox"></div>
 
   <div class="tsec">
@@ -192,7 +193,7 @@
 
 <footer>
   合同会社トライサイト　TriSight&reg; ファミリー
-  <div class="verline">版 <span id="verLabel">2026-08-01-04</span></div>
+  <div class="verline">版 <span id="verLabel">2026-08-16-01</span>（v3）</div>
 </footer>
 </div>
 
@@ -217,6 +218,8 @@
   <textarea id="pSteps" placeholder="様式を交付元のサイトから取得する｜｜未記入の誓約書｜｜&#10;記入し、代表者印を押す｜未記入の誓約書｜押印済みの誓約書｜｜"></textarea>
   <label>要確認にする工程の番号（読点区切り・無ければ空欄）</label>
   <input type="text" id="pVerify" placeholder="2, 4">
+  <p class="h">この手続きに要る「会社の事実」（任意・読点区切り）。ここに書いた項目は、渡す前に企業基礎情報と突き合わせます。</p>
+  <input type="text" id="pFacts" placeholder="法人番号, 本店所在地, 従業員数">
   <div class="btns">
     <button type="button" id="cancelEditBtn">やめる</button>
     <button type="button" class="primary" id="saveEditBtn">保存する</button>
@@ -232,6 +235,7 @@
   const INBOX_KEY = "tritask_inbox";
   const LEGACY_INBOX_KEY = "tritask_grants";
   const PATTERN_KEY = "triform_patterns";
+  let factNeeds = [], factMissing = [];
 
   /* ===== 認証コードと契約プラン（TriGate/TriTaskと同一規則） ===== */
   const TS_PLAN_URL = "https://trisight-relay.vercel.app/api/plan";
@@ -268,6 +272,7 @@
       id: "shugyo-kisoku",
       name: "就業規則の改定と労基署への届出",
       keys: ["就業規則"],
+      facts: ["従業員数","本店所在地"],
       steps: [
         { action:"現行の就業規則の原本と、直近の届出控えを手元に出す",
           inputs:"現行の就業規則", output:"改定前の内容が分かる控え" },
@@ -289,6 +294,7 @@
       id: "chingin-kitei",
       name: "賃金規程の改定と届出",
       keys: ["賃金規程", "賃金規定", "給与規程"],
+      facts: ["従業員数"],
       steps: [
         { action:"現行の賃金規程と、直近の賃金台帳を突き合わせる",
           inputs:"現行の賃金規程、賃金台帳", output:"現行の支給実態が分かる控え" },
@@ -306,6 +312,7 @@
       id: "koyou-keiyaku",
       name: "雇用契約書・労働条件通知書の整備",
       keys: ["雇用契約書", "労働条件通知書", "労働契約書"],
+      facts: ["対象人材の状況","雇用保険の適用"],
       steps: [
         { action:"対象となる従業員を特定し、現在の契約内容を確認する",
           inputs:"賃金台帳、出勤簿、現行の雇用契約書", output:"対象者の一覧",
@@ -321,6 +328,7 @@
       id: "chingin-daicho",
       name: "賃金台帳・出勤簿の準備",
       keys: ["賃金台帳", "出勤簿", "タイムカード", "給与明細"],
+      facts: [],
       steps: [
         { action:"対象期間の賃金台帳と出勤簿を印刷し、対象者の分を抜き出す",
           inputs:"給与ソフトの記録", output:"対象期間・対象者の賃金台帳と出勤簿" },
@@ -333,6 +341,7 @@
       id: "gbizid",
       name: "GビズIDプライムの取得",
       keys: ["GビズID", "gBizID", "Gビズ"],
+      facts: ["法人番号","代表者","本店所在地"],
       steps: [
         { action:"GビズIDのサイトで申請書を作成し、印刷する",
           inputs:"法人番号、代表者の情報", output:"GビズIDプライム申請書" },
@@ -348,6 +357,7 @@
       id: "mitsumori",
       name: "見積書（相見積もり）の取得",
       keys: ["見積書", "相見積", "見積り"],
+      facts: [],
       steps: [
         { action:"導入する設備・役務の仕様を書き出す",
           output:"仕様書またはメモ" },
@@ -362,6 +372,7 @@
       id: "toki-nozei",
       name: "登記事項証明書・納税証明書の取得",
       keys: ["登記事項証明書", "履歴事項全部証明書", "納税証明書", "登記簿"],
+      facts: ["法人番号","本店所在地"],
       steps: [
         { action:"登記事項証明書を取得する",
           submit_to:"法務局（またはオンライン請求）", receive:"履歴事項全部証明書",
@@ -388,6 +399,134 @@
     if(i>=0) user[i]=p; else user.push(p);
     try{ localStorage.setItem(PATTERN_KEY, JSON.stringify(user)); }catch(e){}
   }
+  /* ===== 企業基礎情報の照合（v3・2026-08-16） =====
+     型は「この手続きにはこの事実が要る」を facts で名乗る。ここでやるのは照合だけで、
+     判断・相談・検討は一切しない（トライフォームの定義的制約）。
+     基礎情報の現物はトライゲイトが端末に置いたもの（trisight_dig_company）をそのまま読む。 */
+  const COMPANY_KEY = "trisight_dig_company";
+  const FACT_ALIASES = {
+    "法人番号":       ["法人番号"],
+    "代表者":         ["代表者", "代表社員", "代表取締役"],
+    "本店所在地":     ["本店所在地", "所在地", "住所"],
+    "従業員数":       ["従業員数", "常時使用する労働者", "職員数"],
+    "GビズID":        ["GビズID", "gBizID", "Gビズ"],
+    "対象人材の状況": ["対象人材", "対象となりうる人材"],
+    "雇用保険の適用": ["雇用保険"],
+    "除外条件の宣言": ["除外条件"]
+  };
+
+  function loadCompany(){
+    try{
+      const raw = localStorage.getItem(COMPANY_KEY);
+      if(!raw) return null;
+      const o = JSON.parse(raw);
+      return (o && typeof o === "object") ? o : null;
+    }catch(e){ return null; }
+  }
+  function hasValue(v){
+    if(v === null || v === undefined) return false;
+    if(Array.isArray(v)) return v.length > 0;
+    if(typeof v === "object") return Object.keys(v).length > 0;
+    const t = String(v).trim();
+    if(!t) return false;
+    return !/^(未記入|未定|なし|該当なし|不明|-|―|ー)$/.test(t);
+  }
+  function shortVal(v){
+    let t;
+    if(Array.isArray(v)) t = v.length + "件";
+    else if(v && typeof v === "object") t = Object.keys(v).length + "項目";
+    else t = String(v);
+    return t.length > 28 ? t.slice(0,28) + "…" : t;
+  }
+  /* 基礎情報のキー名は版によって揺れるため、経路を決め打ちせず名前で探す。
+     見つけた経路をそのまま画面に出し、当たり方を人が確かめられるようにする（v2の根拠表示と同じ考え）。 */
+  function findFact(company, factName){
+    const words = FACT_ALIASES[factName] || [factName];
+    let hit = null;
+    (function walk(node, path){
+      if(hit || node === null || node === undefined) return;
+      if(typeof node === "object" && !Array.isArray(node)){
+        Object.keys(node).forEach(k=>{
+          if(hit) return;
+          const here = path ? (path + "." + k) : k;
+          const matched = words.some(w => k.indexOf(w) >= 0);
+          if(matched && hasValue(node[k])){ hit = { path: here, value: node[k] }; return; }
+          walk(node[k], here);
+        });
+      }
+    })(company, "");
+    return hit;
+  }
+  /* 当たった型が名乗る事実を集める。同じ事実を複数の型が要求しても1行にまとめる。 */
+  function collectFacts(){
+    const need = [];
+    const seen = new Set();
+    matchLog.forEach(m=>{
+      const pat = loadPatterns().find(p=>p.id === m.id);
+      if(!pat) return;
+      (pat.facts||[]).forEach(f=>{
+        if(seen.has(f)) return;
+        seen.add(f);
+        need.push({ name:f, from:pat.name });
+      });
+    });
+    return need;
+  }
+  function renderFacts(){
+    const box = $("factBox");
+    factNeeds = collectFacts();
+    if(!factNeeds.length){ box.innerHTML = ""; factMissing = []; updateApply(); return; }
+
+    const company = loadCompany();
+    factMissing = [];
+    const lines = factNeeds.map(n=>{
+      const f = company ? findFact(company, n.name) : null;
+      if(f){
+        return '<div style="margin:5px 0">✓ <b>' + esc(n.name) + '</b>　'
+             + '<span style="color:var(--muted)">' + esc(f.path) + ' ／ ' + esc(shortVal(f.value)) + '</span>'
+             + '<span style="color:var(--muted)">（' + esc(n.from) + '）</span></div>';
+      }
+      factMissing.push(n);
+      return '<div style="margin:5px 0;color:#9a3412">— <b>' + esc(n.name) + '</b> が基礎情報にありません'
+           + '<span style="color:var(--muted)">（' + esc(n.from) + ' が要求）</span></div>';
+    }).join("");
+
+    let head, tail = "";
+    if(!company){
+      head = '<div style="font-weight:700;margin-bottom:6px">基礎情報の照合（できていません）</div>'
+           + '<div style="margin-bottom:8px">企業基礎情報がこの端末に読み込まれていません。'
+           + 'トライゲイトの「企業基礎情報」欄でJSONを読み込むと、ここで照合します。</div>';
+    }else if(factMissing.length){
+      head = '<div style="font-weight:700;margin-bottom:6px">基礎情報の照合（'
+           + factMissing.length + '件が足りません）</div>';
+    }else{
+      head = '<div style="font-weight:700;margin-bottom:6px">基礎情報の照合（すべて揃っています）</div>';
+    }
+    if(!company || factMissing.length){
+      tail = '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">'
+           + '<label><input type="checkbox" id="factOverride"> 足りないまま先へ進みます（不足の中身は工程に書き出され、トライタスクにも残ります）</label></div>';
+    }
+    box.innerHTML = '<div style="background:var(--white);border:1px solid var(--line);border-radius:10px;'
+      + 'padding:13px 16px;margin-top:14px;font-size:13px">' + head + lines + tail + '</div>';
+
+    const ov = $("factOverride");
+    if(ov) ov.addEventListener("change", updateApply);
+    updateApply();
+  }
+  /* 足りない事実があるあいだは、渡す手を止める。承知のうえで進む道は残すが、黙っては通さない。 */
+  function updateApply(){
+    const btn = $("applyBtn");
+    if(!btn) return;
+    const company = loadCompany();
+    const blocked = factNeeds.length > 0 && (!company || factMissing.length > 0);
+    const ov = $("factOverride");
+    const allowed = !blocked || (ov && ov.checked);
+    btn.disabled = !allowed;
+    btn.style.opacity = allowed ? "" : "0.45";
+    btn.style.cursor = allowed ? "" : "not-allowed";
+    btn.title = allowed ? "" : "基礎情報が足りていないため止めています。上の枠をご覧ください。";
+  }
+
   /* 引き当ては書類名の部分一致だけで動く決定論的な処理。当たったかどうかは正しさの保証ではないので、
      どの語で当たったのかを必ず持ち帰り、画面に出して人が却下できるようにする（2026-08-01）。 */
   function matchPattern(docName){
@@ -466,6 +605,7 @@
     renderRows();
     renderMatchLog();
     renderNoMatch(g);
+    renderFacts();
     renderCrit();
     $("work").classList.add("show");
     $("msg").className = "msg";
@@ -521,7 +661,7 @@
         rows = rows.filter(r => r.pid !== m.id);
         matchLog = matchLog.filter(x => x.id !== m.id);
         criteria = [];
-        renderMatchLog(); renderRows(); renderCrit();
+        renderMatchLog(); renderRows(); renderFacts(); renderCrit();
       });
     });
   }
@@ -684,6 +824,10 @@
        型が当たったことは正しさの保証ではないため、分解を信じさせず、まず疑わせる工程を作る。
        未確認の項目があればその中身を理由に載せ、トライタスク側でも見えるようにする。 */
     const unchecked = criteria.filter(c=>!c.ok);
+    const missTxt = factMissing.length
+      ? "基礎情報に足りない事実：" + factMissing.map(f=>f.name + "（" + f.from + " が要求）").join("／")
+        + "。揃えてから着手してください。"
+      : "";
     const guard = {
       due_text: "着手前",
       action: "この分解が制度の要件に合っているか、交付元の要領で確かめる",
@@ -697,6 +841,7 @@
             : "確認項目はすべて確かめ済みです。要領の改訂がないかだけ見てください。")
         : "工程は書類の名前に型を当てて機械的に出したものです。当たったこと自体は正しさの保証ではないため、要領の該当箇所で確かめてください。"
     };
+    if(missTxt) guard.why = missTxt + "　" + guard.why;
     list[idx] = Object.assign({}, list[idx], {
       reverse_tasks: [guard].concat(rows.map(r=>({
         due_text:r.due_text||"", action:r.action||"", must_verify:!!r.must_verify,
@@ -705,6 +850,8 @@
       }))),
       triform_criteria: criteria,
       triform_match_log: matchLog,
+      triform_facts_needed: factNeeds,
+      triform_facts_missing: factMissing,
       triform_applied: true,
       triform_at: new Date().toISOString(),
       human_reviewed: true
@@ -713,7 +860,8 @@
     current = list[idx];
     m.className = "msg ok show";
     m.textContent = "○ " + (rows.length + 1) + "件の工程をトライタスクへ渡しました（先頭に「要領で確かめる」工程を入れています）。"
-      + (unchecked.length ? "未確認の項目が" + unchecked.length + "件あり、その工程の中に書き出してあります。" : "");
+      + (unchecked.length ? "未確認の項目が" + unchecked.length + "件あり、その工程の中に書き出してあります。" : "")
+      + (factMissing.length ? "基礎情報の不足" + factMissing.length + "件も、先頭の工程に書き出してあります。" : "");
     renderList();
   });
   $("backBtn").addEventListener("click", function(){
@@ -735,6 +883,7 @@
     $("patternList").innerHTML = '<ul class="plist">' + all.map(p=>
       '<li class="pitem"><div class="pn">' + esc(p.name||"") + '</div>'
       + '<div class="pm">引き当てる語：' + esc((p.keys||[]).join("、")) + '</div>'
+      + ((p.facts||[]).length ? '<div class="pm">要る会社の事実：' + esc((p.facts||[]).join("、")) + '</div>' : "")
       + '<div class="pc">' + (p.steps||[]).map((s,i)=>(i+1)+"．"+esc(s.action||"")).join("<br>") + '</div></li>'
     ).join("") + '</ul>';
   }
@@ -744,6 +893,7 @@
     $("pName").value = "";
     $("pSteps").value = "";
     $("pVerify").value = "";
+    $("pFacts").value = "";
     $("editDlg").showModal();
   }
   $("cancelEditBtn").addEventListener("click", ()=>$("editDlg").close());
@@ -761,9 +911,10 @@
       return { action:c[0]||"", inputs:c[1]||"", output:c[2]||"",
                submit_to:c[3]||"", receive:c[4]||"", must_verify:vset.has(i+1) };
     });
-    saveUserPattern({ id:"u-"+Date.now(), name:name, keys:keys, steps:steps });
+    const facts = $("pFacts").value.split(/[、,]/).map(s=>s.trim()).filter(Boolean);
+    saveUserPattern({ id:"u-"+Date.now(), name:name, keys:keys, facts:facts, steps:steps });
     $("editDlg").close();
-    if(current) { rows = buildRows(current); renderRows(); renderNoMatch(current); }
+    if(current) { rows = buildRows(current); renderRows(); renderNoMatch(current); renderFacts(); }
     window.alert("型を保存しました。次に同じ書類が出てきたときも、この並びが出ます。");
   });
 

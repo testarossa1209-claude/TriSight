@@ -750,7 +750,12 @@ body.presenMode table{font-size:1.02em}
       required_documents: [
         { name: "事業所一覧表", note: "指定番号の記載が必要", must_verify: false },
         { name: "見積書", note: "2社以上の相見積もりが必要", must_verify: true },
-        { name: "誓約書", note: "様式は交付元のサイトから取得", must_verify: false }
+        { name: "誓約書", note: "様式は交付元のサイトから取得", must_verify: false },
+        /* 2026-08-16：TriForm v3 の「基礎情報の照合」を確かめられるように、
+           会社の事実を要求する型（就業規則＝従業員数・本店所在地／GビズID＝法人番号・代表者・本店所在地）
+           に当たる書類を題材へ加えた。照合が要らない書類（上の3点）と混ぜてある。 */
+        { name: "就業規則（労働基準監督署の受理印のあるもの）", note: "改定後のもの", must_verify: true },
+        { name: "GビズIDプライムの登録", note: "電子申請に必要", must_verify: false }
       ],
       verify_items: [
         { item: "休止中の事業所が対象区分に含まれるか", why: "休止中の扱いが要綱に明記されていない", contact: "テスト窓口 000-0000-0000" },
@@ -1092,6 +1097,67 @@ body.presenMode table{font-size:1.02em}
       return v.toLocaleString("ja-JP")+"円";
     };
 
+    /* ===== 発掘結果の保存と呼び戻し（2026-08-16） =====
+       一覧は画面に描くだけで残らないため、画面を開き直すと消えていた。
+       掘った結果をこの端末に保存し、同じ会社であれば起動時に呼び戻す。
+       判定のバッジは候補側に残っているので pjRefreshRowBadges() で描き直す。 */
+    const DIG_SAVE_KEY = "trisight_dig_saved";
+
+    function digRowsHtml(rows){
+      let html = '<table class="digtbl"><thead><tr><th>案件名</th><th>上限額</th><th>受付締切</th><th>対象地域</th><th></th></tr></thead><tbody>';
+      for(const it of rows){
+        html += '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'">'
+              + "<td>"+e(it.title || it.name || "（名称不明）")+"</td>"
+              + "<td>"+fy(it.subsidy_max_limit)+"</td>"
+              + '<td class="dl">'+fd(it.acceptance_end_datetime)+"</td>"
+              + "<td>"+e(it.target_area_search || "—")+"</td>"
+              + "<td>"+(it.id ? '<button class="dbtn" data-act="detail">詳細</button>' : "")+"</td></tr>";
+      }
+      return html + "</tbody></table>";
+    }
+
+    function saveDigResult(kw, statusText, rows){
+      try{
+        const slim = rows.map(it => ({
+          id: it.id || "",
+          title: it.title || it.name || "",
+          subsidy_max_limit: it.subsidy_max_limit,
+          acceptance_end_datetime: it.acceptance_end_datetime,
+          target_area_search: it.target_area_search
+        }));
+        localStorage.setItem(DIG_SAVE_KEY, JSON.stringify({
+          company: (typeof tsCompanyKey === "function" ? tsCompanyKey() : ""),
+          keyword: kw,
+          status: statusText,
+          savedAt: new Date().toISOString(),
+          rows: slim
+        }));
+      }catch(_){}
+    }
+
+    function restoreDigResult(){
+      let sv = null;
+      try{ sv = JSON.parse(localStorage.getItem(DIG_SAVE_KEY) || "null"); }catch(_){ sv = null; }
+      if(!sv || !Array.isArray(sv.rows) || !sv.rows.length) return;
+      const now = (typeof tsCompanyKey === "function" ? tsCompanyKey() : "");
+      if((sv.company || "") !== now) return;   /* 会社が違えば呼び戻さない */
+      out.innerHTML = digRowsHtml(sv.rows);
+      lastShow = sv.rows;
+      if(fullGateBtn) fullGateBtn.style.display = "";
+      let when = "";
+      try{
+        const d = new Date(sv.savedAt);
+        when = (d.getMonth()+1) + "月" + d.getDate() + "日 "
+             + String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
+      }catch(_){}
+      st.innerHTML = e(sv.status || "")
+        + '<br><span style="color:#a45a1a">※ ' + e(when) + ' に掘った結果を、この端末から呼び戻して表示しています。'
+        + '最新にするには「新着を掘る」を押してください。</span>';
+      try{ if(typeof pjRefreshRowBadges === "function") pjRefreshRowBadges(); }catch(_){}
+    }
+
+    setTimeout(restoreDigResult, 0);
+
     btn.addEventListener("click", async ()=>{
       const kw = (document.getElementById("digKeyword").value || "").trim() || "事業";
       if(kw.length < 2){ st.textContent = "キーワードは2文字以上で入力してください。"; return; }
@@ -1204,6 +1270,7 @@ body.presenMode table{font-size:1.02em}
         html += "</tbody></table>";
         out.innerHTML = html;
         lastShow = show;
+        saveDigResult(kw, st.textContent, show);
         if(fullGateBtn) fullGateBtn.style.display = show.length ? "" : "none";
         /* 第4段：給付方式・除外条件の一括判定（API数回・行ごとにバッジと見込み額を随時反映） */
         if(company && show.length){
@@ -1213,6 +1280,7 @@ body.presenMode table{font-size:1.02em}
               st.textContent = baseMsg + "　／　見込み額を一括判定中…（"+done+"/"+total+"）";
             });
             st.textContent = baseMsg + "　／　見込み額の判定が完了しました。";
+            saveDigResult(kw, st.textContent, show);
           }catch(_){
             st.textContent = baseMsg + "　／　見込み額の一括判定に失敗しました（個別の「AIゲート判定」は引き続き使えます）。";
           }

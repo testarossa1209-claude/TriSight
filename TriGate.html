@@ -233,6 +233,7 @@
   .digrow input:focus{outline:none;border-color:var(--ink)}
   .digstatus{font-size:13px;color:var(--muted);margin-top:8px}
   table.digtbl{width:100%;border-collapse:collapse;margin-top:12px;font-size:13.5px}
+  .digNote{margin-top:6px;font-size:12px;color:var(--ink-soft);line-height:1.6}
   .digtbl th,.digtbl td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}
   .digtbl th{color:var(--ink-soft);font-size:12.5px;letter-spacing:.06em;white-space:nowrap}
   .digtbl td.dl{color:var(--fix);font-weight:700;white-space:nowrap}
@@ -1104,7 +1105,7 @@ body.presenMode table{font-size:1.02em}
     const DIG_SAVE_KEY = "trisight_dig_saved";
 
     function digRowsHtml(rows){
-      let html = '<table class="digtbl"><thead><tr><th>案件名</th><th>上限額</th><th>受付締切</th><th>対象地域</th><th></th></tr></thead><tbody>';
+      let html = '<table class="digtbl"><thead><tr><th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th></tr></thead><tbody>';
       for(const it of rows){
         html += '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'">'
               + "<td>"+e(it.title || it.name || "（名称不明）")+"</td>"
@@ -1113,7 +1114,7 @@ body.presenMode table{font-size:1.02em}
               + "<td>"+e(it.target_area_search || "—")+"</td>"
               + "<td>"+(it.id ? '<button class="dbtn" data-act="detail">詳細</button>' : "")+"</td></tr>";
       }
-      return html + "</tbody></table>";
+      return html + "</tbody></table>" + "<div class='digNote'>受付期間の終わりは掲載元（Jグランツ等）の表記をそのまま表示しています。申請の締切と異なる場合があります。</div>";
     }
 
     function saveDigResult(kw, statusText, rows){
@@ -1258,7 +1259,7 @@ body.presenMode table{font-size:1.02em}
           st.textContent = "受付中 "+list.length+" 件（キーワード："+kw+"）※基礎情報が未読み込みのため全件表示";
         }
         /* 先に一覧を描画する（バッジは未判定のため空欄）。判定結果は後から行ごとに追記する */
-        let html = '<table class="digtbl"><thead><tr><th>案件名</th><th>上限額</th><th>受付締切</th><th>対象地域</th><th></th></tr></thead><tbody>';
+        let html = '<table class="digtbl"><thead><tr><th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th></tr></thead><tbody>';
         for(const it of show){
           html += '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'">'
                 + "<td>"+e(it.title || it.name || "（名称不明）")+"</td>"
@@ -1267,7 +1268,7 @@ body.presenMode table{font-size:1.02em}
                 + "<td>"+e(it.target_area_search || "—")+"</td>"
                 + "<td>"+(it.id ? '<button class="dbtn" data-act="detail">詳細</button>' : "")+"</td></tr>";
         }
-        html += "</tbody></table>";
+        html += "</tbody></table>" + "<div class='digNote'>受付期間の終わりは掲載元（Jグランツ等）の表記をそのまま表示しています。申請の締切と異なる場合があります。</div>";
         out.innerHTML = html;
         lastShow = show;
         saveDigResult(kw, st.textContent, show);
@@ -3167,7 +3168,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-14-01';
+  const TRIGATE_VERSION = '2026-08-17-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

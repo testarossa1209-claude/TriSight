@@ -233,6 +233,7 @@
   .digrow input:focus{outline:none;border-color:var(--ink)}
   .digstatus{font-size:13px;color:var(--muted);margin-top:8px}
   table.digtbl{width:100%;border-collapse:collapse;margin-top:12px;font-size:13.5px}
+  .cd-src{margin-top:4px;font-size:12px;color:var(--ink-soft)}
   .digNote{margin-top:6px;font-size:12px;color:var(--ink-soft);line-height:1.6}
   .digtbl th,.digtbl td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}
   .digtbl th{color:var(--ink-soft);font-size:12.5px;letter-spacing:.06em;white-space:nowrap}
@@ -3136,6 +3137,38 @@ body.presenMode table{font-size:1.02em}
   }
 
   // ---- 描画 ----------------------------------------------------
+  /* ===== 締切の併記（2026-08-17） =====
+     公募要領の本文に年が書かれていない制度がある（例：働き方改革推進支援助成金＝
+     「事業実施年度の11月30日午後5時まで」）。年が定まらないと過去日として扱われ、
+     受付中の案件に「期限を過ぎています」と出てしまう。
+     発掘側の日付で黙って上書きはしない（確かめていないものを確かめた顔で出さないため）。
+     要領の記載はそのまま出し、掲載元の一覧が持っている日付を併記する。 */
+  function tsHasYear(t){
+    return /[0-9０-９]{4}\s*年|令和\s*[0-9０-９元]+\s*年|平成\s*[0-9０-９]+\s*年|[0-9]{4}\s*[\/\-]/.test(String(t||""));
+  }
+  function tsFmtDate(iso){
+    if(!iso) return "";
+    const d = new Date(iso);
+    if(isNaN(d)) return String(iso);
+    return d.getFullYear()+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+String(d.getDate()).padStart(2,"0");
+  }
+  /* 読み取った制度名から、直近の発掘一覧の同じ案件を探す（制度名の正規化は既存の pjNormTitle を使う） */
+  function tsDugDeadline(programName){
+    try{
+      if(!programName || !Array.isArray(lastShow) || !lastShow.length) return "";
+      const key = pjNormTitle(programName);
+      if(!key) return "";
+      let hit = lastShow.find(it => pjNormTitle(it.title || it.name || "") === key);
+      if(!hit){
+        hit = lastShow.find(it => {
+          const k2 = pjNormTitle(it.title || it.name || "");
+          return k2 && (k2.indexOf(key) >= 0 || key.indexOf(k2) >= 0);
+        });
+      }
+      return (hit && hit.acceptance_end_datetime) ? hit.acceptance_end_datetime : "";
+    }catch(_){ return ""; }
+  }
+
   function daysLeft(iso){
     if(!iso) return null;
     const d=new Date(iso+"T00:00:00");
@@ -3199,14 +3232,23 @@ body.presenMode table{font-size:1.02em}
       const n=daysLeft(lead.date_iso);
       const t=(lead.type==="必着")?"t-fix":"t-soft";
       const urgent=(n!==null&&n<=14)?" cd-urgent":"";
+      const __noYear = (n!==null && n<0 && !tsHasYear(lead.date_text||""));
+      const __overdue = __noYear
+        ? "要領本文に年の記載がないため、日付を確定できませんでした"
+        : "期限を過ぎています";
+      const __dug = tsDugDeadline(d.program_name||"");
+      const __dugLine = __dug
+        ? `<div class="cd-src">掲載元の一覧では 受付期間の終わり ${tsFmtDate(__dug)}</div>`
+        : "";
       parts.push(`
         <div class="countdown${urgent}">
           <div class="cd-strip ${t}"></div>
           <div class="cd-main">
-            <div class="cd-days">${n!==null?(n<0?"超過":n):"—"}</div>
+            <div class="cd-days">${n!==null?(n<0?(__noYear?"—":"超過"):n):"—"}</div>
             <div class="cd-meta">
               <b>${esc(lead.label||"最終締切")}</b>
-              ${n!==null?(n<0?"期限を過ぎています":"あと "+n+" 日"):""}　／　${esc(lead.date_text||"")}
+              ${n!==null?(n<0?__overdue:"あと "+n+" 日"):""}　／　${esc(lead.date_text||"")}
+              ${__dugLine}
             </div>
             ${lead.type&&lead.type!=="不明"?`<span class="cd-tag ${t==="t-fix"?"t-fix":"t-soft"}">${esc(lead.type)}</span>`:""}
           </div>
@@ -3289,7 +3331,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-17-02';
+  const TRIGATE_VERSION = '2026-08-17-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

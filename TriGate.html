@@ -397,7 +397,7 @@ body.presenMode table{font-size:1.02em}
     <div class="digstatus" id="digStatus"></div>
     <div class="digrow" style="margin-top:8px">
       <button id="digFullGateBtn" class="dbtn" style="display:none">この一覧すべてで詳細AIゲート判定を実行する（API複数回・時間がかかります）</button>
-      <button type="button" class="rc-toggle" id="digClearBtn" style="display:none" title="画面から一覧を消します。判定の記憶は残ります">掘った一覧を消す</button>
+      <button type="button" class="rc-toggle" id="digClearBtn" style="display:none" title="掘った一覧と見込み額を消します。判定の記憶は残るので、掘り直せば元に戻ります。獲得実績の記録は消えません">掘った一覧と見込み額を消す</button>
     </div>
     <div id="digOut"></div>
   </div>
@@ -1166,6 +1166,18 @@ body.presenMode table{font-size:1.02em}
        消すのは表示と保存だけで、判定の記憶（会社×案件）には触らない。 */
     function clearDigResult(){
       try{ localStorage.removeItem(DIG_SAVE_KEY); }catch(_){}
+      /* 見込み額も一緒に消す（2026-08-17）。一覧を消したのに、その一覧を根拠にした
+         金額だけが残るのは画面が噛み合わないため。判定の記憶（会社×案件）は残すので、
+         掘り直せば元に戻り、当日また判定を走らせる必要はない。 */
+      try{
+        const key = (typeof tsCompanyKey === "function" ? tsCompanyKey() : "");
+        const all = (typeof pjCandidatesAll === "function" ? pjCandidatesAll() : []);
+        localStorage.setItem("trisight_dig_candidates",
+          JSON.stringify(all.filter(c => String((c && c["会社"]) || "") !== key)));
+        if(typeof pjRenderFigs === "function") pjRenderFigs();
+        const dt = document.getElementById("pjDetail");
+        if(dt && dt.classList.contains("on") && typeof pjRenderDetail === "function") pjRenderDetail();
+      }catch(_){}
       out.innerHTML = "";
       lastShow = [];
       st.textContent = "";
@@ -3351,7 +3363,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-17-04';
+  const TRIGATE_VERSION = '2026-08-17-05';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

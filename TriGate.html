@@ -447,12 +447,13 @@ body.presenMode table{font-size:1.02em}
   </div>
 
   <!-- ② 文書を入れる -->
-  <div class="step"><span class="no">STEP 2</span><h2>文書を入れる</h2><span class="hint">PDFをドラッグするか、クリックして選択</span></div>
+  <div class="step"><span class="no">STEP 2</span><h2>文書を入れる</h2><span class="hint">PDF、または公募要領のZIPをドラッグするか、クリックして選択</span></div>
   <div id="drop">
-    <div class="big" id="dropTitle">ここにPDFを落とす</div>
+    <div class="big" id="dropTitle">ここにPDFまたはZIPを落とす</div>
     <div class="small" id="dropSub">または クリックしてファイルを選ぶ</div>
   </div>
-  <input type="file" id="file" accept=".pdf,application/pdf">
+  <input type="file" id="file" accept=".pdf,.zip,application/pdf,application/zip">
+  <div id="zipPick" style="display:none;margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:8px"></div>
   <details class="extract" id="extractWrap" style="display:none">
     <summary>抽出されたテキストを確認する（AIには生PDFでなく、この文字を渡します）</summary>
     <pre id="extractText"></pre>
@@ -1853,10 +1854,130 @@ body.presenMode table{font-size:1.02em}
   });
   fileInput.addEventListener("change", e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); });
 
+  /* ===== ZIPの中の公募要領を取り出す（2026-08-17） =====
+     Jグランツは公募要領をZIPで配っている制度が多く（働き方改革推進支援助成金・
+     スキルアップ支援事業など）、PDFしか受け付けないと読み取りに進めなかった。
+     外部の部品は増やさず、ブラウザ内蔵の展開機能だけで中身を開く。
+     どのPDFを読むかは人が選ぶ（勝手に1本目を読むと、違うコースの要領で進んでしまう）。 */
+  let zipBuf = null, zipEntries = [];
+
+  function tsZipList(buf){
+    const dv = new DataView(buf), u8 = new Uint8Array(buf);
+    let eocd = -1;
+    for(let i = u8.length - 22; i >= 0 && i >= u8.length - 66000; i--){
+      if(dv.getUint32(i, true) === 0x06054b50){ eocd = i; break; }
+    }
+    if(eocd < 0) throw new Error("ZIPの形式が読み取れませんでした（中央ディレクトリが見つかりません）");
+    const count = dv.getUint16(eocd + 10, true);
+    let p = dv.getUint32(eocd + 16, true);
+    const out = [];
+    for(let n = 0; n < count; n++){
+      if(dv.getUint32(p, true) !== 0x02014b50) break;
+      const flag = dv.getUint16(p + 8, true), method = dv.getUint16(p + 10, true);
+      const csize = dv.getUint32(p + 20, true), usize = dv.getUint32(p + 24, true);
+      const nlen = dv.getUint16(p + 28, true), elen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true);
+      const lho = dv.getUint32(p + 42, true);
+      const nb = u8.slice(p + 46, p + 46 + nlen);
+      /* 名前の文字コード：フラグが立っていればUTF-8。立っていなくてもUTF-8として
+         正しく読めるならUTF-8。読めなければShift-JIS（官公庁のZIPはこちらが多い）。 */
+      let name;
+      if(flag & 0x800){ name = new TextDecoder("utf-8").decode(nb); }
+      else{
+        try{ name = new TextDecoder("utf-8", {fatal:true}).decode(nb); }
+        catch(_){ try{ name = new TextDecoder("shift_jis").decode(nb); }
+                  catch(__){ name = new TextDecoder("utf-8").decode(nb); } }
+      }
+      out.push({ name: name, method: method, csize: csize, usize: usize, lho: lho });
+      p += 46 + nlen + elen + clen;
+    }
+    return out;
+  }
+
+  async function tsZipExtract(buf, entry){
+    const dv = new DataView(buf), u8 = new Uint8Array(buf);
+    if(dv.getUint32(entry.lho, true) !== 0x04034b50) throw new Error("ZIPの中の位置が読み取れませんでした");
+    const nlen = dv.getUint16(entry.lho + 26, true), elen = dv.getUint16(entry.lho + 28, true);
+    const start = entry.lho + 30 + nlen + elen;
+    const data = u8.slice(start, start + entry.csize);
+    if(entry.method === 0) return data;
+    if(entry.method !== 8) throw new Error("この圧縮方式には対応していません（方式 " + entry.method + "）。ZIPを解凍して、中のPDFを直接お入れください。");
+    if(typeof DecompressionStream !== "function") throw new Error("このブラウザではZIPを開けません。解凍して中のPDFを直接お入れください。");
+    const st = new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+    return new Uint8Array(await new Response(st).arrayBuffer());
+  }
+
+  function tsZipRender(zipName){
+    const box = $("zipPick");
+    const pdfs = zipEntries.filter(e => /\.pdf$/i.test(e.name) && !/\/$/.test(e.name));
+    if(!pdfs.length){
+      const others = zipEntries.filter(e => !/\/$/.test(e.name)).map(e => e.name);
+      box.innerHTML = '<div style="font-weight:700;font-size:13px;margin-bottom:6px">' + esc(zipName) + '</div>'
+        + '<div style="font-size:12.5px;color:var(--fix)">このZIPの中にPDFがありませんでした。読み取れるのはPDFだけです。</div>'
+        + (others.length ? '<div style="font-size:12px;color:var(--muted);margin-top:6px">中に入っていたもの：' + esc(others.slice(0,12).join("、")) + '</div>' : "");
+      box.style.display = "block";
+      return;
+    }
+    let h = '<div style="font-weight:700;font-size:13px;margin-bottom:6px">' + esc(zipName) + ' の中身（' + pdfs.length + '件のPDF）</div>'
+          + '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">読み取るものを一つお選びください。コースごとに要領が分かれていることがあります。</div>';
+    pdfs.forEach(e => {
+      const i = zipEntries.indexOf(e);
+      h += '<div style="margin:4px 0"><button type="button" class="dbtn" data-zip="' + i + '">' + esc(e.name)
+         + '<span style="color:var(--muted);margin-left:8px;font-weight:400">' + Math.round(e.usize/1024) + ' KB</span></button></div>';
+    });
+    box.innerHTML = h;
+    box.style.display = "block";
+  }
+
+  document.addEventListener("click", async (ev)=>{
+    const b = ev.target.closest ? ev.target.closest("[data-zip]") : null;
+    if(!b || !zipBuf) return;
+    const entry = zipEntries[Number(b.getAttribute("data-zip"))];
+    if(!entry) return;
+    try{
+      $("zipPick").innerHTML = '<div style="font-size:12.5px">' + esc(entry.name) + ' を取り出しています…</div>';
+      const bytes = await tsZipExtract(zipBuf, entry);
+      const base = entry.name.split("/").pop();
+      await handlePdfFile(new File([bytes], base, {type:"application/pdf"}));
+      $("zipPick").innerHTML = '<div style="font-size:12.5px">ZIPから取り出しました：<b>' + esc(base) + '</b>'
+        + ' <button type="button" class="dbtn" id="zipBackBtn" style="margin-left:8px">別のものを選ぶ</button></div>';
+    }catch(err){
+      $("zipPick").innerHTML = '<div style="font-size:12.5px;color:var(--fix)">取り出しに失敗しました：' + esc(err.message) + '</div>';
+    }
+  });
+
+  document.addEventListener("click", (ev)=>{
+    if(ev.target && ev.target.id === "zipBackBtn" && zipBuf){ tsZipRender(zipName_ || "ZIP"); }
+  });
+  let zipName_ = "";
+
   async function handleFile(f){
+    const isZip = (f.type === "application/zip") || (f.type === "application/x-zip-compressed") || /\.zip$/i.test(f.name || "");
+    if(isZip){
+      hideErr(); outEl.style.display = "none";
+      $("dropTitle").textContent = "ZIPを開いています…";
+      $("dropSub").textContent = f.name;
+      try{
+        zipBuf = await f.arrayBuffer();
+        zipEntries = tsZipList(zipBuf);
+        zipName_ = f.name;
+        $("dropTitle").textContent = "✓ " + f.name;
+        $("dropSub").textContent = "ZIPの中から、読み取るPDFをお選びください";
+        tsZipRender(f.name);
+      }catch(err){
+        showErr("ZIPを開けませんでした：" + err.message);
+        $("dropTitle").textContent = "ここにPDFまたはZIPを落とす";
+        $("dropSub").textContent = "または クリックしてファイルを選ぶ";
+      }
+      return;
+    }
+    $("zipPick").style.display = "none";
+    return handlePdfFile(f);
+  }
+
+  async function handlePdfFile(f){
     // type が空で返る環境（PWAのファイルハンドラ経由・MIME関連付けの壊れた端末）があるため拡張子でも許容する
     const __isPdf = (f.type === "application/pdf") || /\.pdf$/i.test(f.name || "");
-    if(!__isPdf){ showErr("PDFファイルを入れてください。"); return; }
+    if(!__isPdf){ showErr("PDFファイル、または公募要領のZIPを入れてください。"); return; }
     if(!ensurePdfJs()){
       showErr("PDF読み取り部品（pdf.min.js）が読み込めていません。TriGate.html と同じ場所に pdf.min.js と pdf.worker.min.js が置かれているかご確認ください。他の機能（獲得実績カウンター等）は通常どおり使えます。");
       return;
@@ -1891,7 +2012,7 @@ body.presenMode table{font-size:1.02em}
       goBtn.disabled=false;
     }catch(err){
       showErr("PDFの読み込みに失敗しました：" + err.message);
-      $("dropTitle").textContent="ここにPDFを落とす";
+      $("dropTitle").textContent="ここにPDFまたはZIPを落とす";
       $("dropSub").textContent="または クリックしてファイルを選ぶ";
     }
   }
@@ -2202,7 +2323,7 @@ body.presenMode table{font-size:1.02em}
     document.querySelectorAll("#focus button").forEach(x=>x.classList.remove("on"));
     $("premise").value="";
     drop.classList.remove("has");
-    $("dropTitle").textContent="ここにPDFを落とす";
+    $("dropTitle").textContent="ここにPDFまたはZIPを落とす";
     $("dropSub").textContent="または クリックしてファイルを選ぶ";
     $("extractWrap").style.display="none";
     $("extractText").textContent="";
@@ -3168,7 +3289,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-17-01';
+  const TRIGATE_VERSION = '2026-08-17-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

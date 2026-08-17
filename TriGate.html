@@ -397,6 +397,7 @@ body.presenMode table{font-size:1.02em}
     <div class="digstatus" id="digStatus"></div>
     <div class="digrow" style="margin-top:8px">
       <button id="digFullGateBtn" class="dbtn" style="display:none">この一覧すべてで詳細AIゲート判定を実行する（API複数回・時間がかかります）</button>
+      <button type="button" class="rc-toggle" id="digClearBtn" style="display:none" title="画面から一覧を消します。判定の記憶は残ります">掘った一覧を消す</button>
     </div>
     <div id="digOut"></div>
   </div>
@@ -1147,6 +1148,7 @@ body.presenMode table{font-size:1.02em}
       out.innerHTML = digRowsHtml(sv.rows);
       lastShow = sv.rows;
       if(fullGateBtn) fullGateBtn.style.display = "";
+      { const cb = document.getElementById("digClearBtn"); if(cb) cb.style.display = ""; }
       let when = "";
       try{
         const d = new Date(sv.savedAt);
@@ -1158,6 +1160,23 @@ body.presenMode table{font-size:1.02em}
         + '最新にするには「新着を掘る」を押してください。</span>';
       try{ if(typeof pjRefreshRowBadges === "function") pjRefreshRowBadges(); }catch(_){}
     }
+
+    /* 掘った一覧を画面から消す（2026-08-17）。
+       呼び戻しを入れたとき、戻す手段だけ作って消す手段を作っていなかった。
+       消すのは表示と保存だけで、判定の記憶（会社×案件）には触らない。 */
+    function clearDigResult(){
+      try{ localStorage.removeItem(DIG_SAVE_KEY); }catch(_){}
+      out.innerHTML = "";
+      lastShow = [];
+      st.textContent = "";
+      if(fullGateBtn) fullGateBtn.style.display = "none";
+      const cb = document.getElementById("digClearBtn");
+      if(cb) cb.style.display = "none";
+    }
+    (function(){
+      const cb = document.getElementById("digClearBtn");
+      if(cb) cb.addEventListener("click", clearDigResult);
+    })();
 
     setTimeout(restoreDigResult, 0);
 
@@ -1275,6 +1294,7 @@ body.presenMode table{font-size:1.02em}
         lastShow = show;
         saveDigResult(kw, st.textContent, show);
         if(fullGateBtn) fullGateBtn.style.display = show.length ? "" : "none";
+        { const cb = document.getElementById("digClearBtn"); if(cb) cb.style.display = show.length ? "" : "none"; }
         /* 第4段：給付方式・除外条件の一括判定（API数回・行ごとにバッジと見込み額を随時反映） */
         if(company && show.length){
           const baseMsg = st.textContent;
@@ -3331,7 +3351,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-17-03';
+  const TRIGATE_VERSION = '2026-08-17-04';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -3111,7 +3111,10 @@ body.presenMode table{font-size:1.02em}
         method:"POST",
         headers:{"Content-Type":"application/json","x-trisight-code":tsCode()},
         body:JSON.stringify({
-          model:MODEL, max_tokens:8000, system:SYSTEM, messages
+          /* 2026-08-20 temperature:0 を明示。ここが抜けていたため、同じ公募要領を
+             読み直すたびに必要書類の件数と文言が変わっていた（12件と9件で食い違った実例あり）。
+             発掘側の3つのAI呼び出しには2026-08-13に入れたが、読み取りだけ漏れていた。 */
+          model:MODEL, max_tokens:8000, temperature:0, system:SYSTEM, messages
         })
       });
       if(!res.ok){
@@ -3381,7 +3384,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-20-01';
+  const TRIGATE_VERSION = '2026-08-20-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

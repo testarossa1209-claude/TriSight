@@ -295,7 +295,7 @@
   <section class="card" id="grantListCard">
     <div class="card-label">各システムから届いた案件</div>
     <div class="card-hint" id="grantListHint">読み込み中…</div>
-    <div style="font-size:12.5px;margin:-8px 0 14px">
+    <div id="formLinkRow" style="font-size:12.5px;margin:-8px 0 14px">
       <a href="TriForm.html" style="color:var(--amber)">TriForm で工程に分解する</a>
       <span style="color:var(--ink-soft)">　添付書類の用意のしかたまで工程に開きます</span>
     </div>
@@ -630,11 +630,13 @@
     return allInbox().filter(g => !g.auth_code || g.auth_code === code);
   }
   function renderGrantList(){
-    if(!isFamilyTier(myAuthCode())){
-      $("grantListCard").style.display = "none";
-      return;
-    }
+    // 2026-08-20 廉価版（トライゲイト＋トライタスク）でも受信箱を動かす。
+    // 親機との差は TriForm（型による工程分解）に置く。
     $("grantListCard").style.display = "";
+    try{
+      var _famRow = document.getElementById("formLinkRow");
+      if(_famRow) _famRow.style.display = isFamilyTier(myAuthCode()) ? "" : "none";
+    }catch(e){}
     const grants = visibleInbox();
     const hint = $("grantListHint");
     const ul = $("grantList");

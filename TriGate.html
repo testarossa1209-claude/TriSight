@@ -321,7 +321,8 @@ body.presenMode table{font-size:1.02em}
       <h1>TriGate<span class="reg">®</span></h1>
       <span class="sub">補助金・助成金の門 ／ 受付・仕分け</span>
     </div>
-    <a class="famlink" href="index.html">TriSight ファミリーへ &rsaquo;</a>
+    <a class="famlink" href="TriTask.html" id="taskLink">TriTask で進捗を管理する &rsaquo;</a>
+    <a class="famlink" href="index.html" id="famLink">TriSight ファミリーへ &rsaquo;</a>
     </div>
     <div class="codebar" style="margin-top:8px;font-size:13px;color:#666">
       認証コード：<span id="authCodeLabel">確認中…</span>
@@ -691,6 +692,19 @@ body.presenMode table{font-size:1.02em}
     const c = localStorage.getItem('trisight_access_code') || '';
     const el = document.getElementById('authCodeLabel');
     if(el) el.textContent = (c ? c : '（未設定）') + '　／　プラン：' + tsPlanLabel(c) + (tsPlanIsLocked(c) ? '（トライサイト設定）' : '');
+    tgRefreshTierLinks(c);
+  }
+  /* 2026-08-20 契約プランに応じて画面上の行き先を出し分ける。
+     廉価版（トライゲイト＋トライタスク）に、使えない画面への入口を出さないため。 */
+  function tgRefreshTierLinks(code){
+    try{
+      const fam = (tsPlan(code) === 'family');
+      const fl = document.getElementById('famLink');
+      if(fl) fl.style.display = fam ? '' : 'none';
+      document.querySelectorAll('a[href="TriForm.html"]').forEach(function(a){
+        a.style.display = fam ? '' : 'none';
+      });
+    }catch(e){}
   }
   function changeAuthCode(){
     const cur = localStorage.getItem('trisight_access_code') || '';
@@ -2160,7 +2174,7 @@ body.presenMode table{font-size:1.02em}
     let __authCode = "";
     try{ __authCode = localStorage.getItem('trisight_access_code') || ""; }catch(e){ __authCode = ""; }
     __lastSentId = null;
-    if(!isFamilyTier(__authCode)) return; // 対象外契約では自動連携なし（ボタン押下時に案内）
+    // 2026-08-20 廉価版でも自動連携する（親機との差は TriForm の型による分解に置く）
     const card = doSendToTask(d, null);
     if(card) __lastSentId = card.id;
   }
@@ -2171,10 +2185,6 @@ body.presenMode table{font-size:1.02em}
     if(!TG_LAST){ alert("先に判定を実行してください。"); return; }
     let __authCode = "";
     try{ __authCode = localStorage.getItem('trisight_access_code') || ""; }catch(e){ __authCode = ""; }
-    if(!isFamilyTier(__authCode)){
-      showTaskMsg("この契約プランでは自動連携はご利用いただけません。判定結果をコピーし、TriTaskの「その他」欄から貼り付けてご利用ください。", false);
-      return;
-    }
     const d = TG_LAST;
     $("srProgramName").value = d.program_name || "（名称不明）";
     $("srIssuer").value = d.issuer || "";
@@ -3187,6 +3197,14 @@ body.presenMode table{font-size:1.02em}
   /* 読み取った制度名から、直近の発掘一覧の同じ案件を探す（制度名の正規化は既存の pjNormTitle を使う） */
   function tsDugDeadline(programName){
     try{
+      /* 2026-08-20 修正：lastShow は発掘カード内のスコープにあり、この関数からは見えない
+         （ReferenceError が try/catch に握り潰され、併記が黙って出なくなっていた）。
+         端末に保存済みの発掘結果（同じ会社の分）を直接読む。ページを再読込しても効く。 */
+      let lastShow = [];
+      try{
+        const sv = JSON.parse(localStorage.getItem("trisight_dig_saved") || "null");
+        if(sv && Array.isArray(sv.rows)) lastShow = sv.rows;
+      }catch(_){ lastShow = []; }
       if(!programName || !Array.isArray(lastShow) || !lastShow.length) return "";
       const key = pjNormTitle(programName);
       if(!key) return "";
@@ -3363,7 +3381,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-17-05';
+  const TRIGATE_VERSION = '2026-08-20-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -134,6 +134,10 @@
   <div class="badge">TriSight Family</div>
   <h1>TriForm</h1>
   <div class="tagline">制度の言葉を、手の動く工程へ</div>
+  <div style="margin-top:6px;font-size:12.5px">
+    <a href="TriTask.html" style="color:var(--amber)">TriTask で進捗を管理する &rsaquo;</a>
+    <a href="TriGate.html" style="color:var(--ink-soft);margin-left:12px">TriGate へ戻る</a>
+  </div>
   <div class="authline">
     <span id="authLabel">認証コード：（未設定）</span>
     <button type="button" id="authCodeChangeBtn" class="minibtn">認証コードを確認・変更する</button>
@@ -184,6 +188,9 @@
   <button class="go" id="applyBtn">この内容でトライタスクへ渡す</button>
   <button class="go ghost" id="backBtn">一覧へ戻る</button>
   <div class="msg" id="msg"></div>
+  <div id="toTaskRow" style="display:none;margin-top:10px">
+    <a class="go" href="TriTask.html" style="display:inline-block;text-decoration:none;text-align:center">TriTask で進捗を管理する &rsaquo;</a>
+  </div>
 </div>
 
 <div class="creed">
@@ -863,6 +870,7 @@
       + (unchecked.length ? "未確認の項目が" + unchecked.length + "件あり、その工程の中に書き出してあります。" : "")
       + (factMissing.length ? "基礎情報の不足" + factMissing.length + "件も、先頭の工程に書き出してあります。" : "");
     renderList();
+    try{ var _tt = document.getElementById("toTaskRow"); if(_tt) _tt.style.display = ""; }catch(e){}
   });
   $("backBtn").addEventListener("click", function(){
     $("work").classList.remove("show");

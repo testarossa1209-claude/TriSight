@@ -382,7 +382,7 @@ body.presenMode table{font-size:1.02em}
   </div>
 
   <!-- 発掘（新着探索・Jグランツ） 2026-07-13 -->
-  <div class="step"><span class="no">発掘</span><h2>新着の補助金を掘る</h2><span class="hint">Jグランツで受付中の案件を、リレー経由で探しに行きます</span></div>
+  <div class="step"><span class="no">発掘</span><h2>新着の補助金を掘る</h2><span class="hint">Jグランツと国土交通省で受付中の案件を、リレー経由で探しに行きます</span></div>
   <div class="card">
     <div class="digrow">
       <label class="digkwlabel" for="digKeyword">検索する語</label>
@@ -868,6 +868,9 @@ body.presenMode table{font-size:1.02em}
         try{ localStorage.removeItem("trisight_dig_company_name"); }catch(e){}
       }
       if(typeof pjRenderFigs === "function"){ try{ pjRenderFigs(); }catch(e){} }
+      /* 2026-08-22：見込み額パネルの見出し（対象：〇〇）も描き直す。
+         これを呼んでいなかったため、会社を切り替えても見出しだけ前の会社のまま残っていた */
+      if(typeof pjRenderThreshButtons === "function"){ try{ pjRenderThreshButtons(); }catch(e){} }
       tsRenderCompanySel();
     }
     compLabel();
@@ -3422,7 +3425,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-22-01';
+  const TRIGATE_VERSION = '2026-08-22-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

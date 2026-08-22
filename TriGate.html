@@ -1546,6 +1546,7 @@ body.presenMode table{font-size:1.02em}
               const seen = {};
               list.forEach(it => { if(it && it.id) seen[it.id] = true; });
               list = list.concat(webItems.filter(it => !seen[it.id]));
+              tsWebCacheSave(webItems);
               webNote = "／" + selPref + "の検索で " + webItems.length + "件";
             }else{
               webNote = "／" + selPref + "の検索では該当が見つかりませんでした";
@@ -1978,7 +1979,30 @@ body.presenMode table{font-size:1.02em}
     }
 
     /* ---- 詳細表示と「この案件で進める」（候補登録） ---- */
+    /* 検索で拾った案件は、どのリレーにも存在しない。掘ったときの中身を保管して詳細に使う。
+       画面を開き直しても見られるよう、端末にも控える。 */
+    const WEB_CACHE_KEY = "trisight_dig_web_items";
+    function tsWebCacheSave(items){
+      if(!items || !items.length) return;
+      let all = {};
+      try{ all = JSON.parse(localStorage.getItem(WEB_CACHE_KEY) || "{}"); }catch(_){ all = {}; }
+      items.forEach(it => { if(it && it.id) all[it.id] = it; });
+      try{ localStorage.setItem(WEB_CACHE_KEY, JSON.stringify(all)); }catch(_){}
+    }
+    function tsWebCacheGet(id){
+      try{
+        const all = JSON.parse(localStorage.getItem(WEB_CACHE_KEY) || "{}");
+        return all[id] || null;
+      }catch(_){ return null; }
+    }
+
     async function fetchDetail(id){
+      /* 検索分は手元の控えから返す */
+      if(String(id || "").indexOf("web-") === 0){
+        const hit = (lastShow || []).find(x => x && x.id === id) || tsWebCacheGet(id);
+        if(hit) return hit;
+        throw new Error("この案件の中身が手元にありません。もう一度「新着を掘る」を押してください。");
+      }
       const code = tsCode();
       if(!code) throw new Error("認証コードが未入力です。");
       const res = await fetch(tsRelayFor(id), {
@@ -3900,7 +3924,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-22-13';
+  const TRIGATE_VERSION = '2026-08-22-14';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

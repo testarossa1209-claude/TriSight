@@ -796,6 +796,11 @@ body.presenMode table{font-size:1.02em}
       ? ' <span style="font-size:.8em;padding:1px 5px;border-radius:3px;background:#eef3ff;color:#2c4a8a;white-space:nowrap">国交省</span>'
       : "";
   }
+  window.tsSrcBadge = tsSrcBadge;
+  function tsSrcBadgeSafe(id){
+    try{ return (typeof window.tsSrcBadge === "function") ? window.tsSrcBadge(id) : ""; }catch(e){ return ""; }
+  }
+  window.tsSrcBadgeSafe = tsSrcBadgeSafe;
   (function(){
     const btn = document.getElementById("digBtn");
     const st  = document.getElementById("digStatus");
@@ -817,7 +822,7 @@ body.presenMode table{font-size:1.02em}
       if(!row) return;
       const cell = row.querySelector("td:first-child");
       if(!cell) return;
-      cell.innerHTML = e(row.dataset.title || "") + badgeHtml;
+      cell.innerHTML = e(row.dataset.title || "") + (typeof window.tsSrcBadgeSafe === "function" ? window.tsSrcBadgeSafe(id) : "") + badgeHtml;
     }
     try{ company = JSON.parse(localStorage.getItem("trisight_dig_company") || "null"); }catch(_){ company = null; }
     /* 2026-08-13追加：会社ごとの基礎情報を端末に貯めて、選んで切り替えられるようにする。
@@ -2916,7 +2921,7 @@ body.presenMode table{font-size:1.02em}
       if(!c || !c.gate) return;
       const cell = row.querySelector("td:first-child");
       if(!cell) return;
-      cell.innerHTML = esc(row.dataset.title || "") + pjBadgeHtml(c.gate, c.amount_max, c.gate_lite === false);
+      cell.innerHTML = esc(row.dataset.title || "") + (typeof window.tsSrcBadgeSafe === "function" ? window.tsSrcBadgeSafe(row.dataset.id) : "") + pjBadgeHtml(c.gate, c.amount_max, c.gate_lite === false);
     });
   }
   function pjRenderThreshButtons(){
@@ -3425,7 +3430,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-22-02';
+  const TRIGATE_VERSION = '2026-08-22-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

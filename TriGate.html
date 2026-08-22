@@ -382,7 +382,7 @@ body.presenMode table{font-size:1.02em}
   </div>
 
   <!-- 発掘（新着探索・Jグランツ） 2026-07-13 -->
-  <div class="step"><span class="no">発掘</span><h2>新着の補助金を掘る</h2><span class="hint">Jグランツ・国土交通省・厚生労働省で受付中の案件を、リレー経由で探しに行きます</span></div>
+  <div class="step"><span class="no">発掘</span><h2>新着の補助金を掘る</h2><span class="hint">Jグランツ・国土交通省・厚生労働省に加え、選んだ都道府県の独自制度をその場で検索して掘ります</span></div>
   <div class="card">
     <div class="digrow">
       <label class="digkwlabel" for="digKeyword">検索する語</label>
@@ -812,13 +812,20 @@ body.presenMode table{font-size:1.02em}
     { prefix: "mlit-", short: "国交省", full: "国土交通省", open: "国土交通省・執行団体のページを開く",
       bg: "#eef3ff", fg: "#2c4a8a" },
     { prefix: "mhlw-", short: "厚労省", full: "厚生労働省", open: "厚生労働省のページを開く",
-      bg: "#eefaf1", fg: "#1b6b3a" }
+      bg: "#eefaf1", fg: "#1b6b3a" },
+    { prefix: "pref-", short: "自治体", full: "都道府県・市区町村", open: "自治体のページを開く",
+      bg: "#fff3e6", fg: "#8a4b00" },
+    /* web- は、その場でウェブを検索して拾ったもの。当社が確認した固定情報とは別物として扱う。
+       読み違えが混じりうるため、画面上でも必ず区別する。 */
+    { prefix: "web-", short: "検索", full: "ウェブ検索（当社未確認）", open: "掲載元のページを開く",
+      bg: "#fdeaea", fg: "#8a2b2b" }
   ];
   /* 出所を追加する口（2026-08-22）。ここに1行足せば、一覧のラベルも詳細の文言も揃う。
      リレー側は同じ形（action:list/detail、jGrantsと同じ項目名）で返すこと。 */
   const TS_EXTRA_SOURCES = [
     { url: "https://trisight-relay.vercel.app/api/mlit", label: "国土交通省" },
-    { url: "https://trisight-relay.vercel.app/api/mhlw", label: "厚生労働省" }
+    { url: "https://trisight-relay.vercel.app/api/mhlw", label: "厚生労働省" },
+    { url: "https://trisight-relay.vercel.app/api/pref", label: "自治体", usePref: true }
   ];
   const TS_SOURCE_DEFAULT = { short: "Jグランツ", full: "Jグランツ", open: "Jグランツで開く",
       bg: "#f1f3f5", fg: "#495057" };
@@ -833,6 +840,7 @@ body.presenMode table{font-size:1.02em}
     const key = String(id || "");
     if(key.indexOf("mlit-") === 0) return "https://trisight-relay.vercel.app/api/mlit";
     if(key.indexOf("mhlw-") === 0) return "https://trisight-relay.vercel.app/api/mhlw";
+    if(key.indexOf("pref-") === 0) return "https://trisight-relay.vercel.app/api/pref";
     return JG_RELAY;
   }
   /* Jグランツ以外＝カタログ側の案件か（添付欄や取り寄せボタンの出し分けに使う） */
@@ -866,6 +874,84 @@ body.presenMode table{font-size:1.02em}
     if(!a) return true;
     if(a.indexOf("全国") >= 0) return true;
     return a.indexOf(pref) >= 0;
+  }
+
+  /* ===== 自治体の制度をその場で掘りに行く（2026-08-22） =====
+     47都道府県ぶんのカタログを人手で持つのは不可能（作った端から古くなる）。
+     そこで、選ばれた県について、その場でウェブを検索して制度を拾い、
+     Jグランツと同じ項目名に起こす。カタログを持たないので腐らない。
+     ただし読み違えが混じるため、出所URLと確認日を必ず添え、画面上でも別扱いにする。 */
+  const DIG_WEB_SYSTEM = [
+    "あなたは、指定された都道府県の中小企業向け補助金・助成金を、ウェブ検索で洗い出す担当者です。",
+    "出力はJSONのみ。前置きも囲みも付けないでください。",
+    "",
+    "【探す対象】",
+    "・その都道府県、またはその県内の市区町村が独自に実施している制度",
+    "・その県の外郭団体・振興公社・環境公社等が実施している制度も含む",
+    "・国の制度（Jグランツ掲載分）は対象外。既に別経路で取得しているため重複させない",
+    "・指定された業種に当たる制度を優先する",
+    "",
+    "【守ること】",
+    "・必ずウェブ検索で確かめる。記憶から書かない。",
+    "・出所URL（source_url）は、実際に検索で得たページのURLをそのまま入れる。作らない。",
+    "・上限額・補助率・受付期間は、ページに書かれていた場合だけ入れる。書かれていなければ null。推測しない。",
+    "・受付が終了している制度は含めない。",
+    "・見つからなかった場合は items を空配列にする。無理に埋めない。",
+    "・最大8件まで。多く出すより、確かなものを出す。",
+    "",
+    "【出力するJSONの形】",
+    '{"items":[{"title":"制度名（実施主体が分かる形で）","catch":"一行の要約",',
+    '"max_limit":上限額の数値またはnull,"rate":"補助率の文字列またはnull",',
+    '"industry":"対象業種の記載","area":"都道府県名","employees":"従業員規模の記載またはnull",',
+    '"start":"受付開始 YYYY-MM-DD またはnull","end":"受付終了 YYYY-MM-DD またはnull",',
+    '"source_url":"実際のページURL","detail":"制度の内容と、要領を読まないと分からない順序の制約や注意点"}]}'
+  ].join("\n");
+
+  async function tsDigWebPref(pref, industryHint){
+    if(!pref) return [];
+    const code = tsCode();
+    if(!code) return [];
+    const q = "都道府県：" + pref + "\n対象業種：" + (industryHint || "（指定なし・中小企業全般）")
+            + "\n本日：" + new Date().toISOString().slice(0,10);
+    const res = await fetch(RELAY, {
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-trisight-code":code},
+      body: JSON.stringify({
+        model: MODEL, max_tokens: 8000, temperature: 0, system: DIG_WEB_SYSTEM,
+        messages:[{role:"user", content: q}],
+        tools:[{ type:"web_search_20250305", name:"web_search", max_uses: 8 }]
+      })
+    });
+    if(!res.ok) throw new Error("検索に失敗しました（" + res.status + "）");
+    const data = await res.json();
+    const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
+    if(!text) return [];
+    let parsed = null;
+    try{ parsed = parseJSON(text); }catch(_){ return []; }
+    const items = (parsed && Array.isArray(parsed.items)) ? parsed.items : [];
+    const today = new Date().toISOString().slice(0,10);
+    return items.filter(x => x && x.title && x.source_url).map((x, i) => ({
+      id: "web-" + pref + "-" + i,
+      title: x.title, name: x.title,
+      subsidy_catch_phrase: x.catch || "",
+      subsidy_max_limit: (typeof x.max_limit === "number") ? x.max_limit : null,
+      subsidy_rate: x.rate || null,
+      use_purpose: "",
+      industry: x.industry || "",
+      target_number_of_employees: x.employees || "",
+      target_area_search: x.area || pref,
+      target_area_detail: x.area || pref,
+      acceptance_start_datetime: x.start || null,
+      acceptance_end_datetime: x.end || null,
+      front_subsidy_detail_page_url: x.source_url,
+      detail: (x.detail || "") + "\n\n※この案件は、発掘時にウェブ検索で拾ったものです。当社が内容を確認したものではありません。金額・期間・要件は必ず掲載元でお確かめください。",
+      ts_source: (x.area || pref) + "（ウェブ検索・当社未確認）",
+      ts_source_short: "検索",
+      ts_source_url: x.source_url,
+      ts_verified_on: today,
+      ts_guidelines: [],
+      application_guidelines: [], outline_of_grant: [], application_form: []
+    }));
   }
 
   /* ===== 公募要領の自動取り寄せ 2026-08-22 =====
@@ -1400,7 +1486,7 @@ body.presenMode table{font-size:1.02em}
       const code = tsCode();
       if(!code){ st.textContent = "認証コードが未入力のため中止しました。"; return; }
       btn.disabled = true;
-      st.textContent = "Jグランツ・国土交通省・厚生労働省へ探しに行っています…";
+      st.textContent = "Jグランツ・国土交通省・厚生労働省・自治体へ探しに行っています…";
       out.innerHTML = "";
       if(fullGateBtn) fullGateBtn.style.display = "none";
       lastShow = [];
@@ -1427,7 +1513,8 @@ body.presenMode table{font-size:1.02em}
             const mres = await fetch(src.url, {
               method:"POST",
               headers:{"Content-Type":"application/json","x-trisight-code":code},
-              body: JSON.stringify({ action:"list", params:{} })
+              body: JSON.stringify({ action:"list",
+                params: src.usePref ? { pref: (prefSel ? prefSel.value : "") } : {} })
             });
             if(mres.ok){
               const mdata = await mres.json();
@@ -1445,13 +1532,32 @@ body.presenMode table{font-size:1.02em}
           }
         }
         if(mlNote) st.textContent = mlNote;
-        /* 地域で絞る（2026-08-22）。選んだ県と「全国」だけを残す。
-           これで表示件数もAIへ渡す件数も減る。 */
+        /* 選ばれた県を、その場で掘りに行く（2026-08-22）。
+           47都道府県ぶんのカタログを持たずに全県へ対応するための本体。
+           失敗しても他の出所の結果は残す。 */
         const selPref = prefSel ? prefSel.value : "";
+        let webNote = "";
+        if(selPref){
+          st.textContent = selPref + "の独自制度を検索しています…（30秒ほどかかります）";
+          try{
+            const ind = (company && company["機械足切り条件"] && company["機械足切り条件"]["業種"]) || "";
+            const webItems = await tsDigWebPref(selPref, ind);
+            if(webItems.length){
+              const seen = {};
+              list.forEach(it => { if(it && it.id) seen[it.id] = true; });
+              list = list.concat(webItems.filter(it => !seen[it.id]));
+              webNote = "／" + selPref + "の検索で " + webItems.length + "件";
+            }else{
+              webNote = "／" + selPref + "の検索では該当が見つかりませんでした";
+            }
+          }catch(err){
+            webNote = "／" + selPref + "の検索に失敗（" + String(err && err.message ? err.message : err).slice(0,30) + "）";
+          }
+        }
         let cutByArea = 0;
         if(selPref){
           const before = list.length;
-          list = list.filter(it => tsAreaOk(it, selPref));
+          list = list.filter(it => String(it && it.id || "").indexOf("web-") === 0 || tsAreaOk(it, selPref));
           cutByArea = before - list.length;
         }
         if(list.length === 0){
@@ -1554,6 +1660,7 @@ body.presenMode table{font-size:1.02em}
           show.forEach(it => { html += rowOf(it); });
         }
         html += "</tbody></table>" + "<div class='digNote'>受付期間の終わりは掲載元（Jグランツ等）の表記をそのまま表示しています。申請の締切と異なる場合があります。"
+              + e(webNote)
               + (selPref ? "／地域は「" + e(selPref) + "」で絞っています（全国区の制度は残しています"
                   + (cutByArea ? "。" + cutByArea + "件を地域で除外" : "") + "）。" : "") + "</div>";
         out.innerHTML = html;
@@ -3793,7 +3900,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-22-11';
+  const TRIGATE_VERSION = '2026-08-22-13';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

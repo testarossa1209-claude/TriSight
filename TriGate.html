@@ -826,7 +826,14 @@ body.presenMode table{font-size:1.02em}
     for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
     return new File([arr], name || "koubo.pdf", { type: "application/pdf" });
   }
-  /* jGrantsの詳細が返すファイル配列から、本体（base64）が入っている項目を探す */
+  /* Jグランツの添付は {name, data} の塊で返る（デジタル庁API仕様・2026-08-22確認）。
+     配列で返る場合にも備えて、どちらでも配列として扱えるようにそろえる。 */
+  function tsFileList(x){
+    if(Array.isArray(x)) return x.filter(Boolean);
+    if(x && typeof x === "object") return [x];
+    return [];
+  }
+  /* Jグランツの詳細が返すファイルの塊から、本体（base64）が入っている項目を探す */
   function tsPickFileBody(f){
     if(!f || typeof f !== "object") return null;
     for(const k of ["data", "file", "content", "base64", "value", "body"]){
@@ -865,13 +872,13 @@ body.presenMode table{font-size:1.02em}
     }
     const data = await res.json();
     const d0 = (Array.isArray(data.result) ? data.result : [])[0] || {};
-    const list = Array.isArray(d0.application_guidelines) ? d0.application_guidelines : [];
-    for(const f of list){
+    const field = (opt && opt.field) || "application_guidelines";
+    const fallback = { application_guidelines: "公募要領.pdf", outline_of_grant: "交付要綱.pdf", application_form: "申請様式.pdf" };
+    for(const f of tsFileList(d0[field])){
       const body = tsPickFileBody(f);
-      if(body) return tsB64ToFile(body, f.name || "公募要領.pdf");
+      if(body) return tsB64ToFile(body, f.name || fallback[field] || "資料.pdf");
     }
-    const keys = list.length ? Object.keys(list[0] || {}).join(",") : "（配列なし）";
-    throw new Error("公募要領の本体が取れませんでした。掲載元の添付：" + list.length + "件／項目：" + keys + "。公式ページからお取りください。");
+    throw new Error("この案件には、その資料が添付されていません。公式ページからお取りください。");
   }
   /* 取れたPDFを、人が落としたのと同じ入口へ渡す */
   async function tsSendToReader(file){
@@ -1790,9 +1797,9 @@ body.presenMode table{font-size:1.02em}
       add("受付期間", fd(d.acceptance_start_datetime)+" 〜 "+fd(d.acceptance_end_datetime));
       if(d.project_end_deadline) add("事業終了期限", fd(d.project_end_deadline));
       if(!tsIsMlit(id)){
-        const gl = Array.isArray(d.application_guidelines) ? d.application_guidelines : [];
-        const nm = gl.map(f=>f && f.name).filter(Boolean).join(" ／ ");
-        add("添付資料", nm || (gl.length ? "（" + gl.length + "件・名称なし）" : "掲載元に添付なし"));
+        const nm = ["application_guidelines","outline_of_grant","application_form"]
+          .flatMap(k => tsFileList(d[k])).map(f => f && f.name).filter(Boolean).join(" ／ ");
+        add("添付資料", nm || "掲載元に添付なし");
       }
       if(d.front_subsidy_detail_page_url){
         add("公式ページ", '<a href="'+e(d.front_subsidy_detail_page_url)+'" target="_blank" rel="noopener">'
@@ -1813,7 +1820,17 @@ body.presenMode table{font-size:1.02em}
               + e(g.label || g.name || ("資料" + (i + 1))) + 'を取り寄せて読み取る</button>');
           });
         }else if(!tsIsMlit(id)){
-          btns.push('<button class="rbtn" data-act="guide" data-id="' + e(id) + '" style="margin:4px 6px 0 0">公募要領を取り寄せて読み取る</button>');
+          const fields = [
+            ["application_guidelines", "公募要領"],
+            ["outline_of_grant", "交付要綱"],
+            ["application_form", "申請様式"]
+          ];
+          fields.forEach(([k, label]) => {
+            if(tsFileList(d[k]).some(f => tsPickFileBody(f))){
+              btns.push('<button class="rbtn" data-act="guide" data-id="' + e(id) + '" data-field="' + k
+                + '" style="margin:4px 6px 0 0">' + label + 'を読み取る</button>');
+            }
+          });
         }
         if(btns.length){
           add("公募要領", btns.join("") + '<div class="digguide" style="margin-top:4px;color:var(--muted)"></div>');
@@ -1944,7 +1961,7 @@ body.presenMode table{font-size:1.02em}
         try{
           const file = b.dataset.url
             ? await tsFetchGuidelineFile({ url: b.dataset.url, name: b.dataset.name })
-            : await tsFetchGuidelineFile({ id: b.dataset.id });
+            : await tsFetchGuidelineFile({ id: b.dataset.id, field: b.dataset.field });
           await tsSendToReader(file);
           if(note) note.textContent = "読み取り欄に入れました（" + file.name + "）。下の「読み取る」を押してください。";
         }catch(err){
@@ -3556,7 +3573,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-22-06';
+  const TRIGATE_VERSION = '2026-08-22-07';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

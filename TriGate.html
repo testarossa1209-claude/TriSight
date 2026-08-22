@@ -2000,7 +2000,18 @@ body.presenMode table{font-size:1.02em}
       /* 検索分は手元の控えから返す */
       if(String(id || "").indexOf("web-") === 0){
         const hit = (lastShow || []).find(x => x && x.id === id) || tsWebCacheGet(id);
-        if(hit) return hit;
+        if(hit){
+          /* 詳細の組み立てで参照する項目を、欠けていても落ちないように埋めておく */
+          const safe = Object.assign({
+            title:"", name:"", subsidy_catch_phrase:"", subsidy_max_limit:null, subsidy_rate:null,
+            use_purpose:"", industry:"", target_number_of_employees:"",
+            target_area_search:"", target_area_detail:"",
+            acceptance_start_datetime:null, acceptance_end_datetime:null,
+            front_subsidy_detail_page_url:"", detail:"",
+            application_guidelines:[], outline_of_grant:[], application_form:[], ts_guidelines:[]
+          }, hit);
+          return safe;
+        }
         throw new Error("この案件の中身が手元にありません。もう一度「新着を掘る」を押してください。");
       }
       const code = tsCode();
@@ -2188,7 +2199,15 @@ body.presenMode table{font-size:1.02em}
           tr.after(dtr);
           b.textContent = "閉じる";
         }catch(err){
-          st.textContent = String(err && err.message ? err.message : err);
+          /* 2026-08-22：失敗の理由を、押した行のすぐ下に出す。
+             状況欄（一覧の上）に出していたため、気づけず「何も起きない」ように見えていた。 */
+          const msg = String(err && err.message ? err.message : err);
+          const etr = document.createElement("tr");
+          etr.className = "digdetail";
+          etr.innerHTML = '<td colspan="5" style="color:var(--fix);font-size:13px">詳細を開けませんでした：'
+            + e(msg) + "</td>";
+          tr.after(etr);
+          st.textContent = msg;
           b.textContent = "詳細";
         }finally{ b.disabled = false; }
       }
@@ -3924,7 +3943,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-22-14';
+  const TRIGATE_VERSION = '2026-08-22-15';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

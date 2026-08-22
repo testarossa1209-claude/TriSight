@@ -482,6 +482,7 @@ body.presenMode table{font-size:1.02em}
   <div id="resultBar" class="no-print" style="display:none">
     <button id="printBtn" class="rbtn">印刷する</button>
     <button id="taskBtn" class="rbtn">TriTaskへ送る</button>
+    <button id="matchBtn" class="rbtn">要件を照合する</button>
     <button id="resultRegBtn" class="rbtn ghost">獲得実績を登録</button>
     <button id="resetBtn" class="rbtn ghost">次の案件へ（最初から）</button>
     <span id="taskMsg" class="rmsg" style="display:none"></span>
@@ -505,6 +506,15 @@ body.presenMode table{font-size:1.02em}
 
   <!-- 結果 -->
   <div id="out"></div>
+  <div id="matchOut" style="display:none"></div>
+  <style>
+    #matchOut{margin-top:18px;padding:14px;border:1px solid var(--line,#ddd);border-radius:8px}
+    #matchOut .mtitle{font-weight:700;font-size:15px;margin-bottom:6px}
+    #matchOut .mnote{font-size:12.5px;color:var(--muted,#666);margin-bottom:10px}
+    #matchOut table{width:100%;border-collapse:collapse;font-size:13px}
+    #matchOut th,#matchOut td{border:1px solid var(--line,#ddd);padding:6px 8px;vertical-align:top;text-align:left}
+    #matchOut th{background:#f6f7f9}
+  </style>
 
   <footer>
     門：TriGate®（受付・仕分け）／ 抽出：PDF.js（端末内で文字化）→ 構造化：なぎさ（Anthropic）を <code>trisight-relay</code> 経由で呼び出し（APIキーはサーバー側・画面に出ません）。エンジンは TriTask® を共有。<br>
@@ -2651,6 +2661,7 @@ body.presenMode table{font-size:1.02em}
     $("extractText").textContent="";
     fileInput.value="";                 // 同じPDFを選び直せるように
     outEl.innerHTML=""; outEl.style.display="none";
+    { const mo = document.getElementById("matchOut"); if(mo){ mo.innerHTML=""; mo.style.display="none"; } }
     $("resultBar").style.display="none";
     resetTaskBtn();
     TG_LAST=null;
@@ -3417,6 +3428,106 @@ body.presenMode table{font-size:1.02em}
     }
   }
 
+  /* ===== 要件照合（2026-08-22） =====
+     読み取った要領の本文と、読み込んでいる企業基礎情報を突き合わせ、
+     要件を一項目ずつ ○（満たす）／△（会社側で確認が要る）／✕（現状では満たさない）に仕分ける。
+     ✕には、整えれば満たせる場合の手順を書かせる。断定できないものは必ず△に落とす。 */
+  const MATCH_SYSTEM = [
+    "あなたは補助金・助成金の要件を、ある会社の事実と突き合わせて仕分ける担当者です。",
+    "出力はJSONのみ。前置きも囲みも付けないでください。",
+    "",
+    "【最重要の原則】",
+    "・会社側の情報から確実に判断できるものだけを ○ にする。",
+    "・公募情報に書かれている要件のうち、会社側の情報に対応する記載が無いものは、必ず △ にする。推測で ○ にしない。",
+    "・会社の事実から明らかに外れるものだけ ✕ にする。✕ には、整えれば満たせる場合の具体的な手順を書く。",
+    "・要件は公募情報に書かれていることだけを拾う。一般論で要件を作らない。",
+    "・順序の制約（先に規定を整える、先に窓口を通す、購入前に確認する等）は必ず pitfalls に書く。ここが不採択の主因になるため。",
+    "・金額に触れるときは主語を制度にする（御社が取れる額とは書かない）。",
+    "",
+    "【出力するJSONの形】",
+    '{"program_name":"制度名","items":[{"req":"要件の内容","mark":"○|△|✕","basis":"そう判断した根拠","todo":"△✕のとき、会社側で確認すべきこと・整えるべきこと"}],',
+    '"pitfalls":["要領を読まないと分からない落とし穴"],"next":["この会社が次にすべきこと"],',
+    '"unknown":["公募情報からは読み取れなかった要件"]}'
+  ].join("\n");
+
+  async function runMatch(){
+    const box = $("matchOut");
+    let comp = null;
+    try{ comp = JSON.parse(localStorage.getItem("trisight_dig_company") || "null"); }catch(_){ comp = null; }
+    if(!comp){
+      box.style.display = "block";
+      box.innerHTML = '<div class="mtitle">要件照合</div><div class="mnote">企業基礎情報が読み込まれていません。発掘欄の「企業基礎情報を追加」から会社を読み込んでください。</div>';
+      return;
+    }
+    const btn = $("matchBtn"); const orig = btn.textContent;
+    btn.disabled = true; btn.textContent = "照合中…";
+    box.style.display = "block";
+    box.innerHTML = '<div class="mtitle">要件照合</div><div class="mnote"><span class="spin"></span>要領の要件を、御社の情報と一項目ずつ突き合わせています…</div>';
+    try{
+      const src = (TG_LAST && TG_LAST.program_name ? "■ 読み取り済みの制度名\n" + TG_LAST.program_name + "\n\n" : "")
+                + "■ 公募情報の本文\n" + (extracted || "（本文が抽出できていません）");
+      const msg = src + "\n\n■ 会社の情報（JSON）\n" + JSON.stringify(comp);
+      const res = await fetch(RELAY, {
+        method:"POST",
+        headers:{"Content-Type":"application/json","x-trisight-code":tsCode()},
+        body: JSON.stringify({ model:MODEL, max_tokens:6000, temperature:0, system:MATCH_SYSTEM,
+          messages:[{role:"user", content: msg}] })
+      });
+      if(!res.ok){
+        if(tsAuthFail(res.status)) throw new Error("認証エラー（401）：認証コードを確認してください。");
+        throw new Error("リレー応答 " + res.status);
+      }
+      const data = await res.json();
+      const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
+      if(!text) throw new Error("空の応答が返りました。");
+      renderMatch(parseJSON(text), comp);
+    }catch(err){
+      box.innerHTML = '<div class="mtitle">要件照合</div><div class="mnote" style="color:var(--fix)">照合に失敗しました：'
+        + esc(String(err && err.message ? err.message : err)) + '</div>';
+    }finally{
+      btn.disabled = false; btn.textContent = orig;
+    }
+  }
+
+  function renderMatch(d, comp){
+    const box = $("matchOut");
+    const cname = (comp && comp["会社"] && (comp["会社"]["名称"] || comp["会社"]["法人名"])) || "（会社名なし）";
+    const items = Array.isArray(d.items) ? d.items : [];
+    const cnt = { "○":0, "△":0, "✕":0 };
+    items.forEach(x => { if(cnt[x && x.mark] != null) cnt[x.mark]++; });
+    const color = m => m === "○" ? "#1b7f3b" : (m === "✕" ? "#b3261e" : "#8a6d00");
+    let h = '<div class="mtitle">要件照合　'
+      + esc(d.program_name || (TG_LAST && TG_LAST.program_name) || "") + '</div>'
+      + '<div class="mnote">対象：' + esc(cname)
+      + '　／　満たす ' + cnt["○"] + '件・要確認 ' + cnt["△"] + '件・未充足 ' + cnt["✕"] + '件'
+      + '　（照合日 ' + new Date().toISOString().slice(0,10) + '）</div>';
+    if(items.length){
+      h += '<table class="digtbl"><thead><tr><th style="width:3em">判定</th><th>要件</th><th>根拠</th><th>確認・整えること</th></tr></thead><tbody>';
+      items.forEach(x => {
+        const m = (x && x.mark) || "△";
+        h += '<tr><td style="text-align:center;font-weight:700;color:' + color(m) + '">' + esc(m) + '</td>'
+           + '<td>' + esc((x && x.req) || "") + '</td>'
+           + '<td>' + esc((x && x.basis) || "") + '</td>'
+           + '<td>' + esc((x && x.todo) || "") + '</td></tr>';
+      });
+      h += '</tbody></table>';
+    }
+    const list = (title, arr) => {
+      if(!Array.isArray(arr) || !arr.length) return "";
+      return '<div class="mtitle" style="font-size:14px;margin-top:14px">' + title + '</div><ul style="margin:6px 0 0 18px">'
+        + arr.map(x => '<li style="margin:3px 0">' + esc(String(x)) + '</li>').join("") + '</ul>';
+    };
+    h += list("落とし穴（要領を読まないと分からないこと）", d.pitfalls);
+    h += list("次にすること", d.next);
+    h += list("公募情報からは読み取れなかったもの", d.unknown);
+    h += '<div class="mnote" style="margin-top:14px">△は、外部からは分からない会社側の事実です。'
+       + 'ここを埋めると判定が確定します。／本表は要件と御社の情報を突き合わせた資料であり、申請書類ではありません。'
+       + '官公署に提出する書類の作成は、ご本人または行政書士（社会保険労務士）に限られます。</div>';
+    box.innerHTML = h;
+    box.scrollIntoView({ behavior:"smooth", block:"start" });
+  }
+  { const mb = document.getElementById("matchBtn"); if(mb) mb.addEventListener("click", runMatch); }
+
   function parseJSON(t){
     let s=t.replace(/```json/gi,"").replace(/```/g,"").trim();
     const a=s.indexOf("{");
@@ -3663,7 +3774,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-22-09';
+  const TRIGATE_VERSION = '2026-08-22-10';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

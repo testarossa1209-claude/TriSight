@@ -870,7 +870,8 @@ body.presenMode table{font-size:1.02em}
       const body = tsPickFileBody(f);
       if(body) return tsB64ToFile(body, f.name || "公募要領.pdf");
     }
-    throw new Error("この案件には公募要領の本体が付いていません。公式ページからお取りください。");
+    const keys = list.length ? Object.keys(list[0] || {}).join(",") : "（配列なし）";
+    throw new Error("公募要領の本体が取れませんでした。掲載元の添付：" + list.length + "件／項目：" + keys + "。公式ページからお取りください。");
   }
   /* 取れたPDFを、人が落としたのと同じ入口へ渡す */
   async function tsSendToReader(file){
@@ -1788,8 +1789,10 @@ body.presenMode table{font-size:1.02em}
       add("対象地域", e(d.target_area_detail || d.target_area_search));
       add("受付期間", fd(d.acceptance_start_datetime)+" 〜 "+fd(d.acceptance_end_datetime));
       if(d.project_end_deadline) add("事業終了期限", fd(d.project_end_deadline));
-      if(Array.isArray(d.application_guidelines) && d.application_guidelines.length){
-        add("公募要領", e(d.application_guidelines.map(f=>f && f.name).filter(Boolean).join(" ／ ")));
+      if(!tsIsMlit(id)){
+        const gl = Array.isArray(d.application_guidelines) ? d.application_guidelines : [];
+        const nm = gl.map(f=>f && f.name).filter(Boolean).join(" ／ ");
+        add("添付資料", nm || (gl.length ? "（" + gl.length + "件・名称なし）" : "掲載元に添付なし"));
       }
       if(d.front_subsidy_detail_page_url){
         add("公式ページ", '<a href="'+e(d.front_subsidy_detail_page_url)+'" target="_blank" rel="noopener">'
@@ -1809,7 +1812,7 @@ body.presenMode table{font-size:1.02em}
               + '" data-name="' + e(g.name || "") + '" style="margin:4px 6px 0 0">'
               + e(g.label || g.name || ("資料" + (i + 1))) + 'を取り寄せて読み取る</button>');
           });
-        }else if(!tsIsMlit(id) && Array.isArray(d.application_guidelines) && d.application_guidelines.length){
+        }else if(!tsIsMlit(id)){
           btns.push('<button class="rbtn" data-act="guide" data-id="' + e(id) + '" style="margin:4px 6px 0 0">公募要領を取り寄せて読み取る</button>');
         }
         if(btns.length){
@@ -3553,7 +3556,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-22-05';
+  const TRIGATE_VERSION = '2026-08-22-06';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

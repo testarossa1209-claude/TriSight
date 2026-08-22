@@ -815,6 +815,72 @@ body.presenMode table{font-size:1.02em}
   }
   window.tsSrcOf = tsSrcOf;
   window.tsSrcBadge = tsSrcBadge;
+
+  /* ===== 公募要領の自動取り寄せ 2026-08-22 =====
+     ブラウザからは他ドメインのPDFを直接読めないため、リレーに取りに行かせる。
+     取れたPDFは、STEP2の読み取り欄へ人が落としたのと同じ経路へ流し込む。 */
+  const FD_RELAY = "https://trisight-relay.vercel.app/api/fetchdoc";
+  function tsB64ToFile(b64, name){
+    const bin = atob(b64);
+    const arr = new Uint8Array(bin.length);
+    for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new File([arr], name || "koubo.pdf", { type: "application/pdf" });
+  }
+  /* jGrantsの詳細が返すファイル配列から、本体（base64）が入っている項目を探す */
+  function tsPickFileBody(f){
+    if(!f || typeof f !== "object") return null;
+    for(const k of ["data", "file", "content", "base64", "value", "body"]){
+      const v = f[k];
+      if(typeof v === "string" && v.length > 500) return v;
+    }
+    return null;
+  }
+  async function tsFetchGuidelineFile(opt){
+    const code = (typeof tsCode === "function") ? tsCode() : "";
+    if(!code) throw new Error("認証コードが未入力です。");
+    /* 国交省など、URLが分かっているもの＝リレーに取りに行かせる */
+    if(opt && opt.url){
+      const res = await fetch(FD_RELAY, {
+        method: "POST",
+        headers: {"Content-Type": "application/json", "x-trisight-code": code},
+        body: JSON.stringify({ url: opt.url, name: opt.name || "" })
+      });
+      if(!res.ok){
+        let m = ""; try{ m = (await res.json()).error || ""; }catch(_){}
+        throw new Error("取り寄せに失敗しました（" + res.status + "）" + (m ? "：" + m : ""));
+      }
+      const d = await res.json();
+      if(!d.base64) throw new Error("中身が空で返りました。");
+      return tsB64ToFile(d.base64, d.name || opt.name);
+    }
+    /* Jグランツ＝詳細をもう一度、公募要領の本体つきで取り直す */
+    const res = await fetch(JG_RELAY, {
+      method: "POST",
+      headers: {"Content-Type": "application/json", "x-trisight-code": code},
+      body: JSON.stringify({ action: "detail", params: { id: opt.id, includeFiles: "guidelines" } })
+    });
+    if(!res.ok){
+      let m = ""; try{ m = (await res.json()).error || ""; }catch(_){}
+      throw new Error("取り寄せに失敗しました（" + res.status + "）" + (m ? "：" + m : ""));
+    }
+    const data = await res.json();
+    const d0 = (Array.isArray(data.result) ? data.result : [])[0] || {};
+    const list = Array.isArray(d0.application_guidelines) ? d0.application_guidelines : [];
+    for(const f of list){
+      const body = tsPickFileBody(f);
+      if(body) return tsB64ToFile(body, f.name || "公募要領.pdf");
+    }
+    throw new Error("この案件には公募要領の本体が付いていません。公式ページからお取りください。");
+  }
+  /* 取れたPDFを、人が落としたのと同じ入口へ渡す */
+  async function tsSendToReader(file){
+    if(typeof window.handlePdfFile !== "function"){
+      throw new Error("読み取り欄が見つかりませんでした。画面を再読み込みしてお試しください。");
+    }
+    await window.handlePdfFile(file);
+    const drop = document.getElementById("drop");
+    if(drop && drop.scrollIntoView) drop.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
   function tsSrcBadgeSafe(id){
     try{ return (typeof window.tsSrcBadge === "function") ? window.tsSrcBadge(id) : ""; }catch(e){ return ""; }
   }
@@ -1733,6 +1799,23 @@ body.presenMode table{font-size:1.02em}
         const srcName = d.ts_source || tsSrcOf(id).full;
         add("出所", e(srcName) + (d.ts_verified_on ? "（当社確認日 " + e(d.ts_verified_on) + "）" : ""));
       }
+      /* 公募要領の取り寄せ（2026-08-22）。国交省はURL指定、Jグランツは案件idで取り直す */
+      {
+        const gs = Array.isArray(d.ts_guidelines) ? d.ts_guidelines : [];
+        const btns = [];
+        if(gs.length){
+          gs.forEach((g, i) => {
+            btns.push('<button class="rbtn" data-act="guide" data-url="' + e(g.url || "")
+              + '" data-name="' + e(g.name || "") + '" style="margin:4px 6px 0 0">'
+              + e(g.label || g.name || ("資料" + (i + 1))) + 'を取り寄せて読み取る</button>');
+          });
+        }else if(!tsIsMlit(id) && Array.isArray(d.application_guidelines) && d.application_guidelines.length){
+          btns.push('<button class="rbtn" data-act="guide" data-id="' + e(id) + '" style="margin:4px 6px 0 0">公募要領を取り寄せて読み取る</button>');
+        }
+        if(btns.length){
+          add("公募要領", btns.join("") + '<div class="digguide" style="margin-top:4px;color:var(--muted)"></div>');
+        }
+      }
       let ov = "";
       if(d.detail){
         try{
@@ -1848,6 +1931,25 @@ body.presenMode table{font-size:1.02em}
           st.textContent = String(err && err.message ? err.message : err);
           b.textContent = "詳細";
         }finally{ b.disabled = false; }
+      }
+
+      if(b.dataset.act === "guide"){
+        const note = b.parentElement.querySelector(".digguide");
+        const orig = b.textContent;
+        b.disabled = true; b.textContent = "取り寄せ中…";
+        if(note) note.textContent = "";
+        try{
+          const file = b.dataset.url
+            ? await tsFetchGuidelineFile({ url: b.dataset.url, name: b.dataset.name })
+            : await tsFetchGuidelineFile({ id: b.dataset.id });
+          await tsSendToReader(file);
+          if(note) note.textContent = "読み取り欄に入れました（" + file.name + "）。下の「読み取る」を押してください。";
+        }catch(err){
+          if(note) note.textContent = String(err && err.message ? err.message : err);
+        }finally{
+          b.disabled = false; b.textContent = orig;
+        }
+        return;
       }
 
       if(b.dataset.act === "pick"){
@@ -2128,6 +2230,8 @@ body.presenMode table{font-size:1.02em}
       $("dropSub").textContent="または クリックしてファイルを選ぶ";
     }
   }
+
+  window.handlePdfFile = handlePdfFile;
 
   async function pdfToText(file){
     const buf = await file.arrayBuffer();
@@ -3449,7 +3553,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-22-04';
+  const TRIGATE_VERSION = '2026-08-22-05';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

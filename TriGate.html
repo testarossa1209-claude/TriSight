@@ -891,42 +891,44 @@ body.presenMode table{font-size:1.02em}
     "・国の制度（Jグランツ掲載分）は対象外。既に別経路で取得しているため重複させない",
     "・指定された業種に当たる制度を優先する",
     "",
-    "【最重要：採用してよいURLの条件】",
-    "source_url は、その制度**一件だけ**を説明しているページでなければならない。",
-    "次のものは採用してはならない。見つけても捨てること。",
-    "・所管課・部局のトップページ（例：交通政策課のページ、商工労働部のページ）",
-    "・制度が一覧で並んでいるだけのページ（例：補助金一覧、支援制度のご案内）",
-    "・検索結果ページ、まとめサイト、民間の補助金ポータル、ニュース記事",
-    "そのページを開いた人が、その制度の申請に必要な情報へ直接たどり着けること。",
+    "【2種類に分けて返す】",
+    'kind に "program" か "entry" を入れて区別すること。',
     "",
-    "【最重要：採用してよい制度の条件】",
-    "次の4つのうち、**2つ以上がそのページに書かれている**ものだけを採用する。",
-    "①補助上限額または補助率　②申請の受付期間または締切　③補助対象となる経費や取組の具体",
-    "④申請できる事業者の要件",
-    "2つ未満しか読み取れないものは、制度のページではない可能性が高いので捨てること。",
+    '■ kind="program"（制度そのもののページに行き着いたもの）',
+    "・その制度一件だけを説明しているページであること",
+    "・上限額／補助率／受付期間／対象経費／対象事業者 のうち2つ以上がそのページに書かれていること",
+    "・書かれていない項目は null にする。推測で埋めない",
+    "",
+    '■ kind="entry"（制度個別までは行けなかったが、そこから人が辿れる入口ページ）',
+    "・補助金の一覧ページ、支援制度のご案内、所管課のページなど",
+    "・**捨てずに必ず返すこと。**そこから人が拾えるなら価値がある",
+    "・entry には guide を必ず入れる。guide は、その画面を開いた人が迷わないための道案内。",
+    "　例：『ページ中ほどの「事業者向け」の見出しを開く』『「令和8年度」で始まる項目を上から見る』",
+    "　『交通・運輸に関する語（タクシー、旅客、車両、乗務員）を含むものを拾う』",
+    "・guide は3〜5手。専門用語を使わず、その画面に実際にある言葉を使って書く",
+    "・why には、なぜこのページを見る価値があるのかを一行で書く",
     "",
     "【守ること】",
-    "・必ずウェブ検索で確かめる。記憶から書かない。",
-    "・URLは検索で実際に得たものをそのまま入れる。組み立てない。",
-    "・上限額・補助率・受付期間は、ページに書かれていた場合だけ入れる。書かれていなければ null。推測しない。",
-    "・受付が終了している制度は含めない。",
-    "・公募要領・募集要項のPDFへのリンクがページにあれば guideline_url に入れる。無ければ null。",
-    "・条件を満たすものが無ければ items を空配列にする。**無理に埋めない。件数を稼がない。**",
-    "・最大8件まで。多く出すより、確かなものだけを出す。",
+    "・必ずウェブ検索で確かめる。記憶から書かない。URLは検索で得たものをそのまま入れる。組み立てない。",
+    "・受付が終了している制度は program に含めない。",
+    "・公募要領・募集要項のPDFへのリンクがあれば guideline_url に入れる。無ければ null。",
+    "・program は最大8件、entry は最大4件。多く出すより確かなものを出す。",
     "",
     "【出力するJSONの形】",
-    '{"items":[{"title":"制度名（実施主体が分かる形で）","catch":"一行の要約",',
+    '{"items":[{"kind":"program|entry","title":"制度名または入口ページの名前","catch":"一行の要約",',
     '"max_limit":上限額の数値またはnull,"rate":"補助率の文字列またはnull",',
     '"industry":"対象業種の記載","area":"都道府県名","employees":"従業員規模の記載またはnull",',
-    '"start":"受付開始 YYYY-MM-DD またはnull","end":"受付終了 YYYY-MM-DD またはnull",',
-    '"source_url":"その制度一件のページURL","guideline_url":"公募要領PDFのURLまたはnull",',
-    '"found":["そのページから実際に読み取れた項目名を列挙。上限額/補助率/受付期間/対象経費/対象事業者 から2つ以上"],',
-    '"detail":"制度の内容と、要領を読まないと分からない順序の制約や注意点"}]}'
+    '"start":"YYYY-MM-DD またはnull","end":"YYYY-MM-DD またはnull",',
+    '"source_url":"URL","guideline_url":"公募要領PDFのURLまたはnull",',
+    '"found":["programのとき、実際に読み取れた項目名"],',
+    '"why":"entryのとき、このページを見る価値の一行","guide":["entryのとき、拾い方の道案内3〜5手"],',
+    '"detail":"内容と、要領を読まないと分からない順序の制約や注意点"}]}'
   ].join("\n");
 
   let tsWebDropped = 0;
+  let tsWebEntries = [];
   async function tsDigWebPref(pref, industryHint){
-    tsWebDropped = 0;
+    tsWebDropped = 0; tsWebEntries = [];
     if(!pref) return [];
     const code = tsCode();
     if(!code) return [];
@@ -949,6 +951,7 @@ body.presenMode table{font-size:1.02em}
     try{ parsed = parseJSON(text); }catch(_){ return []; }
     const items = (parsed && Array.isArray(parsed.items)) ? parsed.items : [];
     const today = new Date().toISOString().slice(0,10);
+    /* eslint-disable-next-line no-unused-vars */
     /* 受け取り側の門（2026-08-22）。AIが条件を破って返しても、ここで落とす。
        ①制度個別ページと言えないURLは捨てる ②読み取れた項目が2つ未満のものは捨てる */
     const badPath = /(index|top|home|list|ichiran|一覧|about)(\.html?|\/|$)/i;
@@ -978,9 +981,23 @@ body.presenMode table{font-size:1.02em}
       }
       return n >= 2;
     };
-    const dropped = items.length;
-    const kept = items.filter(x => x && x.title && okUrl(x.source_url) && okContent(x));
-    tsWebDropped = dropped - kept.length;
+    const isUrl = (u) => /^https?:\/\//.test(u || "");
+    const raw = items.filter(x => x && x.title && isUrl(x.source_url));
+    /* entry（入口ページ）は捨てない。道案内を付けて別枠で見せる。 */
+    tsWebEntries = raw.filter(x => x.kind === "entry" || !(okUrl(x.source_url) && okContent(x)))
+      .slice(0, 4).map((x, i) => ({
+        id: "webentry-" + pref + "-" + i,
+        title: x.title, name: x.title,
+        subsidy_catch_phrase: x.catch || x.why || "",
+        target_area_search: x.area || pref,
+        front_subsidy_detail_page_url: x.source_url,
+        ts_why: x.why || "",
+        ts_guide: Array.isArray(x.guide) ? x.guide : [],
+        ts_source: (x.area || pref) + "（入口ページ）",
+        ts_verified_on: today
+      }));
+    const kept = raw.filter(x => x.kind !== "entry" && okUrl(x.source_url) && okContent(x));
+    tsWebDropped = 0;
     return kept.map((x, i) => ({
       id: "web-" + pref + "-" + i,
       title: x.title, name: x.title,
@@ -1589,21 +1606,23 @@ body.presenMode table{font-size:1.02em}
            失敗しても他の出所の結果は残す。 */
         const selPref = prefSel ? prefSel.value : "";
         let webNote = "";
+        let webEntries = [];
         if(selPref){
           st.textContent = selPref + "の独自制度を検索しています…（30秒ほどかかります）";
           try{
             const ind = (company && company["機械足切り条件"] && company["機械足切り条件"]["業種"]) || "";
             const webItems = await tsDigWebPref(selPref, ind);
+            webEntries = tsWebEntries.slice();
             if(webItems.length){
               const seen = {};
               list.forEach(it => { if(it && it.id) seen[it.id] = true; });
               list = list.concat(webItems.filter(it => !seen[it.id]));
               tsWebCacheSave(webItems);
               webNote = "／" + selPref + "の検索で " + webItems.length + "件"
-                     + (tsWebDropped ? "（ほか" + tsWebDropped + "件は不採用）" : "");
+                     + (webEntries.length ? "（ほかに探す手がかり" + webEntries.length + "件）" : "");
             }else{
-              webNote = "／" + selPref + "の検索では、制度個別のページと確認できるものが見つかりませんでした"
-                     + (tsWebDropped ? "（候補" + tsWebDropped + "件は、所管課のページや情報不足のため不採用）" : "");
+              webNote = "／" + selPref + "の検索では制度個別のページに行き着けませんでした"
+                     + (webEntries.length ? "（探す手がかりを" + webEntries.length + "件、下に出しています）" : "");
             }
           }catch(err){
             webNote = "／" + selPref + "の検索に失敗（" + String(err && err.message ? err.message : err).slice(0,30) + "）";
@@ -1718,6 +1737,29 @@ body.presenMode table{font-size:1.02em}
               + e(webNote)
               + (selPref ? "／地域は「" + e(selPref) + "」で絞っています（全国区の制度は残しています"
                   + (cutByArea ? "。" + cutByArea + "件を地域で除外" : "") + "）。" : "") + "</div>";
+        /* 入口ページ（2026-08-22）：制度個別まで行けなかったものを、拾い方の案内つきで出す。
+           捨てると0件になるが、人が拾えるなら価値がある。ただし制度の一覧とは必ず分ける。 */
+        if(webEntries.length){
+          html += '<div class="digentry" style="margin-top:14px;padding:12px;border:1px dashed var(--line,#ccc);border-radius:8px;background:#fcfcfd">'
+                + '<div style="font-weight:700;font-size:14px;margin-bottom:4px">探す手がかり（ここから先は人の目で拾ってください）</div>'
+                + '<div style="font-size:12.5px;color:var(--muted);margin-bottom:10px">'
+                + '制度そのもののページには行き着けませんでしたが、そこへ辿れる入口が見つかりました。'
+                + '開き方の順序を添えていますので、そのとおりに進めてください。</div>';
+          webEntries.forEach(en => {
+            html += '<div style="margin:10px 0;padding:10px;border:1px solid var(--line,#e5e5e5);border-radius:6px;background:#fff">'
+                  + '<div style="font-weight:600;font-size:13.5px">' + e(en.title || "") + "</div>"
+                  + (en.ts_why ? '<div style="font-size:12.5px;color:var(--muted);margin-top:2px">' + e(en.ts_why) + "</div>" : "")
+                  + (en.ts_guide && en.ts_guide.length
+                      ? '<ol style="margin:8px 0 8px 18px;font-size:13px">'
+                        + en.ts_guide.map(g => "<li style='margin:3px 0'>" + e(String(g)) + "</li>").join("")
+                        + "</ol>"
+                      : "")
+                  + '<a href="' + e(en.front_subsidy_detail_page_url || "") + '" target="_blank" rel="noopener" style="font-size:13px">このページを開く</a>'
+                  + '<div style="font-size:12px;color:var(--muted);margin-top:6px">出所：' + e(en.ts_source || "")
+                  + "（当社確認日 " + e(en.ts_verified_on || "") + "）</div></div>";
+          });
+          html += "</div>";
+        }
         out.innerHTML = html;
         lastShow = show;
         saveDigResult(kw, st.textContent, show);
@@ -3997,7 +4039,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-22-17';
+  const TRIGATE_VERSION = '2026-08-22-18';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -387,6 +387,8 @@ body.presenMode table{font-size:1.02em}
     <div class="digrow">
       <label class="digkwlabel" for="digKeyword">検索する語</label>
         <input type="text" id="digKeyword" value="事業" placeholder="制度名に出る語を入れます（例：事業、雇用、人材、賃上げ）">
+      <label class="digkwlabel" for="digPref" style="margin-left:10px">地域</label>
+        <select id="digPref" title="この地域と「全国」の制度だけを表示します"></select>
       <button id="digBtn" class="rbtn">新着を掘る</button>
     </div>
     <div class="digrow" style="margin-top:8px">
@@ -816,6 +818,29 @@ body.presenMode table{font-size:1.02em}
   window.tsSrcOf = tsSrcOf;
   window.tsSrcBadge = tsSrcBadge;
 
+  /* ===== 地域の指定と、業界固有かどうかの区分 2026-08-22 ===== */
+  const TS_PREFS = ["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県",
+    "埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県",
+    "静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県","鳥取県","島根県",
+    "岡山県","広島県","山口県","徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県","熊本県",
+    "大分県","宮崎県","鹿児島県","沖縄県"];
+  /* 対象業種の欄が全業種に近いか、絞られているかで区分する。
+     全業種向けは20前後の業種が並び、業界固有のものは数個しか並ばない。 */
+  const TS_NARROW_MAX = 8;
+  function tsIsIndustrySpecific(it){
+    const ind = String((it && it.industry) || "");
+    if(!ind) return false;
+    const n = ind.split(/[\/／,、]/).map(x => x.trim()).filter(Boolean).length;
+    return n > 0 && n <= TS_NARROW_MAX;
+  }
+  function tsAreaOk(it, pref){
+    if(!pref) return true;
+    const a = String((it && (it.target_area_search || it.target_area_detail)) || "");
+    if(!a) return true;
+    if(a.indexOf("全国") >= 0) return true;
+    return a.indexOf(pref) >= 0;
+  }
+
   /* ===== 公募要領の自動取り寄せ 2026-08-22 =====
      ブラウザからは他ドメインのPDFを直接読めないため、リレーに取りに行かせる。
      取れたPDFは、STEP2の読み取り欄へ人が落としたのと同じ経路へ流し込む。 */
@@ -900,6 +925,27 @@ body.presenMode table{font-size:1.02em}
   }
   window.tsSrcBadgeSafe = tsSrcBadgeSafe;
   (function(){
+    /* 地域の選択欄（2026-08-22）。既定は読み込んでいる会社の本店所在地。
+       全国区の制度は、県を選んでも必ず残す（消えると使い物にならないため）。 */
+    const prefSel = document.getElementById("digPref");
+    function tsCompanyPref(){
+      try{
+        const c = JSON.parse(localStorage.getItem("trisight_dig_company") || "null");
+        if(!c) return "";
+        const comp = c["会社"] || {}, fil = c["機械足切り条件"] || {};
+        return comp["本店所在地_都道府県"] || fil["対象地域"] || "";
+      }catch(_){ return ""; }
+    }
+    function tsRenderPrefSel(){
+      if(!prefSel) return;
+      const cur = prefSel.value;
+      prefSel.innerHTML = '<option value="">全国（絞らない）</option>'
+        + TS_PREFS.map(p => '<option value="' + p + '">' + p + '</option>').join("");
+      const want = cur || tsCompanyPref();
+      if(want && TS_PREFS.indexOf(want) >= 0) prefSel.value = want;
+    }
+    tsRenderPrefSel();
+
     const btn = document.getElementById("digBtn");
     const st  = document.getElementById("digStatus");
     const out = document.getElementById("digOut");
@@ -1370,6 +1416,15 @@ body.presenMode table{font-size:1.02em}
           mlNote = "（国土交通省の取得に失敗：" + String(err && err.message ? err.message : err).slice(0,40) + "）";
         }
         if(mlNote) st.textContent = mlNote;
+        /* 地域で絞る（2026-08-22）。選んだ県と「全国」だけを残す。
+           これで表示件数もAIへ渡す件数も減る。 */
+        const selPref = prefSel ? prefSel.value : "";
+        let cutByArea = 0;
+        if(selPref){
+          const before = list.length;
+          list = list.filter(it => tsAreaOk(it, selPref));
+          cutByArea = before - list.length;
+        }
         if(list.length === 0){
           st.textContent = "「"+kw+"」で受付中の補助金は見つかりませんでした。ここは業種名や団体名を入れる欄ではなく、制度そのものの名前に出てくる語を入れる欄です（例：事業、雇用、人材、賃上げ）。業種による絞り込みは、読み込んだ企業基礎情報の側で自動的に行われます。";
           return;
@@ -1445,17 +1500,33 @@ body.presenMode table{font-size:1.02em}
         }else{
           st.textContent = "受付中 "+list.length+" 件（キーワード："+kw+"）※基礎情報が未読み込みのため全件表示";
         }
-        /* 先に一覧を描画する（バッジは未判定のため空欄）。判定結果は後から行ごとに追記する */
-        let html = '<table class="digtbl"><thead><tr><th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th></tr></thead><tbody>';
-        for(const it of show){
-          html += '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'">'
+        /* 業界固有のものを先に並べる（2026-08-22）。
+           どこでも手に入る全業種向けの制度と、その業界にしか当たらない制度を分けて見せる。
+           全業種向けを捨てるのではない（金額が大きいのはむしろそちら）。順序と見出しで分ける。 */
+        const grpA = show.filter(it => tsIsIndustrySpecific(it));
+        const grpB = show.filter(it => !tsIsIndustrySpecific(it));
+        show = grpA.concat(grpB);
+        const headCells = '<th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th>';
+        const rowOf = (it) => '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'">'
                 + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)+"</td>"
                 + "<td>"+fy(it.subsidy_max_limit)+"</td>"
                 + '<td class="dl">'+fd(it.acceptance_end_datetime)+"</td>"
                 + "<td>"+e(it.target_area_search || "—")+"</td>"
                 + "<td>"+(it.id ? '<button class="dbtn" data-act="detail">詳細</button>' : "")+"</td></tr>";
+        const sepOf = (label, n) => '<tr class="digsep"><td colspan="5" style="background:#f6f7f9;font-weight:600;padding:6px 8px">'
+                + e(label) + "（" + n + "件）</td></tr>";
+        let html = '<table class="digtbl"><thead><tr>' + headCells + '</tr></thead><tbody>';
+        if(grpA.length && grpB.length){
+          html += sepOf("この業界向けの制度", grpA.length);
+          grpA.forEach(it => { html += rowOf(it); });
+          html += sepOf("業種を問わない制度", grpB.length);
+          grpB.forEach(it => { html += rowOf(it); });
+        }else{
+          show.forEach(it => { html += rowOf(it); });
         }
-        html += "</tbody></table>" + "<div class='digNote'>受付期間の終わりは掲載元（Jグランツ等）の表記をそのまま表示しています。申請の締切と異なる場合があります。</div>";
+        html += "</tbody></table>" + "<div class='digNote'>受付期間の終わりは掲載元（Jグランツ等）の表記をそのまま表示しています。申請の締切と異なる場合があります。"
+              + (selPref ? "／地域は「" + e(selPref) + "」で絞っています（全国区の制度は残しています"
+                  + (cutByArea ? "。" + cutByArea + "件を地域で除外" : "") + "）。" : "") + "</div>";
         out.innerHTML = html;
         lastShow = show;
         saveDigResult(kw, st.textContent, show);
@@ -2160,11 +2231,20 @@ body.presenMode table{font-size:1.02em}
       box.style.display = "block";
       return;
     }
+    /* 要領らしいものを先頭に出す（2026-08-22）。中身は選ばせるが、探させない。 */
+    const looksGuide = (n) => /(公募要領|募集要項|要領|手引|申請の手引|ガイドライン)/.test(n);
+    const sorted = pdfs.slice().sort((a, b) => (looksGuide(b.name) ? 1 : 0) - (looksGuide(a.name) ? 1 : 0));
+    const nGuide = pdfs.filter(e => looksGuide(e.name)).length;
     let h = '<div style="font-weight:700;font-size:13px;margin-bottom:6px">' + esc(zipName) + ' の中身（' + pdfs.length + '件のPDF）</div>'
-          + '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">読み取るものを一つお選びください。コースごとに要領が分かれていることがあります。</div>';
-    pdfs.forEach(e => {
+          + '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">読み取るものを一つお選びください。'
+          + (nGuide ? '要領らしいものを上に出しています。' : '')
+          + 'コースごとに要領が分かれていることがあります。</div>';
+    sorted.forEach(e => {
       const i = zipEntries.indexOf(e);
-      h += '<div style="margin:4px 0"><button type="button" class="dbtn" data-zip="' + i + '">' + esc(e.name)
+      const mark = looksGuide(e.name)
+        ? '<span style="font-size:.8em;padding:1px 5px;border-radius:3px;background:#fff3cd;color:#7a5b00;margin-right:6px">要領</span>'
+        : "";
+      h += '<div style="margin:4px 0"><button type="button" class="dbtn" data-zip="' + i + '">' + mark + esc(e.name)
          + '<span style="color:var(--muted);margin-left:8px;font-weight:400">' + Math.round(e.usize/1024) + ' KB</span></button></div>';
     });
     box.innerHTML = h;
@@ -3583,7 +3663,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-22-08';
+  const TRIGATE_VERSION = '2026-08-22-09';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

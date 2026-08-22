@@ -382,7 +382,7 @@ body.presenMode table{font-size:1.02em}
   </div>
 
   <!-- 発掘（新着探索・Jグランツ） 2026-07-13 -->
-  <div class="step"><span class="no">発掘</span><h2>新着の補助金を掘る</h2><span class="hint">Jグランツと国土交通省で受付中の案件を、リレー経由で探しに行きます</span></div>
+  <div class="step"><span class="no">発掘</span><h2>新着の補助金を掘る</h2><span class="hint">Jグランツ・国土交通省・厚生労働省で受付中の案件を、リレー経由で探しに行きます</span></div>
   <div class="card">
     <div class="digrow">
       <label class="digkwlabel" for="digKeyword">検索する語</label>
@@ -810,7 +810,15 @@ body.presenMode table{font-size:1.02em}
      Jグランツの案件idは英数字の羅列で接頭辞を持たないため、既定を受け皿にしている。 */
   const TS_SOURCES = [
     { prefix: "mlit-", short: "国交省", full: "国土交通省", open: "国土交通省・執行団体のページを開く",
-      bg: "#eef3ff", fg: "#2c4a8a" }
+      bg: "#eef3ff", fg: "#2c4a8a" },
+    { prefix: "mhlw-", short: "厚労省", full: "厚生労働省", open: "厚生労働省のページを開く",
+      bg: "#eefaf1", fg: "#1b6b3a" }
+  ];
+  /* 出所を追加する口（2026-08-22）。ここに1行足せば、一覧のラベルも詳細の文言も揃う。
+     リレー側は同じ形（action:list/detail、jGrantsと同じ項目名）で返すこと。 */
+  const TS_EXTRA_SOURCES = [
+    { url: "https://trisight-relay.vercel.app/api/mlit", label: "国土交通省" },
+    { url: "https://trisight-relay.vercel.app/api/mhlw", label: "厚生労働省" }
   ];
   const TS_SOURCE_DEFAULT = { short: "Jグランツ", full: "Jグランツ", open: "Jグランツで開く",
       bg: "#f1f3f5", fg: "#495057" };
@@ -820,6 +828,15 @@ body.presenMode table{font-size:1.02em}
     for(const s of TS_SOURCES){ if(key.indexOf(s.prefix) === 0) return s; }
     return TS_SOURCE_DEFAULT;
   }
+  /* その案件の詳細をどの口へ取りに行くか。接頭辞から決める。 */
+  function tsRelayFor(id){
+    const key = String(id || "");
+    if(key.indexOf("mlit-") === 0) return "https://trisight-relay.vercel.app/api/mlit";
+    if(key.indexOf("mhlw-") === 0) return "https://trisight-relay.vercel.app/api/mhlw";
+    return JG_RELAY;
+  }
+  /* Jグランツ以外＝カタログ側の案件か（添付欄や取り寄せボタンの出し分けに使う） */
+  function tsIsCatalog(id){ return tsSrcOf(id) !== TS_SOURCE_DEFAULT; }
   function tsSrcBadge(id){
     const s = tsSrcOf(id);
     return ' <span style="font-size:.8em;padding:1px 5px;border-radius:3px;background:'
@@ -1383,7 +1400,7 @@ body.presenMode table{font-size:1.02em}
       const code = tsCode();
       if(!code){ st.textContent = "認証コードが未入力のため中止しました。"; return; }
       btn.disabled = true;
-      st.textContent = "Jグランツと国土交通省へ探しに行っています…";
+      st.textContent = "Jグランツ・国土交通省・厚生労働省へ探しに行っています…";
       out.innerHTML = "";
       if(fullGateBtn) fullGateBtn.style.display = "none";
       lastShow = [];
@@ -1405,25 +1422,27 @@ body.presenMode table{font-size:1.02em}
            キーワードでは絞らない。業種による絞り込みは機械足切りの役目であり、
            運送3業種以外の会社では業種照合で自動的に落ちるため。 */
         let mlNote = "";
-        try{
-          const mres = await fetch(ML_RELAY, {
-            method:"POST",
-            headers:{"Content-Type":"application/json","x-trisight-code":code},
-            body: JSON.stringify({ action:"list", params:{} })
-          });
-          if(mres.ok){
-            const mdata = await mres.json();
-            const mlist = Array.isArray(mdata.result) ? mdata.result : [];
-            if(mlist.length){
-              const seen = {};
-              list.forEach(it => { if(it && it.id) seen[it.id] = true; });
-              list = list.concat(mlist.filter(it => it && it.id && !seen[it.id]));
+        for(const src of TS_EXTRA_SOURCES){
+          try{
+            const mres = await fetch(src.url, {
+              method:"POST",
+              headers:{"Content-Type":"application/json","x-trisight-code":code},
+              body: JSON.stringify({ action:"list", params:{} })
+            });
+            if(mres.ok){
+              const mdata = await mres.json();
+              const mlist = Array.isArray(mdata.result) ? mdata.result : [];
+              if(mlist.length){
+                const seen = {};
+                list.forEach(it => { if(it && it.id) seen[it.id] = true; });
+                list = list.concat(mlist.filter(it => it && it.id && !seen[it.id]));
+              }
+            }else{
+              mlNote += "（" + src.label + "の取得に失敗：" + mres.status + "）";
             }
-          }else{
-            mlNote = "（国土交通省の取得に失敗：" + mres.status + "）";
+          }catch(err){
+            mlNote += "（" + src.label + "の取得に失敗：" + String(err && err.message ? err.message : err).slice(0,30) + "）";
           }
-        }catch(err){
-          mlNote = "（国土交通省の取得に失敗：" + String(err && err.message ? err.message : err).slice(0,40) + "）";
         }
         if(mlNote) st.textContent = mlNote;
         /* 地域で絞る（2026-08-22）。選んだ県と「全国」だけを残す。
@@ -1855,7 +1874,7 @@ body.presenMode table{font-size:1.02em}
     async function fetchDetail(id){
       const code = tsCode();
       if(!code) throw new Error("認証コードが未入力です。");
-      const res = await fetch(tsIsMlit(id) ? ML_RELAY : JG_RELAY, {
+      const res = await fetch(tsRelayFor(id), {
         method:"POST",
         headers:{"Content-Type":"application/json","x-trisight-code":code},
         body: JSON.stringify({ action:"detail", params:{ id: id } })
@@ -1883,7 +1902,7 @@ body.presenMode table{font-size:1.02em}
       add("対象地域", e(d.target_area_detail || d.target_area_search));
       add("受付期間", fd(d.acceptance_start_datetime)+" 〜 "+fd(d.acceptance_end_datetime));
       if(d.project_end_deadline) add("事業終了期限", fd(d.project_end_deadline));
-      if(!tsIsMlit(id)){
+      if(!tsIsCatalog(id)){
         const nm = ["application_guidelines","outline_of_grant","application_form"]
           .flatMap(k => tsFileList(d[k])).map(f => f && f.name).filter(Boolean).join(" ／ ");
         add("添付資料", nm || "掲載元に添付なし");
@@ -1906,7 +1925,7 @@ body.presenMode table{font-size:1.02em}
               + '" data-name="' + e(g.name || "") + '" style="margin:4px 6px 0 0">'
               + e(g.label || g.name || ("資料" + (i + 1))) + 'を取り寄せて読み取る</button>');
           });
-        }else if(!tsIsMlit(id)){
+        }else if(!tsIsCatalog(id)){
           [["application_guidelines","公募要領"],["outline_of_grant","交付要綱"],["application_form","申請様式"]]
             .forEach(([k, label]) => {
               tsFileList(d[k]).forEach((f, i) => {
@@ -3774,7 +3793,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-22-10';
+  const TRIGATE_VERSION = '2026-08-22-11';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -791,11 +791,29 @@ body.presenMode table{font-size:1.02em}
   /* 国土交通省の制度カタログ（2026-08-22 追加）。返る項目名はJグランツと同一。 */
   const ML_RELAY = "https://trisight-relay.vercel.app/api/mlit";
   function tsIsMlit(id){ return String(id || "").indexOf("mlit-") === 0; }
-  function tsSrcBadge(id){
-    return tsIsMlit(id)
-      ? ' <span style="font-size:.8em;padding:1px 5px;border-radius:3px;background:#eef3ff;color:#2c4a8a;white-space:nowrap">国交省</span>'
-      : "";
+
+  /* ===== 出所（情報の発出元）の一覧表 2026-08-22 =====
+     発出元が増えたら、この配列に1行足すだけで一覧・詳細の両方に反映される。
+     prefix＝案件idの頭文字。どれにも当たらないものは既定（Jグランツ）になる。
+     Jグランツの案件idは英数字の羅列で接頭辞を持たないため、既定を受け皿にしている。 */
+  const TS_SOURCES = [
+    { prefix: "mlit-", short: "国交省", full: "国土交通省", open: "国土交通省・執行団体のページを開く",
+      bg: "#eef3ff", fg: "#2c4a8a" }
+  ];
+  const TS_SOURCE_DEFAULT = { short: "Jグランツ", full: "Jグランツ", open: "Jグランツで開く",
+      bg: "#f1f3f5", fg: "#495057" };
+
+  function tsSrcOf(id){
+    const key = String(id || "");
+    for(const s of TS_SOURCES){ if(key.indexOf(s.prefix) === 0) return s; }
+    return TS_SOURCE_DEFAULT;
   }
+  function tsSrcBadge(id){
+    const s = tsSrcOf(id);
+    return ' <span style="font-size:.8em;padding:1px 5px;border-radius:3px;background:'
+      + s.bg + ';color:' + s.fg + ';white-space:nowrap">' + s.short + '</span>';
+  }
+  window.tsSrcOf = tsSrcOf;
   window.tsSrcBadge = tsSrcBadge;
   function tsSrcBadgeSafe(id){
     try{ return (typeof window.tsSrcBadge === "function") ? window.tsSrcBadge(id) : ""; }catch(e){ return ""; }
@@ -1709,10 +1727,11 @@ body.presenMode table{font-size:1.02em}
       }
       if(d.front_subsidy_detail_page_url){
         add("公式ページ", '<a href="'+e(d.front_subsidy_detail_page_url)+'" target="_blank" rel="noopener">'
-          + (tsIsMlit(id) ? "国土交通省・執行団体のページを開く" : "Jグランツで開く") + '</a>');
+          + e(tsSrcOf(id).open) + '</a>');
       }
-      if(d.ts_source){
-        add("出所", e(d.ts_source) + (d.ts_verified_on ? "（当社確認日 " + e(d.ts_verified_on) + "）" : ""));
+      {
+        const srcName = d.ts_source || tsSrcOf(id).full;
+        add("出所", e(srcName) + (d.ts_verified_on ? "（当社確認日 " + e(d.ts_verified_on) + "）" : ""));
       }
       let ov = "";
       if(d.detail){
@@ -3430,7 +3449,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-22-03';
+  const TRIGATE_VERSION = '2026-08-22-04';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

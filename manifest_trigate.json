@@ -5,7 +5,7 @@
   "description": "行政や外部から届いた補助金・助成金の案内PDFを入れると、当社が対象になりそうか・締切・逆算タスク・必要書類を返す受付。",
   "lang": "ja",
   "start_url": "./TriGate.html",
-  "scope": "./",
+  "scope": "./TriGate.html",
   "display": "standalone",
   "background_color": "#f3f2ef",
   "theme_color": "#16213a",

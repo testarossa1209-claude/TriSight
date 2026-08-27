@@ -1427,7 +1427,9 @@ window.TSB_HOST = "task";
     "#tsBoard .tsbRow:last-child{border-bottom:0}",
     "#tsBoard .tsbK{color:#5a5a5a}",
     "#tsBoard .tsbV{font-weight:700;font-size:14px;white-space:nowrap}",
-    "#tsBoard .tsbHit{cursor:pointer;text-decoration:underline dotted}",
+    "#tsBoard .tsbHit{cursor:pointer}",
+    "#tsBoard .tsbHit:hover{background:#f6f3ee}",
+    "#tsBoard .tsbGo{margin-left:5px;color:#9a9a9a;font-weight:400}",
     "#tsBoard .tsbSec{margin-top:7px;padding-top:6px;border-top:1px solid #ece6db}",
     "#tsBoard .tsbSec>div.t{font-weight:700;margin-bottom:3px}",
     "#tsBoard .tsbDue{display:flex;justify-content:space-between;gap:6px;padding:2px 0}",
@@ -1460,7 +1462,8 @@ window.TSB_HOST = "task";
   function row(k, v, cls, onClick){
     var d = document.createElement("div");
     d.className = "tsbRow";
-    d.innerHTML = '<span class="tsbK">' + esc(k) + '</span><span class="tsbV ' + (cls||"") + '">' + esc(v) + '</span>';
+    d.innerHTML = '<span class="tsbK">' + esc(k) + '</span><span class="tsbV ' + (cls||"") + '">' + esc(v)
+                + (onClick ? '<span class="tsbGo">›</span>' : "") + '</span>';
     if(onClick){ d.classList.add("tsbHit"); d.addEventListener("click", onClick); }
     return d;
   }
@@ -1486,12 +1489,14 @@ window.TSB_HOST = "task";
     var ib = inbox();
     var doing = ib.filter(function(g){ return g.status === "進行中"; }).length;
 
+    /* 2026-08-28：0件のときに行を押せなくしていたため「どこも押せない」状態になっていた。
+       件数にかかわらず常に押せるようにし、中身が無いことは開いた先で伝える。 */
     if(HOST === "gate"){
-      body.appendChild(row("発掘した制度（この会社）", dug + "件", "", dug ? showDug : null));
-      body.appendChild(row("要件を満たせば原則支給", elig + "件", "ok", elig ? showDug : null));
+      body.appendChild(row("発掘した制度（この会社）", dug + "件", "", showDug));
+      body.appendChild(row("要件を満たせば原則支給", elig + "件", "ok", showDug));
     }
-    body.appendChild(row("獲得した案件（記録済み）", rs.length + "件", "", rs.length ? showResults : null));
-    body.appendChild(row("獲得金額（記録済み）", yen(sum), "", rs.length ? showResults : null));
+    body.appendChild(row("獲得した案件（記録済み）", rs.length + "件", "", showResults));
+    body.appendChild(row("獲得金額（記録済み）", yen(sum), "", showResults));
     if(!rs.length){
       var other = resultsElsewhere();
       if(other){
@@ -1502,7 +1507,7 @@ window.TSB_HOST = "task";
         body.appendChild(w2);
       }
     }
-    body.appendChild(row("着手中の案件", doing + "件", "", ib.length ? showCases : null));
+    body.appendChild(row("着手中の案件", doing + "件", "", showCases));
 
     /* 期日カウンター */
     var withDue = [], noDue = 0;
@@ -1603,7 +1608,15 @@ window.TSB_HOST = "task";
   function showResults(e){
     if(e) e.stopPropagation();
     var rs = results().slice();
-    if(!rs.length){ overlay("獲得実績", "<div>この管理コードに登録された実績はありません。</div>"); return; }
+    if(!rs.length){
+      var other = resultsElsewhere();
+      overlay("獲得実績",
+        '<div>いまの管理コード（' + esc(code() ? code() : "未設定分") + '）に登録された実績はありません。</div>'
+        + (other ? '<div style="margin-top:6px;color:#b26a00">ほかの管理コードに' + other + '件入っています。'
+                 + '画面上部の獲得実績パネルの管理コード表示と見比べてください。</div>' : "")
+        + '<div style="margin-top:6px;font-size:11.5px;color:#7a7a7a">登録は、画面上部「獲得実績」の見出し行の右端にある〈＋ 実績を登録〉から行います。</div>');
+      return;
+    }
     rs.sort(function(a, b){ return String(b.acquired_at || "").localeCompare(String(a.acquired_at || "")); });
     var sum = rs.reduce(function(a, r){ var n = Number(r && r.amount); return a + (isFinite(n) ? n : 0); }, 0);
     var rows = rs.map(function(r){

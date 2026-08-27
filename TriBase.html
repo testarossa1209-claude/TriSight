@@ -660,7 +660,7 @@ document.addEventListener('input', function(e){
    ============================================================ */
 var reqYear = 'R7';
 function reqDef(){
-  var d = (typeof TRWY!=='undefined') ? TRWY.get('kaigo', reqYear) : null;
+  var d = (typeof TRWY!=='undefined') ? TRWY.def('kaigo', reqYear) : null;
   return (d && d.cellmap && d.cellmap.req) ? d.cellmap.req : null;
 }
 function reqData(){

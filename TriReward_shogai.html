@@ -273,6 +273,8 @@
           出来上がったファイルを、そのまま提出フォームへアップロードしてください（提出はExcel形式のみ・PDF不可）。
         </p>
         <div class="bar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 10px">
+          <label style="font-weight:700;margin-right:6px">提出先</label>
+          <select id="j_dest" style="border:1px solid var(--line);border-radius:8px;padding:7px 9px;font:inherit;background:#fffdf8;margin-right:10px"></select>
           <button class="addbtn" id="j_pick" style="margin:0">別紙様式3のExcelを選ぶ</button>
           <input type="file" id="j_file" accept=".xlsx" style="display:none">
         </div>
@@ -410,8 +412,7 @@ window.TRWX = (function(){
   function rowOf(ref){ return parseInt(ref.replace(/^[A-Z]+/,''),10); }
   function colNum(c){ var n=0; for(var i=0;i<c.length;i++){ n=n*26+(c.charCodeAt(i)-64); } return n; }
 
-  /* 同じ列の近い行にあるセルから書式（s=）を借りる。
-     様式は行ごとに同じ体裁で組まれているため、隣の行の書式が正しい体裁になる。 */
+  /* 同じ列の近い行にあるセルから書式（s=）を借りる */
   function borrowStyle(xml, ref){
     var col = colOf(ref), r = rowOf(ref);
     for(var d=1; d<=12; d++){
@@ -419,75 +420,90 @@ window.TRWX = (function(){
       for(var i=0;i<cands.length;i++){
         if(cands[i] < 1) continue;
         var m = xml.match(new RegExp('<c r="'+col+cands[i]+'"((?:\\s[^>]*?)?)(?:/>|>[\\s\\S]*?</c>)'));
-        if(m){
-          var ms = m[1].match(/\ss="[0-9]+"/);
-          if(ms) return ms[0];
-        }
+        if(m){ var ms = m[1].match(/\ss="[0-9]+"/); if(ms) return ms[0]; }
       }
     }
     return '';
   }
 
-  /* シート1枚のXMLに対し、1セルの値を書き込む */
-  function setCell(xml, ref, value, isNum){
-    /* 書式（罫線・塗り・表示形式）は s= に入っている。ここを落とすと様式の見た目が壊れるので必ず引き継ぐ。
-       セルが元から無い場合は、同じ列の近い行から書式を借りる。 */
+  /* ---- 共有文字列（sharedStrings.xml） ----
+     文字は inlineStr ではなく共有文字列で書く。inlineStr は Excel では読めるが、
+     提出先の画面プレビューや簡易ビューアで空欄に見えることがあるため。 */
+  function SST(xml){
+    var blank = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n'+
+                '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="0" uniqueCount="0"></sst>';
+    this.src = xml || blank;
+    var p = this.src.indexOf('<si>');
+    this.head  = (p>=0) ? this.src.slice(0,p) : this.src.replace(/<\/sst>[\s\S]*$/,'');
+    this.items = this.src.match(/<si>[\s\S]*?<\/si>/g) || [];
+    this.index = {};
+    for(var i=0;i<this.items.length;i++){
+      var base = this.items[i].replace(/<rPh[\s\S]*?<\/rPh>/g,'');
+      var t = (base.match(/<t[^>]*>[\s\S]*?<\/t>/g)||[])
+                .map(function(s){ return s.replace(/^<t[^>]*>/,'').replace(/<\/t>$/,''); }).join('');
+      if(!(t in this.index)) this.index[t] = i;
+    }
+    this.dirty = false;
+  }
+  SST.prototype.idx = function(s){
+    var e = esc(s);
+    if(e in this.index) return this.index[e];
+    this.items.push('<si><t xml:space="preserve">'+e+'</t></si>');
+    this.index[e] = this.items.length-1; this.dirty = true;
+    return this.index[e];
+  };
+  SST.prototype.out = function(){
+    var h = this.head;
+    if(/count="\d+"/.test(h)) h = h.replace(/count="\d+"/, 'count="'+this.items.length+'"');
+    else h = h.replace('<sst ', '<sst count="'+this.items.length+'" ');
+    if(/uniqueCount="\d+"/.test(h)) h = h.replace(/uniqueCount="\d+"/, 'uniqueCount="'+this.items.length+'"');
+    else h = h.replace('<sst ', '<sst uniqueCount="'+this.items.length+'" ');
+    return h + this.items.join('') + '</sst>';
+  };
+
+  /* セル1つの値を書き込む。kind: 'num' | 'str' | 'bool' | 'blank' */
+  function setCell(xml, ref, value, kind, sst){
+    if(kind===true)  kind='num';
+    if(kind===false || kind==null) kind='str';
     var reCell = new RegExp('<c r="'+ref+'"((?:\\s[^>]*?)?)(?:/>|>[\\s\\S]*?</c>)');
     var found  = xml.match(reCell);
     var sAttr  = '';
-    if(found){
-      var ms = found[1].match(/\ss="[0-9]+"/);
-      if(ms) sAttr = ms[0];
-    }else{
-      sAttr = borrowStyle(xml, ref);
-    }
+    if(found){ var ms = found[1].match(/\ss="[0-9]+"/); if(ms) sAttr = ms[0]; }
+    else { sAttr = borrowStyle(xml, ref); }
 
-    var cellXml = isNum
-      ? '<c r="'+ref+'"'+sAttr+'><v>'+(Number(value)||0)+'</v></c>'
-      : '<c r="'+ref+'"'+sAttr+' t="inlineStr"><is><t xml:space="preserve">'+esc(value)+'</t></is></c>';
+    var cellXml;
+    if(kind==='blank')     cellXml = '<c r="'+ref+'"'+sAttr+'/>';
+    else if(kind==='num')  cellXml = '<c r="'+ref+'"'+sAttr+'><v>'+(Number(value)||0)+'</v></c>';
+    else if(kind==='bool') cellXml = '<c r="'+ref+'"'+sAttr+' t="b"><v>'+(value?1:0)+'</v></c>';
+    else                   cellXml = '<c r="'+ref+'"'+sAttr+' t="s"><v>'+(sst? sst.idx(value) : 0)+'</v></c>';
 
-    /* 既存セルがあれば置換 */
     if(found) return xml.replace(reCell, cellXml);
 
-    /* 行があればその中の正しい位置に挿入 */
     var r = rowOf(ref), myCol = colNum(colOf(ref));
     var reRow = new RegExp('<row[^>]*\\sr="'+r+'"(?:\\s[^>]*)?(?:/>|>[\\s\\S]*?</row>)');
     var m = xml.match(reRow);
     if(m){
       var rowXml = m[0];
-      if(/\/>$/.test(rowXml)){
-        var opened = rowXml.replace(/\/>$/,'>') + cellXml + '</row>';
-        return xml.replace(rowXml, opened);
+      if(/\/>$/.test(rowXml)) return xml.replace(rowXml, rowXml.replace(/\/>$/,'>') + cellXml + '</row>');
+      var cells = rowXml.match(/<c\b[^>]*(?:\/>|>[\s\S]*?<\/c>)/g) || [];
+      for(var i=0;i<cells.length;i++){
+        var cr = (cells[i].match(/\sr="([A-Z]+[0-9]+)"/)||[])[1];
+        if(cr && colNum(colOf(cr)) > myCol) return xml.replace(rowXml, rowXml.replace(cells[i], cellXml+cells[i]));
       }
-      var inner = rowXml.replace(/^<row[^>]*>/,'').replace(/<\/row>$/,'');
-      var refs = [];
-      inner.replace(/<c r="([A-Z]+[0-9]+)"/g, function(_,rr){ refs.push(rr); return _; });
-      var idx = -1;
-      for(var i=0;i<refs.length;i++){ if(colNum(colOf(refs[i])) > myCol){ idx=i; break; } }
-      var newInner;
-      if(idx<0){ newInner = inner + cellXml; }
-      else{
-        var at = inner.indexOf('<c r="'+refs[idx]+'"');
-        newInner = inner.slice(0,at) + cellXml + inner.slice(at);
-      }
-      return xml.replace(rowXml, rowXml.replace(inner, newInner));
+      return xml.replace(rowXml, rowXml.replace(/<\/row>$/, cellXml+'</row>'));
     }
-
-    /* 行そのものが無ければ作る（行番号順に挿入） */
     var newRow = '<row r="'+r+'">'+cellXml+'</row>';
-    var rows = [];
-    xml.replace(/<row[^>]*\sr="(\d+)"/g, function(_,n){ rows.push(+n); return _; });
-    var after = null;
-    for(var j=0;j<rows.length;j++){ if(rows[j] > r){ after = rows[j]; break; } }
-    if(after!=null){
-      var mk = xml.match(new RegExp('<row[^>]*\\sr="'+after+'"'));
-      return xml.slice(0, mk.index) + newRow + xml.slice(mk.index);
-    }
     return xml.replace('</sheetData>', newRow + '</sheetData>');
   }
 
-  /* workbook.xml からシート名 → ファイルパスの対応を作る
-     属性の並び順はファイルによって違うため、順序に依存しない読み方をする */
+  /* ---- 数式のキャッシュ値を落とす ----
+     様式は数式で○×を出す。書き込み前のキャッシュ値が残っていると、
+     Excelの計算方法が「手動」の環境などで古い値が表示されたまま提出されてしまう。
+     キャッシュを消せば、Excelは開いた時点で必ず計算し直す。 */
+  function stripCache(xml){
+    return xml.replace(/(<f\b[^>]*(?:\/>|>[\s\S]*?<\/f>))\s*<v>[\s\S]*?<\/v>/g, '$1');
+  }
+
   function attrOf(tag, name){
     var m = tag.match(new RegExp('(?:^|\\s)' + name.replace(':','\\:') + '="([^"]*)"'));
     return m ? m[1] : '';
@@ -508,8 +524,6 @@ window.TRWX = (function(){
     });
     return out;
   }
-
-  /* 部分一致でシートを探す */
   function findSheet(map, keys){
     for(var k=0;k<keys.length;k++){
       for(var i=0;i<map.length;i++){
@@ -519,35 +533,64 @@ window.TRWX = (function(){
     return null;
   }
 
-  /* writes = [{sheet:['3-2','個票'], ref:'Q14', value:123, num:true}, ...] */
-  function build(fileBlob, writes, cb){
+  /* writes = [{sheet:['3-2','個票'], ref:'Q14', value:123, num:true}, ...]
+     checks = [{sheet:['3-1','総括'], link:'AM64', on:true, label:'…'}, ...]  ← チェックボックス */
+  function build(fileBlob, writes, cb, checks){
+    checks = checks || [];
     if(typeof JSZip==='undefined'){ cb({ok:false, msg:'Excel書き込み部品（jszip.min.js）が読み込めていません。ファイルが同じ場所に置かれているか確認してください。'}); return; }
     JSZip.loadAsync(fileBlob).then(function(zip){
       var wbF = zip.file('xl/workbook.xml'), rlF = zip.file('xl/_rels/workbook.xml.rels');
       if(!wbF || !rlF){ cb({ok:false, msg:'このファイルはExcelブック（.xlsx）として読めませんでした。'}); return; }
-      return Promise.all([wbF.async('string'), rlF.async('string')]).then(function(a){
+      var ssF = zip.file('xl/sharedStrings.xml');
+      return Promise.all([wbF.async('string'), rlF.async('string'), ssF? ssF.async('string') : Promise.resolve(null)])
+      .then(function(a){
         var map = sheetMap(a[0], a[1]);
+        var sst = new SST(a[2]);
         var byPath = {}, log = [], miss = [];
         writes.forEach(function(w){
           var sh = findSheet(map, w.sheet);
           if(!sh || !zip.file(sh.path)){ miss.push(w.sheet.join('/')+' '+w.ref); return; }
           (byPath[sh.path] = byPath[sh.path] || []).push(w);
         });
+        checks.forEach(function(c){
+          var sh = findSheet(map, c.sheet);
+          if(!sh || !zip.file(sh.path)){ miss.push(c.sheet.join('/')+' '+c.link); return; }
+          (byPath[sh.path] = byPath[sh.path] || []).push({ref:c.link, value:!!c.on, kind:'bool', label:c.label||('チェック '+c.link)});
+        });
         if(!Object.keys(byPath).length){
           cb({ok:false, msg:'様式のシートが見つかりませんでした。別紙様式3のファイルか確認してください。', sheets:map.map(function(s){return s.name;})});
           return;
         }
-        var jobs = Object.keys(byPath).map(function(p){
-          return zip.file(p).async('string').then(function(xml){
-            byPath[p].forEach(function(w){
-              xml = setCell(xml, w.ref, w.value, !!w.num);
-              log.push(w.label + ' → ' + w.ref + '：' + (w.num? Number(w.value).toLocaleString('ja-JP') : w.value));
+        /* 値を書き、そのうえで全シートの数式キャッシュを落とす */
+        var jobs = map.map(function(sh){
+          if(!zip.file(sh.path)) return Promise.resolve();
+          return zip.file(sh.path).async('string').then(function(xml){
+            (byPath[sh.path]||[]).forEach(function(w){
+              var kind = w.kind || (w.num? 'num' : 'str');
+              xml = setCell(xml, w.ref, w.value, kind, sst);
+              log.push(w.label + ' → ' + w.ref + '：' +
+                (kind==='num'? Number(w.value).toLocaleString('ja-JP')
+                 : kind==='bool'? (w.value?'✔':'（外す）')
+                 : kind==='blank'? '（空欄）' : w.value));
             });
-            zip.file(p, xml);
+            zip.file(sh.path, stripCache(xml));
           });
         });
-        /* 開いた時に全再計算させる（数式のキャッシュ値を信用させない） */
+        /* チェックボックスの見た目（ctrlProps）も合わせる。
+           リンク先セルだけ直すと、式はTRUEなのに枠にレ点が出ない状態になる。 */
+        var wantByLink = {};
+        checks.forEach(function(c){ wantByLink['$'+colOf(c.link)+'$'+rowOf(c.link)] = !!c.on; });
+        zip.file(/^xl\/ctrlProps\/ctrlProp\d+\.xml$/).forEach(function(f){
+          jobs.push(f.async('string').then(function(x){
+            var lk = (x.match(/fmlaLink="([^"]*)"/)||[])[1];
+            if(!lk || !(lk in wantByLink)) return;
+            x = x.replace(/\schecked="[^"]*"/,'');
+            if(wantByLink[lk]) x = x.replace('<formControlPr ', '<formControlPr checked="Checked" ');
+            zip.file(f.name, x);
+          }));
+        });
         jobs.push(Promise.resolve().then(function(){
+          if(sst.dirty || a[2]!=null) zip.file('xl/sharedStrings.xml', sst.out());
           var wb = a[0];
           if(/<calcPr[^>]*\/>/.test(wb)){
             wb = wb.replace(/<calcPr([^>]*)\/>/, function(_,at){
@@ -558,8 +601,19 @@ window.TRWX = (function(){
             wb = wb.replace('</workbook>', '<calcPr fullCalcOnLoad="1"/></workbook>');
           }
           zip.file('xl/workbook.xml', wb);
+          /* 計算順の記録は消す。値を入れ替えた後は当てにならない */
+          if(zip.file('xl/calcChain.xml')) zip.remove('xl/calcChain.xml');
         }));
         return Promise.all(jobs).then(function(){
+          var ctF = zip.file('[Content_Types].xml');
+          return ctF? ctF.async('string').then(function(ct){
+            zip.file('[Content_Types].xml', ct.replace(/<Override PartName="\/xl\/calcChain\.xml"[^>]*\/>/,''));
+          }) : null;
+        }).then(function(){
+          return zip.file('xl/_rels/workbook.xml.rels').async('string').then(function(rl){
+            zip.file('xl/_rels/workbook.xml.rels', rl.replace(/<Relationship[^>]*calcChain\.xml"\s*\/>/,''));
+          });
+        }).then(function(){
           return zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
         }).then(function(blob){
           cb({ok:true, blob:blob, log:log, miss:miss, sheets:map.map(function(s){return s.name;})});
@@ -573,7 +627,7 @@ window.TRWX = (function(){
     a.href=URL.createObjectURL(blob); a.download=name;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   }
-  return { build:build, download:download, _setCell:setCell, _sheetMap:sheetMap, _findSheet:findSheet };
+  return { build:build, download:download, _setCell:setCell, _sheetMap:sheetMap, _findSheet:findSheet, _SST:SST, _stripCache:stripCache };
 })();
 </script>
 <script>
@@ -784,7 +838,9 @@ render = function(){ _rK(); trwSaveK(); };
 render();
 
 })();
-const TRW_DOMAIN='shogai', TRW_YEAR='R7';
+/* TRW_DOMAIN / TRW_YEAR は先頭のスクリプトで var 宣言済み。
+   ここで const で宣言し直すと『already been declared』でこのブロック全体が
+   実行されなくなる（＝実績報告タブの書き出しが動かない）。2026-08-27に修正。 */
 
 /* ---- 別紙様式2（計画書）への書き出し ------------------------------------
    様式3と同じ TRWX を使う。官製様式のセル値だけを差し替え、数式・書式・
@@ -1111,6 +1167,145 @@ function trwCompare(){
     (planT===0? '<div class="layer-note">※ 計画側の見込額がまだありません。計画書タブに入力すると、ここに対比が出ます。</div>':'');
 }
 
+
+/* --- 様式3-1の要件欄（チェックボックス）をTriBaseの申告から組み立てる ---
+   要件の中身は事業所属性なので、基本情報シート側（バックヤード）で持つ。
+   ここは読むだけ。定義が無い分野（障害は現物未照合）では何も書かない。 */
+function trwChecks(){
+  var def = (TRW_DEF7 && TRW_DEF7.cellmap) ? TRW_DEF7.cellmap.req : null;
+  if(!def) return [];
+  var m = TRW.masterRaw() || {};
+  var r = (m.req && m.req[TRW_DEF7.year]) || null;
+  if(!r) return [];
+  var cp = r.cp||{}, env = r.env||{}, sh = def.sheet, out = [];
+  function C(link, on, label){ if(link) out.push({sheet:sh, link:link, on:!!on, label:label}); }
+  C(def.cpNoChange , cp.cpNoChange , '(3) 計画書から変更なし');
+  C(def.cpI        , cp.cpI        , '(3) キャリアパス要件Ⅰ');
+  C(def.cpII       , cp.cpII       , '(3) キャリアパス要件Ⅱ');
+  C(def.cpIIkenshu , cp.cpIIkenshu , '(3) 研修機会の提供等');
+  C(def.cpIIshikaku, cp.cpIIshikaku, '(3) 資格取得の支援');
+  C(def.cpIIINoChange, cp.cpIIINoChange, '(4) 計画書から変更なし');
+  C(def.cpIII      , cp.cpIII      , '(4) 昇給の仕組みあり');
+  C(def.cpIIIkeiken, cp.cpIIIkeiken, '(4) 経験に応じた昇給');
+  C(def.cpIIIshikaku,cp.cpIIIshikaku,'(4) 資格等に応じた昇給');
+  C(def.cpIIIkijun , cp.cpIIIkijun , '(4) 一定の基準による昇給判定');
+  var rs = def.cpIVReason||{};
+  C(rs.small , cp.cpIVsmall , '(5) 理由：小規模');
+  C(rs.low   , cp.cpIVlow   , '(5) 理由：賃金水準');
+  C(rs.period, cp.cpIVperiod, '(5) 理由：一定期間を要する');
+  C(rs.other , cp.cpIVother , '(5) 理由：その他');
+  C(def.envHojo, cp.envHojoFlag, '(6) 補助金申請済みで適用猶予');
+  if(!cp.envHojoFlag){
+    (def.envItems||[]).forEach(function(g){
+      g.items.forEach(function(it){ C(it.cell, env[it.cell], '(6) '+g.name); });
+    });
+  }
+  return out;
+}
+/* 自由記載欄（チェックだけでは判定が立たない箇所） */
+function trwReqTexts(){
+  var def = (TRW_DEF7 && TRW_DEF7.cellmap) ? TRW_DEF7.cellmap.req : null;
+  if(!def) return [];
+  var m = TRW.masterRaw() || {};
+  var r = (m.req && m.req[TRW_DEF7.year]) || null;
+  if(!r) return [];
+  var t = r.text||{}, cp = r.cp||{}, w = [];
+  if(cp.cpIIkenshu  && def.cpIIkenshuText  && t.cpIIkenshuText)  w.push({sheet:def.sheet, ref:def.cpIIkenshuText,  value:t.cpIIkenshuText,  label:'(3) 研修の取組内容'});
+  if(cp.cpIIshikaku && def.cpIIshikakuText && t.cpIIshikakuText) w.push({sheet:def.sheet, ref:def.cpIIshikakuText, value:t.cpIIshikakuText, label:'(3) 資格取得支援の内容'});
+  if(cp.cpIVother   && def.cpIVOtherText   && t.cpIVOtherText)   w.push({sheet:def.sheet, ref:def.cpIVOtherText,   value:t.cpIVOtherText,   label:'(5) その他の理由'});
+  return w;
+}
+
+/* --- 書き出し前の点検（×が残ったまま出さないための関所） -------------------
+   様式は「×が一つでもあると差し戻し」（2026-08-27・東村山市の実例）。
+   Excelを開かないと○×が見えないため、同じ判定を画面側で先に走らせる。
+   ------------------------------------------------------------------------ */
+function trwPreflight(){
+  var ng = [], def = TRW_DEF7;
+  var g = function(id){ var e=document.getElementById(id); return e? (+String(e.value).replace(/[^0-9.-]/g,'')||0) : 0; };
+  var kasan = 0, dash = (def&&def.dash)||'―';
+  services.forEach(function(s){ kasan += (+s.amount1||0) + (+s.amount2||0); });
+  var san3 = kasan + g('j_carry'), imp = g('j_improve');
+  if(imp < san3) ng.push('判定(1)：④賃金改善額 '+imp.toLocaleString('ja-JP')+'円 が ③ '+san3.toLocaleString('ja-JP')+'円 を下回っています。');
+
+  var now = g('j_wgTotal') - imp - g('j_wgSubsidy');
+  var prev = (g('j_pvTotal')-g('j_pvAdj')) - g('j_pvKasan') - g('j_pvGrant') - g('j_pvOwn');
+  if(g('j_wgTotal')>0 && now < prev) ng.push('判定(2)：加算の影響を除いた賃金額が前年度を下回っています（差 '+(prev-now).toLocaleString('ja-JP')+'円）。前年度側の「職員構成の変動による調整額」を確認してください。');
+
+  /* 要件Ⅰ：加算Ⅳ相当額の1/2 ≦ 月額賃金改善額 */
+  var half = 0, unknown = false;
+  services.forEach(function(s){
+    var rt = def && def.rates && def.rates[s.svcName||s.name];
+    var k = TRWY.fromForm(def, s.k1);
+    if(!rt || !rt[k] || !rt['Ⅳ']){ if(+s.amount1) unknown = true; return; }
+    half += Math.floor((+s.amount1||0) * (rt['Ⅳ']/rt[k]) * 0.5);
+    var k2 = TRWY.fromForm(def, s.k2);
+    if(s.k2 && s.k2!==dash && rt[k2]) half += Math.floor((+s.amount2||0) * (rt['Ⅳ']/rt[k2]) * 0.5);
+  });
+  var monthly = g('j_monthly');
+  if(!unknown && half>0 && monthly < half)
+    ng.push('要件Ⅰ：月額賃金改善額 '+monthly.toLocaleString('ja-JP')+'円 が、加算Ⅳ相当額の1/2 '+half.toLocaleString('ja-JP')+'円 に届いていません。');
+
+  /* 要件欄（TriBaseの申告） */
+  var rdef = (def && def.cellmap) ? def.cellmap.req : null;
+  if(!rdef){
+    ng.push('この版では様式3-1の要件欄（キャリアパス要件・職場環境等要件）を書き出せません。Excelを開いて手でチェックし、×が残っていないか必ず確かめてください。');
+  }else{
+    var m = TRW.masterRaw()||{}, r = (m.req && m.req[def.year]) || null;
+    if(!r){ ng.push('様式3-1の要件欄が未申告です。基本情報シートの「要件の申告」を先に入力してください。'); }
+    else{
+      var cp = r.cp||{}, env = r.env||{};
+      if(!cp.cpI)  ng.push('(3) キャリアパス要件Ⅰ が未チェックです。');
+      if(!cp.cpII) ng.push('(3) キャリアパス要件Ⅱ が未チェックです。');
+      if(cp.cpII && !(cp.cpIIkenshu||cp.cpIIshikaku)) ng.push('(3) 要件Ⅱのイの取組が選ばれていません。');
+      if(cp.cpIIkenshu && !((r.text||{}).cpIIkenshuText)) ng.push('(3) 研修の取組内容が空欄です。チェックだけでは判定が立ちません。');
+      if(cp.cpIIshikaku && !((r.text||{}).cpIIshikakuText)) ng.push('(3) 資格取得支援の内容が空欄です。');
+      if(!cp.cpIII) ng.push('(4) キャリアパス要件Ⅲ が未チェックです。');
+      if(cp.cpIII && !(cp.cpIIIkeiken||cp.cpIIIshikaku||cp.cpIIIkijun)) ng.push('(4) 昇給の仕組みの種類が選ばれていません。');
+      if(!cp.envHojoFlag){
+        var hi = services.some(function(s){ var k=TRWY.fromForm(def,s.k1); return k==='Ⅰ'||k==='Ⅱ'; });
+        (rdef.envItems||[]).forEach(function(gp){
+          var n = gp.items.filter(function(it){ return !!env[it.cell]; }).length;
+          var need = hi ? gp.min12 : gp.min34;
+          if(n < need) ng.push('(6) 職場環境等要件「'+gp.name+'」が '+n+'／'+need+' 件です。');
+        });
+      }
+    }
+  }
+  return ng;
+}
+
+/* --- 提出先の切り替え（⑱） -------------------------------------------------
+   提出先の数は「加算を取った市の数」ではなく「指定を受けている市の数」で決まる。
+   通常の提出先＝中身は同じで宛先だけ差し替える（昨年からの実務）。
+   0円報告先＝対象サービス1行・加算額0・賃金額欄は空欄で書き出す。
+   -------------------------------------------------------------------------- */
+function trwDests(){
+  var out = [], seen = {};
+  (TRW.offices()||[]).forEach(function(o){
+    var n = o.shitei || '';
+    if(n && !seen[n]){ seen[n]=1; out.push({name:n, zero:false}); }
+  });
+  var m = TRW.masterRaw() || {};
+  (m.zeroDests||[]).forEach(function(z){
+    if(z && z.name) out.push({name:z.name, zero:true, svc:z.svc||''});
+  });
+  return out;
+}
+function trwFillDest(){
+  var el = document.getElementById('j_dest'); if(!el) return;
+  var L = trwDests(), cur = el.value;
+  el.innerHTML = L.map(function(d,i){
+    return '<option value="'+i+'">'+ (d.name) + (d.zero? '（0円報告）':'') +'</option>';
+  }).join('') || '<option value="">（基本情報シートに事業所がありません）</option>';
+  if(cur && L[+cur]) el.value = cur;
+}
+function trwDestNow(){
+  var el = document.getElementById('j_dest'); var L = trwDests();
+  var i = el? +el.value : 0;
+  return L[i] || L[0] || null;
+}
+
 /* --- 官製様式3への書き込み --- */
 function trwWrites(){
   /* 様式側の加算区分の呼称へ合わせる */
@@ -1133,11 +1328,44 @@ function trwWrites(){
   if(corp.email)     w.push({sheet:['基本情報'], ref:'M32', value:corp.email,     label:'E-mail'});
   /* 提出先は様式側がG18を読む（C18ではない）。未設定なら1件目の指定権者を使う */
   var _os0 = TRW.offices()[0] || {};
-  var _teishutsu = corp.teishutsu || _os0.shitei || '';
+  var _d = trwDestNow();
+  var _teishutsu = (_d && _d.name) || corp.teishutsu || _os0.shitei || '';
   /* 提出先のセルは分野で違う（介護G18／障害C18）。年度定義から引く */
   var _toRef = (TRW_DEF7 && TRW_DEF7.cellmap) ? TRW_DEF7.cellmap.base.submitTo : 'G18';
   if(_teishutsu) w.push({sheet:['基本情報'], ref:_toRef, value:_teishutsu, label:'提出先の指定権者名'});
   var os = TRW.offices();
+  if(_d && _d.zero){
+    /* 0円報告：対象サービス1行だけを立て、加算額0・賃金額欄は空欄にする。
+       その市に関係のない法人全体の賃金額まで書かない（2026-08-27の判断）。 */
+    var z0 = os[0] || {};
+    var zsvc = _d.svc || z0.svc || '';
+    w.push({sheet:['基本情報'], ref:'C39', value:z0.bizNo||'', label:'事業所番号'});
+    w.push({sheet:['基本情報'], ref:'M39', value:_d.name,      label:'指定権者'});
+    w.push({sheet:['基本情報'], ref:'R39', value:z0.pref||'',  label:'都道府県'});
+    w.push({sheet:['基本情報'], ref:'W39', value:z0.city||'',  label:'市区町村'});
+    w.push({sheet:['基本情報'], ref:'X39', value:z0.name||'',  label:'事業所名'});
+    w.push({sheet:['基本情報'], ref:'Y39', value:zsvc,         label:'サービス名'});
+    ['C','M','R','W','X','Y'].forEach(function(c){
+      w.push({sheet:['基本情報'], ref:c+'40', value:'', kind:'blank', label:'2行目を空に'});
+    });
+    var _kz = KB(TRW.kubunOf(z0, TRW_YEAR) || 'Ⅱ');
+    w.push({sheet:['3-2','個票'], ref:'O14', value:_kz, label:'R7.3時点の算定状況'});
+    w.push({sheet:['3-2','個票'], ref:'P14', value:_kz, label:'算定期間①区分'});
+    w.push({sheet:['3-2','個票'], ref:'Q14', value:0, num:true, label:'算定期間①加算総額（0円）'});
+    w.push({sheet:['3-2','個票'], ref:'W14', value:0, num:true, label:'年額440万以上の職員数'});
+    w.push({sheet:['3-2','個票'], ref:'T14', value:(TRW_DEF7? TRWY.reqValue(TRW_DEF7,true):'○'), label:'月額賃金改善要件Ⅰ'});
+    w.push({sheet:['3-2','個票'], ref:'Y14', value:((TRW_DEF7&&TRW_DEF7.dash)||'―'), label:'算定期間②区分（変更なし）'});
+    ['A','O','P','Q','T','W'].forEach(function(c){
+      w.push({sheet:['3-2','個票'], ref:c+'15', value:'', kind:'blank', label:'2行目を空に'});
+    });
+    w.push({sheet:['3-1','総括'], ref:'W19', value:0, num:true, label:'②前年繰越額'});
+    w.push({sheet:['3-1','総括'], ref:'W21', value:0, num:true, label:'④賃金改善額'});
+    ['Q27','Q29','Q31','Q32','Q33','Q34','T50'].forEach(function(r){
+      w.push({sheet:['3-1','総括'], ref:r, value:'', kind:'blank', label:'賃金額欄（0円報告のため空欄）'});
+    });
+    trwReqTexts().forEach(function(x){ w.push(x); });
+    return w;
+  }
   services.forEach(function(s,i){
     var o = os[i] || {};
     var br = 39 + i, kr = 14 + i;
@@ -1162,9 +1390,15 @@ function trwWrites(){
     }
     w.push({sheet:['3-2','個票'], ref:'Q'+kr, value:s.amount1, num:true, label:'算定期間①加算総額'});
     w.push({sheet:['3-2','個票'], ref:'W'+kr, value:s.staff440, num:true, label:'年額440万以上の職員数'});
-    if(s.k2 && s.k2!=='―'){
+    /* 算定期間②（年度途中の区分変更）。変更が無い場合でも「―」を必ず書く。
+       空欄のままだと、様式側の加算Ⅳ相当額の集計（個票N6）が立たず、
+       総括3-1の ３⑴①（T49）へ金額が転記されない。＝東村山市の差し戻しの原因。 */
+    var _dash = (TRW_DEF7 && TRW_DEF7.dash) ? TRW_DEF7.dash : '―';
+    if(s.k2 && s.k2!=='―' && s.k2!==_dash){
       w.push({sheet:['3-2','個票'], ref:'Y'+kr, value:KB(s.k2), label:'算定期間②区分'});
       w.push({sheet:['3-2','個票'], ref:'Z'+kr, value:s.amount2, num:true, label:'算定期間②加算総額'});
+    }else{
+      w.push({sheet:['3-2','個票'], ref:'Y'+kr, value:_dash, label:'算定期間②区分（変更なし）'});
     }
   });
   var g=function(id){ var e=document.getElementById(id); return e? (+e.value||0) : 0; };
@@ -1179,16 +1413,44 @@ function trwWrites(){
   if(document.getElementById('j_monthly')){
     w.push({sheet:['3-1','総括'], ref:'T50', value:g('j_monthly'), num:true, label:'②月額賃金改善による額'});
   }
+  trwReqTexts().forEach(function(x){ w.push(x); });
   return w;
 }
 try{ window.trwWritesProbe = trwWrites; }catch(e){}
+try{ window.trwChecksProbe = trwChecks; }catch(e){}
+try{ window.trwPreflightProbe = trwPreflight; }catch(e){}
 (function(){
   var pick=document.getElementById('j_pick'), file=document.getElementById('j_file'), log=document.getElementById('j_expLog');
   if(!pick||!file) return;
+  trwFillDest();
+  /* 障害版：様式3-1の要件欄（チェックボックス）は現物未照合のため書き出せない。
+     黙って出すと×が残ったまま提出されるので、画面に出して手当てを促す。 */
+  (function(){
+    var _rd = (TRW_DEF7 && TRW_DEF7.cellmap) ? TRW_DEF7.cellmap.req : null;
+    if(_rd) return;
+    var box = document.createElement('div');
+    box.className = 'layer-note';
+    box.style.cssText = 'background:#fdf3ee;border-color:#e6bda8;color:#8a3d1a;margin-top:10px';
+    box.innerHTML = '<b>この版では、様式3-1の要件欄（キャリアパス要件・職場環境等要件）を書き出せません。</b><br>'+
+      '書き出したあとExcelで開き、（3）〜（6）のチェック欄を手で入れてください。'+
+      '<b>「×」が一つでも残っていると差し戻しになります。</b>';
+    var host = document.getElementById('j_expLog');
+    if(host && host.parentNode) host.parentNode.insertBefore(box, host);
+  })();
+  var _dsel = document.getElementById('j_dest');
+  if(_dsel) _dsel.addEventListener('change', function(){ log.innerHTML=''; });
+  document.querySelectorAll('.tab').forEach(function(b){ b.addEventListener('click', trwFillDest); });
   pick.addEventListener('click', function(){ file.click(); });
   file.addEventListener('change', function(e){
     var f=e.target.files && e.target.files[0]; e.target.value='';
     if(!f) return;
+    var _dz = trwDestNow();
+    var _ng = (_dz && _dz.zero) ? [] : trwPreflight();
+    if(_ng.length){
+      var msg = '書き出す前に、次の点で様式に「×」が残ります。\n※ ×が一つでもあると差し戻しになります。\n\n・' + _ng.join('\n・') +
+                '\n\nこのまま書き出しますか？（直してから書き出すことをおすすめします）';
+      if(!window.confirm(msg)){ log.innerHTML='<b>書き出しを中止しました。</b><br>・'+_ng.join('<br>・'); return; }
+    }
     log.innerHTML='書き込んでいます…';
     TRWX.build(f, trwWrites(), function(r){
       if(!r.ok){
@@ -1196,14 +1458,15 @@ try{ window.trwWritesProbe = trwWrites; }catch(e){}
           (r.sheets? '<br>このファイルのシート：'+r.sheets.join(' ／ ') : '');
         return;
       }
-      var name = f.name.replace(/\.xlsx$/i,'') + '_記入済.xlsx';
+      var _dd = trwDestNow();
+      var name = f.name.replace(/\.xlsx$/i,'') + '_' + ((_dd&&_dd.name)||'') + (_dd&&_dd.zero?'_0円報告':'') + '.xlsx';
       TRWX.download(r.blob, name);
       log.innerHTML='<b>'+name+'</b> を書き出しました（'+r.log.length+'項目）。'+
         (r.miss.length? '<br>※ 見つからなかった欄：'+r.miss.join('、') : '')+
         '<br>Excelで開いて数式が再計算されたことを確認し、そのまま提出フォームへ上げてください。'+
         '<details style="margin-top:8px"><summary>書き込んだ内容</summary><div style="margin-top:6px">'+r.log.join('<br>')+'</div></details>';
       trwSendToTriForm(log);
-    });
+    }, trwChecks());
   });
 })();
 

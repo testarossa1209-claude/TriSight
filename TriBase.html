@@ -154,6 +154,21 @@ td.no{text-align:center;font-weight:700;color:var(--navy);width:34px}
 .segcard .rm{margin-left:auto}
 @media print{.bar,.addbtn,.rm,.segbar,#segEdit{display:none}}
 
+
+  .reqsec{border:1px solid var(--line);border-radius:11px;padding:13px 15px;margin-top:13px;background:#fff}
+  .reqh{font-weight:800;margin-bottom:8px}
+  .reqh small{display:block;font-weight:600;color:var(--soft);font-size:12px;margin-top:2px}
+  .reqrow{display:flex;gap:9px;align-items:flex-start;padding:6px 0;cursor:pointer}
+  .reqrow input{margin-top:3px}
+  .reqrow small{display:block;color:var(--soft);font-weight:600;font-size:12px}
+  .reqrow.small span{font-size:13px;font-weight:600}
+  .reqsub{margin:8px 0 0 22px;padding-left:12px;border-left:2px solid var(--line)}
+  .reqsub.off{opacity:.4;pointer-events:none}
+  .reqtext{width:100%;border:1px solid var(--line);border-radius:8px;padding:5px 8px;margin:2px 0 8px 24px;font-size:13px}
+  .envg{margin-top:10px}
+  .envh{font-weight:800;font-size:13px;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+  .envn{font-weight:700;font-size:12px}
+  .envn.ok{color:#1f7a4d} .envn.ng{color:#b4451f}
 </style>
 <script src="TriReward_years.js"></script>
 </head>
@@ -219,6 +234,14 @@ td.no{text-align:center;font-weight:700;color:var(--navy);width:34px}
         </table>
       </div>
       <button class="addbtn" id="add">&#65291; 事業所・サービスを追加</button>
+      <div class="layer-note" style="margin-top:14px">
+        <b>サービス提供が0でも報告が必要な指定権者</b><br>
+        総合事業のみなし指定を受けている市町村へは、<b>その市での提供が0件でも実績報告の提出義務があります</b>。ここに登録しておくと、実績報告の画面から0円の実績票を書き出せます。
+      </div>
+      <table class="mtbl" style="margin-top:8px"><thead><tr><th style="width:30%">指定権者</th><th>対象サービス</th><th style="width:60px"></th></tr></thead>
+        <tbody id="zeroRows"></tbody></table>
+      <button class="addbtn" id="zeroAdd" style="margin-top:8px">&#65291; 0円報告先を追加</button>
+
       <datalist id="dl_kaigo"></datalist>
       <datalist id="dl_shogai"></datalist>
       <datalist id="dl_free"></datalist>
@@ -226,7 +249,23 @@ td.no{text-align:center;font-weight:700;color:var(--navy);width:34px}
   </section>
 
   <section class="step">
-    <h2><span class="stepnum">4</span> 保存と持ち運び<span class="who auto">自動</span></h2>
+    <h2><span class="stepnum">4</span> 要件の申告（実績報告 様式3-1）<span class="who input">年に1回</span></h2>
+    <div class="body">
+      <div class="layer-note" style="margin-top:0">
+        実績報告書の様式3-1には、キャリアパス要件と職場環境等要件の<b>チェック欄</b>があります。ここが空のままだと様式に「×」が残り、<b>×が一つでもあると差し戻し</b>になります。<br>
+        年に一度あるかないかの内容なので、事業所属性としてここで持ちます。実績報告の画面はここから読むだけです。
+      </div>
+      <div class="bar" style="margin-top:12px">
+        <span style="font-weight:700">対象年度</span>
+        <select id="reqYear"><option value="R7">令和7年度</option></select>
+        <span class="savenote" id="reqStat"></span>
+      </div>
+      <div id="reqBody"></div>
+    </div>
+  </section>
+
+  <section class="step">
+    <h2><span class="stepnum">5</span> 保存と持ち運び<span class="who auto">自動</span></h2>
     <div class="body">
       <div class="bar">
         <button class="btn primary" id="exp">ファイルに書き出す</button>
@@ -251,7 +290,7 @@ td.no{text-align:center;font-weight:700;color:var(--navy);width:34px}
     </div>
   </section>
 
-  <footer>TriSight<span class="r">&reg;</span> は合同会社トライサイトの登録商標です ／ &copy; 2026 合同会社トライサイト ／ 事業所基本情報シート v4</footer>
+  <footer>TriSight<span class="r">&reg;</span> は合同会社トライサイトの登録商標です ／ &copy; 2026 合同会社トライサイト ／ 事業所基本情報シート v5</footer>
 </div>
 
 <script>
@@ -584,7 +623,143 @@ function stat(){
     (M.updated? '<br>最終保存：'+esc(M.updated) : '');
 }
 
-function render(){ renderCorp(); renderSegEdit(); renderSegBar(); renderDatalists(); renderPeriod(); renderRows(); stat(); }
+function render(){ renderCorp(); renderSegEdit(); renderSegBar(); renderDatalists(); renderPeriod(); renderRows(); renderZero(); renderReq(); stat(); }
+
+/* --- 0円でも報告が必要な指定権者 ------------------------------------------
+   総合事業のみなし指定を受けている市町村へは、提供が0件でも実績報告が要る。
+   提出先の数は「加算を取った市の数」ではなく「指定を受けている市の数」で決まる。
+   2026-08-27・清瀬市／東久留米市の実例から。
+   -------------------------------------------------------------------------- */
+function zeroList(){ M.zeroDests = M.zeroDests || []; return M.zeroDests; }
+function renderZero(){
+  var host=document.getElementById('zeroRows'); if(!host) return;
+  var L=zeroList(), h='';
+  L.forEach(function(z,i){
+    h += '<tr>'+
+      '<td><input data-z="'+i+'" data-zf="name" value="'+esc(z.name||'')+'" placeholder="例：清瀬市"></td>'+
+      '<td><input data-z="'+i+'" data-zf="svc" list="svcList" value="'+esc(z.svc||'')+'" placeholder="例：訪問型サービス（独自）"></td>'+
+      '<td><button class="rm" data-zrm="'+i+'">削除</button></td></tr>';
+  });
+  if(!h) h='<tr><td colspan="3" style="padding:14px;text-align:center;color:var(--soft)">まだありません。総合事業の指定を受けているが提供実績が0の市町村があれば、ここに登録します。</td></tr>';
+  host.innerHTML=h;
+}
+document.addEventListener('click', function(e){
+  var t=e.target;
+  if(t.id==='zeroAdd'){ zeroList().push({name:'',svc:''}); save(); renderZero(); }
+  else if(t.dataset && t.dataset.zrm!=null){ zeroList().splice(+t.dataset.zrm,1); save(); renderZero(); }
+});
+document.addEventListener('input', function(e){
+  var t=e.target;
+  if(t.dataset && t.dataset.z!=null){ zeroList()[+t.dataset.z][t.dataset.zf]=t.value; save(); }
+});
+
+
+/* ============================================================
+   要件の申告（実績報告 様式3-1 のチェック欄）
+   法人単位・年度別に持つ。実績報告の画面はここを読むだけ。
+   ============================================================ */
+var reqYear = 'R7';
+function reqDef(){
+  var d = (typeof TRWY!=='undefined') ? TRWY.get('kaigo', reqYear) : null;
+  return (d && d.cellmap && d.cellmap.req) ? d.cellmap.req : null;
+}
+function reqData(){
+  M.req = M.req || {};
+  if(!M.req[reqYear]) M.req[reqYear] = { cp:{}, envHojo:false, env:{}, text:{} };
+  var r = M.req[reqYear];
+  r.cp = r.cp || {}; r.env = r.env || {}; r.text = r.text || {};
+  return r;
+}
+function reqChk(key, label, note){
+  var r = reqData(), on = !!r.cp[key];
+  return '<label class="reqrow"><input type="checkbox" data-req="'+key+'"'+(on?' checked':'')+'>'+
+         '<span><b>'+esc(label)+'</b>'+(note? '<small>'+esc(note)+'</small>':'')+'</span></label>';
+}
+function reqText(key, ph){
+  var r = reqData();
+  return '<input class="reqtext" data-reqtext="'+key+'" value="'+esc(r.text[key]||'')+'" placeholder="'+esc(ph||'')+'">';
+}
+function renderReq(){
+  var host = document.getElementById('reqBody'); if(!host) return;
+  var def = reqDef();
+  if(!def){ host.innerHTML = '<div class="layer-note">この年度の様式は未対応です。</div>'; return; }
+  var r = reqData();
+  var h = '';
+
+  h += '<div class="reqsec"><div class="reqh">（3）キャリアパス要件Ⅰ・Ⅱ<small>処遇改善加算Ⅰ〜Ⅳ。要件Ⅰ・Ⅱの両方を満たすこと</small></div>';
+  h += reqChk('cpNoChange','計画書で記載した内容から変更がない');
+  h += reqChk('cpI','要件Ⅰ（任用要件・賃金体系の整備等）のイ〜ハをすべて満たす');
+  h += reqChk('cpII','要件Ⅱ（研修の実施等）のイとロの両方を満たす');
+  h += '<div class="reqsub">イの取組（該当するものにチェックし、内容を書く）';
+  h += reqChk('cpIIkenshu','研修機会の提供・技術指導等＋能力評価') + reqText('cpIIkenshuText','具体的な内容（空欄だと様式が×になります）');
+  h += reqChk('cpIIshikaku','資格取得のための支援') + reqText('cpIIshikakuText','具体的な内容');
+  h += '</div></div>';
+
+  h += '<div class="reqsec"><div class="reqh">（4）キャリアパス要件Ⅲ<small>昇給の仕組みの整備等。処遇改善加算Ⅰ〜Ⅲ</small></div>';
+  h += reqChk('cpIIINoChange','計画書で記載した内容から変更がない');
+  h += reqChk('cpIII','昇給する仕組みを設けている（イとロの両方を満たす）');
+  h += '<div class="reqsub">具体的な仕組み（該当するもの全て）';
+  h += reqChk('cpIIIkeiken','経験に応じて昇給する仕組み','勤続年数・経験年数などに応じるもの');
+  h += reqChk('cpIIIshikaku','資格等に応じて昇給する仕組み','介護福祉士・実務者研修修了者などの取得に応じるもの');
+  h += reqChk('cpIIIkijun','一定の基準に基づき定期に昇給を判定する仕組み','実技試験・人事評価などの結果に基づくもの');
+  h += '</div></div>';
+
+  h += '<div class="reqsec"><div class="reqh">（5）キャリアパス要件Ⅳ<small>改善後の賃金が年額440万円以上となる者を設定できない場合のみ</small></div>';
+  h += reqChk('cpIVsmall','小規模事業所等で職員間の賃金バランスに配慮が必要のため');
+  h += reqChk('cpIVlow','職員全体・地域の賃金水準が低い等の理由により、直ちに引き上げることが困難なため');
+  h += reqChk('cpIVperiod','規程の整備や研修・実務経験の蓄積などに一定期間を要するため');
+  h += reqChk('cpIVother','その他') + reqText('cpIVOtherText','その他の具体的な内容');
+  h += '</div>';
+
+  h += '<div class="reqsec"><div class="reqh">（6）職場環境等要件</div>';
+  h += reqChk('envHojoFlag','補助金を申請済みのため、令和7年度中の適用が猶予される','これにチェックすると下の28項目は不要になります');
+  var hojo = !!r.cp.envHojoFlag;
+  h += '<div class="reqsub'+(hojo?' off':'')+'">';
+  (def.envItems||[]).forEach(function(g){
+    var n = g.items.filter(function(it){ return !!r.env[it.cell]; }).length;
+    var ok12 = n >= g.min12, ok34 = n >= g.min34;
+    h += '<div class="envg"><div class="envh">'+esc(g.name)+
+         '<span class="envn'+(ok34?' ok':' ng')+'">'+n+'／必要 加算Ⅰ・Ⅱ:'+g.min12+'　加算Ⅲ・Ⅳ:'+g.min34+'</span></div>';
+    g.items.forEach(function(it){
+      h += '<label class="reqrow small"><input type="checkbox" data-env="'+it.cell+'"'+(r.env[it.cell]?' checked':'')+'>'+
+           '<span>'+esc(it.label)+'</span></label>';
+    });
+    h += '</div>';
+  });
+  h += '</div></div>';
+
+  host.innerHTML = h;
+  reqStatLine();
+}
+function reqStatLine(){
+  var el = document.getElementById('reqStat'); if(!el) return;
+  var def = reqDef(), r = reqData(); if(!def){ el.textContent=''; return; }
+  var miss = [];
+  if(!r.cp.cpI)  miss.push('要件Ⅰ');
+  if(!r.cp.cpII) miss.push('要件Ⅱ');
+  if(!r.cp.cpIII) miss.push('要件Ⅲ');
+  if(r.cp.cpIII && !(r.cp.cpIIIkeiken||r.cp.cpIIIshikaku||r.cp.cpIIIkijun)) miss.push('要件Ⅲの仕組み');
+  if(!r.cp.envHojoFlag){
+    (def.envItems||[]).forEach(function(g){
+      var n = g.items.filter(function(it){ return !!r.env[it.cell]; }).length;
+      if(n < g.min34) miss.push('職場環境「'+g.name+'」');
+    });
+  }
+  el.innerHTML = miss.length
+    ? '<b style="color:#b4451f">未入力：'+esc(miss.join('／'))+'</b>　このまま書き出すと様式に×が残ります。'
+    : '<b style="color:#1f7a4d">この年度の要件は埋まっています。</b>';
+}
+document.addEventListener('change', function(e){
+  var t = e.target;
+  if(t.dataset && t.dataset.req!=null){ reqData().cp[t.dataset.req] = t.checked; save(); renderReq(); }
+  else if(t.dataset && t.dataset.env!=null){ reqData().env[t.dataset.env] = t.checked; save(); renderReq(); }
+  else if(t.id==='reqYear'){ reqYear = t.value; renderReq(); }
+});
+document.addEventListener('input', function(e){
+  var t = e.target;
+  if(t.dataset && t.dataset.reqtext!=null){ reqData().text[t.dataset.reqtext] = t.value; save(); reqStatLine(); }
+});
+
 
 
 /* 旧版のバグで staff440 が文字列になっている場合の自動修復（開いた時点で器へ戻す） */

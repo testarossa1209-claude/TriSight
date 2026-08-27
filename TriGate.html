@@ -2813,10 +2813,8 @@ body.presenMode table{font-size:1.02em}
   function doSendToTask(d, existingId){
     let __authCode = "";
     try{ __authCode = localStorage.getItem('trisight_access_code') || ""; }catch(e){ __authCode = ""; }
-    if(!isFamilyTier(__authCode)){
-      showTaskMsg("この契約プランでは自動連携はご利用いただけません。判定結果をコピーし、TriTaskの「その他」欄から貼り付けてご利用ください。", false);
-      return null;
-    }
+    /* 2026-08-28：廉価版でも受信箱を動かす（2026-08-20の決定。親機との差は TriForm に置く）。
+       autoSendToTask / openSendReview の制限は撤去済みだったが、実際に書き込む此処に残っていた。 */
     let list = [];
     try{ list = JSON.parse(localStorage.getItem("tritask_inbox") || "[]"); }catch(e){ list = []; }
     let __companyName = "";
@@ -4039,7 +4037,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-22-18';
+  const TRIGATE_VERSION = '2026-08-28-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -4121,6 +4119,462 @@ body.presenMode table{font-size:1.02em}
       }catch(_){ /* 失敗時は通常のドロップ操作にフォールバック */ }
     });
   }
+</script>
+
+<script>
+window.TSB_HOST = "gate";
+/* ===== 2026-08-28 追加：常設パネル（右上）＝発掘カウンター／獲得／着手／期日カウンター／カレンダー書き出し =====
+   ・端末内のデータだけを読む。外部へは一切送らない（当社サーバーに保管しない方針のため）。
+   ・期日の通知は .ics（予定ファイル）で利用者のカレンダーへ渡し、通知はカレンダー側に出させる。
+   ・数字はそれぞれ集計の範囲（会社単位／認証コード単位）を必ず添える。 */
+(function(){
+  "use strict";
+  var HOST = (typeof window.TSB_HOST === "string") ? window.TSB_HOST : "gate";
+  function ls(k, d){ try{ var v = localStorage.getItem(k); return v == null ? d : v; }catch(e){ return d; } }
+  function lj(k, d){ try{ var v = JSON.parse(localStorage.getItem(k) || "null"); return v == null ? d : v; }catch(e){ return d; } }
+  function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){
+    return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" })[c]; }); }
+  function yen(n){ try{ return "¥" + Number(n||0).toLocaleString("ja-JP"); }catch(e){ return "¥" + (n||0); } }
+
+  /* ── 集計の元データ ───────────────────────────── */
+  function code(){ return String(ls("trisight_access_code", "") || ""); }
+  function companyKey(){ return String(ls("trisight_dig_company_name", "") || "").trim(); }
+
+  /* 制度名の正規化（年度・N年目申請用・第N回・括弧を落とす）＝TriGateのpjNormTitleと同じ規則。
+     掘り直すたびに数字が増えないよう、発掘カウンターはこの正規化後の名前で重複を数えない。 */
+  function norm(t){
+    return String(t||"")
+      .replace(/[【】〔〕（）()\[\]]/g, "")
+      .replace(/(令和|平成)\s*[0-9０-９元]+\s*年度?/g, "")
+      .replace(/[0-9０-９]+\s*年目申請用/g, "")
+      .replace(/第\s*[0-9０-９]+\s*回[^　\s]*/g, "")
+      .replace(/(交付)?申請受付/g, "")
+      .replace(/[\s　_,、・]/g, "")
+      .trim();
+  }
+  function uniqByTitle(list){
+    var seen = {}, out = [];
+    (list||[]).forEach(function(c){
+      var k = norm(c && c.title);
+      if(!k){ out.push(c); return; }
+      if(seen[k]) return;
+      seen[k] = 1; out.push(c);
+    });
+    return out;
+  }
+  function cands(){
+    var all = lj("trisight_dig_candidates", []);
+    if(!Array.isArray(all)) all = [];
+    var key = companyKey();
+    return all.filter(function(c){ return String((c && c["会社"]) || "") === key; });
+  }
+  function eligible(){
+    return cands().filter(function(c){
+      return c && c.gate && c.gate["給付方式"] === "要件充足型" && c.gate["除外条件抵触"] === false;
+    });
+  }
+  /* 実績は既存の獲得実績パネルと同じ規則で読む。
+     形式＝{ "認証コード": [実績...] }。コード未設定の端末は空文字キー（パネルの「未設定分」）。
+     配列がそのまま入っている旧形式も空文字キー扱いにする（rcNormalizeと同じ）。 */
+  function resultsAll(){
+    var all = lj("trigate_results", {});
+    if(Array.isArray(all)) all = all.length ? { "": all } : {};
+    return (all && typeof all === "object") ? all : {};
+  }
+  function results(){
+    var mine = resultsAll()[code()];
+    return Array.isArray(mine) ? mine : [];
+  }
+  /* 現在の管理コードに実績が無いのに、別のコードには入っている場合の件数（黙って0と出さないため） */
+  function resultsElsewhere(){
+    var all = resultsAll(), cur = code(), n = 0;
+    Object.keys(all).forEach(function(k){
+      if(k === cur) return;
+      if(Array.isArray(all[k])) n += all[k].length;
+    });
+    return n;
+  }
+  function inbox(){
+    var a = lj("tritask_inbox", []), b = lj("tritask_grants", []);
+    if(!Array.isArray(a)) a = [];
+    if(!Array.isArray(b)) b = [];
+    var ids = {}, out = [];
+    a.concat(b).forEach(function(g){
+      if(!g || !g.id || ids[g.id]) return;
+      ids[g.id] = 1;
+      var ac = String(g.auth_code || "");
+      if(ac && code() && ac !== code()) return; /* 他社の案件は出さない */
+      out.push(g);
+    });
+    return out;
+  }
+
+  /* ── 期日：自由文から日付を読む ───────────────────
+     期日は「2026-09-30まで」「令和8年9月30日」のような自由文で入っている。
+     日付として読めないもの（「交付申請前」「着手前」等）は数えず、別枠で件数だけ出す。 */
+  function parseDate(s){
+    var t = String(s||"").replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0)-0xFEE0); });
+    var m = t.match(/(20\d{2})\s*[-\/年.]\s*(\d{1,2})\s*[-\/月.]\s*(\d{1,2})/);
+    if(m) return mk(+m[1], +m[2], +m[3]);
+    m = t.match(/令和\s*(元|\d{1,2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+    if(m) return mk(2018 + (m[1] === "元" ? 1 : +m[1]), +m[2], +m[3]);
+    return null;
+    function mk(y, mo, d){
+      if(!(mo>=1 && mo<=12 && d>=1 && d<=31)) return null;
+      var dt = new Date(y, mo-1, d, 0, 0, 0, 0);
+      return isNaN(dt.getTime()) ? null : dt;
+    }
+  }
+  /* 案件の期日＝逆算工程の期日と締切欄のうち、日付として読めるものの最も早いもの */
+  function dueOf(g){
+    var c = [];
+    (g.reverse_tasks||[]).forEach(function(t){ if(t && t.due_text) c.push(t.due_text); });
+    (g.deadlines||[]).forEach(function(d){ c.push(d); });
+    var best = null, raw = "";
+    c.forEach(function(s){
+      var d = parseDate(s);
+      if(d && (!best || d < best)){ best = d; raw = s; }
+    });
+    return { date: best, raw: raw, hasText: c.length > 0, text: c[0] || "" };
+  }
+  function daysLeft(d){
+    var t = new Date(); t.setHours(0,0,0,0);
+    return Math.round((d - t) / 86400000);
+  }
+  function progressOf(g){
+    var tot = Number(g.steps_total), dn = Number(g.steps_done);
+    if(isFinite(tot) && tot > 0 && isFinite(dn)) return { done: dn, total: tot, pct: Math.round(dn*100/tot) };
+    if(g.status === "完了") return { done: 1, total: 1, pct: 100 };
+    return null;
+  }
+
+  /* ── カレンダー書き出し（.ics） ──────────────────
+     当社は何も預からない。期日を予定ファイルにして利用者のカレンダーへ渡し、
+     30日前・14日前・7日前・3日前の通知はカレンダー側に出させる。 */
+  function icsDate(d){
+    return d.getFullYear() + ("0"+(d.getMonth()+1)).slice(-2) + ("0"+d.getDate()).slice(-2);
+  }
+  function fold(s){ return s.replace(/([^\r\n]{72})/g, "$1\r\n "); }
+  function icsEsc(s){ return String(s||"").replace(/\\/g,"\\\\").replace(/[;,]/g, function(c){ return "\\"+c; }).replace(/\r?\n/g, "\\n"); }
+  function buildIcs(items){
+    var L = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//TriSight//TriGate//JA","CALSCALE:GREGORIAN","METHOD:PUBLISH"];
+    var stamp = new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,"");
+    items.forEach(function(it){
+      var end = new Date(it.due.getTime() + 86400000);
+      var p = progressOf(it.g);
+      /* 連絡シートの定型（2026-08-28）。カレンダーからの通知メールは件名＝SUMMARY、本文＝DESCRIPTION に
+         なるため、差出人が誰かは表題と本文の両方に置く。 */
+      var desc = [
+        "───────────────",
+        "　TriSight® 期日のお知らせ",
+        "───────────────",
+        "連絡者：TriSight® システム（トライゲイト／トライタスク）",
+        "会社　：" + (it.g.company_name || "（未設定）"),
+        "制度　：" + (it.g.program_name || "（名称不明）"),
+        "期日　：" + (it.raw || ""),
+        "状態　：" + (it.g.status || "未着手") + (p ? "（" + p.done + "/" + p.total + "工程 完了）" : ""),
+        "問合せ先：" + (it.g.contact || "（記載なし）"),
+        "───────────────",
+        "この予定は、TriSight® システムが期日から逆算して書き出したものです。",
+        "進捗の入力・工程の確認はトライタスクで行ってください。",
+        "期日の記載が変わった場合は、書き出しをやり直すと更新されます。"
+      ].join("\n");
+      L.push("BEGIN:VEVENT");
+      L.push("UID:" + (it.g.id || ("TS-"+Math.random().toString(36).slice(2))) + "@trisight");
+      L.push("DTSTAMP:" + stamp);
+      L.push("DTSTART;VALUE=DATE:" + icsDate(it.due));
+      L.push("DTEND;VALUE=DATE:" + icsDate(end));
+      /* 通知メールの件名になる。差出人が分かるよう先頭に製品名を置く。 */
+      L.push(fold("SUMMARY:【TriSight®】期日：" + icsEsc(it.g.program_name || "（名称不明）")
+        + (it.g.company_name ? icsEsc("（" + it.g.company_name + "）") : "")));
+      L.push(fold("DESCRIPTION:" + icsEsc(desc)));
+      [30, 14, 7, 3].forEach(function(n){
+        L.push("BEGIN:VALARM","ACTION:DISPLAY",
+          fold("DESCRIPTION:" + icsEsc("【TriSight®】期日まで" + n + "日：" + (it.g.program_name || ""))),
+          "TRIGGER:-P" + n + "D","END:VALARM");
+      });
+      L.push("END:VEVENT");
+    });
+    L.push("END:VCALENDAR");
+    return L.join("\r\n");
+  }
+  function exportIcs(){
+    var items = [];
+    inbox().forEach(function(g){
+      if(g.status === "完了") return;
+      var d = dueOf(g);
+      if(d.date) items.push({ g: g, due: d.date, raw: d.raw });
+    });
+    if(!items.length){
+      alert("カレンダーへ書き出せる期日がありません。\n（日付として読み取れる期日を持つ、着手中・未着手の案件がない状態です）");
+      return;
+    }
+    var blob = new Blob([buildIcs(items)], { type: "text/calendar;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "TriSight_期日_" + icsDate(new Date()) + ".ics";
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+
+  /* ── パネル ───────────────────────────────── */
+  var css = document.createElement("style");
+  css.textContent = [
+    "#tsBoard{position:fixed;top:8px;right:8px;z-index:9998;width:268px;max-width:calc(100vw - 16px);",
+    "background:#fff;border:1px solid #d8d2c7;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.10);",
+    "font-size:12px;line-height:1.5;color:#2b2b2b;overflow:hidden}",
+    "#tsBoard.mini{width:auto}",
+    "#tsBoard .tsbHd{display:flex;align-items:center;gap:6px;padding:6px 9px;background:#f6f3ee;border-bottom:1px solid #e6e0d5;cursor:pointer}",
+    "#tsBoard .tsbHd b{font-size:12px;font-weight:700}",
+    "#tsBoard .tsbCo{font-size:11px;color:#6b6b6b;padding:4px 9px 0}",
+    "#tsBoard .tsbBody{padding:6px 9px 9px}",
+    "#tsBoard .tsbRow{display:flex;justify-content:space-between;align-items:baseline;gap:6px;padding:3px 0;border-bottom:1px dotted #e8e2d7}",
+    "#tsBoard .tsbRow:last-child{border-bottom:0}",
+    "#tsBoard .tsbK{color:#5a5a5a}",
+    "#tsBoard .tsbV{font-weight:700;font-size:14px;white-space:nowrap}",
+    "#tsBoard .tsbHit{cursor:pointer;text-decoration:underline dotted}",
+    "#tsBoard .tsbSec{margin-top:7px;padding-top:6px;border-top:1px solid #ece6db}",
+    "#tsBoard .tsbSec>div.t{font-weight:700;margin-bottom:3px}",
+    "#tsBoard .tsbDue{display:flex;justify-content:space-between;gap:6px;padding:2px 0}",
+    "#tsBoard .tsbDue span.n{white-space:nowrap;font-weight:700}",
+    "#tsBoard .over{color:#b3261e}","#tsBoard .soon{color:#b26a00}","#tsBoard .ok{color:#2f6b3a}",
+    "#tsBoard .tsbNote{font-size:10.5px;color:#7a7a7a;margin-top:5px}",
+    "#tsBoard button.tsbBtn{width:100%;margin-top:6px;padding:5px;font-size:11.5px;border:1px solid #c9c2b5;",
+    "background:#fbfaf7;border-radius:6px;cursor:pointer}",
+    "#tsBoard .tsbX{margin-left:auto;font-size:11px;color:#6b6b6b}",
+    "body.presenMode #tsBoard{display:none}",
+    "@media print{#tsBoard{display:none}}",
+    "@media (max-width:560px){#tsBoard{position:static;width:auto;margin:8px auto;max-width:none}}"
+  ].join("");
+  document.head.appendChild(css);
+
+  var box = document.createElement("div");
+  box.id = "tsBoard";
+  box.innerHTML = '<div class="tsbHd"><b>いまの状況</b><span class="tsbX">－</span></div>'
+                + '<div class="tsbCo"></div><div class="tsbBody"></div>';
+  function mount(){ if(document.body && !box.parentNode) document.body.appendChild(box); }
+  if(document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
+
+  var open = (ls("tsboard_open", "1") !== "0");
+  box.querySelector(".tsbHd").addEventListener("click", function(){
+    open = !open;
+    try{ localStorage.setItem("tsboard_open", open ? "1" : "0"); }catch(e){}
+    render();
+  });
+
+  function row(k, v, cls, onClick){
+    var d = document.createElement("div");
+    d.className = "tsbRow";
+    d.innerHTML = '<span class="tsbK">' + esc(k) + '</span><span class="tsbV ' + (cls||"") + '">' + esc(v) + '</span>';
+    if(onClick){ d.classList.add("tsbHit"); d.addEventListener("click", onClick); }
+    return d;
+  }
+
+  function render(){
+    var hd = box.querySelector(".tsbX"), co = box.querySelector(".tsbCo"), body = box.querySelector(".tsbBody");
+    hd.textContent = open ? "－" : "＋";
+    co.style.display = open ? "" : "none";
+    body.style.display = open ? "" : "none";
+    box.classList.toggle("mini", !open);
+    if(!open){ return; }
+
+    var ck = companyKey();
+    co.textContent = (HOST === "gate")
+      ? (ck ? ("診断中の会社：" + ck) : "会社の基礎情報が未読み込みです")
+      : "この端末の案件（認証コード単位）";
+
+    body.innerHTML = "";
+    var dug = uniqByTitle(cands()).length;
+    var elig = uniqByTitle(eligible()).length;
+    var rs = results();
+    var sum = rs.reduce(function(a, r){ var n = Number(r && r.amount); return a + (isFinite(n) ? n : 0); }, 0);
+    var ib = inbox();
+    var doing = ib.filter(function(g){ return g.status === "進行中"; }).length;
+
+    if(HOST === "gate"){
+      body.appendChild(row("発掘した制度（この会社）", dug + "件", "", dug ? showDug : null));
+      body.appendChild(row("要件を満たせば原則支給", elig + "件", "ok", elig ? showDug : null));
+    }
+    body.appendChild(row("獲得した案件（記録済み）", rs.length + "件", "", rs.length ? showResults : null));
+    body.appendChild(row("獲得金額（記録済み）", yen(sum), "", rs.length ? showResults : null));
+    if(!rs.length){
+      var other = resultsElsewhere();
+      if(other){
+        var w2 = document.createElement("div");
+        w2.className = "tsbNote";
+        w2.style.color = "#b26a00";
+        w2.textContent = "いまの管理コードには実績がありません。別の管理コードに" + other + "件入っています。";
+        body.appendChild(w2);
+      }
+    }
+    body.appendChild(row("着手中の案件", doing + "件", "", ib.length ? showCases : null));
+
+    /* 期日カウンター */
+    var withDue = [], noDue = 0;
+    ib.forEach(function(g){
+      if(g.status === "完了") return;
+      var d = dueOf(g);
+      if(d.date) withDue.push({ g: g, d: d.date, raw: d.raw });
+      else if(d.hasText) noDue++;
+    });
+    withDue.sort(function(a, b){ return a.d - b.d; });
+
+    var sec = document.createElement("div");
+    sec.className = "tsbSec";
+    sec.innerHTML = '<div class="t">期日カウンター</div>';
+    if(!withDue.length){
+      sec.innerHTML += '<div style="color:#7a7a7a">日付で読み取れる期日はありません</div>';
+    }else{
+      withDue.slice(0, 4).forEach(function(x){
+        var n = daysLeft(x.d);
+        var cls = n < 0 ? "over" : (n <= 3 ? "soon" : "ok");
+        var label = n < 0 ? ("超過" + (-n) + "日") : (n === 0 ? "本日" : ("残り" + n + "日"));
+        var p = progressOf(x.g);
+        var nm = (x.g.program_name || "（名称不明）");
+        if(nm.length > 16) nm = nm.slice(0, 16) + "…";
+        var d = document.createElement("div");
+        d.className = "tsbDue";
+        d.innerHTML = '<span>' + esc(nm) + (p ? ' <span style="color:#7a7a7a">' + p.done + "/" + p.total + '</span>' : "")
+                    + '</span><span class="n ' + cls + '">' + esc(label) + '</span>';
+        sec.appendChild(d);
+      });
+      if(withDue.length > 4){
+        var more = document.createElement("div");
+        more.className = "tsbNote tsbHit";
+        more.textContent = "ほか" + (withDue.length - 4) + "件を見る";
+        more.addEventListener("click", showCases);
+        sec.appendChild(more);
+      }
+    }
+    if(noDue){
+      var w = document.createElement("div");
+      w.className = "tsbNote";
+      w.style.color = "#b26a00";
+      w.textContent = "期日が日付で読み取れない案件が" + noDue + "件あります（「交付申請前」等）。数に入れていません。";
+      sec.appendChild(w);
+    }
+    var btn = document.createElement("button");
+    btn.type = "button"; btn.className = "tsbBtn";
+    btn.textContent = "期日をカレンダーへ書き出す（.ics）";
+    btn.addEventListener("click", function(e){ e.stopPropagation(); exportIcs(); });
+    sec.appendChild(btn);
+    var note = document.createElement("div");
+    note.className = "tsbNote";
+    note.textContent = "30日前・14日前・7日前・3日前に通知が入ります。メールで受け取るには、カレンダー側の既定の通知を「メール」に設定してください。当社は期日を預かりません。";
+    sec.appendChild(note);
+    body.appendChild(sec);
+  }
+
+  /* ── 一覧（発掘履歴／案件） ───────────────────── */
+  function overlay(title, html){
+    var o = document.createElement("div");
+    o.style.cssText = "position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:16px";
+    var c = document.createElement("div");
+    c.style.cssText = "background:#fff;border-radius:10px;max-width:720px;width:100%;max-height:82vh;overflow:auto;padding:14px 16px;font-size:13px";
+    c.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+      + '<b style="font-size:14px">' + esc(title) + '</b>'
+      + '<button type="button" style="margin-left:auto;padding:3px 10px;cursor:pointer">閉じる</button></div>' + html;
+    c.querySelector("button").addEventListener("click", function(){ o.remove(); });
+    o.addEventListener("click", function(e){ if(e.target === o) o.remove(); });
+    o.appendChild(c); document.body.appendChild(o);
+  }
+  function showDug(e){
+    if(e) e.stopPropagation();
+    var list = uniqByTitle(cands());
+    if(!list.length){ overlay("発掘履歴", "<div>この会社の発掘結果はまだありません。</div>"); return; }
+    list.sort(function(a, b){ return String(b.saved||"").localeCompare(String(a.saved||"")); });
+    var rows = list.map(function(c){
+      var g = c.gate || {};
+      var mark = (g["除外条件抵触"] === true) ? '<span style="color:#b3261e">除外条件に抵触</span>'
+        : (g["給付方式"] === "要件充足型" ? '<span style="color:#2f6b3a;font-weight:700">要件を満たせば原則支給</span>'
+        : (g["給付方式"] === "審査・採択枠あり" ? '<span style="color:#7a7a7a">審査・採択枠あり</span>' : '<span style="color:#7a7a7a">未判定</span>'));
+      var amt = (c.amount_max != null && isFinite(Number(c.amount_max)) && Number(c.amount_max) > 0)
+        ? yen(c.amount_max) : "記載なし";
+      var day = String(c.saved || "").slice(0, 10);
+      return '<tr><td style="padding:4px 6px;border-bottom:1px solid #eee">' + esc(c.title || "")
+        + '</td><td style="padding:4px 6px;border-bottom:1px solid #eee;white-space:nowrap">' + mark
+        + '</td><td style="padding:4px 6px;border-bottom:1px solid #eee;white-space:nowrap">' + esc(amt)
+        + '</td><td style="padding:4px 6px;border-bottom:1px solid #eee;white-space:nowrap;color:#7a7a7a">' + esc(day) + '</td></tr>';
+    }).join("");
+    overlay("発掘履歴　" + (companyKey() || "（会社未読み込み）") + "　" + list.length + "件",
+      '<div style="font-size:11.5px;color:#7a7a7a;margin-bottom:6px">同じ制度の年度違い・申請区分違いは1件にまとめています。金額は制度の上限額であり、受給できる額ではありません。合計は出しません。</div>'
+      + '<table style="width:100%;border-collapse:collapse"><thead><tr>'
+      + '<th style="text-align:left;padding:4px 6px;border-bottom:2px solid #ddd">制度</th>'
+      + '<th style="text-align:left;padding:4px 6px;border-bottom:2px solid #ddd">扱い</th>'
+      + '<th style="text-align:left;padding:4px 6px;border-bottom:2px solid #ddd">制度の上限額</th>'
+      + '<th style="text-align:left;padding:4px 6px;border-bottom:2px solid #ddd">発掘日</th>'
+      + '</tr></thead><tbody>' + rows + '</tbody></table>');
+  }
+  function showResults(e){
+    if(e) e.stopPropagation();
+    var rs = results().slice();
+    if(!rs.length){ overlay("獲得実績", "<div>この管理コードに登録された実績はありません。</div>"); return; }
+    rs.sort(function(a, b){ return String(b.acquired_at || "").localeCompare(String(a.acquired_at || "")); });
+    var sum = rs.reduce(function(a, r){ var n = Number(r && r.amount); return a + (isFinite(n) ? n : 0); }, 0);
+    var rows = rs.map(function(r){
+      return '<tr><td style="padding:4px 6px;border-bottom:1px solid #eee">' + esc(r.program_name || "（名称不明）")
+        + (r.issuer ? '<div style="font-size:11px;color:#7a7a7a">' + esc(r.issuer) + '</div>' : "")
+        + (r.note ? '<div style="font-size:11px;color:#7a7a7a">' + esc(r.note) + '</div>' : "")
+        + '</td><td style="padding:4px 6px;border-bottom:1px solid #eee;white-space:nowrap;text-align:right">' + esc(yen(r.amount || 0))
+        + '</td><td style="padding:4px 6px;border-bottom:1px solid #eee;white-space:nowrap">' + esc(String(r.acquired_at || "").slice(0, 10))
+        + '</td><td style="padding:4px 6px;border-bottom:1px solid #eee;white-space:nowrap;color:#7a7a7a">' + esc(r.recorder || "") + '</td></tr>';
+    }).join("");
+    overlay("獲得実績　" + rs.length + "件　" + yen(sum),
+      '<div style="font-size:11.5px;color:#7a7a7a;margin-bottom:6px">いまの管理コードに登録された実績です。登録・削除は画面上部の獲得実績パネルで行います。</div>'
+      + '<table style="width:100%;border-collapse:collapse"><thead><tr>'
+      + '<th style="text-align:left;padding:4px 6px;border-bottom:2px solid #ddd">制度・交付元</th>'
+      + '<th style="text-align:right;padding:4px 6px;border-bottom:2px solid #ddd">獲得金額</th>'
+      + '<th style="text-align:left;padding:4px 6px;border-bottom:2px solid #ddd">確定日</th>'
+      + '<th style="text-align:left;padding:4px 6px;border-bottom:2px solid #ddd">記録者</th>'
+      + '</tr></thead><tbody>' + rows + '</tbody></table>');
+  }
+  function showCases(e){
+    if(e) e.stopPropagation();
+    var ib = inbox().filter(function(g){ return g.status !== "完了"; });
+    if(!ib.length){ overlay("着手中の案件", "<div>進行中・未着手の案件はありません。</div>"); return; }
+    var arr = ib.map(function(g){ var d = dueOf(g); return { g: g, d: d.date, raw: d.raw || d.text }; });
+    arr.sort(function(a, b){
+      if(a.d && b.d) return a.d - b.d;
+      if(a.d) return -1;
+      if(b.d) return 1;
+      return 0;
+    });
+    var rows = arr.map(function(x){
+      var p = progressOf(x.g);
+      var due, cls = "";
+      if(x.d){
+        var n = daysLeft(x.d);
+        cls = n < 0 ? "color:#b3261e" : (n <= 3 ? "color:#b26a00" : "color:#2f6b3a");
+        due = (n < 0 ? "超過" + (-n) + "日" : (n === 0 ? "本日" : "残り" + n + "日"))
+            + "（" + x.d.getFullYear() + "/" + (x.d.getMonth()+1) + "/" + x.d.getDate() + "）";
+      }else{
+        due = "日付として読み取れません" + (x.raw ? "：" + x.raw : "");
+        cls = "color:#7a7a7a";
+      }
+      return '<tr><td style="padding:4px 6px;border-bottom:1px solid #eee">' + esc(x.g.program_name || "（名称不明）")
+        + (x.g.company_name ? '<div style="font-size:11px;color:#7a7a7a">' + esc(x.g.company_name) + '</div>' : "")
+        + '</td><td style="padding:4px 6px;border-bottom:1px solid #eee;white-space:nowrap">' + esc(x.g.status || "未着手")
+        + '</td><td style="padding:4px 6px;border-bottom:1px solid #eee;white-space:nowrap">'
+        + (p ? (p.done + "/" + p.total + "工程（" + p.pct + "%）") : "－")
+        + '</td><td style="padding:4px 6px;border-bottom:1px solid #eee;white-space:nowrap;' + cls + '">' + esc(due) + '</td></tr>';
+    }).join("");
+    overlay("着手中の案件　" + arr.length + "件",
+      '<table style="width:100%;border-collapse:collapse"><thead><tr>'
+      + '<th style="text-align:left;padding:4px 6px;border-bottom:2px solid #ddd">案件</th>'
+      + '<th style="text-align:left;padding:4px 6px;border-bottom:2px solid #ddd">状態</th>'
+      + '<th style="text-align:left;padding:4px 6px;border-bottom:2px solid #ddd">進捗</th>'
+      + '<th style="text-align:left;padding:4px 6px;border-bottom:2px solid #ddd">期日</th>'
+      + '</tr></thead><tbody>' + rows + '</tbody></table>');
+  }
+
+  /* ── 更新 ─────────────────────────────────── */
+  window.tsBoardRefresh = render;
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", render);
+  else render();
+  window.addEventListener("focus", render);
+  window.addEventListener("storage", render);
+  setInterval(render, 60000);
+})();
 </script>
 </body>
 </html>

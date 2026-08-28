@@ -611,6 +611,40 @@ body.presenMode table{font-size:1.02em}
     return (data && typeof data.text === "string") ? data.text.trim() : "";
   }
 
+  /* ===== 優先度まわりの共通処理（2026-08-29） ==========================
+     旧「適合度」は、締切が近いほど点が下がる作りだった。
+     緊急対策のように事象の後へ突然出て受付が1〜2週間しかない制度は、
+     要件が緩く速効性が高いことが多く、締切が近いことは減点の理由にならない。
+     よって締切は点数から外し、「残り日数」と「間に合うか」で別に扱う。 */
+  function tsPriority(g){
+    if(!g) return null;
+    if(g["優先度"] != null && isFinite(Number(g["優先度"]))) return Number(g["優先度"]);
+    if(g["適合度"] != null && isFinite(Number(g["適合度"]))) return Number(g["適合度"]); // 旧記録との互換
+    return null;
+  }
+  function tsDaysLeft(endStr){
+    if(!endStr) return null;
+    const t = Date.parse(String(endStr).replace(/\//g, "-"));
+    if(isNaN(t)) return null;
+    const d = Math.floor((t - Date.now()) / 86400000);
+    return d;
+  }
+  /* 急ぎ＝締切まで21日以内で、まだ過ぎておらず、間に合わないと判定されていないもの。
+     これは点数ではなく順番に効かせる（前に出す）。 */
+  function tsIsHurry(g, endStr){
+    const d = tsDaysLeft(endStr);
+    if(d == null || d < 0 || d > 21) return false;
+    return !(g && g["間に合うか"] === "厳しい");
+  }
+  function tsHurryLabel(g, endStr){
+    const d = tsDaysLeft(endStr);
+    if(d == null || d < 0) return "";
+    if(d > 21) return "";
+    const ng = (g && g["間に合うか"] === "厳しい");
+    return ng ? "・締切まで" + d + "日（準備が間に合わない可能性）"
+              : "・急ぎ（締切まで" + d + "日）";
+  }
+
 
   /* ===== 契約プラン（ティア）の保持　2026-07-27 =====================
      【設計方針】
@@ -1124,7 +1158,59 @@ body.presenMode table{font-size:1.02em}
       if(!row) return;
       const cell = row.querySelector("td:first-child");
       if(!cell) return;
-      cell.innerHTML = e(row.dataset.title || "") + (typeof window.tsSrcBadgeSafe === "function" ? window.tsSrcBadgeSafe(id) : "") + badgeHtml;
+      let hurry = "";
+      try{
+        const gg = (typeof tsJudgeGet === "function") ? tsJudgeGet("gate", id) : null;
+        const lab = tsHurryLabel(gg, row.dataset.end || "");
+        if(lab){
+          const col = (gg && gg["間に合うか"] === "厳しい") ? "var(--fix)" : "var(--ok)";
+          hurry = '<br><span style="font-size:11px;font-weight:700;color:' + col + '">' + e(lab.replace(/^・/, "")) + '</span>';
+        }
+      }catch(_){}
+      cell.innerHTML = e(row.dataset.title || "") + (typeof window.tsSrcBadgeSafe === "function" ? window.tsSrcBadgeSafe(id) : "") + badgeHtml + hurry;
+    }
+    /* 判定が付いた行を、見出し（この業界向け／業種を問わない）の区切りを保ったまま並べ替える。
+       順序は ①急ぎ（締切21日以内で間に合うもの）②優先度の高い順 ③締切の近い順 ④未判定。
+       締切は点数に入れず、ここで前に出す。2026-08-29 */
+    function tsSortKey(row){
+      const id = row.dataset.id || "";
+      let g = null;
+      try{ g = (typeof tsJudgeGet === "function") ? tsJudgeGet("gate", id) : null; }catch(_){ g = null; }
+      const end = row.dataset.end || "";
+      const pri = tsPriority(g);
+      const dl  = tsDaysLeft(end);
+      return {
+        judged: (g && pri != null) ? 0 : 1,
+        hurry:  tsIsHurry(g, end) ? 0 : 1,
+        pri:    pri == null ? -1 : pri,
+        days:   (dl == null || dl < 0) ? 99999 : dl
+      };
+    }
+    function tsResortDigRows(){
+      const tbody = out.querySelector("table.digtbl tbody");
+      if(!tbody) return;
+      const rows = Array.from(tbody.children);
+      if(!rows.some(r => r.dataset && r.dataset.id)) return;
+      const blocks = []; let cur = { sep: null, items: [] };
+      rows.forEach(r => {
+        if(r.classList && r.classList.contains("digsep")){
+          if(cur.sep || cur.items.length) blocks.push(cur);
+          cur = { sep: r, items: [] };
+        }else{ cur.items.push(r); }
+      });
+      blocks.push(cur);
+      blocks.forEach(b => {
+        b.items.sort((x, y) => {
+          const a = tsSortKey(x), c = tsSortKey(y);
+          if(a.judged !== c.judged) return a.judged - c.judged;
+          if(a.hurry  !== c.hurry ) return a.hurry  - c.hurry;
+          if(a.pri    !== c.pri   ) return c.pri    - a.pri;
+          return a.days - c.days;
+        });
+      });
+      const frag = document.createDocumentFragment();
+      blocks.forEach(b => { if(b.sep) frag.appendChild(b.sep); b.items.forEach(r => frag.appendChild(r)); });
+      tbody.appendChild(frag);
     }
     try{ company = JSON.parse(localStorage.getItem("trisight_dig_company") || "null"); }catch(_){ company = null; }
     /* 2026-08-13追加：会社ごとの基礎情報を端末に貯めて、選んで切り替えられるようにする。
@@ -1692,7 +1778,7 @@ body.presenMode table{font-size:1.02em}
         const grpB = show.filter(it => !tsIsIndustrySpecific(it));
         show = grpA.concat(grpB);
         const headCells = '<th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th>';
-        const rowOf = (it) => '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'">'
+        const rowOf = (it) => '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'" data-end="'+e(it.acceptance_end_datetime||"")+'">'
                 + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)+"</td>"
                 + "<td>"+fy(it.subsidy_max_limit)+"</td>"
                 + '<td class="dl">'+fd(it.acceptance_end_datetime)+"</td>"
@@ -1925,7 +2011,19 @@ body.presenMode table{font-size:1.02em}
         ? "<ul style='margin:2px 0 6px 18px;padding:0'>" + a.map(x => "<li>" + e(x) + "</li>").join("") + "</ul>" : "";
       let h = '<div style="margin-top:6px;border-top:1px dashed var(--line);padding-top:6px">'
         + '<b>AIゲート判定：<span style="color:' + col + '">' + e(v) + '</span></b>'
-        + (g["適合度"] != null ? '　適合度 ' + e(g["適合度"]) + ' / 100' : '') ;
+        + (tsPriority(g) != null ? '　優先度 ' + e(tsPriority(g)) + ' / 100' : '') ;
+      const uchi = g["優先度内訳"];
+      if(uchi && typeof uchi === "object"){
+        const ks = ["要件の一致","給付方式","額と労力の釣り合い","事業計画との整合"];
+        const parts = ks.filter(k => uchi[k] != null).map(k => e(k) + " " + e(uchi[k]));
+        if(parts.length) h += '<div style="font-size:11px;color:var(--muted);margin-top:2px">内訳：' + parts.join("　") + '</div>';
+      }
+      if(g["準備の重さ"] || g["間に合うか"]){
+        const seg = [];
+        if(g["準備の重さ"]) seg.push("準備の重さ：" + e(g["準備の重さ"]));
+        if(g["間に合うか"]) seg.push("間に合うか：" + e(g["間に合うか"]));
+        h += '<div style="font-size:11px;color:var(--muted)">' + seg.join("　／　") + '（締切は優先度の点数に含めていません）</div>';
+      }
       if(g["除外条件抵触"] === true){
         h += '<br><b style="color:var(--fix)">除外条件に抵触：</b>' + e(g["除外条件抵触理由"] || "（理由未記載）");
       }
@@ -2172,6 +2270,7 @@ body.presenMode table{font-size:1.02em}
               }catch(_){}
               setDigRowBadge(it.id, pjBadgeHtml(g, d.subsidy_max_limit, true));
               updateOpenDetailGate(it.id, g);
+              try{ tsResortDigRows(); }catch(_){}
               if(typeof pjRenderFigs === "function"){
                 pjRenderFigs();
                 if($("pjDetail") && $("pjDetail").classList.contains("on")) pjRenderDetail();
@@ -2184,7 +2283,8 @@ body.presenMode table{font-size:1.02em}
           }
         }
         await Promise.all([worker(), worker(), worker()]);
-        fullGateBtn.textContent = "詳細AIゲート判定が完了しました（"+total+"件）";
+        try{ tsResortDigRows(); }catch(_){}
+        fullGateBtn.textContent = "詳細AIゲート判定が完了しました（"+total+"件・優先度の高い順、急ぎを先頭に並べ替えました）";
         setTimeout(()=>{ fullGateBtn.textContent = origLabel; fullGateBtn.disabled = false; }, 3000);
       });
     }
@@ -3240,7 +3340,7 @@ body.presenMode table{font-size:1.02em}
       const v = gv["判定"] || "要確認";
       const col = v === "追う" ? "var(--ok)" : (v === "見送り" ? "var(--fix)" : "var(--muted)");
       let label = "詳細判定：" + v;
-      if(gv["適合度"] != null) label += "（適合度" + gv["適合度"] + "）";
+      if(tsPriority(gv) != null) label += "（優先度" + tsPriority(gv) + "）";
       if(gv["給付方式"] === "要件充足型"){
         if(tooHigh) label += "・上限額が"+pjYen(max)+"超のため要確認";
         else if(tooLow) label += "・上限額が"+pjYen(min)+"未満（書類労力とのバランス要確認）";
@@ -3824,7 +3924,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-29-01';
+  const TRIGATE_VERSION = '2026-08-29-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

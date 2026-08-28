@@ -1816,10 +1816,12 @@ body.presenMode table{font-size:1.02em}
         if(srcTally.length){
           html += '<div style="margin:0 0 10px 0;padding:10px 12px;border:1px solid var(--line,#dee2e6);border-radius:8px;background:#fbfcfe">'
                 + '<div style="font-weight:700;font-size:13px;margin-bottom:6px">調べた発出元　'
-                + e(okCount) + 'か所／受付中 ' + e(sumCount) + '件を確認</div>'
+                + e(okCount) + 'か所／受付中の制度 ' + e(sumCount) + '件を確認（絞り込み前）</div>'
                 + '<div>' + srcTally.map(srcCell).join("") + '</div>'
-                + '<div style="font-size:11px;color:var(--muted,#868e96);margin-top:6px">'
-                + '0件と出ている発出元も、実際に当たったうえで該当が無かったことを示しています。'
+                + '<div style="font-size:11px;color:var(--muted,#868e96);margin-top:6px;line-height:1.6">'
+                + '<b style="color:var(--ink,#212529)">ここの件数は、各発出元で受付中だった制度の数です。御社が対象になる数ではありません。</b>'
+                + 'このあとAIが業種・地域・規模で絞り込み、その結果が下の一覧です。<br>'
+                + '0件と出ている発出元も、実際に当たったうえで受付中の制度が無かったことを示しています。'
                 + '調べていないのではありません。</div></div>';
         }
         html += '<table class="digtbl"><thead><tr>' + headCells + '</tr></thead><tbody>';
@@ -3960,7 +3962,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-29-03';
+  const TRIGATE_VERSION = '2026-08-29-04';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

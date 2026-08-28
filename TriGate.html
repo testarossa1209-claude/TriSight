@@ -1621,6 +1621,10 @@ body.presenMode table{font-size:1.02em}
       out.innerHTML = "";
       if(fullGateBtn) fullGateBtn.style.display = "none";
       lastShow = [];
+      /* 出所ごとの件数を数える（2026-08-29）。
+         0件の出所も「当たったが該当が無かった」として必ず残す。
+         どこを調べたかが見えることが、人手では届かない範囲を当たっている証拠になる。 */
+      const srcTally = [];
       try{
         const res = await fetch(JG_RELAY, {
           method:"POST",
@@ -1635,6 +1639,7 @@ body.presenMode table{font-size:1.02em}
         }
         const data = await res.json();
         let list = Array.isArray(data.result) ? data.result : [];
+        srcTally.push({ label: "Jグランツ", n: list.length, ok: true });
         /* 国土交通省の制度を合流させる（2026-08-22）。
            キーワードでは絞らない。業種による絞り込みは機械足切りの役目であり、
            運送3業種以外の会社では業種照合で自動的に落ちるため。 */
@@ -1650,15 +1655,18 @@ body.presenMode table{font-size:1.02em}
             if(mres.ok){
               const mdata = await mres.json();
               const mlist = Array.isArray(mdata.result) ? mdata.result : [];
+              srcTally.push({ label: src.label, n: mlist.length, ok: true });
               if(mlist.length){
                 const seen = {};
                 list.forEach(it => { if(it && it.id) seen[it.id] = true; });
                 list = list.concat(mlist.filter(it => it && it.id && !seen[it.id]));
               }
             }else{
+              srcTally.push({ label: src.label, n: null, ok: false, why: "取得失敗 " + mres.status });
               mlNote += "（" + src.label + "の取得に失敗：" + mres.status + "）";
             }
           }catch(err){
+            srcTally.push({ label: src.label, n: null, ok: false, why: "取得失敗" });
             mlNote += "（" + src.label + "の取得に失敗：" + String(err && err.message ? err.message : err).slice(0,30) + "）";
           }
         }
@@ -1675,6 +1683,7 @@ body.presenMode table{font-size:1.02em}
             const ind = (company && company["機械足切り条件"] && company["機械足切り条件"]["業種"]) || "";
             const webItems = await tsDigWebPref(selPref, ind);
             webEntries = tsWebEntries.slice();
+            srcTally.push({ label: selPref + "（ウェブ検索）", n: webItems.length, ok: true, entries: webEntries.length });
             if(webItems.length){
               const seen = {};
               list.forEach(it => { if(it && it.id) seen[it.id] = true; });
@@ -1687,6 +1696,7 @@ body.presenMode table{font-size:1.02em}
                      + (webEntries.length ? "（探す手がかりを" + webEntries.length + "件、下に出しています）" : "");
             }
           }catch(err){
+            srcTally.push({ label: selPref + "（ウェブ検索）", n: null, ok: false, why: "検索失敗" });
             webNote = "／" + selPref + "の検索に失敗（" + String(err && err.message ? err.message : err).slice(0,30) + "）";
           }
         }
@@ -1786,7 +1796,33 @@ body.presenMode table{font-size:1.02em}
                 + "<td>"+(it.id ? '<button class="dbtn" data-act="detail">詳細</button>' : "")+"</td></tr>";
         const sepOf = (label, n) => '<tr class="digsep"><td colspan="5" style="background:#f6f7f9;font-weight:600;padding:6px 8px">'
                 + e(label) + "（" + n + "件）</td></tr>";
-        let html = '<table class="digtbl"><thead><tr>' + headCells + '</tr></thead><tbody>';
+        /* 調べた発出元の一覧（2026-08-29）。表より先に出す。
+           0件の出所も消さずに残す。どこを当たったかが見えることが、
+           人手では届かない範囲を機械が当たっている証拠になる。 */
+        const srcCell = (t) => {
+          if(!t.ok){
+            return '<span style="display:inline-block;margin:0 10px 4px 0;padding:2px 8px;border-radius:11px;'
+              + 'background:#fdeaea;color:#8a2b2b;font-size:12px">' + e(t.label) + '　' + e(t.why || "取得できず") + '</span>';
+          }
+          const zero = (t.n === 0);
+          return '<span style="display:inline-block;margin:0 10px 4px 0;padding:2px 8px;border-radius:11px;'
+            + 'background:' + (zero ? "#f1f3f5" : "#eef3ff") + ';color:' + (zero ? "#868e96" : "#2c4a8a") + ';font-size:12px">'
+            + e(t.label) + '　<b>' + e(t.n) + '</b>件'
+            + (t.entries ? '（手がかり' + e(t.entries) + '件）' : '') + '</span>';
+        };
+        const okCount = srcTally.filter(t => t.ok).length;
+        const sumCount = srcTally.filter(t => t.ok).reduce((a, t) => a + t.n, 0);
+        let html = '';
+        if(srcTally.length){
+          html += '<div style="margin:0 0 10px 0;padding:10px 12px;border:1px solid var(--line,#dee2e6);border-radius:8px;background:#fbfcfe">'
+                + '<div style="font-weight:700;font-size:13px;margin-bottom:6px">調べた発出元　'
+                + e(okCount) + 'か所／受付中 ' + e(sumCount) + '件を確認</div>'
+                + '<div>' + srcTally.map(srcCell).join("") + '</div>'
+                + '<div style="font-size:11px;color:var(--muted,#868e96);margin-top:6px">'
+                + '0件と出ている発出元も、実際に当たったうえで該当が無かったことを示しています。'
+                + '調べていないのではありません。</div></div>';
+        }
+        html += '<table class="digtbl"><thead><tr>' + headCells + '</tr></thead><tbody>';
         if(grpA.length && grpB.length){
           html += sepOf("この業界向けの制度", grpA.length);
           grpA.forEach(it => { html += rowOf(it); });
@@ -3924,7 +3960,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-29-02';
+  const TRIGATE_VERSION = '2026-08-29-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

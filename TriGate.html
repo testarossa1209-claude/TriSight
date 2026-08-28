@@ -581,6 +581,36 @@ body.presenMode table{font-size:1.02em}
     return false;
   }
 
+  /* ===== 判定エンジンの呼び出し口（2026-08-29導入・ブラックボックス） =========
+     判定の指示文（システムプロンプト）と、素材の組み立て規則は、すべて
+     リレー側（api/gate）に置く。この画面に残るのは「何を判定してほしいか」
+     という素材の受け渡しだけで、返るのは答えの本文だけ。
+     画面のソースを最後まで読んでも、判定の手口は分からない。
+     ＝契約で縛る前に、見せない。                                            */
+  const GATE_RELAY = "https://trisight-relay.vercel.app/api/gate";
+  async function tsAsk(task, payload){
+    const code = tsCode();
+    if(!code) throw new Error("認証コードが未入力です。");
+    const res = await fetch(GATE_RELAY, {
+      method: "POST",
+      headers: {"Content-Type": "application/json", "x-trisight-code": code},
+      body: JSON.stringify({ task: task, payload: payload || {} })
+    });
+    if(tsAuthFail(res.status)) throw new Error("認証エラー（401）：認証コードを確認してください。");
+    if(!res.ok){
+      let msg = "";
+      try{ const j = await res.json(); if(j && j.error) msg = j.error; }catch(_){}
+      if(!msg){
+        if(res.status === 429) msg = "今月のご利用回数の上限に達しました。";
+        else if(res.status === 413) msg = "送信した内容が大きすぎます（画像PDFは重くなりがちです）。";
+        else msg = "判定エンジンの応答 " + res.status;
+      }
+      throw new Error(msg);
+    }
+    const data = await res.json();
+    return (data && typeof data.text === "string") ? data.text.trim() : "";
+  }
+
 
   /* ===== 契約プラン（ティア）の保持　2026-07-27 =====================
      【設計方針】
@@ -881,49 +911,6 @@ body.presenMode table{font-size:1.02em}
      そこで、選ばれた県について、その場でウェブを検索して制度を拾い、
      Jグランツと同じ項目名に起こす。カタログを持たないので腐らない。
      ただし読み違えが混じるため、出所URLと確認日を必ず添え、画面上でも別扱いにする。 */
-  const DIG_WEB_SYSTEM = [
-    "あなたは、指定された都道府県の中小企業向け補助金・助成金を、ウェブ検索で洗い出す担当者です。",
-    "出力はJSONのみ。前置きも囲みも付けないでください。",
-    "",
-    "【探す対象】",
-    "・その都道府県、またはその県内の市区町村が独自に実施している制度",
-    "・その県の外郭団体・振興公社・環境公社・産業支援機関等が実施している制度も含む",
-    "・国の制度（Jグランツ掲載分）は対象外。既に別経路で取得しているため重複させない",
-    "・指定された業種に当たる制度を優先する",
-    "",
-    "【2種類に分けて返す】",
-    'kind に "program" か "entry" を入れて区別すること。',
-    "",
-    '■ kind="program"（制度そのもののページに行き着いたもの）',
-    "・その制度一件だけを説明しているページであること",
-    "・上限額／補助率／受付期間／対象経費／対象事業者 のうち2つ以上がそのページに書かれていること",
-    "・書かれていない項目は null にする。推測で埋めない",
-    "",
-    '■ kind="entry"（制度個別までは行けなかったが、そこから人が辿れる入口ページ）',
-    "・補助金の一覧ページ、支援制度のご案内、所管課のページなど",
-    "・**捨てずに必ず返すこと。**そこから人が拾えるなら価値がある",
-    "・entry には guide を必ず入れる。guide は、その画面を開いた人が迷わないための道案内。",
-    "　例：『ページ中ほどの「事業者向け」の見出しを開く』『「令和8年度」で始まる項目を上から見る』",
-    "　『交通・運輸に関する語（タクシー、旅客、車両、乗務員）を含むものを拾う』",
-    "・guide は3〜5手。専門用語を使わず、その画面に実際にある言葉を使って書く",
-    "・why には、なぜこのページを見る価値があるのかを一行で書く",
-    "",
-    "【守ること】",
-    "・必ずウェブ検索で確かめる。記憶から書かない。URLは検索で得たものをそのまま入れる。組み立てない。",
-    "・受付が終了している制度は program に含めない。",
-    "・公募要領・募集要項のPDFへのリンクがあれば guideline_url に入れる。無ければ null。",
-    "・program は最大8件、entry は最大4件。多く出すより確かなものを出す。",
-    "",
-    "【出力するJSONの形】",
-    '{"items":[{"kind":"program|entry","title":"制度名または入口ページの名前","catch":"一行の要約",',
-    '"max_limit":上限額の数値またはnull,"rate":"補助率の文字列またはnull",',
-    '"industry":"対象業種の記載","area":"都道府県名","employees":"従業員規模の記載またはnull",',
-    '"start":"YYYY-MM-DD またはnull","end":"YYYY-MM-DD またはnull",',
-    '"source_url":"URL","guideline_url":"公募要領PDFのURLまたはnull",',
-    '"found":["programのとき、実際に読み取れた項目名"],',
-    '"why":"entryのとき、このページを見る価値の一行","guide":["entryのとき、拾い方の道案内3〜5手"],',
-    '"detail":"内容と、要領を読まないと分からない順序の制約や注意点"}]}'
-  ].join("\n");
 
   let tsWebDropped = 0;
   let tsWebEntries = [];
@@ -932,20 +919,9 @@ body.presenMode table{font-size:1.02em}
     if(!pref) return [];
     const code = tsCode();
     if(!code) return [];
-    const q = "都道府県：" + pref + "\n対象業種：" + (industryHint || "（指定なし・中小企業全般）")
-            + "\n本日：" + new Date().toISOString().slice(0,10);
-    const res = await fetch(RELAY, {
-      method:"POST",
-      headers:{"Content-Type":"application/json","x-trisight-code":code},
-      body: JSON.stringify({
-        model: MODEL, max_tokens: 8000, temperature: 0, system: DIG_WEB_SYSTEM,
-        messages:[{role:"user", content: q}],
-        tools:[{ type:"web_search_20250305", name:"web_search", max_uses: 8 }]
-      })
-    });
-    if(!res.ok) throw new Error("検索に失敗しました（" + res.status + "）");
-    const data = await res.json();
-    const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
+    let text = "";
+    try{ text = await tsAsk("dig_web", { pref: pref, industry: industryHint || "" }); }
+    catch(e){ throw new Error("検索に失敗しました（" + (e && e.message ? e.message : e) + "）"); }
     if(!text) return [];
     let parsed = null;
     try{ parsed = parseJSON(text); }catch(_){ return []; }
@@ -1786,15 +1762,6 @@ body.presenMode table{font-size:1.02em}
     });
 
     /* ---- 第二段：AIゲート判定（公募情報×企業基礎情報） 2026-07-13／2026-07-22：給付方式・除外条件チェックを追加 ---- */
-    const GATE_MODEL = "claude-sonnet-4-6";
-    const GATE_SYSTEM = "あなたはTriSightの補助金ゲート判定係（検証担当・なぎさ）です。"
-      + "与えられた『公募情報』と『企業基礎情報』だけを根拠に、この企業がこの補助金を追う価値があるかを判定します。"
-      + "推測で要件を補わず、公募情報に書かれていない点は『確認事項』に回してください。"
-      + "観点：①対象要件との適合（地域・業種・規模・事業内容）②企業の事業計画との整合③上限額・補助率と申請負担の釣り合い④受付締切までの現実性"
-      + "⑤除外条件チェック：公募情報に労働保険の適用・重大な労働関係法令違反や労働紛争の不存在・反社会的勢力の排除等が支給要件として明記されている場合、企業基礎情報内の『除外条件宣言』と照合する。宣言のいずれかが要件に抵触する場合のみ除外条件抵触=trueとし、具体的にどの宣言がどの要件に反するかを理由に書く。公募情報にその要件の記載が無ければ抵触なしとする（無い規則を推測で作らない）"
-      + "⑥給付方式の判定：公募情報の記述から、審査・順位付け・予算上限による不採択があり得る制度（審査・採択枠あり）か、要件をすべて満たせば原則として支給される制度（要件充足型）かを読み取る。記述から判別できない場合は『不明』とする。断定できる根拠が無いのに要件充足型と判定しない"
-      + "出力は次のJSONのみ。前置き・後書き・コードブロック記号は一切禁止。"
-      + '{"判定":"追う"|"見送り"|"要確認","適合度":0から100の整数,"給付方式":"要件充足型"|"審査・採択枠あり"|"不明","除外条件抵触":true|false,"除外条件抵触理由":"…（抵触なしなら空文字）","理由":["…"],"懸念":["…"],"確認事項":["…"],"次の一手":"…（1文）"}';
 
     function gateSourceText(d){
       let ov = "";
@@ -1846,24 +1813,7 @@ body.presenMode table{font-size:1.02em}
       return g;
     }
     async function aiGateCheckRaw(d){
-      const code = tsCode();
-      if(!code) throw new Error("認証コードが未入力です。");
-      const userMsg = "■ 公募情報（Jグランツ）\n" + gateSourceText(d)
-        + "\n\n■ 企業基礎情報（端末内JSON）\n" + JSON.stringify(company, null, 1)
-        + "\n\n上記のみを根拠に、指定のJSONだけで判定を返してください。";
-      const res = await fetch(RELAY, {
-        method: "POST",
-        headers: {"Content-Type": "application/json", "x-trisight-code": code},
-        body: JSON.stringify({ model: GATE_MODEL, max_tokens: 1500, temperature: 0, system: GATE_SYSTEM,
-          messages: [{ role: "user", content: userMsg }] })
-      });
-      if(tsAuthFail(res.status)) throw new Error("認証エラー（401）：認証コードを確認してください。");
-      if(!res.ok){
-        const t = await res.text();
-        throw new Error("リレー応答 " + res.status + "：" + t.slice(0, 200));
-      }
-      const data = await res.json();
-      const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
+      const text = await tsAsk("gate", { source: gateSourceText(d), company: company });
       if(!text) throw new Error("空の応答が返りました。");
       return gateParse(text);
     }
@@ -1886,28 +1836,7 @@ body.presenMode table{font-size:1.02em}
       return "id:" + id + " ／案件名:" + (d.title || d.name || "") + " ／上限額:" + amt + " ／概要:" + ov;
     }
     async function aiGiveBatchCheck(ids){
-      const code = tsCode();
-      if(!code) throw new Error("認証コードが未入力です。");
-      const sys = "あなたはTriSightの補助金・助成金の一括仕分け係です。企業基礎情報と、複数案件の要約を渡します。"
-        + "各案件について①給付方式（要件を全て満たせば原則支給される『要件充足型』か、審査・順位付け・予算上限で不採択があり得る『審査・採択枠あり』か、文面から判別できなければ『不明』）"
-        + "②除外条件抵触（案件情報に労働保険適用・重大な労働関係法令違反や労働紛争の不存在・反社会的勢力の排除等が要件として明記されており、企業基礎情報内の『除外条件宣言』がそれに抵触する場合のみtrue。案件情報にその要件の記載が無ければ必ずfalse。推測で厳しく／甘く判定しない）を判定してください。"
-        + "出力は次のJSON配列のみ。前置き・後書き・コードブロック記号は一切禁止。"
-        + '[{"id":"…","給付方式":"要件充足型"|"審査・採択枠あり"|"不明","除外条件抵触":true|false}]';
-      const userMsg = "■ 企業基礎情報\n" + JSON.stringify(company, null, 1)
-        + "\n\n■ 案件一覧\n" + ids.map(giveSourceTextShort).join("\n");
-      const res = await fetch(RELAY, {
-        method: "POST",
-        headers: {"Content-Type": "application/json", "x-trisight-code": code},
-        body: JSON.stringify({ model: GATE_MODEL, max_tokens: 4000, temperature: 0, system: sys,
-          messages: [{ role: "user", content: userMsg }] })
-      });
-      if(tsAuthFail(res.status)) throw new Error("認証エラー（401）：認証コードを確認してください。");
-      if(!res.ok){
-        const t = await res.text();
-        throw new Error("リレー応答 " + res.status + "：" + t.slice(0, 200));
-      }
-      const data = await res.json();
-      const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
+      const text = await tsAsk("give", { company: company, items: ids.map(giveSourceTextShort) });
       if(!text) throw new Error("空の応答が返りました。");
       let s = text.replace(/```json/gi, "").replace(/```/g, "").trim();
       const a = s.indexOf("[");
@@ -2043,30 +1972,13 @@ body.presenMode table{font-size:1.02em}
 
     /* ---- 案件名の一括AI仕分け（1回のAPI呼び出しで題名を粗選別） 2026-07-13 ---- */
     async function aiTitleSort(items){
-      const code = tsCode();
-      if(!code) throw new Error("認証コードが未入力です。");
       const compBrief = JSON.stringify({
         "会社": (company && company["会社"]) || {},
         "探索キーワード": (company && company["探索キーワード"]) || [],
         "今後の計画": (company && (company["今後の計画"] || company["事業計画"])) || ""
       });
       const titles = items.map((it, i) => (i + 1) + ". " + String(it.title || it.name || "（名称不明）")).join("\n");
-      const sys = "あなたはTriSightの補助金仕分け係です。企業情報と補助金の案件名一覧を渡します。"
-        + "案件名だけから判断して、この企業が申請できる可能性が少しでもある案件の番号を残してください。"
-        + "迷ったら残す（保守的に）。明らかに無関係な分野（例：この企業の業種・事業計画とまったく接点がない分野）は落とします。"
-        + "また、案件名に地域名（都道府県・地方・市区町村）が含まれ、それが企業の本店所在地・進出予定地域と明らかに合わない場合も落としてください。"
-        + '出力は {"残す":[番号,…]} のJSONのみ。前置き・後書き・コードブロック記号は禁止。';
-      const userMsg = "■ 企業情報\n" + compBrief + "\n\n■ 案件名一覧\n" + titles;
-      const res = await fetch(RELAY, {
-        method: "POST",
-        headers: {"Content-Type": "application/json", "x-trisight-code": code},
-        body: JSON.stringify({ model: GATE_MODEL, max_tokens: 2000, temperature: 0, system: sys,
-          messages: [{ role: "user", content: userMsg }] })
-      });
-      if(tsAuthFail(res.status)) throw new Error("認証エラー（401）");
-      if(!res.ok){ const t = await res.text(); throw new Error("リレー応答 " + res.status + "：" + t.slice(0, 120)); }
-      const data = await res.json();
-      const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
+      const text = await tsAsk("title", { company: compBrief, titles: titles });
       if(!text) throw new Error("空の応答");
       const parsed = gateParse(text);
       const arr = Array.isArray(parsed) ? parsed : parsed["残す"];
@@ -2375,7 +2287,6 @@ body.presenMode table{font-size:1.02em}
     });
   })();
 
-  const MODEL = "claude-sonnet-4-6";
   // pdf.min.js は defer で読み込むため、この時点ではまだ未読込のことがある。
   // 判定と worker の設定は、実際にPDFを扱う直前に行う（下の ensurePdfJs）。
   let PDFJS_OK = true;
@@ -2641,72 +2552,6 @@ body.presenMode table{font-size:1.02em}
   }
 
   // ---- タスク化（リレー経由でClaude） --------------------------
-  const SYSTEM = `あなたは行政の補助金・助成金の案内文書を受け取る「門の受付」です。利用者が時間をかけて読み込む前に、まず「自分の事業所が対象になりそうか」を見分けられるようにし、続けて申請の取りこぼしを防ぐ情報を構造抽出します。判断（この制度に申請すべきか／この経費が対象か）は決してしません。該当するかどうかが文書だけでは確定できない事項は、断定せず must_verify=true として「要確認」に回します。
-
-与えられた文書（テキスト、または添付されたPDF画像）と、利用者が任意で添えた「文書の外の前提」をもとに、次のJSONだけを出力してください。前置き・説明・コードフェンスは一切付けないこと。
-
-{
- "program_name": "制度・事業の正式名称",
- "issuer": "発行元（部署まで）",
- "summary": "1〜2文の概要（補助額・補助率など要点）",
- "eligibility": {
-   "who": "対象事業者・対象者の条件（文書の記載どおり、簡潔に）",
-   "checklist": ["利用者が自所について最初に確認すべき具体項目を、短い問いの形で。例：補助対象サービス一覧（◯◯介護・計画相談支援 等）に自所の種別があるか／都内に施設・事業所を置く民間事業者か"],
-   "note": "対象判定にあたっての注意（裏面参照・別表参照など）"
- },
- "deadlines": [
-   {"label":"何の締切か","date_text":"文書の表記そのまま（和暦可）","date_iso":"YYYY-MM-DD","type":"必着|消印有効|不明","is_absolute":true|false}
- ],
- "reverse_tasks": [
-   {"due_text":"いつまでに（例: 〜7月上旬）","due_iso":"YYYY-MM-DD または null","action":"その期日までにやる具体作業","must_verify":true|false}
- ],
- "required_documents": [
-   {"name":"書類名","note":"注意点（簡潔に）","must_verify":true|false}
- ],
- "verify_items": [
-   {"item":"人が確認・判断すべき事項","why":"なぜ機械で断定できないか","contact":"確認先（分かれば）"}
- ],
- "to_parent": {
-   "is_for_parent": true,
-   "why": "なぜこの案件が補助金の受付という役割の範囲を超えるか（簡潔に・利用者に分かる言葉で）",
-   "what": "この受付ではできないが、引き継げば対応できそうなこと（利用者に分かる言葉で）",
-   "suggested_child": "強いて言えばどのファミリー製品が近いか（断定でなく参考。近いものが無ければ空文字）",
-   "child_reason": "その製品が近いと考える理由（簡潔に・suggested_childが空なら空文字）",
-   "next_step": {
-     "in_parent": "引き継ぎ先でやること＝この受付ではできない判断・設計（簡潔に・is_for_parentがfalseなら空文字）",
-     "by_user": "いま利用者がやれる最小の一歩：この文書を持って誰に何を確認するか、次に何を見るか（『これをやれ』と命じず『こう進められます』という運用提案の文体で・is_for_parentがfalseなら空文字）"
-   }
- },
- "contact":"問合せ先（メール/電話）"
-}
-
-ルール：
-- 「起案者がいま一番知りたいこと」が添えられている場合、その問いを最前面の重心にして答える。全項目は出すが、問いに当たる部分を厚く・先に立てる。重心の置き方：「当事業所が対象になりそうか」→ eligibility を最優先で厚く／「整えれば対象になりうるか」→ required_documents と verify_items と条件付きの可能性を厚く／「見当がつかない・未選択」→ 従来どおり全項目を均等に（制度名と概要も最前面付近に出す）。ただし重心を置くだけで、対象に当てはまるか否かの断定はしない（受付の線は守る）。
-- eligibility.checklist は門の核心。文書から「対象事業者・対象サービス・地域・規模」などの条件を漏れなく拾い、利用者が数秒で自所に当てはまるか見分けられる短い問いにする。対象サービスが一覧で列挙されていれば、その代表例を問いの中に入れる。
-- 対象に当てはまるか否かを、こちらで断定しない（「対象です」と書かない）。当てはめは利用者がやる。checklist は判断材料の提示にとどめる。
-- 絶対に守るべき最終締切は is_absolute=true。逆算タスクは、その最終締切から戻して現実的な順序で並べる。
-- 「文書の外の前提」に別制度の締切などが書かれていたら、それも deadlines と reverse_tasks に必ず織り込む。文書本体より手前に来る締切は見落とされやすいので優先して拾う。
-- ある経費が対象になるか等の当てはめは must_verify=true とし、verify_items にも理由付きで挙げる。
-- date_iso が文書から特定できない場合は妥当な推定を入れず、近い値でよいが type を不明にする。
-- 各値は簡潔に。note・why・action などは一文で短く。冗長な説明で全体が長くなりすぎないようにする。
-
-【受付からの引き継ぎ申告（to_parent）について】
-あなたは補助金・助成金の受付です。受け取った文書が、補助金の受付という自分の役割の範囲に収まりきらず、より広い体制（TriSight 本体や別のファミリー製品）で扱うべき案件に見えることがあります。そのときは黙って補助金の型に押し込めず、to_parent.is_for_parent を true にして正直に申し送ってください。範囲内（ふつうの補助金・助成金案内）なら is_for_parent は false とし、why/what/suggested_child/child_reason/next_step は空文字でよい。
-- 出力する文（why・what・next_step など）には「母屋」「子」などの内部の呼び名を絶対に使わない。利用者が読んで分かる言葉だけで書く（例：「この受付の範囲を超えます」「引き継げば対応できます」）。
-- is_for_parent=true にするのは、例えば：文書が補助金案内の体裁を超えて運営基準・人員配置・処遇改善・記録様式・規程改正など事業運営そのものの変更を求めている／補助金を入口にしつつ実際の核心が組織・労務・財務の判断にある／複数制度や事業全体に波及し、受付の仕分けだけでは取りこぼす、といった場合。
-- 申告は断定でなく控えめに。「これは本体が扱うべきです」と命じるのではなく「この受付だけでは扱いきれないかもしれません」という温度で why を書く。
-- suggested_child は参考であって指名ではない。下のファミリーに近いものがあれば一つだけ挙げ、無ければ無理に当てず空文字にする。最終的にどこへ渡すかの判断は人間に残す。
-- is_for_parent=true のときは next_step を必ず埋める。申し送って終わりにすると利用者に「で、どうするの？」が残る。in_parent には引き継ぎ先でやること（この受付ではできない判断・設計）を、by_user には今すぐ利用者がやれる最小の一歩（この文書を持って誰に何を確認するか、次に何を見るか）を書く。by_user は命令でなく「こう進められます」という運用提案の文体にする。割合や適合度のパーセント表記は使わない。
-
-ファミリー製品（suggested_child の候補。近いものが無ければ空文字）：
-・TriOffice … 運営規定・運営基準の改正対応
-・TriReward … 処遇改善加算の計画書・実績報告
-・TriCare … 訪問看護・介護の記録様式
-・TriTask … 工程・逆算タスクの管理
-・TriRule … 規程・ルールの整備
-・TriGrantSupport … 雇用・労務系の助成金支援
-・TriVoice … 音声入力・記録
-（いずれにも当てはまらず、TriSight 本体全体で受けるべきなら suggested_child は空文字）`;
 
   goBtn.addEventListener("click", run);
 
@@ -3640,45 +3485,14 @@ body.presenMode table{font-size:1.02em}
     goBtn.disabled=true;
     statusEl.innerHTML='<span class="spin"></span>なぎさが締切と逆算タスクに整理しています…';
     const premise = $("premise").value.trim();
-    const premiseBlock = "\n\n■ 文書の外の前提（利用者記入・空欄なら無し）\n"+(premise||"（なし）");
-    const focusBlock = focusChoice && focusMap[focusChoice]
-      ? "\n\n■ 起案者がいま一番知りたいこと\n"+focusMap[focusChoice]
-      : "\n\n■ 起案者がいま一番知りたいこと\n（未選択・全項目を並べる）";
-    const tail = premiseBlock + focusBlock;
-
-    let messages;
-    if(isImagePdf && pdfBase64){
-      // 画像PDF：文字を抜かず、PDFごと見せる
-      messages=[{role:"user",content:[
-        {type:"document", source:{type:"base64", media_type:"application/pdf", data:pdfBase64}},
-        {type:"text", text:"添付のPDF（行政の補助金・助成金案内）を読み取り、指示どおりJSONだけで返してください。"+tail}
-      ]}];
-    }else{
-      // 文字PDF：抽出テキストを送る
-      const userMsg = "■ 文書テキスト\n"+extracted+tail;
-      messages=[{role:"user",content:userMsg}];
-    }
 
     try{
-      const res = await fetch(RELAY,{
-        method:"POST",
-        headers:{"Content-Type":"application/json","x-trisight-code":tsCode()},
-        body:JSON.stringify({
-          /* 2026-08-20 temperature:0 を明示。ここが抜けていたため、同じ公募要領を
-             読み直すたびに必要書類の件数と文言が変わっていた（12件と9件で食い違った実例あり）。
-             発掘側の3つのAI呼び出しには2026-08-13に入れたが、読み取りだけ漏れていた。 */
-          model:MODEL, max_tokens:8000, temperature:0, system:SYSTEM, messages
-        })
+      const text = await tsAsk("read", {
+        text: (isImagePdf && pdfBase64) ? "" : extracted,
+        pdfBase64: (isImagePdf && pdfBase64) ? pdfBase64 : null,
+        premise: premise,
+        focus: focusChoice || ""
       });
-      if(!res.ok){
-        if(tsAuthFail(res.status)) throw new Error("認証エラー（401）：認証コードを確認してください。");
-        const t=await res.text();
-        let extra="";
-        if(res.status===413) extra="　／　PDFが大きすぎてリレーの上限を超えた可能性があります（画像PDFは重くなりがち）。";
-        throw new Error("リレー応答 "+res.status+"：" + t.slice(0,200) + extra);
-      }
-      const data = await res.json();
-      const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
       if(!text) throw new Error("空の応答が返りました。");
       const parsed = parseJSON(text);
       render(parsed);
@@ -3695,23 +3509,6 @@ body.presenMode table{font-size:1.02em}
      読み取った要領の本文と、読み込んでいる企業基礎情報を突き合わせ、
      要件を一項目ずつ ○（満たす）／△（会社側で確認が要る）／✕（現状では満たさない）に仕分ける。
      ✕には、整えれば満たせる場合の手順を書かせる。断定できないものは必ず△に落とす。 */
-  const MATCH_SYSTEM = [
-    "あなたは補助金・助成金の要件を、ある会社の事実と突き合わせて仕分ける担当者です。",
-    "出力はJSONのみ。前置きも囲みも付けないでください。",
-    "",
-    "【最重要の原則】",
-    "・会社側の情報から確実に判断できるものだけを ○ にする。",
-    "・公募情報に書かれている要件のうち、会社側の情報に対応する記載が無いものは、必ず △ にする。推測で ○ にしない。",
-    "・会社の事実から明らかに外れるものだけ ✕ にする。✕ には、整えれば満たせる場合の具体的な手順を書く。",
-    "・要件は公募情報に書かれていることだけを拾う。一般論で要件を作らない。",
-    "・順序の制約（先に規定を整える、先に窓口を通す、購入前に確認する等）は必ず pitfalls に書く。ここが不採択の主因になるため。",
-    "・金額に触れるときは主語を制度にする（御社が取れる額とは書かない）。",
-    "",
-    "【出力するJSONの形】",
-    '{"program_name":"制度名","items":[{"req":"要件の内容","mark":"○|△|✕","basis":"そう判断した根拠","todo":"△✕のとき、会社側で確認すべきこと・整えるべきこと"}],',
-    '"pitfalls":["要領を読まないと分からない落とし穴"],"next":["この会社が次にすべきこと"],',
-    '"unknown":["公募情報からは読み取れなかった要件"]}'
-  ].join("\n");
 
   async function runMatch(){
     const box = $("matchOut");
@@ -3727,21 +3524,11 @@ body.presenMode table{font-size:1.02em}
     box.style.display = "block";
     box.innerHTML = '<div class="mtitle">要件照合</div><div class="mnote"><span class="spin"></span>要領の要件を、御社の情報と一項目ずつ突き合わせています…</div>';
     try{
-      const src = (TG_LAST && TG_LAST.program_name ? "■ 読み取り済みの制度名\n" + TG_LAST.program_name + "\n\n" : "")
-                + "■ 公募情報の本文\n" + (extracted || "（本文が抽出できていません）");
-      const msg = src + "\n\n■ 会社の情報（JSON）\n" + JSON.stringify(comp);
-      const res = await fetch(RELAY, {
-        method:"POST",
-        headers:{"Content-Type":"application/json","x-trisight-code":tsCode()},
-        body: JSON.stringify({ model:MODEL, max_tokens:6000, temperature:0, system:MATCH_SYSTEM,
-          messages:[{role:"user", content: msg}] })
+      const text = await tsAsk("match", {
+        programName: (TG_LAST && TG_LAST.program_name) || "",
+        body: extracted || "",
+        company: comp
       });
-      if(!res.ok){
-        if(tsAuthFail(res.status)) throw new Error("認証エラー（401）：認証コードを確認してください。");
-        throw new Error("リレー応答 " + res.status);
-      }
-      const data = await res.json();
-      const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
       if(!text) throw new Error("空の応答が返りました。");
       renderMatch(parseJSON(text), comp);
     }catch(err){
@@ -4037,7 +3824,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-28-04';
+  const TRIGATE_VERSION = '2026-08-29-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

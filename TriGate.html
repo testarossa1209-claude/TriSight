@@ -1358,18 +1358,40 @@ body.presenMode table{font-size:1.02em}
         if(!(k in mechCache)){ mechCache[k]=null; need.push(it); keys.push(k); }
       }
       if(!need.length) return;
-      const CH = 120;
+      /* 一度に送る件数は小さく刻む。まとめて送ると返事が返らずに止まる
+         （2026-08-29：120件で待ち続ける事象が実機で出たため 20件へ）。
+         返事が来ないまま待ち続けないよう、1回あたりの待ち時間にも区切りを置く。 */
+      const CH = 20, WAIT = 20000;
+      /* 企業基礎情報は毎回まるごと送らず、足切りに要るところだけを送る */
+      const compSlim = {
+        "会社": (function(c){
+          const o = {};
+          ["本店所在地_都道府県","本店所在地_市区町村","従業員数_合計","予想年商","年商","進出予定地域","過去の申請実績"]
+            .forEach(k => { if(c[k] !== undefined) o[k] = c[k]; });
+          return o;
+        })(company["会社"] || {}),
+        "機械足切り条件": company["機械足切り条件"] || {},
+        "案件名の除外キーワード": company["案件名の除外キーワード"] || [],
+        "探索キーワード": company["探索キーワード"] || [],
+        "進出予定地域": company["進出予定地域"] || [],
+        "過去の申請実績": company["過去の申請実績"] || []
+      };
       for(let i=0;i<need.length;i+=CH){
         const part=need.slice(i,i+CH), pk=keys.slice(i,i+CH);
         let out=null;
+        const ac = (typeof AbortController !== "undefined") ? new AbortController() : null;
+        const timer = ac ? setTimeout(() => { try{ ac.abort(); }catch(_){} }, WAIT) : null;
         try{
-          const res = await fetch(GATE_RELAY, {
+          const opt = {
             method:"POST",
             headers:{"Content-Type":"application/json","x-trisight-code":code},
-            body: JSON.stringify({ task:"sift", payload:{ company: company, items: part.map(mechSend) } })
-          });
+            body: JSON.stringify({ task:"sift", payload:{ company: compSlim, items: part.map(mechSend) } })
+          };
+          if(ac) opt.signal = ac.signal;
+          const res = await fetch(GATE_RELAY, opt);
           if(res.ok){ const j = await res.json(); if(j && Array.isArray(j.sift)) out=j.sift; }
         }catch(_){}
+        finally{ if(timer) clearTimeout(timer); }
         if(out) pk.forEach((k,n)=>{ mechCache[k] = out[n] || null; });
       }
     }
@@ -3846,7 +3868,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-29-06';
+  const TRIGATE_VERSION = '2026-08-29-07';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

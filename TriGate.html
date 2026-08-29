@@ -1326,10 +1326,9 @@ body.presenMode table{font-size:1.02em}
     }
 
     /* ---- 2026-08-13追加：金額文字列（「4億2,000万円」等）を数値へ ---- */
-    /* ---- 足切りの判定（2026-08-29：規則をリレー側 api/sift へ移設） --------
+    /* ---- 足切りの判定（2026-08-29：規則をリレー側へ移設） --------
        どの案件を落とし、どの案件を残すかという当て方は、この画面には無い。
        送るのは案件と企業基礎情報、返るのは通ったか否かと理由の表示文だけ。 */
-    const SIFT_RELAY = "https://trisight-relay.vercel.app/api/sift";
     const mechCache = {};
     function mechKey(d){
       d = d || {};
@@ -1364,10 +1363,10 @@ body.presenMode table{font-size:1.02em}
         const part=need.slice(i,i+CH), pk=keys.slice(i,i+CH);
         let out=null;
         try{
-          const res = await fetch(SIFT_RELAY, {
+          const res = await fetch(GATE_RELAY, {
             method:"POST",
             headers:{"Content-Type":"application/json","x-trisight-code":code},
-            body: JSON.stringify({ company: company, items: part.map(mechSend) })
+            body: JSON.stringify({ task:"sift", payload:{ company: company, items: part.map(mechSend) } })
           });
           if(res.ok){ const j = await res.json(); if(j && Array.isArray(j.sift)) out=j.sift; }
         }catch(_){}
@@ -3847,7 +3846,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-29-05';
+  const TRIGATE_VERSION = '2026-08-29-06';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

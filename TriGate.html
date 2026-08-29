@@ -553,7 +553,6 @@ body.presenMode table{font-size:1.02em}
 
 <script>
   // ---- 設定 ----------------------------------------------------
-  const RELAY = "https://trisight-relay.vercel.app/api/anthropic";
 
   /* ===== TriSight 認証コード（リレー保護・2026-07-11導入） ===== */
   function tsCode(){
@@ -1327,179 +1326,57 @@ body.presenMode table{font-size:1.02em}
     }
 
     /* ---- 2026-08-13追加：金額文字列（「4億2,000万円」等）を数値へ ---- */
-    function tsParseYen(v){
-      if(v == null) return null;
-      if(typeof v === "number" && isFinite(v)) return v;
-      let s = String(v).replace(/[，,\s　]/g, "").replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
-      if(!s) return null;
-      let total = 0, matched = false;
-      const m1 = s.match(/([0-9]+(?:\.[0-9]+)?)兆/); if(m1){ total += Number(m1[1]) * 1e12; matched = true; }
-      const m2 = s.match(/([0-9]+(?:\.[0-9]+)?)億/); if(m2){ total += Number(m2[1]) * 1e8; matched = true; }
-      const m3 = s.match(/([0-9]+(?:\.[0-9]+)?)万/); if(m3){ total += Number(m3[1]) * 1e4; matched = true; }
-      if(matched){
-        const tail = s.split(/[兆億万]/).pop().match(/^([0-9]+)/);
-        if(tail) total += Number(tail[1]);
-        return total;
+    /* ---- 足切りの判定（2026-08-29：規則をリレー側 api/sift へ移設） --------
+       どの案件を落とし、どの案件を残すかという当て方は、この画面には無い。
+       送るのは案件と企業基礎情報、返るのは通ったか否かと理由の表示文だけ。 */
+    const SIFT_RELAY = "https://trisight-relay.vercel.app/api/sift";
+    const mechCache = {};
+    function mechKey(d){
+      d = d || {};
+      return [d.id||"", d.title||d.name||"", d.industry||"",
+              d.target_area_search||"", d.target_area_detail||"",
+              d.target_number_of_employees||"",
+              (d.subsidy_max_limit==null?"":d.subsidy_max_limit)].join("\u0001");
+    }
+    function mechSend(d){
+      d = d || {};
+      return { id:d.id||"", title:d.title||"", name:d.name||"",
+               industry:d.industry||"",
+               target_area_search:d.target_area_search||"",
+               target_area_detail:d.target_area_detail||"",
+               target_number_of_employees:d.target_number_of_employees||"",
+               subsidy_max_limit:(d.subsidy_max_limit==null?null:d.subsidy_max_limit) };
+    }
+    /* まとめて判定してもらい、手元に控える。失敗しても止めない（通過扱いにする）。 */
+    async function mechFill(items){
+      if(!company) return;
+      const code = tsCode();
+      if(!code) return;
+      const need=[], keys=[];
+      for(const it of (items||[])){
+        if(!it) continue;
+        const k = mechKey(it);
+        if(!(k in mechCache)){ mechCache[k]=null; need.push(it); keys.push(k); }
       }
-      const m4 = s.match(/([0-9]+)/);
-      return m4 ? Number(m4[1]) : null;
+      if(!need.length) return;
+      const CH = 120;
+      for(let i=0;i<need.length;i+=CH){
+        const part=need.slice(i,i+CH), pk=keys.slice(i,i+CH);
+        let out=null;
+        try{
+          const res = await fetch(SIFT_RELAY, {
+            method:"POST",
+            headers:{"Content-Type":"application/json","x-trisight-code":code},
+            body: JSON.stringify({ company: company, items: part.map(mechSend) })
+          });
+          if(res.ok){ const j = await res.json(); if(j && Array.isArray(j.sift)) out=j.sift; }
+        }catch(_){}
+        if(out) pk.forEach((k,n)=>{ mechCache[k] = out[n] || null; });
+      }
     }
-    function tsYenBrief(n){
-      n = Number(n); if(!isFinite(n)) return "—";
-      if(n >= 1e8) return (n / 1e8).toLocaleString("ja-JP", {maximumFractionDigits:1}) + "億円";
-      if(n >= 1e4) return Math.round(n / 1e4).toLocaleString("ja-JP") + "万円";
-      return n.toLocaleString("ja-JP") + "円";
-    }
-    /* いまの和暦年度（4月始まり） */
-    function tsCurrentWareki(){
-      const d = new Date();
-      const y = (d.getMonth() + 1 >= 4) ? d.getFullYear() : d.getFullYear() - 1;
-      return y - 2018;
-    }
-
-    /* ---- 第一段：機械足切り（地域・業種・従業員規模・除外語・制度規模・年度） ---- */
-    const PREFS = ["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県","静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県","徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"];
-    const REGIONS = {
-      "東北":["青森県","岩手県","宮城県","秋田県","山形県","福島県"],
-      "関東":["茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県"],
-      "首都圏":["埼玉県","千葉県","東京都","神奈川県"],
-      "甲信越":["山梨県","長野県","新潟県"],
-      "北陸":["富山県","石川県","福井県"],
-      "東海":["岐阜県","静岡県","愛知県","三重県"],
-      "近畿":["滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県"],
-      "関西":["滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県"],
-      "中国地方":["鳥取県","島根県","岡山県","広島県","山口県"],
-      "四国":["徳島県","香川県","愛媛県","高知県"],
-      "九州":["福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県"]
-    };
     function mechCheck(d){
       if(!company) return null;
-      const comp = (company["会社"] || {}), fil = (company["機械足切り条件"] || {});
-      const pref = comp["本店所在地_都道府県"] || fil["対象地域"] || "";
-      /* 進出予定地域：出店・進出計画がある場合の予定県。未定なら空＝全国対象のみ通す */
-      const planned = [].concat(comp["進出予定地域"] || company["進出予定地域"] || []).filter(Boolean);
-      const myPrefs = [pref].concat(planned).filter(Boolean);
-      const myCity = comp["本店所在地_市区町村"] || "";
-      const emp  = Number(comp["従業員数_合計"]);
-      const results = [];
-
-      const area = d.target_area_search || "";
-      let areaOk = !area || area.includes("全国") || myPrefs.some(p => area.includes(p));
-      let areaV  = area || "（指定なし）";
-      if(areaOk && myPrefs.length){
-        const extra = String(d.target_area_detail || "") + "　" + String(d.title || d.name || "");
-        const inMine = myPrefs.some(p => extra.includes(p)) || (myCity && extra.includes(myCity));
-        if(extra.trim() && !extra.includes("全国") && !inMine){
-          /* ① 他県名の限定記載 */
-          const other = PREFS.find(p => !myPrefs.includes(p) && extra.includes(p));
-          if(other){ areaOk = false; areaV = (area ? area + "／" : "") + "文面に「"+other+"」の地域限定記載"; }
-          /* ② 地方区分（東北・首都圏・九州など）の限定記載：自社県がそのブロックに含まれなければ弾く */
-          if(areaOk){
-            for(const rn in REGIONS){
-              if(extra.includes(rn) && !REGIONS[rn].some(p => myPrefs.includes(p))){
-                areaOk = false; areaV = (area ? area + "／" : "") + "文面に「"+rn+"」の地域限定記載"; break;
-              }
-            }
-          }
-          /* ③ 市区町村レベルの明確な限定文言（○○市限定・○○市内の事業者 等） */
-          if(areaOk){
-            const mm = extra.match(/([一-龠々ヶ]{1,6}?[市区町村])(限定|内の|内に|に所在|に本社|に事業所)/);
-            if(mm && mm[1] !== "市区町村" && mm[1] !== "市町村" && (!myCity || mm[1] !== myCity)){
-              areaOk = false; areaV = (area ? area + "／" : "") + "文面に「"+mm[1]+"」の地域限定記載";
-            }
-          }
-        }
-      }
-      results.push({k:"対象地域", v:areaV, ok:areaOk});
-
-      const ind = d.industry || "";
-      const tokens = String(fil["業種"] || "").split(/[，,、\s]+/).filter(Boolean);
-      /* 2026-08-13：公募側が業種を限定していない表記（全業種・業種不問など）は、
-         会社側のトークンに頼らずコードで通す。以前は基礎情報に「全業種」等の語を入れて
-         代用していたが、その語が他の判定にも効いてしまい誤選択の一因になっていた。 */
-      const ANY_IND = ["指定なし","全業種","全ての業種","すべての業種","業種不問","不問","制限なし","限定なし","特に定めなし","問わない","全産業"];
-      const indAny = ANY_IND.some(w => ind.includes(w));
-      const indOk = !ind || indAny || tokens.some(tk => ind.includes(tk));
-      results.push({k:"対象業種", v:(ind || "（指定なし）"), ok:indOk});
-
-      const t = d.target_number_of_employees || "";
-      let empOk = true;
-      if(t && !t.includes("制約なし") && !isNaN(emp)){
-        const m = t.match(/(\d+)\s*名(以下|以上)/);
-        if(m){ const n = Number(m[1]); empOk = (m[2] === "以下") ? (emp <= n) : (emp >= n); }
-      }
-      results.push({k:"従業員規模", v:(t || "（指定なし）"), ok:empOk});
-
-      // 案件名の除外語（ただし探索キーワードを含む案件は優先して残す）
-      const title = String(d.title || d.name || "");
-      const ngList  = Array.isArray(company["案件名の除外キーワード"]) ? company["案件名の除外キーワード"] : [];
-      const posList = Array.isArray(company["探索キーワード"]) ? company["探索キーワード"] : [];
-      let ngOk = true, ngHit = "";
-      if(title && ngList.length){
-        const hit = ngList.find(w => w && title.includes(w));
-        if(hit && !posList.some(w => w && title.includes(w))){ ngOk = false; ngHit = hit; }
-      }
-      results.push({k:"案件名の除外語", v:(ngOk ? "該当なし" : "「"+ngHit+"」を含む"), ok:ngOk});
-
-      /* ---- 2026-08-13追加：制度規模の照合 ----
-         制度の上限額が、会社が自ら申告した「予想年商（上限の目安）」を超えるものは、
-         投資規模が桁違いで現実に申請できない。値は事実の申告ではなく担当者の見積り。
-         読み取れない場合は判定しない（無い規則を推測で作らない）。 */
-      const sales = tsParseYen(comp["予想年商"] != null ? comp["予想年商"] : comp["年商"]);
-      const maxAmt = (d.subsidy_max_limit != null && isFinite(Number(d.subsidy_max_limit))) ? Number(d.subsidy_max_limit) : null;
-      let sizeOk = true, sizeV = "（判定なし）";
-      if(sales && maxAmt != null && maxAmt > 0){
-        sizeOk = maxAmt <= sales;
-        sizeV = "上限額 " + tsYenBrief(maxAmt) + " ／ 予想年商（上限） " + tsYenBrief(sales) + (sizeOk ? "" : "（お考えの上限を超えるため規模が不相応）");
-      }
-      results.push({k:"制度規模", v:sizeV, ok:sizeOk});
-
-      /* ---- 2026-08-13追加：年度の照合 ----
-         案件名に和暦年度が入っている場合、当年度と前年度のものだけを残す。
-         それより古い年度は、受付締切が先でも実質的に過年度の制度である。 */
-      const fyNow = tsCurrentWareki();
-      const mfy = String(d.title || d.name || "").match(/(令和|平成)\s*([0-9０-９]+|元)\s*年度/);
-      let fyOk = true, fyV = "（記載なし）";
-      if(mfy){
-        const era = mfy[1];
-        const numRaw = (mfy[2] === "元") ? "1" : mfy[2].replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-        const n = Number(numRaw);
-        if(era === "平成"){ fyOk = false; fyV = "平成" + n + "年度（過年度）"; }
-        else{
-          fyOk = (n >= fyNow - 1);
-          fyV = "令和" + n + "年度" + (fyOk ? "" : "（当年度=令和" + fyNow + "年度より前のため過年度）");
-        }
-      }
-      results.push({k:"年度", v:fyV, ok:fyOk});
-
-      /* ---- 2026-08-13追加：継続申請（2年目・3年目申請用）の前提照合 ----
-         「2年目申請用」「3年目申請用」は、1年目を受給していることが申請の前提。
-         企業基礎情報の過去の申請実績に該当制度が無ければ、そもそも申請できないので選定しない。 */
-      const ttl = String(d.title || d.name || "");
-      const mYr = ttl.match(/([0-9０-９]+)\s*年目/);
-      let contOk = true, contV = "（該当なし）";
-      if(mYr){
-        const yn = Number(mYr[1].replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)));
-        if(yn >= 2){
-          const past = [].concat(comp["過去の申請実績"] || company["過去の申請実績"] || []);
-          const base = ttl
-            .replace(/[【】〔〕（）()\[\]]/g, "")
-            .replace(/(令和|平成)\s*[0-9０-９元]+\s*年度?/g, "")
-            .replace(/[0-9０-９]+\s*年目申請用/g, "")
-            .replace(/[～~]/g, "")
-            .replace(/[\s　]/g, "");
-          const core = base.slice(0, 12);
-          const hit = past.some(x => {
-            const t = (typeof x === "string") ? x : JSON.stringify(x);
-            return core && String(t).replace(/[\s　]/g, "").includes(core);
-          });
-          contOk = hit;
-          contV = yn + "年目申請用（" + (hit ? "前年度までの受給実績あり" : "前年度までの受給実績が基礎情報に無いため申請不可") + "）";
-        }
-      }
-      results.push({k:"継続申請の前提", v:contV, ok:contOk});
-
-      return { pass: results.every(r => r.ok), results };
+      return mechCache[mechKey(d)] || null;
     }
 
     const e = s => (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
@@ -1713,6 +1590,7 @@ body.presenMode table{font-size:1.02em}
         let show = list;
         if(company){
           /* 第1段：粗足切り（一覧項目・無料・瞬時） */
+          await mechFill(list);
           show = list.filter(it => { const m = mechCheck(it); return m ? m.pass : true; });
           if(show.length === 0){
             st.textContent = "受付中 "+list.length+" 件　※全件が地域・業種・従業員規模の条件で除外されました。";
@@ -1754,6 +1632,7 @@ body.presenMode table{font-size:1.02em}
           let done = 0;
           st.textContent = "受付中 "+list.length+" 件 → AI仕分け "+aiCount+" 件 → 精密足切り中…（0/"+aiCount+"）";
           const passIds = {};
+          const fetched = [];
           const queue = show.slice();
           async function worker(){
             while(queue.length){
@@ -1762,8 +1641,8 @@ body.presenMode table{font-size:1.02em}
               try{
                 let d = digDetails[it.id];
                 if(!d){ d = await fetchDetail(it.id); digDetails[it.id] = d; }
-                const m = mechCheck(d);
-                if(!m || m.pass) passIds[it.id] = true;
+                if(d && !d.id) d.id = it.id;
+                fetched.push({ it: it, d: d });
               }catch(_){
                 passIds[it.id] = true; /* 取得失敗は見落とし防止のため残す */
               }
@@ -1772,6 +1651,11 @@ body.presenMode table{font-size:1.02em}
             }
           }
           await Promise.all([worker(), worker(), worker(), worker()]);
+          await mechFill(fetched.map(x => x.d));
+          for(const x of fetched){
+            const m = mechCheck(x.d);
+            if(!m || m.pass) passIds[x.it.id] = true;
+          }
           show = show.filter(it => !it.id || passIds[it.id]);
           if(show.length === 0){
             st.textContent = "受付中 "+list.length+" 件　※精密足切りで全件が除外されました。";
@@ -2249,7 +2133,7 @@ body.presenMode table{font-size:1.02em}
         act = '<div class="digpick"><span style="color:var(--muted);font-weight:400">企業基礎情報が未読み込みのため足切り判定は省略しています。上の「企業基礎情報」欄でJSONを読み込むと、この欄で自動判定します。</span><br>'
             + '<button class="rbtn" data-act="pick" style="margin-top:6px">この案件で進める（候補に登録）</button><span class="digpicked"></span></div>';
       }else{
-        const mc = mechCheck(d);
+        const mc = mechCheck(d) || { pass:true, results:[{k:"足切り", v:"今回は判定できませんでした（通信が届かなかったため、通過として扱っています）", ok:true}] };
         const lines = mc.results.map(r => e((r.ok ? "○ " : "× ") + r.k + "：" + r.v)).join("<br>");
         if(mc.pass){
           act = '<div class="digpick"><span style="color:var(--ok)">精密足切り：通過</span><br>' + lines
@@ -2339,6 +2223,7 @@ body.presenMode table{font-size:1.02em}
         try{
           const d = await fetchDetail(tr.dataset.id);
           digDetails[tr.dataset.id] = d;
+          await mechFill([d]);
           const dtr = document.createElement("tr");
           dtr.className = "digdetail";
           dtr.innerHTML = '<td colspan="5">'+detailHtml(d, tr.dataset.id)+"</td>";
@@ -3962,7 +3847,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-29-04';
+  const TRIGATE_VERSION = '2026-08-29-05';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

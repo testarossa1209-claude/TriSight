@@ -1057,7 +1057,7 @@ body.presenMode table{font-size:1.02em}
         front_subsidy_detail_page_url: x.source_url,
         ts_why: x.why || "",
         ts_guide: Array.isArray(x.guide) ? x.guide : [],
-        ts_source: (x.area || pref) + "（入口ページ）",
+        ts_source: (x.area || pref) + "（入口ページ・" + (x.kind === "entry" ? "AIが入口と判断" : (!okUrl(x.source_url) ? "URLの形で除外" : "読み取れた項目が不足")) + "）",
         ts_verified_on: today
       }));
     const kept = raw.filter(x => x.kind !== "entry" && okUrl(x.source_url) && okContent(x));

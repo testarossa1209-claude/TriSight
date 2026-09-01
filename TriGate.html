@@ -1525,6 +1525,16 @@ body.presenMode table{font-size:1.02em}
       if(isNaN(d)) return e(iso);
       return d.getFullYear()+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+String(d.getDate()).padStart(2,"0");
     };
+    /* 自治体の制度は、設備の組み合わせや容量で額が変わるものが多い。
+       検索で拾った一つの数字を上限額として出すと、営業の現場で誤った金額を伝えることになる。
+       実例＝令和8年度前橋市家庭用ゼロカーボン推進補助事業。画面は8万円と出したが、
+       要領では 太陽光3万／蓄電池は1kW当たり1万（上限5万）／給湯機5万 と設備ごとに別（2026-09-01）。 */
+    window.tsAmountCell = function(it, fyFn){
+      const base = fyFn(it && it.subsidy_max_limit);
+      const isWeb = String(it && it.id || "").indexOf("web-") === 0;
+      if(!isWeb || base === "—" || base === "記載なし") return base;
+      return base + '<div style="font-size:11px;color:var(--muted,#868e96);line-height:1.4">設備ごとに額が変わる場合があります。要領でご確認ください</div>';
+    };
     const fy = n => {
       if(n==null || n==="") return "—";
       const v = Number(n);
@@ -1546,7 +1556,7 @@ body.presenMode table{font-size:1.02em}
       for(const it of rows){
         html += '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'">'
               + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)+"</td>"
-              + "<td>"+fy(it.subsidy_max_limit)+"</td>"
+              + "<td>"+tsAmountCell(it, fy)+"</td>"
               + '<td class="dl">'+fd(it.acceptance_end_datetime)+"</td>"
               + "<td>"+e(it.target_area_search || "—")+"</td>"
               + "<td>"+(it.id ? '<button class="dbtn" data-act="detail">詳細</button>' : "")+"</td></tr>";
@@ -1848,7 +1858,7 @@ body.presenMode table{font-size:1.02em}
         const headCells = '<th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th>';
         const rowOf = (it) => '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'" data-end="'+e(it.acceptance_end_datetime||"")+'">'
                 + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)+"</td>"
-                + "<td>"+fy(it.subsidy_max_limit)+"</td>"
+                + "<td>"+tsAmountCell(it, fy)+"</td>"
                 + '<td class="dl">'+fd(it.acceptance_end_datetime)
                     + (tsIsClosed(it.acceptance_end_datetime) ? '<div style="color:var(--fix);font-size:11.5px">受付終了</div>' : "")
                     + "</td>"

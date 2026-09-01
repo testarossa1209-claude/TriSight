@@ -1716,6 +1716,11 @@ body.presenMode table{font-size:1.02em}
               const seen = {};
               list.forEach(it => { if(it && it.id) seen[it.id] = true; });
               list = list.concat(webItems.filter(it => !seen[it.id]));
+              /* 印は list に入ったものへ付け直す。保存や複製で落ちることがあるため（2026-09-01） */
+              if(wantShunushi){
+                const wid = {}; webItems.forEach(w => { if(w && w.id) wid[w.id] = true; });
+                list.forEach(it => { if(it && wid[it.id]) it.__shunushi = true; });
+              }
               tsWebCacheSave(webItems);
               webNote = "／" + selArea + "の検索で " + webItems.length + "件"
                      + (webEntries.length ? "（ほかに探す手がかり" + webEntries.length + "件）" : "");
@@ -1731,7 +1736,7 @@ body.presenMode table{font-size:1.02em}
         let cutByArea = 0;
         if(selPref){
           const before = list.length;
-          list = list.filter(it => String(it && it.id || "").indexOf("web-") === 0 || tsAreaOk(it, selPref, selCity));
+          list = list.filter(it => (it && it.__shunushi) || String(it && it.id || "").indexOf("web-") === 0 || tsAreaOk(it, selPref, selCity));
           cutByArea = before - list.length;
         }
         /* 受付が終わっているものを外す（2026-09-01）。
@@ -1754,7 +1759,9 @@ body.presenMode table{font-size:1.02em}
         if(company){
           /* 第1段：粗足切り（一覧項目・無料・瞬時） */
           await mechFill(list);
-          show = list.filter(it => { const m = mechCheck(it); return m ? m.pass : true; });
+          /* 施主（個人）向けは、会社を基準にした足切りを通さない（2026-09-01）。
+             受け取るのが会社ではないので、地域・業種・規模で判定すると必ず落ちる。 */
+          show = list.filter(it => { if(it.__shunushi) return true; const m = mechCheck(it); return m ? m.pass : true; });
           if(show.length === 0){
             st.textContent = "受付中 "+list.length+" 件　※全件が地域・業種・従業員規模の条件で除外されました。"+mechAlert();
             return;
@@ -1821,7 +1828,7 @@ body.presenMode table{font-size:1.02em}
             const m = mechCheck(x.d);
             if(!m || m.pass) passIds[x.it.id] = true;
           }
-          show = show.filter(it => !it.id || passIds[it.id]);
+          show = show.filter(it => it.__shunushi || !it.id || passIds[it.id]);
           if(show.length === 0){
             st.textContent = "受付中 "+list.length+" 件　※精密足切りで全件が除外されました。"+mechAlert();
             return;

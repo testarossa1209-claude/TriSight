@@ -390,6 +390,9 @@ body.presenMode table{font-size:1.02em}
       <label class="digkwlabel" for="digPref" style="margin-left:10px">地域</label>
         <select id="digPref" title="この地域と「全国」の制度だけを表示します"></select>
         <select id="digCity" title="市区町村まで絞ると、その市区町村のページを直接掘りに行きます" style="margin-left:6px"></select>
+        <label style="margin-left:10px;font-size:13px;white-space:nowrap" title="住宅用の補助のように、受け取るのが会社ではなく個人（施主）の制度も探します">
+          <input type="checkbox" id="digShunushi"> 施主（個人）が受け取る制度も探す
+        </label>
       <button id="digBtn" class="rbtn">新着を掘る</button>
     </div>
     <div class="digrow" style="margin-top:8px">
@@ -628,6 +631,21 @@ body.presenMode table{font-size:1.02em}
     if(isNaN(t)) return null;
     const d = Math.floor((t - Date.now()) / 86400000);
     return d;
+  }
+  /* 受付が終わっているか（2026-09-01）。
+     日付が読めないもの・空のものは「終わっていない」として扱う。
+     掲載元の表記が申請締切と違うことがあるため、勝手に終了と決めつけない。
+     当日は終了扱いにしない（その日の消印・持参が有効な制度があるため）。 */
+  function tsIsClosed(endStr){
+    if(!endStr) return false;
+    const t = Date.parse(String(endStr).replace(/\//g, "-"));
+    if(isNaN(t)) return false;
+    const end = new Date(t);
+    const today = new Date();
+    /* 日付だけで比べる。時刻で比べると、締切当日の朝が「過ぎた」になってしまう。 */
+    const endDay   = new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime();
+    const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+    return endDay < todayDay;
   }
   /* 急ぎ＝締切まで21日以内で、まだ過ぎておらず、間に合わないと判定されていないもの。
      これは点数ではなく順番に効かせる（前に出す）。 */
@@ -983,12 +1001,17 @@ body.presenMode table{font-size:1.02em}
     const n = ind.split(/[\/／,、]/).map(x => x.trim()).filter(Boolean).length;
     return n > 0 && n <= TS_NARROW_MAX;
   }
-  function tsAreaOk(it, pref){
+  /* 2026-09-01 改定：市区町村を選んだときも、県の制度と全国区は残す。
+     市区町村だけで絞ると、その県が出している制度まで消えてしまうため。
+     残すのは「全国」「選んだ都道府県」「選んだ市区町村」のいずれかを含むもの。 */
+  function tsAreaOk(it, pref, city){
     if(!pref) return true;
     const a = String((it && (it.target_area_search || it.target_area_detail)) || "");
     if(!a) return true;
     if(a.indexOf("全国") >= 0) return true;
-    return a.indexOf(pref) >= 0;
+    if(a.indexOf(pref) >= 0) return true;
+    if(city && a.indexOf(city) >= 0) return true;
+    return false;
   }
 
   /* ===== 自治体の制度をその場で掘りに行く（2026-08-22） =====
@@ -1670,16 +1693,23 @@ body.presenMode table{font-size:1.02em}
            失敗しても他の出所の結果は残す。 */
         const selPref = prefSel ? prefSel.value : "";
         const selCity = (citySel && !citySel.disabled) ? citySel.value : "";
-        /* 掘りに行く先は市区町村まで。絞り込み（tsAreaOk）は県のままにする。
-           市区町村で絞ると、県が出している制度まで消えてしまうため（2026-09-01）。 */
+        /* 掘りに行く先も、絞り込みも市区町村まで。
+           県の制度と全国区は tsAreaOk 側で残すので、市区町村で絞っても消えない（2026-09-01）。 */
         const selArea = selPref + selCity;
         let webNote = "";
         let webEntries = [];
         if(selPref){
           st.textContent = selArea + "の独自制度を検索しています…（30秒ほどかかります）";
           try{
-            const ind = (company && company["機械足切り条件"] && company["機械足切り条件"]["業種"]) || "";
+            const shu = document.getElementById("digShunushi");
+            const wantShunushi = !!(shu && shu.checked);
+            /* 施主（個人）向けを探すときは、業種の代わりに受給者の別を伝える。
+               会社の業種で探すと、事業者向けの制度しか返ってこないため（2026-09-01）。 */
+            const ind = wantShunushi
+              ? "受給者が個人（住宅の所有者・居住者）である住宅用の制度。太陽光発電・蓄電池・V2H・省エネ改修など。事業者向けは不要"
+              : ((company && company["機械足切り条件"] && company["機械足切り条件"]["業種"]) || "");
             const webItems = await tsDigWebPref(selArea, ind, selCity);
+            if(wantShunushi) webItems.forEach(it => { if(it) it.__shunushi = true; });
             webEntries = tsWebEntries.slice();
             srcTally.push({ label: selArea + "（ウェブ検索）", n: webItems.length, ok: true, entries: webEntries.length });
             if(webItems.length){
@@ -1701,8 +1731,19 @@ body.presenMode table{font-size:1.02em}
         let cutByArea = 0;
         if(selPref){
           const before = list.length;
-          list = list.filter(it => String(it && it.id || "").indexOf("web-") === 0 || tsAreaOk(it, selPref));
+          list = list.filter(it => String(it && it.id || "").indexOf("web-") === 0 || tsAreaOk(it, selPref, selCity));
           cutByArea = before - list.length;
+        }
+        /* 受付が終わっているものを外す（2026-09-01）。
+           実例＝令和8年度前橋市設備投資支援補助金は受付終了が2026/08/28で、
+           9月1日の発掘でも受付中として一覧に出ていた。
+           基礎情報の「受付中のみ」がfalseのときは外さず、印を付けて残す。 */
+        let cutByClosed = 0;
+        const onlyOpen = !(company && company["機械足切り条件"] && company["機械足切り条件"]["受付中のみ"] === false);
+        if(onlyOpen){
+          const before2 = list.length;
+          list = list.filter(it => !tsIsClosed(it && it.acceptance_end_datetime));
+          cutByClosed = before2 - list.length;
         }
         if(list.length === 0){
           st.textContent = "「"+kw+"」で受付中の補助金は見つかりませんでした。ここは業種名や団体名を入れる欄ではなく、制度そのものの名前に出てくる語を入れる欄です（例：事業、雇用、人材、賃上げ）。業種による絞り込みは、読み込んだ企業基礎情報の側で自動的に行われます。";
@@ -1724,7 +1765,9 @@ body.presenMode table{font-size:1.02em}
             st.textContent = "受付中 "+list.length+" 件 → 粗足切り "+show.length+" 件 → 案件名をAIで一括仕分け中…（API 1回）";
             try{
               /* 記憶済みの案件はAIに問い直さない（実行ごとの揺れを止めるため） */
-              const askList = show.filter(it => tsJudgeGet("sieve", it.id) === null);
+              /* 施主（個人）向けとして拾った候補は、会社を基準にした仕分けにかけない。
+                 受け取るのが会社ではないので、業種や規模で判定すると必ず落ちる（2026-09-01）。 */
+              const askList = show.filter(it => !it.__shunushi && tsJudgeGet("sieve", it.id) === null);
               let keptSet = null;
               if(askList.length){
                 const keptIdx = await aiTitleSort(askList);
@@ -1737,7 +1780,7 @@ body.presenMode table{font-size:1.02em}
               }
               const kept = keptSet;
               if(kept){
-                show = show.filter(it => tsJudgeGet("sieve", it.id) !== false);
+                show = show.filter(it => it.__shunushi || tsJudgeGet("sieve", it.id) !== false);
                 if(show.length === 0){
                   st.textContent = "受付中 "+list.length+" 件　※案件名のAI仕分けで全件が無関係と判定されました。";
                   return;
@@ -1790,14 +1833,18 @@ body.presenMode table{font-size:1.02em}
         /* 業界固有のものを先に並べる（2026-08-22）。
            どこでも手に入る全業種向けの制度と、その業界にしか当たらない制度を分けて見せる。
            全業種向けを捨てるのではない（金額が大きいのはむしろそちら）。順序と見出しで分ける。 */
-        const grpA = show.filter(it => tsIsIndustrySpecific(it));
-        const grpB = show.filter(it => !tsIsIndustrySpecific(it));
-        show = grpA.concat(grpB);
+        const grpS = show.filter(it => it.__shunushi);
+        const rest = show.filter(it => !it.__shunushi);
+        const grpA = rest.filter(it => tsIsIndustrySpecific(it));
+        const grpB = rest.filter(it => !tsIsIndustrySpecific(it));
+        show = grpS.concat(grpA, grpB);
         const headCells = '<th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th>';
         const rowOf = (it) => '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'" data-end="'+e(it.acceptance_end_datetime||"")+'">'
                 + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)+"</td>"
                 + "<td>"+fy(it.subsidy_max_limit)+"</td>"
-                + '<td class="dl">'+fd(it.acceptance_end_datetime)+"</td>"
+                + '<td class="dl">'+fd(it.acceptance_end_datetime)
+                    + (tsIsClosed(it.acceptance_end_datetime) ? '<div style="color:var(--fix);font-size:11.5px">受付終了</div>' : "")
+                    + "</td>"
                 + "<td>"+e(it.target_area_search || "—")+"</td>"
                 + "<td>"+(it.id ? '<button class="dbtn" data-act="detail">詳細</button>' : "")+"</td></tr>";
         const sepOf = (label, n) => '<tr class="digsep"><td colspan="5" style="background:#f6f7f9;font-weight:600;padding:6px 8px">'
@@ -1831,17 +1878,23 @@ body.presenMode table{font-size:1.02em}
                 + '調べていないのではありません。</div></div>';
         }
         html += '<table class="digtbl"><thead><tr>' + headCells + '</tr></thead><tbody>';
+        if(grpS.length){
+          html += sepOf("施主（個人）が受け取る制度", grpS.length);
+          grpS.forEach(it => { html += rowOf(it); });
+        }
         if(grpA.length && grpB.length){
           html += sepOf("この業界向けの制度", grpA.length);
           grpA.forEach(it => { html += rowOf(it); });
           html += sepOf("業種を問わない制度", grpB.length);
           grpB.forEach(it => { html += rowOf(it); });
         }else{
-          show.forEach(it => { html += rowOf(it); });
+          /* 施主向けは上で出しているので、ここでは残りだけ出す（2026-09-01） */
+          rest.forEach(it => { html += rowOf(it); });
         }
         html += "</tbody></table>" + "<div class='digNote'>受付期間の終わりは掲載元（Jグランツ等）の表記をそのまま表示しています。申請の締切と異なる場合があります。"
               + e(webNote)
-              + (selPref ? "／地域は「" + e(selPref) + "」で絞っています（全国区の制度は残しています"
+              + (cutByClosed ? "／受付が終わっている制度 " + cutByClosed + "件を一覧から外しています。" : "")
+              + (selPref ? "／地域は「" + e(selArea) + "」で絞っています（全国区と" + e(selPref) + "の制度は残しています"
                   + (cutByArea ? "。" + cutByArea + "件を地域で除外" : "") + "）。" : "") + "</div>";
         /* 入口ページ（2026-08-22）：制度個別まで行けなかったものを、拾い方の案内つきで出す。
            捨てると0件になるが、人が拾えるなら価値がある。ただし制度の一覧とは必ず分ける。 */

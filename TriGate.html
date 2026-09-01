@@ -1018,22 +1018,18 @@ body.presenMode table{font-size:1.02em}
     /* eslint-disable-next-line no-unused-vars */
     /* 受け取り側の門（2026-08-22）。AIが条件を破って返しても、ここで落とす。
        ①制度個別ページと言えないURLは捨てる ②読み取れた項目が2つ未満のものは捨てる */
-    const badPath = /(index|top|home|list|ichiran|一覧|about)(\.html?|\/|$)/i;
+    /* 2026-09-01 改定：この門が制度そのものまで落としていた。
+       実例＝千葉県「令和8年度千葉県地域交通等次世代自動車導入促進補助金【地域交通事業者等向け】」。
+       入口かどうかの判断は、返す側が kind:"entry" で既に答えている。
+       ここで二重に落とす必要はないため、明らかな入口だけを弾く形に緩める。 */
+    const badPath = /(index|ichiran|一覧)(\.html?|\/|$)/i;
     const okUrl = (u) => {
       if(!/^https?:\/\//.test(u || "")) return false;
       try{
         const url = new URL(u);
         const segs = (url.pathname || "").split("/").filter(Boolean);
         if(!segs.length) return false;                       /* ドメイン直 */
-        if(badPath.test(url.pathname)) return false;         /* 一覧・入口ページ */
-        /* 末尾が「/」で終わるものは、その課・その分類のトップページである可能性が高い。
-           2026-08-22：熊本県の交通課ページを制度として拾ってしまったため追加。 */
-        if(/\/$/.test(url.pathname) && segs.length < 4) return false;
-        const last = segs[segs.length - 1];
-        const hasExt   = /\.[a-z0-9]{2,5}$/i.test(last);     /* ○○.html / .pdf など */
-        const hasQuery = !!url.search;                        /* ?id=123 のような個別指定 */
-        const looksId  = last.length >= 4 && /[-_0-9]/.test(last); /* 制度名や番号を含む */
-        if(!hasExt && !hasQuery && !looksId) return false;    /* 「/soshiki/kotsu」等 */
+        if(badPath.test(url.pathname)) return false;         /* 明らかな一覧ページ */
         return true;
       }catch(_){ return false; }
     };
@@ -1043,7 +1039,9 @@ body.presenMode table{font-size:1.02em}
         n = [x.max_limit, x.rate, x.end || x.start].filter(v => v !== null && v !== undefined && v !== "").length;
         if(x.detail && String(x.detail).length > 60) n += 1;
       }
-      return n >= 2;
+      /* 2026-09-01：2つ以上を求めると、金額や期間が本文に書かれていない制度が全部落ちる。
+         自治体の制度は「予算がなくなり次第終了」など、数値で書かない例が多いため1つに緩める。 */
+      return n >= 1;
     };
     const isUrl = (u) => /^https?:\/\//.test(u || "");
     const raw = items.filter(x => x && x.title && isUrl(x.source_url));
@@ -1057,7 +1055,7 @@ body.presenMode table{font-size:1.02em}
         front_subsidy_detail_page_url: x.source_url,
         ts_why: x.why || "",
         ts_guide: Array.isArray(x.guide) ? x.guide : [],
-        ts_source: (x.area || pref) + "（入口ページ・" + (x.kind === "entry" ? "AIが入口と判断" : (!okUrl(x.source_url) ? "URLの形で除外" : "読み取れた項目が不足")) + "）",
+        ts_source: (x.area || pref) + "（入口ページ）",
         ts_verified_on: today
       }));
     const kept = raw.filter(x => x.kind !== "entry" && okUrl(x.source_url) && okContent(x));

@@ -522,7 +522,7 @@ body.presenMode table{font-size:1.02em}
 
   <footer>
     門：TriGate®（受付・仕分け）／ 抽出：PDF.js（端末内で文字化）→ 構造化：なぎさ（Anthropic）を <code>trisight-relay</code> 経由で呼び出し（APIキーはサーバー側・画面に出ません）。エンジンは TriTask® を共有。<br>
-    ※ 試作 v0.1。本番公開時は正式登録商標ロゴ画像（TriSight_logo_registered.jpg）を埋め込み。判断（申請の是非・経費の該当）は人間に残します。
+    判断（申請の是非・経費の該当）は人間に残します。
   </footer>
 
 </div>
@@ -1408,7 +1408,22 @@ body.presenMode table{font-size:1.02em}
     tsRenderPrefSel();
     tsRenderCitySel();
     if(prefSel) prefSel.addEventListener("change", function(){ if(citySel) citySel.value = ""; tsRenderCitySel(); });
-    /* 掘りに行く地域の文字列。市区町村を選んでいればそこまで含める。 */
+    /* 見込み額パネルで指定された上限・下限の目安を読む（2026-09-04）。
+     保存形式は trigate_pj_threshold の {認証コード: {min, max}}。
+     パネル側の関数はこの塊から見えないため、保存先を直に読む。 */
+  function tsAmountLimits(){
+    let code = "", m = {};
+    try{ code = localStorage.getItem("trisight_access_code") || ""; }catch(e){ code = ""; }
+    try{ m = JSON.parse(localStorage.getItem("trigate_pj_threshold") || "{}"); }catch(e){ m = {}; }
+    let entry = (m && typeof m === "object") ? m[code] : null;
+    if(typeof entry === "number") entry = { min: 0, max: entry };
+    if(!entry || typeof entry !== "object") entry = {};
+    const max = (isFinite(Number(entry.max)) && Number(entry.max) > 0) ? Number(entry.max) : 50000000;
+    const min = (isFinite(Number(entry.min)) && Number(entry.min) > 0) ? Number(entry.min) : null;
+    return { min: min, max: max };
+  }
+
+  /* 掘りに行く地域の文字列。市区町村を選んでいればそこまで含める。 */
     window.tsDigArea = function(){
       const p = prefSel ? prefSel.value : "";
       const c = (citySel && !citySel.disabled) ? citySel.value : "";
@@ -1728,7 +1743,9 @@ body.presenMode table{font-size:1.02em}
       let html = '<table class="digtbl"><thead><tr><th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th></tr></thead><tbody>';
       for(const it of rows){
         html += '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'">'
-              + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)+"</td>"
+              + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)
+                + (it.__amtOut ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__amtOut)+'</span>' : "")
+                + "</td>"
               + "<td>"+tsAmountCell(it, fy)+"</td>"
               + '<td class="dl">'+fd(it.acceptance_end_datetime)+"</td>"
               + "<td>"+e(it.target_area_search || "—")+"</td>"
@@ -2029,10 +2046,30 @@ body.presenMode table{font-size:1.02em}
         const rest = show.filter(it => !it.__shunushi);
         const grpA = rest.filter(it => tsIsIndustrySpecific(it));
         const grpB = rest.filter(it => !tsIsIndustrySpecific(it));
-        show = grpS.concat(grpA, grpB);
+        /* 上限・下限の目安を一覧にも効かせる（2026-09-04）。
+           これまで目安は見込み額パネルの中だけで使っており、「上限1,000万円」と入れてあるのに
+           73億円の案件が上に並んでいた。入力させておいて一覧に効かないのは機能として成立しない。
+           ただし消しはしない——「上限額」が事業全体の額なのか1社あたりの交付額なのかを
+           当社は見分けていないため、額だけで捨てると取れる制度を消す危険がある。 */
+        const __lim = tsAmountLimits();
+        show.forEach(function(it){
+          it.__amtOut = "";
+          const v = (it && it.subsidy_max_limit != null && isFinite(Number(it.subsidy_max_limit)))
+            ? Number(it.subsidy_max_limit) : null;
+          if(v == null) return;                       /* 額が分からないものは触らない */
+          if(__lim.max != null && v > __lim.max) it.__amtOut = "規模大";
+          else if(__lim.min != null && v < __lim.min) it.__amtOut = "規模小";
+        });
+        const byRange = function(arr){
+          return arr.filter(function(x){ return !x.__amtOut; })
+                    .concat(arr.filter(function(x){ return !!x.__amtOut; }));
+        };
+        show = byRange(grpS).concat(byRange(grpA), byRange(grpB));
         const headCells = '<th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th>';
         const rowOf = (it) => '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'" data-end="'+e(it.acceptance_end_datetime||"")+'">'
-                + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)+"</td>"
+                + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)
+                + (it.__amtOut ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__amtOut)+'</span>' : "")
+                + "</td>"
                 + "<td>"+tsAmountCell(it, fy)+"</td>"
                 + '<td class="dl">'+fd(it.acceptance_end_datetime)
                     + (tsIsClosed(it.acceptance_end_datetime) ? '<div style="color:var(--fix);font-size:11.5px">受付終了</div>' : "")
@@ -2783,19 +2820,27 @@ body.presenMode table{font-size:1.02em}
           if(note) note.textContent = "読み取り欄に入れました（" + file.name + "）。下の「読み取る」を押してください。";
         }catch(err){
           const msg = String(err && err.message ? err.message : err);
-          /* リレーは大きいファイルを返せない（2026-09-03に厚労省の5.7MBで413）。
-             取り寄せられないものは、その場で直に開ける形にして手詰まりを作らない。 */
-          const tooBig = /大きすぎ|413/.test(msg);
+          /* 取り寄せが失敗する理由は3通りある（2026-09-04に実機で確認）。
+               413 … リレーが返せる大きさを超えている（厚労省の5.7MB）
+               403 … リレーの配布元一覧にそのサイトが入っていない（前橋市・事務局のサイト）
+               その他 … 通信の失敗など
+             以前は413のときだけ逃げ道を出しており、403は文言だけで手詰まりになっていた。
+             理由が何であれ、人が次に進める道を必ず画面に残す。 */
+          const why = /413|大きすぎ/.test(msg)
+              ? "当社が代わりに取ってくる仕組みが、この大きさのファイルを返せないためです。"
+              : (/403|許可されていない配布元/.test(msg)
+                 ? "当社が代わりに取ってくる仕組みに、このサイトが登録されていないためです（当社側の設定の問題で、掲載元に非はありません）。"
+                 : "");
           if(note){
-            if(tooBig && b.dataset.url){
-              note.innerHTML = e(msg)
-                + '<br><a href="' + e(b.dataset.url) + '" target="_blank" rel="noopener">このPDFを開く</a>'
-                + "（開いた先で保存し、下の読み取り欄へ入れてください）";
-            }else if(tooBig){
-              note.innerHTML = e(msg) + "<br>公式ページから直接落として、下の読み取り欄へ入れてください。";
+            let html = e(msg);
+            if(why) html += '<br><span style="color:var(--muted)">' + why + "</span>";
+            if(b.dataset.url){
+              html += '<br><a href="' + e(b.dataset.url) + '" target="_blank" rel="noopener">このファイルを開く</a>'
+                    + "（開いた先で保存し、下の読み取り欄へ入れてください）";
             }else{
-              note.textContent = msg;
+              html += "<br>公式ページから直接落として、下の読み取り欄へ入れてください。";
             }
+            note.innerHTML = html;
           }
         }finally{
           b.disabled = false; b.textContent = orig;
@@ -3340,7 +3385,10 @@ body.presenMode table{font-size:1.02em}
     }
     const t = new Date();
     const hhmm = ("0"+t.getHours()).slice(-2) + ":" + ("0"+t.getMinutes()).slice(-2);
-    showTaskMsg((existingId && idx>=0 ? "✓ 修正内容を保存しました " : "✓ 自動でTriTaskへ送信されました ") + hhmm, true);
+    /* 送った先へその場から行けるようにする（2026-09-04）。
+       これまで送信済みの表示だけで行き先が無く、画面の一番上まで戻らせていた。 */
+    showTaskMsg((existingId && idx>=0 ? "✓ 修正内容を保存しました " : "✓ 自動でTriTaskへ送信されました ") + hhmm, true,
+                '　<a href="TriTask.html" target="_blank" rel="noopener">TriTaskで開く</a>');
     const b = $("taskBtn");
     b.disabled = false;
     b.textContent = "送信内容を確認・修正する";
@@ -3348,9 +3396,10 @@ body.presenMode table{font-size:1.02em}
     return card;
   }
 
-  function showTaskMsg(text, ok){
+  function showTaskMsg(text, ok, linkHtml){
     const m = $("taskMsg");
     m.textContent = text;
+    if(linkHtml) m.innerHTML = m.innerHTML + linkHtml;
     m.style.display = "";
     if(!ok){
       m.style.color = "#b0203a"; m.style.background = "#fdeef1"; m.style.borderColor = "#f0c3cc";
@@ -4453,7 +4502,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-04-01';
+  const TRIGATE_VERSION = '2026-09-04-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

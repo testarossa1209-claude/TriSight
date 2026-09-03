@@ -727,7 +727,14 @@
     const li = document.createElement("li");
     li.className = "gitem";
     const statusCls = g.status === "完了" ? "done" : (g.status === "進行中" ? "doing" : "");
-    const due = (g.reverse_tasks && g.reverse_tasks[0] && g.reverse_tasks[0].due_text)
+    /* 一覧の期限は、日付として読めるもののうち最も早いものを出す（2026-09-04）。
+       これまで逆算工程の1行目の期日欄をそのまま出しており、「応募前・早期」のような
+       文言が並んで、締切の近い順に見ることも、あと何日かを知ることもできなかった。
+       日付が一つも無いときだけ、これまでどおり文言を出す。 */
+    let __due = "";
+    try{ const __r = dueOf(g); if(__r && __r.raw) __due = __r.raw; }catch(e){ __due = ""; }
+    const due = __due
+              || (g.reverse_tasks && g.reverse_tasks[0] && g.reverse_tasks[0].due_text)
               || (g.deadlines && g.deadlines[0]) || "期限記載なし";
     li.innerHTML =
       '<div class="gname"></div>'+

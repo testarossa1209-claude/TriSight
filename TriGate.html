@@ -2069,7 +2069,10 @@ body.presenMode table{font-size:1.02em}
           it.__amtOut = "";
           const raw = (it && it.subsidy_max_limit != null) ? it.subsidy_max_limit : null;
           const v = (raw != null && raw !== "" && isFinite(Number(raw))) ? Number(raw) : null;
-          if(v == null) return;                       /* 額が分からないものは触らない */
+          /* 2026-09-04：0を「小さい額」として扱っていたため、掲載元が金額を書いていない案件
+             （画面に「記載なし」と出るもの）に「規模小」が付いていた。
+             金額が分からないだけのものを小さいと決めつけない。0と空欄は触らない。 */
+          if(v == null || v === 0) return;
           __amtSeen++;
           if(__lim.max != null && v > __lim.max){ it.__amtOut = "規模大"; __amtHit++; }
           else if(__lim.min != null && v < __lim.min){ it.__amtOut = "規模小"; __amtHit++; }
@@ -4535,7 +4538,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-04-05';
+  const TRIGATE_VERSION = '2026-09-04-06';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

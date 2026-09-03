@@ -329,7 +329,7 @@ body.presenMode table{font-size:1.02em}
       <button type="button" id="authCodeChangeBtn" style="margin-left:8px;font-size:12.5px;padding:3px 10px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer">認証コードを確認・変更する</button>
       <button type="button" id="planChangeBtn" style="margin-left:6px;font-size:12.5px;padding:3px 10px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer">契約プラン</button>
       <button type="button" id="testSendBtn" style="margin-left:8px;font-size:12.5px;padding:3px 10px;border:1px solid #c9772a;border-radius:6px;background:#fff8ef;color:#a45a1a;cursor:pointer">仮の補助金案件をTriTaskへ送る（動作確認用）</button>
-      <a href="TriForm.html" style="margin-left:8px;font-size:12.5px;color:#c9772a">TriForm で工程に分解する</a>
+      <a href="TriForm.html" style="margin-left:8px;font-size:12.5px;color:#c9772a">TriForm で届いた案件を見る</a>
       <span id="testSendMsg" style="margin-left:8px;font-size:12.5px"></span>
       <span class="vertag" style="margin-left:10px;font-size:12px;color:#8a93a5">版 <b id="verLabel">-</b></span>
     </div>
@@ -2118,7 +2118,101 @@ body.presenMode table{font-size:1.02em}
       return resultMap;
     }
 
-    function gateHtml(g){
+    /* ===== 掘った案件をそのままTriFormへ送る（2026-09-03） =========================
+     従来、受信箱へ入るのは公募要領PDFを読み取って判定まで進んだ案件だけだった。
+     しかし出所5か所のうちJグランツ以外の4か所は要領ファイルを持たないため、
+     読み取りを必須にすると大半の案件が工程へ進めない。掲載情報とAIゲート判定だけでも
+     案件名・交付元・締切・確認事項は渡せるので、そこまでを送る。
+     制度固有の必要書類は要領を読まないと出ないため、その旨を案件に明記して渡す。 */
+  function tsSendDugToForm(id, d){
+    let code = "";
+    try{ code = localStorage.getItem("trisight_access_code") || ""; }catch(e){ code = ""; }
+    let companyName = "";
+    try{
+      const co = JSON.parse(localStorage.getItem("trisight_dig_company") || "null");
+      companyName = (co && co["会社"] && co["会社"]["名称"]) || "";
+    }catch(e){ companyName = ""; }
+
+    let gate = null;
+    try{
+      const cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]");
+      const hit = (cands || []).find(c => c && c.id === id);
+      gate = hit && hit.gate ? hit.gate : null;
+    }catch(e){ gate = null; }
+
+    let ov = "";
+    if(d && d.detail){
+      try{ ov = new DOMParser().parseFromString(String(d.detail), "text/html").body.textContent || ""; }
+      catch(_){ ov = String(d.detail).replace(/<[^>]*>/g, " "); }
+      ov = ov.replace(/[ \t\u3000]+/g, " ").replace(/\s*\n\s*/g, "\n").trim();
+    }
+    if(!ov && d) ov = String(d.subsidy_catch_phrase || "");
+
+    /* 判定が出した確認事項と次の一手を、そのまま人の動く工程として渡す。
+       AIが出したものなので要確認の印を付け、TriForm側で人が見て直せる形にする。 */
+    const tasks = [];
+    if(gate && gate["次の一手"]) tasks.push({ due_text: "", action: String(gate["次の一手"]), must_verify: true });
+    if(gate && Array.isArray(gate["確認事項"])){
+      gate["確認事項"].forEach(x => { if(x) tasks.push({ due_text: "", action: String(x), must_verify: true }); });
+    }
+    if(!tsIsCatalog(id)){
+      tasks.push({ due_text: "", action: "公募要領を読み込み、制度固有の必要書類と提出期限を確定する（TriGateの詳細から「公募要領を読み取る」）", must_verify: true });
+    }else{
+      tasks.push({ due_text: "", action: "公式ページから公募要領を入手し、TriGateの読み取り欄に入れて制度固有の必要書類を確定する", must_verify: true });
+    }
+
+    const deadlines = [];
+    if(d && d.acceptance_end_datetime) deadlines.push({ label: "受付期間の終わり", date_text: String(d.acceptance_end_datetime) });
+
+    const name = (d && (d.title || d.program_name || d.name)) || "（名称不明）";
+    const issuer = (d && (d.issuer || d.ts_source)) || "";
+
+    let list = [];
+    try{ list = JSON.parse(localStorage.getItem("tritask_inbox") || "[]"); }catch(e){ list = []; }
+    if(!Array.isArray(list)) list = [];
+
+    /* 同じ案件を送り直しても行を増やさない（2026-09-03）。掘った案件のIDで引き当てて上書きする。 */
+    let idx = list.findIndex(x => x && x.src_id === id && (!x.auth_code || x.auth_code === code));
+    const base = {
+      src_id: id,
+      source_product: "TriGate®",
+      auth_code: code,
+      company_name: companyName,
+      program_name: name,
+      issuer: issuer,
+      summary: ov ? (ov.length > 800 ? ov.slice(0, 800) + "…" : ov) : "",
+      deadlines: deadlines,
+      reverse_tasks: tasks,
+      required_documents: [],
+      verify_items: (gate && Array.isArray(gate["確認事項"])) ? gate["確認事項"].map(String) : [],
+      contact: (d && d.contact) || "",
+      source_text: "",
+      gate: gate,
+      guideline_read: false,
+      human_reviewed: false,
+      updated_at: new Date().toISOString()
+    };
+    let card;
+    if(idx >= 0){
+      card = Object.assign({}, list[idx], base);
+      list[idx] = card;
+    }else{
+      card = Object.assign({
+        id: "TG-" + Date.now(),
+        created_at: new Date().toISOString(),
+        amount_expected: (d && d.subsidy_max_limit != null) ? d.subsidy_max_limit : null,
+        status: "未着手",
+        paid_confirmed_at: null
+      }, base);
+      list.push(card);
+    }
+    try{ localStorage.setItem("tritask_inbox", JSON.stringify(list)); }catch(e){ return null; }
+    let saved = null;
+    try{ saved = (JSON.parse(localStorage.getItem("tritask_inbox") || "[]")).find(x => x && x.id === card.id); }catch(e){ saved = null; }
+    return saved ? card.id : null;
+  }
+
+  function gateHtml(g, _id){
       const v = String(g["判定"] || "要確認");
       const col = v === "追う" ? "var(--ok)" : (v === "見送り" ? "var(--fix)" : "var(--muted)");
       const li = a => (Array.isArray(a) && a.length)
@@ -2148,7 +2242,16 @@ body.presenMode table{font-size:1.02em}
       if(Array.isArray(g["懸念"]) && g["懸念"].length) h += "懸念" + li(g["懸念"]);
       if(Array.isArray(g["確認事項"]) && g["確認事項"].length) h += "確認事項" + li(g["確認事項"]);
       if(g["次の一手"]) h += "次の一手：" + e(g["次の一手"]);
-      h += '<br><span style="color:var(--muted);font-weight:400">※判定はJグランツ掲載情報と基礎情報のみが根拠です。公募要領PDFの精読は、下のPDF読み取り機能をご利用ください。</span></div>';
+      h += '<br><span style="color:var(--muted);font-weight:400">※判定はJグランツ掲載情報と基礎情報のみが根拠です。公募要領PDFの精読は、下のPDF読み取り機能をご利用ください。</span>';
+      /* 2026-09-03：判定を見ている場所から次へ行けるようにする。画面上部まで戻らせない。
+         送ること自体が工程に分解することなので、動作は文言に書かない。 */
+      if(_id && v !== "見送り"){
+        h += '<div style="margin-top:10px">'
+          + '<button class="rbtn" data-act="toform" data-id="' + e(_id) + '">TriFormへ送る</button>'
+          + '<span class="digtoform" style="margin-left:8px;font-size:12px;color:var(--muted)"></span>'
+          + '</div>';
+      }
+      h += '</div>';
       return h;
     }
 
@@ -2323,7 +2426,7 @@ body.presenMode table{font-size:1.02em}
       let act = "";
       if(!company){
         act = '<div class="digpick"><span style="color:var(--muted);font-weight:400">企業基礎情報が未読み込みのため足切り判定は省略しています。上の「企業基礎情報」欄でJSONを読み込むと、この欄で自動判定します。</span><br>'
-            + '<button class="rbtn" data-act="pick" style="margin-top:6px">この案件で進める（候補に登録）</button><span class="digpicked"></span></div>';
+            + '<span class="digpicked"></span></div>';
       }else{
         const mcRaw = mechCheck(d);
         const mc = mcRaw || { pass:true, undone:true, results:[{k:"足切り", v:"判定に届きませんでした。この案件は未判定です（見落としを防ぐため表示しています）。", ok:false}] };
@@ -2331,12 +2434,12 @@ body.presenMode table{font-size:1.02em}
         if(mc.undone){
           act = '<div class="digpick"><span style="color:var(--fix)">精密足切り：未判定（判定に届きませんでした）</span><br>' + lines
               + '<br><span style="color:var(--muted);font-weight:400">通信が届かなかったため、この案件は足切りを通っていません。掘り直すと判定されます。</span>'
-              + '<br><button class="rbtn" data-act="pick" style="margin-top:6px">この案件で進める（候補に登録）</button>'
+              + '<br>'
               + '　<button class="rbtn" data-act="gate" data-id="'+e(id)+'" style="margin-top:6px">第二段：AIゲート判定を実行（API利用）</button>'
               + '<span class="digpicked"></span><div class="diggate"></div></div>';
         }else if(mc.pass){
           act = '<div class="digpick"><span style="color:var(--ok)">精密足切り：通過</span><br>' + lines
-              + '<br><button class="rbtn" data-act="pick" style="margin-top:6px">この案件で進める（候補に登録）</button>'
+              + '<br>'
               + '　<button class="rbtn" data-act="gate" data-id="'+e(id)+'" style="margin-top:6px">第二段：AIゲート判定を実行（API利用）</button>'
               + '<span class="digpicked"></span><div class="diggate"></div></div>';
         }else{
@@ -2358,7 +2461,7 @@ body.presenMode table{font-size:1.02em}
           const next = row.nextElementSibling;
           if(next && next.classList && next.classList.contains("digdetail")){
             const box = next.querySelector(".diggate");
-            if(box) box.innerHTML = gateHtml(g);
+            if(box) box.innerHTML = gateHtml(g, id);
             const gbtn = next.querySelector('button[data-act="gate"]');
             if(gbtn) gbtn.textContent = "AIゲート判定を再実行（API利用）";
           }
@@ -2461,6 +2564,23 @@ body.presenMode table{font-size:1.02em}
         return;
       }
 
+      if(b.dataset.act === "toform"){
+        const id = b.dataset.id;
+        const note = b.parentElement.querySelector(".digtoform");
+        const orig = b.textContent;
+        b.disabled = true; b.textContent = "送っています…";
+        if(note) note.textContent = "";
+        try{
+          let d = digDetails[id];
+          if(!d){ d = await fetchDetail(id); digDetails[id] = d; }
+          const cardId = tsSendDugToForm(id, d);
+          if(cardId){ location.href = "TriForm.html?case=" + encodeURIComponent(cardId); return; }
+          if(note) note.textContent = "送れませんでした（端末に保存できませんでした）。";
+        }catch(err){
+          if(note) note.textContent = String(err && err.message ? err.message : err);
+        }finally{ b.disabled = false; b.textContent = orig; }
+        return;
+      }
       if(b.dataset.act === "pick"){
         const baseRow = tr.classList.contains("digdetail") ? tr.previousElementSibling : tr;
         const id = baseRow.dataset.id;
@@ -2482,7 +2602,7 @@ body.presenMode table{font-size:1.02em}
           let d = digDetails[id];
           if(!d){ d = await fetchDetail(id); digDetails[id] = d; }
           const g = await aiGateCheck(d);
-          if(box) box.innerHTML = gateHtml(g);
+          if(box) box.innerHTML = gateHtml(g, id);
           try{
             let cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]");
             if(!cands.some(c => c.id === id)){
@@ -3445,8 +3565,23 @@ body.presenMode table{font-size:1.02em}
     const key = tsCompanyKey();
     return pjCandidatesAll().filter(c => String((c && c["会社"]) || "") === key);
   }
-  function pjEligible(){
+  /* 2026-09-03：見込み額は「AIゲート判定を通過（追う）」した案件だけを本数字にする。
+     候補に入れただけ／見送り判定のものまで数えると実態より大きく出るため。
+     「要確認」は取れないという判定ではなく確かめていないだけなので、消さずに別枠で併記する。 */
+  function pjBase(){
     return pjCandidates().filter(c => c.gate && c.gate["給付方式"] === "要件充足型" && c.gate["除外条件抵触"] === false);
+  }
+  function pjEligible(){
+    return pjBase().filter(c => String(c.gate["判定"] || "") === "追う");
+  }
+  function pjPending(){
+    return pjBase().filter(c => String(c.gate["判定"] || "") === "要確認");
+  }
+  function pjPendingHtml(){
+    const p = pjDedupe(pjPending()).list;
+    if(!p.length) return "";
+    return '<span class="rc-fig" style="color:var(--muted)">別枠：<b>' + p.length + '件</b>は「要確認」です。'
+      + '取れないという判定ではなく、掲載情報だけでは決められなかったものです（確かめれば本数字に移ります）。</span>';
   }
   /* 一覧バッジ・見込み額パネルの両方から呼ぶ共通のバッジ生成（2026-07-22：閾値を選択式に変更） */
   function pjBadgeHtml(gv, amt, isFull){
@@ -3580,7 +3715,7 @@ body.presenMode table{font-size:1.02em}
       const judgedCount = pjCandidates().filter(c => c.gate).length;
       $("pjFigs").innerHTML = judgedCount === 0
         ? '<span class="rc-fig" style="color:var(--muted)">まだAIゲート判定を実行していません。実行すると、ここに確実に取れる見込み額が積み上がります。</span>'
-        : '<span class="rc-fig" style="color:var(--muted)">現時点で「要件を満たせば確実に取れる」案件はありません。補助金の多くは審査・採択枠のある競争的な制度のため、0件は想定内の結果です。</span>';
+        : '<span class="rc-fig" style="color:var(--muted)">現時点で「要件を満たせば確実に取れる」案件はありません。補助金の多くは審査・採択枠のある競争的な制度のため、0件は想定内の結果です。</span>' + pjPendingHtml();
       pjRenderOutliers([], min, max);
       return;
     }
@@ -3594,7 +3729,7 @@ body.presenMode table{font-size:1.02em}
        「これだけ取れる」という誤解を生むため。制度ごとの上限額は内訳で1件ずつ確認する。 */
     $("pjFigs").innerHTML =
       '<span class="rc-fig"><b>'+list.length+'件</b>要件を満たせば原則支給される制度（除外条件なし）</span>'+
-      '<span class="rc-fig" style="color:var(--muted)">金額は制度ごとの上限額です。合計は出しません（併給調整があり、実際の交付額とも異なるため）'+(notes.length ? '／'+notes.join('／') : '')+'</span>';
+      '<span class="rc-fig" style="color:var(--muted)">金額は制度ごとの上限額です。合計は出しません（併給調整があり、実際の交付額とも異なるため）'+(notes.length ? '／'+notes.join('／') : '')+'</span>' + pjPendingHtml();
     pjRenderOutliers(list, min, max);
   }
   function pjRenderDetail(){
@@ -4046,7 +4181,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-08-29-08';
+  const TRIGATE_VERSION = '2026-09-03-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

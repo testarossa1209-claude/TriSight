@@ -200,7 +200,7 @@
 
 <footer>
   合同会社トライサイト　TriSight&reg; ファミリー
-  <div class="verline">版 <span id="verLabel">2026-08-16-01</span>（v3）</div>
+  <div class="verline">版 <span id="verLabel">2026-09-03-01</span>（v3）</div>
 </footer>
 </div>
 
@@ -580,20 +580,85 @@
       hint.textContent = "まだありません。トライゲイトなど各システムで判定を行うと、ここに集まります。";
       return;
     }
-    hint.textContent = items.length + "件あります。分解する案件を選んでください。";
-    items.slice().reverse().forEach(g=>{
+    /* 2026-09-03：同じ案件が何行も並ばないようにする。
+       送り元の案件IDが同じもの、無ければ制度名＋交付元が同じものを一つに畳み、
+       いちばん新しい行だけを見せる（古い行は消さずに残す。畳んで見せないだけ）。 */
+    const byKey = {};
+    items.forEach(g=>{
+      const key = g.src_id ? ("S:" + g.src_id)
+        : ("N:" + String(g.program_name||"") + "|" + String(g.issuer||""));
+      const cur = byKey[key];
+      const t = String(g.updated_at || g.created_at || "");
+      if(!cur || t >= String(cur.updated_at || cur.created_at || "")) byKey[key] = g;
+    });
+    const uniq = Object.keys(byKey).map(k=>byKey[k]);
+    const dupCount = items.length - uniq.length;
+
+    /* 終わった案件を並べ続けると、済んだものを繰り返し開くことになる。
+       進捗はトライタスク側が書き戻しているので、それを読んで畳む。 */
+    const isDone = g => String(g.status||"") === "完了" || String(g.status||"") === "完了済み";
+    const live = uniq.filter(g=>!isDone(g));
+    const done = uniq.filter(isDone);
+
+    hint.innerHTML = esc(live.length + "件あります。分解する案件を選んでください。")
+      + (dupCount ? '<span style="color:var(--ink-soft)">（同じ案件の送り直し ' + dupCount + '件は畳んでいます）</span>' : "");
+
+    function addRow(g, dim){
       const li = document.createElement("li");
       li.className = "gitem";
+      if(dim) li.style.opacity = "0.55";
       const applied = !!g.triform_applied;
       const docs = (g.required_documents||[]).length;
+      const st = String(g.status || "未着手");
+      const stCol = st === "完了" ? "var(--ok, #2f7a4f)" : (st === "進行中" ? "var(--amber, #c9772a)" : "var(--ink-soft, #777)");
+      const gl = (g.guideline_read === false)
+        ? '<span style="color:var(--ink-soft);font-size:12px">／公募要領は未読み込み（制度固有の必要書類は未確定）</span>' : "";
       li.innerHTML =
         '<div><span class="gbadge ' + (applied?"done":"todo") + '">' + (applied?"分解済み":"未分解") + '</span>'
-        + '<span class="gname">' + esc(g.program_name||"（名称不明）") + '</span></div>'
+        + '<span class="gname">' + esc(g.program_name||"（名称不明）") + '</span>'
+        + '<span style="margin-left:8px;font-size:12px;color:' + stCol + '">進捗：' + esc(st) + '</span></div>'
         + '<div class="gmeta">' + esc(g.source_product||"") + (g.issuer?"／"+esc(g.issuer):"")
-        + '　工程' + ((g.reverse_tasks||[]).length) + '件・添付書類' + docs + '件</div>';
+        + '　工程' + ((g.reverse_tasks||[]).length) + '件・添付書類' + docs + '件' + gl + '</div>';
       li.addEventListener("click", ()=>openGrant(g.id));
       ul.appendChild(li);
-    });
+    }
+
+    live.slice().reverse().forEach(g=>addRow(g, false));
+
+    if(done.length){
+      const head = document.createElement("li");
+      head.className = "gitem";
+      head.style.cursor = "pointer";
+      head.style.background = "transparent";
+      head.innerHTML = '<div style="font-size:13px;color:var(--ink-soft)">完了済み（' + done.length + '件）を表示</div>';
+      const box = document.createElement("li");
+      box.style.listStyle = "none";
+      box.style.display = "none";
+      const inner = document.createElement("ul");
+      inner.className = "glist";
+      box.appendChild(inner);
+      head.addEventListener("click", ()=>{
+        const open = box.style.display !== "none";
+        box.style.display = open ? "none" : "";
+        head.firstChild.textContent = (open ? "完了済み（" : "完了済みを隠す（") + done.length + (open ? "件）を表示" : "件）");
+      });
+      ul.appendChild(head);
+      ul.appendChild(box);
+      const keep = ul;
+      done.slice().reverse().forEach(g=>{
+        const saveUl = ul;
+        (function(target){
+          const li = document.createElement("li");
+          li.className = "gitem";
+          li.style.opacity = "0.55";
+          li.innerHTML = '<div><span class="gbadge done">完了</span><span class="gname">'
+            + esc(g.program_name||"（名称不明）") + '</span></div>'
+            + '<div class="gmeta">' + esc(g.source_product||"") + (g.issuer?"／"+esc(g.issuer):"") + '</div>';
+          li.addEventListener("click", ()=>openGrant(g.id));
+          target.appendChild(li);
+        })(inner);
+      });
+    }
   }
 
   /* ===== 分解 ===== */
@@ -601,6 +666,16 @@
   let rows = [];        // 画面上の工程
   let matchLog = [];    // どの書類のどの語がどの型に当たったか
   let criteria = [];    // AIが作った「確かめる基準」。判断するのは人間
+
+  /* 2026-09-03：TriGateの判定枠から送られてきた場合、一覧から選び直させない。
+     送った本人はその案件を見ているのだから、開いた状態で始める。 */
+  function openCaseFromUrl(){
+    let want = "";
+    try{ want = new URLSearchParams(location.search).get("case") || ""; }catch(e){ want = ""; }
+    if(!want) return;
+    const g = visibleInbox().find(x => x && (x.id === want || x.src_id === want));
+    if(g) openGrant(g.id);
+  }
 
   function openGrant(id){
     const g = visibleInbox().find(x=>x.id===id);
@@ -929,6 +1004,7 @@
   /* ===== 起動 ===== */
   refreshAuthLabel();
   renderList();
+  openCaseFromUrl();
   fetch("version.json", {cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{
     if(j && j.triform && j.triform !== $("verLabel").textContent){
       const d = document.createElement("div");

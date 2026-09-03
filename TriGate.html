@@ -1718,7 +1718,13 @@ body.presenMode table{font-size:1.02em}
        実例＝令和8年度前橋市家庭用ゼロカーボン推進補助事業。画面は8万円と出したが、
        要領では 太陽光3万／蓄電池は1kW当たり1万（上限5万）／給湯機5万 と設備ごとに別（2026-09-01）。 */
     window.tsAmountCell = function(it, fyFn){
-      const base = fyFn(it && it.subsidy_max_limit);
+      /* 2026-09-04：印を案件名の後ろに置いたところ画面に現れなかったため、
+         金額の欄の中へ移す。目安を外れたことは、金額の隣にあるのが自然でもある。 */
+      const mark = (it && (it.__offBiz || it.__amtOut))
+        ? '<div style="font-size:11px;color:#b0203a;font-weight:700;line-height:1.4">'
+          + [it.__offBiz, it.__amtOut].filter(Boolean).join("・") + "</div>"
+        : "";
+      const base = mark + fyFn(it && it.subsidy_max_limit);
       const isWeb = String(it && it.id || "").indexOf("web-") === 0;
       if(!isWeb || base === "—" || base === "記載なし") return base;
       return base + '<div style="font-size:11px;color:var(--muted,#868e96);line-height:1.4">設備ごとに額が変わる場合があります。要領でご確認ください</div>';
@@ -2071,9 +2077,13 @@ body.presenMode table{font-size:1.02em}
         /* 2026-09-04：印が付かない原因を画面で見えるようにする。
            読み取った目安と、金額を持つ件数・印を付けた件数を帯に出す。
            開発者ツールを開かせずに、どこで外しているかが分かる。 */
+        const __amtNames = show.filter(function(x){ return !!x.__amtOut; })
+          .map(function(x){ return String(x.title || x.name || "").slice(0, 14) + "＝" + x.__amtOut; })
+          .slice(0, 4).join("／");
         const __amtNote = "／目安 上限" + __lim.max.toLocaleString("ja-JP")
           + (__lim.min != null ? "・下限" + __lim.min.toLocaleString("ja-JP") : "・下限なし")
-          + "（金額のある案件 " + __amtSeen + " 件中 " + __amtHit + " 件に印）";
+          + "（金額のある案件 " + __amtSeen + " 件中 " + __amtHit + " 件に印"
+          + (__amtNames ? "：" + __amtNames : "") + "）";
         /* 下へ回す順序：まず事業外、次に規模の目安外。どちらも消さない。 */
         const byRange = function(arr){
           const rank = function(x){ return (x.__offBiz ? 2 : 0) + (x.__amtOut ? 1 : 0); };
@@ -4525,7 +4535,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-04-04';
+  const TRIGATE_VERSION = '2026-09-04-05';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

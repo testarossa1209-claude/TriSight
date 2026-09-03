@@ -1022,6 +1022,50 @@ body.presenMode table{font-size:1.02em}
 
   let tsWebDropped = 0;
   let tsWebEntries = [];
+
+  /* ===== 入口ページの台帳（2026-09-03） ==================================
+     これまで、同じ地域を掘るたびにリレー側の指示文がゼロから探しており、
+     回ごとに届くページが違っていた（同じ前橋市で制度が出た回と出ない回がある）。
+     揺れているのは自治体の表示の違いではなく、当社が毎回探させていること。
+     そこで、一度掘って「探す手がかり」に出た入口ページを地域ごとに記憶し、
+     次に同じ地域を掘るときはそれを渡して、同じ範囲を当たらせる。
+     トライフォームの型を毎回AIに考えさせないのと同じ考え方で、使うほど溜まる。
+     ※リレー側の指示文が entries を読む作りでなければ無視される。
+       その場合でも渡す側は無害で、リレーを直した時点で効くようになる。 */
+  const TS_ENTRY_KEY = "trisight_web_entries";
+  function tsEntryAll(){
+    try{ return JSON.parse(localStorage.getItem(TS_ENTRY_KEY) || "{}"); }catch(e){ return {}; }
+  }
+  function tsEntryGet(area){
+    const all = tsEntryAll();
+    const rec = all[String(area || "")];
+    return (rec && Array.isArray(rec.list)) ? rec.list : [];
+  }
+  /* 入口ページを地域ごとに足し込む。同じURLは増やさず、確認日だけ新しくする。
+     地域あたり12件まで（古いものから落とす）。 */
+  function tsEntrySave(area, entries){
+    const key = String(area || "");
+    if(!key || !Array.isArray(entries) || !entries.length) return 0;
+    const all = tsEntryAll();
+    const rec = all[key] && Array.isArray(all[key].list) ? all[key] : { list: [] };
+    const byUrl = {};
+    rec.list.forEach(function(x){ if(x && x.url) byUrl[x.url] = x; });
+    entries.forEach(function(x){
+      const u = x && x.front_subsidy_detail_page_url;
+      if(!u) return;
+      byUrl[u] = {
+        url: u,
+        title: x.title || "",
+        why: x.ts_why || "",
+        seen: new Date().toISOString().slice(0, 10)
+      };
+    });
+    rec.list = Object.keys(byUrl).map(function(k){ return byUrl[k]; }).slice(-12);
+    rec.updated = new Date().toISOString();
+    all[key] = rec;
+    try{ localStorage.setItem(TS_ENTRY_KEY, JSON.stringify(all)); }catch(e){ return 0; }
+    return rec.list.length;
+  }
   async function tsDigWebPref(pref, industryHint, cityHint){
     tsWebDropped = 0; tsWebEntries = [];
     if(!pref) return [];
@@ -1031,7 +1075,13 @@ body.presenMode table{font-size:1.02em}
     /* pref には市区町村まで含めた地域名（例＝群馬県前橋市）を渡す。
        リレー側は pref をそのまま検索の地域として使うため、これで市区町村のページを直接掘れる。
        city は別に添える（リレー側が使う場合に備えて。使わなければ無視される）。 */
-    try{ text = await tsAsk("dig_web", { pref: pref, city: cityHint || "", industry: industryHint || "" }); }
+    /* 2026-09-03：この地域について当社が持っている入口ページを一緒に渡す。
+       毎回ゼロから探させないことで、同じ地域なら同じ範囲を当たらせる。 */
+    const known = tsEntryGet(pref);
+    try{ text = await tsAsk("dig_web", {
+      pref: pref, city: cityHint || "", industry: industryHint || "",
+      entries: known.map(function(x){ return { url: x.url, title: x.title }; })
+    }); }
     catch(e){ throw new Error("検索に失敗しました（" + (e && e.message ? e.message : e) + "）"); }
     if(!text) return [];
     let parsed = null;
@@ -1844,6 +1894,8 @@ body.presenMode table{font-size:1.02em}
             const webItems = await tsDigWebPref(selArea, ind, selCity);
             if(wantShunushi) webItems.forEach(it => { if(it) it.__shunushi = true; });
             webEntries = tsWebEntries.slice();
+            /* 拾えた入口ページを台帳へ足す（次回の掘りで渡す材料になる） */
+            try{ tsEntrySave(selArea, webEntries); }catch(e){}
             srcTally.push({ label: selArea + "（ウェブ検索）", n: webItems.length, ok: true, entries: webEntries.length });
             if(webItems.length){
               const seen = {};
@@ -4383,7 +4435,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-03-08';
+  const TRIGATE_VERSION = '2026-09-03-09';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

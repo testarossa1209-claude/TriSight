@@ -2712,7 +2712,21 @@ body.presenMode table{font-size:1.02em}
           await tsSendToReader(file);
           if(note) note.textContent = "読み取り欄に入れました（" + file.name + "）。下の「読み取る」を押してください。";
         }catch(err){
-          if(note) note.textContent = String(err && err.message ? err.message : err);
+          const msg = String(err && err.message ? err.message : err);
+          /* リレーは大きいファイルを返せない（2026-09-03に厚労省の5.7MBで413）。
+             取り寄せられないものは、その場で直に開ける形にして手詰まりを作らない。 */
+          const tooBig = /大きすぎ|413/.test(msg);
+          if(note){
+            if(tooBig && b.dataset.url){
+              note.innerHTML = e(msg)
+                + '<br><a href="' + e(b.dataset.url) + '" target="_blank" rel="noopener">このPDFを開く</a>'
+                + "（開いた先で保存し、下の読み取り欄へ入れてください）";
+            }else if(tooBig){
+              note.innerHTML = e(msg) + "<br>公式ページから直接落として、下の読み取り欄へ入れてください。";
+            }else{
+              note.textContent = msg;
+            }
+          }
         }finally{
           b.disabled = false; b.textContent = orig;
         }
@@ -4369,7 +4383,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-03-07';
+  const TRIGATE_VERSION = '2026-09-03-08';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -2631,7 +2631,19 @@ body.presenMode table{font-size:1.02em}
 
       /* 精密足切り（詳細情報で自動判定）：通過案件だけに次のボタンを出す */
       let act = "";
-      if(!company){
+      /* 施主（個人）が受け取る制度は、会社を基準にした足切り・ゲート判定にかけない（2026-09-04）。
+         一覧側は 2026-09-01 から除外していたが、詳細側は mechCheck をそのまま通していたため、
+         同じ案件が一覧では「施主（個人）が受け取る制度」として並び、詳細を開くと
+         「精密足切り：不通過 ／ 候補登録・AIゲート判定の対象外」と出ていた。
+         受け取るのが会社ではない以上、業種・規模・地域で判定すれば必ず落ちる。
+         判定の対象が違うのだから、ここでは足切りそのものを行わない。 */
+      if(d && d.__shunushi){
+        act = '<div class="digpick"><span style="color:var(--muted);font-weight:400">'
+            + 'この制度を受け取るのは会社ではなく施主（個人）です。'
+            + '会社を基準にした精密足切り・AIゲート判定は行いません（自社の見込み額にも入りません）。'
+            + '施主へお渡しする情報としてお使いください。金額・期間・要件は掲載元でお確かめください。'
+            + '</span><span class="digpicked"></span></div>';
+      }else if(!company){
         act = '<div class="digpick"><span style="color:var(--muted);font-weight:400">企業基礎情報が未読み込みのため足切り判定は省略しています。上の「企業基礎情報」欄でJSONを読み込むと、この欄で自動判定します。</span><br>'
             + '<span class="digpicked"></span></div>';
       }else{
@@ -2660,7 +2672,13 @@ body.presenMode table{font-size:1.02em}
     if(fullGateBtn){
       fullGateBtn.addEventListener("click", async ()=>{
         if(!lastShow.length) return;
-        const items = lastShow.slice();
+        /* 施主（個人）が受け取る制度は会社基準の判定にかけない（2026-09-04）。
+           ここを通すと、自社が申請しない制度が候補へ自動登録され、見込み額に混ざる。 */
+        const items = lastShow.filter(it => !(it && it.__shunushi));
+        if(!items.length){
+          fullGateBtn.textContent = "施主（個人）向けの制度のみのため、会社基準の判定対象がありません";
+          return;
+        }
 
         function updateOpenDetailGate(id, g){
           const row = findDigRow(id);
@@ -4435,7 +4453,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-03-09';
+  const TRIGATE_VERSION = '2026-09-04-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

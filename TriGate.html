@@ -2430,6 +2430,13 @@ body.presenMode table{font-size:1.02em}
               });
             });
         }
+        /* 2026-09-03：取り寄せ先が分からない案件でも、公式ページから探す道を出す。
+           ボタンが出る案件と出ない案件がある、という状態を無くすため。 */
+        if(!btns.length && d.front_subsidy_detail_page_url){
+          btns.push('<button class="rbtn" data-act="findguide" data-id="' + e(id)
+            + '" data-page="' + e(d.front_subsidy_detail_page_url) + '" style="margin:4px 6px 0 0">'
+            + '公式ページから公募要領を探す</button>');
+        }
         if(btns.length){
           add("公募要領", btns.join("") + '<div class="digguide" style="margin-top:4px;color:var(--muted)"></div>');
         }
@@ -2588,6 +2595,33 @@ body.presenMode table{font-size:1.02em}
         return;
       }
 
+      if(b.dataset.act === "findguide"){
+        const note = b.parentElement.querySelector(".digguide");
+        const page = b.dataset.page;
+        const orig = b.textContent;
+        b.disabled = true; b.textContent = "公式ページを見ています…";
+        if(note) note.innerHTML = "";
+        try{
+          const links = await tsFindGuidelinesOnPage(page);
+          if(!links.length){
+            if(note) note.innerHTML = "このページからは資料の直リンクが見つかりませんでした。"
+              + '<a href="' + e(page) + '" target="_blank" rel="noopener">公式ページを開く</a>'
+              + "から公募要領を落として、下の読み取り欄に入れてください。";
+          }else{
+            if(note) note.innerHTML = "見つかった資料です。読み取るものを選んでください。<br>"
+              + links.map(function(g){
+                  const lb = g.label.length > 40 ? (g.label.slice(0, 40) + "…") : g.label;
+                  return '<button class="rbtn" data-act="guide" data-url="' + e(g.url)
+                    + '" data-name="' + e(g.name) + '" style="margin:4px 6px 0 0">' + e(lb) + "</button>";
+                }).join("")
+              + '<div class="digguide" style="margin-top:4px;color:var(--muted)"></div>';
+          }
+        }catch(err){
+          if(note) note.innerHTML = e(String(err && err.message ? err.message : err))
+            + '　<a href="' + e(page) + '" target="_blank" rel="noopener">公式ページを開く</a>';
+        }finally{ b.disabled = false; b.textContent = orig; }
+        return;
+      }
       if(b.dataset.act === "toform"){
         const id = b.dataset.id;
         const note = b.parentElement.querySelector(".digtoform");
@@ -4205,7 +4239,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-03-02';
+  const TRIGATE_VERSION = '2026-09-03-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

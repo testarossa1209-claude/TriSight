@@ -1136,6 +1136,66 @@ body.presenMode table{font-size:1.02em}
     }
     return null;
   }
+  /* ===== 公式ページから公募要領を探す（2026-09-03） =========================
+     カタログ側（厚労省・国交省・自治体・ウェブ検索）の案件は、当社が中身を作った
+     情報のため要領ファイルのURLを持っていない。そこで案件が持つ公式ページを
+     取り寄せ、その中の資料の直リンクを拾って選ばせる。
+     Jグランツと違い置き場所が決まっていないので、拾えないことがある。
+     そのときは黙って空にせず、公式ページを開いて手で落とす道を案内する。 */
+  function tsB64ToText(b64){
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    let txt = "";
+    try{ txt = new TextDecoder("utf-8").decode(bytes); }catch(e){ txt = ""; }
+    /* 自治体のページはShift_JISのことがある。置換文字が多ければ読み直す */
+    const bad = (txt.match(/\uFFFD/g) || []).length;
+    if(bad > 20){
+      try{ txt = new TextDecoder("shift_jis").decode(bytes); }catch(e){}
+    }
+    return txt;
+  }
+  function tsGuidelineLinksFromHtml(html, baseUrl){
+    let doc = null;
+    try{ doc = new DOMParser().parseFromString(html, "text/html"); }catch(e){ return []; }
+    if(!doc) return [];
+    const KEY = /要領|要綱|様式|申請|募集|手引|案内|交付|補助|助成|チラシ|パンフ|実施/;
+    const out = [], seen = {};
+    doc.querySelectorAll("a[href]").forEach(function(a){
+      const href = a.getAttribute("href") || "";
+      if(!href || href.charAt(0) === "#" || /^(javascript|mailto|tel):/i.test(href)) return;
+      let abs = "";
+      try{ abs = new URL(href, baseUrl).href; }catch(_){ return; }
+      if(!/\.(pdf|zip|docx?|xlsx?)(\?|#|$)/i.test(abs)) return;
+      if(seen[abs]) return;
+      seen[abs] = 1;
+      let label = (a.textContent || "").replace(/\s+/g, " ").trim();
+      let name = "";
+      try{ name = decodeURIComponent(abs.split("/").pop().split("?")[0].split("#")[0]); }catch(_){ name = ""; }
+      if(!label) label = name || "資料";
+      out.push({ url: abs, name: name || "資料.pdf", label: label, hit: KEY.test(label) || KEY.test(name) });
+    });
+    /* 見出しやファイル名に要領・要綱等が入っているものを先に出す */
+    out.sort(function(a, b){ return (b.hit ? 1 : 0) - (a.hit ? 1 : 0); });
+    return out.slice(0, 8);
+  }
+  async function tsFindGuidelinesOnPage(pageUrl){
+    const code = (typeof tsCode === "function") ? tsCode() : "";
+    if(!code) throw new Error("認証コードが未入力です。");
+    const res = await fetch(FD_RELAY, {
+      method: "POST",
+      headers: {"Content-Type": "application/json", "x-trisight-code": code},
+      body: JSON.stringify({ url: pageUrl, name: "page.html" })
+    });
+    if(!res.ok){
+      let m = ""; try{ m = (await res.json()).error || ""; }catch(_){}
+      throw new Error("公式ページを取り寄せられませんでした（" + res.status + "）" + (m ? "：" + m : ""));
+    }
+    const d = await res.json();
+    if(!d.base64) throw new Error("公式ページの中身が空で返りました。");
+    return tsGuidelineLinksFromHtml(tsB64ToText(d.base64), pageUrl);
+  }
+
   async function tsFetchGuidelineFile(opt){
     const code = (typeof tsCode === "function") ? tsCode() : "";
     if(!code) throw new Error("認証コードが未入力です。");
@@ -4239,7 +4299,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-03-03';
+  const TRIGATE_VERSION = '2026-09-03-04';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

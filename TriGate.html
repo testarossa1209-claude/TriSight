@@ -1155,6 +1155,13 @@ body.presenMode table{font-size:1.02em}
     }
     return txt;
   }
+  /* 文字列の中の年度（令和N年度）を数字で返す。無ければ0（2026-09-03） */
+  function tsWarekiYear(t){
+    const z = String(t || "").replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
+    const m = z.match(/令和\s*(元|[0-9]{1,2})\s*年/);
+    if(!m) return 0;
+    return m[1] === "元" ? 1 : parseInt(m[1], 10);
+  }
   /* 案件名から、拾った資料が「その案件のもの」かを見るための語を取り出す。
      制度名の中の括弧書き（コース名等）は、他コースの資料を弾く鍵になる（2026-09-03）。 */
   function tsTitleKeys(title){
@@ -1180,39 +1187,48 @@ body.presenMode table{font-size:1.02em}
     const RANK = [
       { re: /公募要領|募集要領|交付要綱|実施要綱|実施要領|手引/, pt: 100 },
       { re: /パンフレット/,                                     pt:  70 },
-      { re: /ご案内|のご案内|案内/,                              pt:  50 },
+      { re: /ご案内|案内/,                                       pt:  50 },
       { re: /様式|申請書/,                                       pt:  40 },
       { re: /Q&A|Q＆A|質疑|よくある/,                            pt:  20 },
       { re: /リーフレット|チラシ/,                               pt:  10 }
     ];
     const tkeys = tsTitleKeys(title);
-    /* 括弧の中（コース名）だけを、他コースを弾くための鍵にする */
     const course = tkeys.filter(function(k){ return !/助成金|補助金|支援金|給付金|事業$/.test(k); });
-    const out = [], seen = {};
+    /* 案件名の年度。過去年度版の資料が同じページに残っていることが多いため、
+       年度を読んで、今の年度のものを上に、古いものを下に置く（2026-09-03） */
+    const tYear = tsWarekiYear(title);
+    const out = [], seenUrl = {}, seenKey = {};
     doc.querySelectorAll("a[href]").forEach(function(a){
       const href = a.getAttribute("href") || "";
       if(!href || href.charAt(0) === "#" || /^(javascript|mailto|tel):/i.test(href)) return;
       let abs = "";
       try{ abs = new URL(href, baseUrl).href; }catch(_){ return; }
       if(!/\.(pdf|zip|docx?|xlsx?)(\?|#|$)/i.test(abs)) return;
-      if(seen[abs]) return;
-      seen[abs] = 1;
+      if(seenUrl[abs]) return;
+      seenUrl[abs] = 1;
       let label = (a.textContent || "").replace(/\s+/g, " ").trim();
       let name = "";
       try{ name = decodeURIComponent(abs.split("/").pop().split("?")[0].split("#")[0]); }catch(_){ name = ""; }
       if(!label) label = name || "資料";
+      /* 同じ資料が別のURLで二重に張られていることがある（画像リンクと文字リンク等）。
+         見出しから括弧・引用符・空白を落とした形で重複を見る（2026-09-03） */
+      const key = label.replace(/[「」『』"'\s　]/g, "");
+      if(key && seenKey[key]) return;
+      if(key) seenKey[key] = 1;
       const hay = label + " " + name;
       let pt = 0;
       RANK.forEach(function(r){ if(r.re.test(hay) && r.pt > pt) pt = r.pt; });
-      /* この案件のコース名が入っていれば強く上げる。
-         別のコース名だけが入っているものは下げる（別案件の資料のため） */
       let mine = 0;
       if(course.length){
         const hit = course.some(function(k){ return hay.indexOf(k) >= 0; });
-        /* 他コースの資料か＝括弧書きがあるのに、この案件のコース名ではない */
         const other = /[（(][^）)]{2,30}コース[）)]/.test(hay) && !hit;
         mine = hit ? 60 : (other ? -80 : 0);
       }
+      /* 年度の照合。案件の年度と一致すれば上げ、古い年度なら下げる。
+         年度の記載が無いものは触らない（毎年使う資料のことがあるため） */
+      let yr = 0;
+      const fy = tsWarekiYear(hay);
+      if(tYear && fy){ yr = (fy === tYear) ? 40 : (fy < tYear ? -70 : 10); }
       /* 大きい資料ほど本体である見込みが高い（表示上の［5.7MB］等を拾う） */
       let sz = 0;
       const ms = hay.match(/([0-9]+(?:\.[0-9]+)?)\s*(MB|KB)/i);
@@ -1220,7 +1236,8 @@ body.presenMode table{font-size:1.02em}
         const v = parseFloat(ms[1]);
         sz = /MB/i.test(ms[2]) ? Math.min(v * 4, 30) : Math.min(v / 300, 3);
       }
-      out.push({ url: abs, name: name || "資料.pdf", label: label, score: pt + mine + sz, other: mine < 0 });
+      out.push({ url: abs, name: name || "資料.pdf", label: label,
+                 score: pt + mine + yr + sz, other: mine < 0, old: yr < 0 });
     });
     out.sort(function(a, b){ return b.score - a.score; });
     return out.slice(0, 8);
@@ -2719,10 +2736,11 @@ body.presenMode table{font-size:1.02em}
               + links.map(function(g){
                   const lb = g.label.length > 44 ? (g.label.slice(0, 44) + "…") : g.label;
                   /* 別のコース・区分の資料は消さずに残すが、区別がつく形で下に置く（2026-09-03） */
-                  const st = g.other
+                  const st = (g.other || g.old)
                     ? ' style="margin:4px 6px 0 0;opacity:.6"'
                     : ' style="margin:4px 6px 0 0"';
-                  const tag = g.other ? '<span style="font-size:11px;color:var(--fix)">別コース </span>' : "";
+                  const tag = (g.other ? '<span style="font-size:11px;color:var(--fix)">別コース </span>' : "")
+                    + (g.old ? '<span style="font-size:11px;color:var(--fix)">旧年度 </span>' : "");
                   return '<button class="rbtn" data-act="guide" data-url="' + e(g.url)
                     + '" data-name="' + e(g.name) + '"' + st + '>' + tag + e(lb) + "</button>";
                 }).join("")
@@ -4351,7 +4369,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-03-06';
+  const TRIGATE_VERSION = '2026-09-03-07';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -1744,7 +1744,8 @@ body.presenMode table{font-size:1.02em}
       for(const it of rows){
         html += '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'">'
               + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)
-                + (it.__amtOut ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__amtOut)+'</span>' : "")
+                + (it.__offBiz ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__offBiz)+'</span>' : "")
+          + (it.__amtOut ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__amtOut)+'</span>' : "")
                 + "</td>"
               + "<td>"+tsAmountCell(it, fy)+"</td>"
               + '<td class="dl">'+fd(it.acceptance_end_datetime)+"</td>"
@@ -1971,7 +1972,7 @@ body.presenMode table{font-size:1.02em}
           /* 第2段：案件名の一括AI仕分け（API1回・明らかな無関係を落とす） */
           let sortNote = "";
           if(show.length > 1){
-            st.textContent = "受付中 "+list.length+" 件 → 粗足切り "+show.length+" 件 → 案件名をAIで一括仕分け中…（API 1回）";
+            st.textContent = "受付中 "+list.length+" 件 → 地域・業種・規模で絞り込み "+show.length+" 件 → 御社の事業に照らして仕分け中…（API 1回）";
             try{
               /* 記憶済みの案件はAIに問い直さない（実行ごとの揺れを止めるため） */
               /* 施主（個人）向けとして拾った候補は、会社を基準にした仕分けにかけない。
@@ -1989,22 +1990,23 @@ body.presenMode table{font-size:1.02em}
               }
               const kept = keptSet;
               if(kept){
-                show = show.filter(it => it.__shunushi || tsJudgeGet("sieve", it.id) !== false);
-                if(show.length === 0){
-                  st.textContent = "受付中 "+list.length+" 件　※案件名のAI仕分けで全件が無関係と判定されました。";
-                  return;
-                }
+                /* 2026-09-04：無関係と見たものを一覧から落とすのをやめ、印を付けて下へ回す。
+                   要るか要らないかを決めるのは使う人であり、当社が代わりに捨てるのは筋違い。
+                   自社が申請しない制度でも、顧客へ渡す材料になることがある。 */
+                show.forEach(it => {
+                  it.__offBiz = (!it.__shunushi && tsJudgeGet("sieve", it.id) === false) ? "事業外" : "";
+                });
               }else{
-                sortNote = "（AI仕分けは結果を読めず未適用）";
+                sortNote = "（事業に照らした仕分けは結果を読めず未適用）";
               }
             }catch(err){
-              sortNote = "（AI仕分け失敗のため未適用："+String(err && err.message ? err.message : err).slice(0,60)+"）";
+              sortNote = "（事業に照らした仕分けに失敗したため未適用："+String(err && err.message ? err.message : err).slice(0,60)+"）";
             }
           }
           const aiCount = show.length;
           /* 第3段：精密足切り（生き残りだけ詳細照合・無料・地域や規模の最終確認） */
           let done = 0;
-          st.textContent = "受付中 "+list.length+" 件 → AI仕分け "+aiCount+" 件 → 精密足切り中…（0/"+aiCount+"）";
+          st.textContent = "受付中 "+list.length+" 件 → 事業に照らして仕分け "+aiCount+" 件 → 掲載内容と突き合わせ中…（0/"+aiCount+"）";
           const passIds = {};
           const fetched = [];
           const queue = show.slice();
@@ -2021,7 +2023,7 @@ body.presenMode table{font-size:1.02em}
                 passIds[it.id] = true; /* 取得失敗は見落とし防止のため残す */
               }
               done++;
-              st.textContent = "受付中 "+list.length+" 件 → AI仕分け "+aiCount+" 件 → 精密足切り中…（"+done+"/"+aiCount+"）";
+              st.textContent = "受付中 "+list.length+" 件 → 事業に照らして仕分け "+aiCount+" 件 → 掲載内容と突き合わせ中…（"+done+"/"+aiCount+"）";
             }
           }
           await Promise.all([worker(), worker(), worker(), worker()]);
@@ -2035,7 +2037,7 @@ body.presenMode table{font-size:1.02em}
             st.textContent = "受付中 "+list.length+" 件　※精密足切りで全件が除外されました。"+mechAlert();
             return;
           }
-          st.textContent = "受付中 "+list.length+" 件 → AI仕分け "+aiCount+" 件 → 精密足切り後 "+show.length+" 件を表示"+sortNote+"（キーワード："+kw+"）"+mechAlert();
+          st.textContent = "受付中 "+list.length+" 件 → 事業に照らして仕分け "+aiCount+" 件 → 掲載内容と突き合わせて "+show.length+" 件を表示"+sortNote+"（キーワード："+kw+"）"+mechAlert();
         }else{
           st.textContent = "受付中 "+list.length+" 件（キーワード："+kw+"）※基礎情報が未読み込みのため全件表示";
         }
@@ -2060,15 +2062,17 @@ body.presenMode table{font-size:1.02em}
           if(__lim.max != null && v > __lim.max) it.__amtOut = "規模大";
           else if(__lim.min != null && v < __lim.min) it.__amtOut = "規模小";
         });
+        /* 下へ回す順序：まず事業外、次に規模の目安外。どちらも消さない。 */
         const byRange = function(arr){
-          return arr.filter(function(x){ return !x.__amtOut; })
-                    .concat(arr.filter(function(x){ return !!x.__amtOut; }));
+          const rank = function(x){ return (x.__offBiz ? 2 : 0) + (x.__amtOut ? 1 : 0); };
+          return arr.slice().sort(function(a, b){ return rank(a) - rank(b); });
         };
         show = byRange(grpS).concat(byRange(grpA), byRange(grpB));
         const headCells = '<th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th>';
         const rowOf = (it) => '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'" data-end="'+e(it.acceptance_end_datetime||"")+'">'
                 + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)
-                + (it.__amtOut ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__amtOut)+'</span>' : "")
+                + (it.__offBiz ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__offBiz)+'</span>' : "")
+          + (it.__amtOut ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__amtOut)+'</span>' : "")
                 + "</td>"
                 + "<td>"+tsAmountCell(it, fy)+"</td>"
                 + '<td class="dl">'+fd(it.acceptance_end_datetime)
@@ -2523,8 +2527,14 @@ body.presenMode table{font-size:1.02em}
 
     /* ---- 案件名の一括AI仕分け（1回のAPI呼び出しで題名を粗選別） 2026-07-13 ---- */
     async function aiTitleSort(items){
+      /* 2026-09-04：事業内容を渡していなかったため、業種の大分類だけで見ていた。
+         前橋ソーラー（住宅用太陽光の販売・施工）に対して「水素ステーションの保守点検」が
+         建設業として残り、1件ずつ課金する段まで運ばれていた。
+         基礎情報の「事業」（業種の大分類・事業内容・提供エリア）を渡し、
+         会社の実際の仕事に照らして見られるようにする。 */
       const compBrief = JSON.stringify({
         "会社": (company && company["会社"]) || {},
+        "事業": (company && company["事業"]) || {},
         "探索キーワード": (company && company["探索キーワード"]) || [],
         "今後の計画": (company && (company["今後の計画"] || company["事業計画"])) || ""
       });
@@ -2671,7 +2681,7 @@ body.presenMode table{font-size:1.02em}
       /* 施主（個人）が受け取る制度は、会社を基準にした足切り・ゲート判定にかけない（2026-09-04）。
          一覧側は 2026-09-01 から除外していたが、詳細側は mechCheck をそのまま通していたため、
          同じ案件が一覧では「施主（個人）が受け取る制度」として並び、詳細を開くと
-         「精密足切り：不通過 ／ 候補登録・AIゲート判定の対象外」と出ていた。
+         「掲載内容との突き合わせ：条件が合いません ／ 候補登録・AIゲート判定の対象外」と出ていた。
          受け取るのが会社ではない以上、業種・規模・地域で判定すれば必ず落ちる。
          判定の対象が違うのだから、ここでは足切りそのものを行わない。 */
       if(d && d.__shunushi){
@@ -2688,18 +2698,18 @@ body.presenMode table{font-size:1.02em}
         const mc = mcRaw || { pass:true, undone:true, results:[{k:"足切り", v:"判定に届きませんでした。この案件は未判定です（見落としを防ぐため表示しています）。", ok:false}] };
         const lines = mc.results.map(r => e((r.ok ? "○ " : "× ") + r.k + "：" + r.v)).join("<br>");
         if(mc.undone){
-          act = '<div class="digpick"><span style="color:var(--fix)">精密足切り：未判定（判定に届きませんでした）</span><br>' + lines
+          act = '<div class="digpick"><span style="color:var(--fix)">掲載内容との突き合わせ：未判定（判定に届きませんでした）</span><br>' + lines
               + '<br><span style="color:var(--muted);font-weight:400">通信が届かなかったため、この案件は足切りを通っていません。掘り直すと判定されます。</span>'
               + '<br>'
-              + '　<button class="rbtn" data-act="gate" data-id="'+e(id)+'" style="margin-top:6px">第二段：AIゲート判定を実行（API利用）</button>'
+              + '　<button class="rbtn" data-act="gate" data-id="'+e(id)+'" style="margin-top:6px">この案件を深く読む（AI判定・API利用）</button>'
               + '<span class="digpicked"></span><div class="diggate"></div></div>';
         }else if(mc.pass){
-          act = '<div class="digpick"><span style="color:var(--ok)">精密足切り：通過</span><br>' + lines
+          act = '<div class="digpick"><span style="color:var(--ok)">掲載内容との突き合わせ：問題なし</span><br>' + lines
               + '<br>'
-              + '　<button class="rbtn" data-act="gate" data-id="'+e(id)+'" style="margin-top:6px">第二段：AIゲート判定を実行（API利用）</button>'
+              + '　<button class="rbtn" data-act="gate" data-id="'+e(id)+'" style="margin-top:6px">この案件を深く読む（AI判定・API利用）</button>'
               + '<span class="digpicked"></span><div class="diggate"></div></div>';
         }else{
-          act = '<div class="digpick"><span style="color:var(--fix)">精密足切り：不通過</span><br>' + lines
+          act = '<div class="digpick"><span style="color:var(--fix)">掲載内容との突き合わせ：条件が合いません</span><br>' + lines
               + '<br><span style="color:var(--muted);font-weight:400">この案件は条件不適合のため、候補登録・AIゲート判定の対象外です。</span></div>';
         }
       }
@@ -2938,7 +2948,7 @@ body.presenMode table{font-size:1.02em}
           b.textContent = "AIゲート判定を再実行（API利用）";
         }catch(err){
           if(box) box.innerHTML = '<span style="color:var(--fix)">' + e(String(err && err.message ? err.message : err)) + '</span>';
-          b.textContent = "第二段：AIゲート判定を実行（API利用）";
+          b.textContent = "この案件を深く読む（AI判定・API利用）";
         }finally{
           b.disabled = false;
         }
@@ -4502,7 +4512,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-04-02';
+  const TRIGATE_VERSION = '2026-09-04-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -1155,11 +1155,39 @@ body.presenMode table{font-size:1.02em}
     }
     return txt;
   }
-  function tsGuidelineLinksFromHtml(html, baseUrl){
+  /* 案件名から、拾った資料が「その案件のもの」かを見るための語を取り出す。
+     制度名の中の括弧書き（コース名等）は、他コースの資料を弾く鍵になる（2026-09-03）。 */
+  function tsTitleKeys(title){
+    const t = String(title || "").replace(/[［\[].*?[］\]]/g, " ");
+    const keys = [];
+    /* 括弧の中＝コース名・区分名。ここが違えば別の案件の資料 */
+    (t.match(/[（(]([^）)]{2,30})[）)]/g) || []).forEach(function(x){
+      const v = x.replace(/[（()）]/g, "").trim();
+      if(v) keys.push(v);
+    });
+    /* 括弧の外の主名称（助成金・補助金・事業・支援金 までを一まとまりとみなす） */
+    const m = t.match(/([^\s（(]{4,40}?(?:助成金|補助金|支援金|給付金|事業))/);
+    if(m) keys.push(m[1]);
+    return keys;
+  }
+  function tsGuidelineLinksFromHtml(html, baseUrl, title){
     let doc = null;
     try{ doc = new DOMParser().parseFromString(html, "text/html"); }catch(e){ return []; }
     if(!doc) return [];
-    const KEY = /要領|要綱|様式|申請|募集|手引|案内|交付|補助|助成|チラシ|パンフ|実施/;
+    /* 制度の中身が載っている本体ほど強い語を上に置く。
+       Jグランツは「公募要領」だが、厚労省は「パンフレット」「ご案内」で出す。
+       出所ごとに呼び名が違うため、呼び名の側で順位を持つ（2026-09-03）。 */
+    const RANK = [
+      { re: /公募要領|募集要領|交付要綱|実施要綱|実施要領|手引/, pt: 100 },
+      { re: /パンフレット/,                                     pt:  70 },
+      { re: /ご案内|のご案内|案内/,                              pt:  50 },
+      { re: /様式|申請書/,                                       pt:  40 },
+      { re: /Q&A|Q＆A|質疑|よくある/,                            pt:  20 },
+      { re: /リーフレット|チラシ/,                               pt:  10 }
+    ];
+    const tkeys = tsTitleKeys(title);
+    /* 括弧の中（コース名）だけを、他コースを弾くための鍵にする */
+    const course = tkeys.filter(function(k){ return !/助成金|補助金|支援金|給付金|事業$/.test(k); });
     const out = [], seen = {};
     doc.querySelectorAll("a[href]").forEach(function(a){
       const href = a.getAttribute("href") || "";
@@ -1173,13 +1201,31 @@ body.presenMode table{font-size:1.02em}
       let name = "";
       try{ name = decodeURIComponent(abs.split("/").pop().split("?")[0].split("#")[0]); }catch(_){ name = ""; }
       if(!label) label = name || "資料";
-      out.push({ url: abs, name: name || "資料.pdf", label: label, hit: KEY.test(label) || KEY.test(name) });
+      const hay = label + " " + name;
+      let pt = 0;
+      RANK.forEach(function(r){ if(r.re.test(hay) && r.pt > pt) pt = r.pt; });
+      /* この案件のコース名が入っていれば強く上げる。
+         別のコース名だけが入っているものは下げる（別案件の資料のため） */
+      let mine = 0;
+      if(course.length){
+        const hit = course.some(function(k){ return hay.indexOf(k) >= 0; });
+        /* 他コースの資料か＝括弧書きがあるのに、この案件のコース名ではない */
+        const other = /[（(][^）)]{2,30}コース[）)]/.test(hay) && !hit;
+        mine = hit ? 60 : (other ? -80 : 0);
+      }
+      /* 大きい資料ほど本体である見込みが高い（表示上の［5.7MB］等を拾う） */
+      let sz = 0;
+      const ms = hay.match(/([0-9]+(?:\.[0-9]+)?)\s*(MB|KB)/i);
+      if(ms){
+        const v = parseFloat(ms[1]);
+        sz = /MB/i.test(ms[2]) ? Math.min(v * 4, 30) : Math.min(v / 300, 3);
+      }
+      out.push({ url: abs, name: name || "資料.pdf", label: label, score: pt + mine + sz, other: mine < 0 });
     });
-    /* 見出しやファイル名に要領・要綱等が入っているものを先に出す */
-    out.sort(function(a, b){ return (b.hit ? 1 : 0) - (a.hit ? 1 : 0); });
+    out.sort(function(a, b){ return b.score - a.score; });
     return out.slice(0, 8);
   }
-  async function tsFindGuidelinesOnPage(pageUrl){
+  async function tsFindGuidelinesOnPage(pageUrl, title){
     const code = (typeof tsCode === "function") ? tsCode() : "";
     if(!code) throw new Error("認証コードが未入力です。");
     const res = await fetch(FD_RELAY, {
@@ -1193,7 +1239,7 @@ body.presenMode table{font-size:1.02em}
     }
     const d = await res.json();
     if(!d.base64) throw new Error("公式ページの中身が空で返りました。");
-    return tsGuidelineLinksFromHtml(tsB64ToText(d.base64), pageUrl);
+    return tsGuidelineLinksFromHtml(tsB64ToText(d.base64), pageUrl, title);
   }
 
   async function tsFetchGuidelineFile(opt){
@@ -1769,7 +1815,7 @@ body.presenMode table{font-size:1.02em}
         let webNote = "";
         let webEntries = [];
         if(selPref){
-          st.textContent = selArea + "の独自制度を検索しています…（30秒ほどかかります）";
+          st.textContent = selArea + "の独自制度を検索しています…（1分半ほどかかります）";
           try{
             const shu = document.getElementById("digShunushi");
             const wantShunushi = !!(shu && shu.checked);
@@ -2494,8 +2540,9 @@ body.presenMode table{font-size:1.02em}
            ボタンが出る案件と出ない案件がある、という状態を無くすため。 */
         if(!btns.length && d.front_subsidy_detail_page_url){
           btns.push('<button class="rbtn" data-act="findguide" data-id="' + e(id)
-            + '" data-page="' + e(d.front_subsidy_detail_page_url) + '" style="margin:4px 6px 0 0">'
-            + '公式ページから公募要領を探す</button>');
+            + '" data-page="' + e(d.front_subsidy_detail_page_url) + '"'
+            + ' data-title="' + e(d.title || d.program_name || d.name || "") + '"'
+            + ' style="margin:4px 6px 0 0">公式ページから公募要領を探す</button>');
         }
         if(btns.length){
           add("公募要領", btns.join("") + '<div class="digguide" style="margin-top:4px;color:var(--muted)"></div>');
@@ -2662,7 +2709,7 @@ body.presenMode table{font-size:1.02em}
         b.disabled = true; b.textContent = "公式ページを見ています…";
         if(note) note.innerHTML = "";
         try{
-          const links = await tsFindGuidelinesOnPage(page);
+          const links = await tsFindGuidelinesOnPage(page, b.dataset.title || "");
           if(!links.length){
             if(note) note.innerHTML = "このページからは資料の直リンクが見つかりませんでした。"
               + '<a href="' + e(page) + '" target="_blank" rel="noopener">公式ページを開く</a>'
@@ -2670,9 +2717,14 @@ body.presenMode table{font-size:1.02em}
           }else{
             if(note) note.innerHTML = "見つかった資料です。読み取るものを選んでください。<br>"
               + links.map(function(g){
-                  const lb = g.label.length > 40 ? (g.label.slice(0, 40) + "…") : g.label;
+                  const lb = g.label.length > 44 ? (g.label.slice(0, 44) + "…") : g.label;
+                  /* 別のコース・区分の資料は消さずに残すが、区別がつく形で下に置く（2026-09-03） */
+                  const st = g.other
+                    ? ' style="margin:4px 6px 0 0;opacity:.6"'
+                    : ' style="margin:4px 6px 0 0"';
+                  const tag = g.other ? '<span style="font-size:11px;color:var(--fix)">別コース </span>' : "";
                   return '<button class="rbtn" data-act="guide" data-url="' + e(g.url)
-                    + '" data-name="' + e(g.name) + '" style="margin:4px 6px 0 0">' + e(lb) + "</button>";
+                    + '" data-name="' + e(g.name) + '"' + st + '>' + tag + e(lb) + "</button>";
                 }).join("")
               + '<div class="digguide" style="margin-top:4px;color:var(--muted)"></div>';
           }
@@ -4299,7 +4351,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-03-04';
+  const TRIGATE_VERSION = '2026-09-03-06';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

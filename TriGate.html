@@ -1757,13 +1757,17 @@ body.presenMode table{font-size:1.02em}
 
     function saveDigResult(kw, statusText, rows){
       try{
+        /* 2026-09-04：印（事業外・規模大）を控えていなかったため、
+           画面を開き直すと印だけが消えていた。控える項目に加える。 */
         const slim = rows.map(it => ({
           id: it.id || "",
           title: it.title || it.name || "",
           ts_source: it.ts_source || "",
           subsidy_max_limit: it.subsidy_max_limit,
           acceptance_end_datetime: it.acceptance_end_datetime,
-          target_area_search: it.target_area_search
+          target_area_search: it.target_area_search,
+          __offBiz: it.__offBiz || "",
+          __amtOut: it.__amtOut || ""
         }));
         localStorage.setItem(DIG_SAVE_KEY, JSON.stringify({
           company: (typeof tsCompanyKey === "function" ? tsCompanyKey() : ""),
@@ -2054,20 +2058,29 @@ body.presenMode table{font-size:1.02em}
            ただし消しはしない——「上限額」が事業全体の額なのか1社あたりの交付額なのかを
            当社は見分けていないため、額だけで捨てると取れる制度を消す危険がある。 */
         const __lim = tsAmountLimits();
+        let __amtHit = 0, __amtSeen = 0;
         show.forEach(function(it){
           it.__amtOut = "";
-          const v = (it && it.subsidy_max_limit != null && isFinite(Number(it.subsidy_max_limit)))
-            ? Number(it.subsidy_max_limit) : null;
+          const raw = (it && it.subsidy_max_limit != null) ? it.subsidy_max_limit : null;
+          const v = (raw != null && raw !== "" && isFinite(Number(raw))) ? Number(raw) : null;
           if(v == null) return;                       /* 額が分からないものは触らない */
-          if(__lim.max != null && v > __lim.max) it.__amtOut = "規模大";
-          else if(__lim.min != null && v < __lim.min) it.__amtOut = "規模小";
+          __amtSeen++;
+          if(__lim.max != null && v > __lim.max){ it.__amtOut = "規模大"; __amtHit++; }
+          else if(__lim.min != null && v < __lim.min){ it.__amtOut = "規模小"; __amtHit++; }
         });
+        /* 2026-09-04：印が付かない原因を画面で見えるようにする。
+           読み取った目安と、金額を持つ件数・印を付けた件数を帯に出す。
+           開発者ツールを開かせずに、どこで外しているかが分かる。 */
+        const __amtNote = "／目安 上限" + __lim.max.toLocaleString("ja-JP")
+          + (__lim.min != null ? "・下限" + __lim.min.toLocaleString("ja-JP") : "・下限なし")
+          + "（金額のある案件 " + __amtSeen + " 件中 " + __amtHit + " 件に印）";
         /* 下へ回す順序：まず事業外、次に規模の目安外。どちらも消さない。 */
         const byRange = function(arr){
           const rank = function(x){ return (x.__offBiz ? 2 : 0) + (x.__amtOut ? 1 : 0); };
           return arr.slice().sort(function(a, b){ return rank(a) - rank(b); });
         };
         show = byRange(grpS).concat(byRange(grpA), byRange(grpB));
+        try{ if(st && __amtNote) st.textContent = st.textContent + __amtNote; }catch(e){}
         const headCells = '<th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th>';
         const rowOf = (it) => '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'" data-end="'+e(it.acceptance_end_datetime||"")+'">'
                 + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)
@@ -4512,7 +4525,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-04-03';
+  const TRIGATE_VERSION = '2026-09-04-04';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

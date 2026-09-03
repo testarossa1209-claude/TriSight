@@ -2150,19 +2150,38 @@ body.presenMode table{font-size:1.02em}
 
     /* 判定が出した確認事項と次の一手を、そのまま人の動く工程として渡す。
        AIが出したものなので要確認の印を付け、TriForm側で人が見て直せる形にする。 */
+    /* 2026-09-03改：判定の確認事項は「確かめる点」であって工程ではない。
+       工程欄へ流し込むと、TriFormの「確かめる点を作る」と同じ内容が二重に並ぶ。
+       工程として渡すのは実際に手が動くもの＝要領の入手だけにし、確認事項は
+       確かめる点の下書き（verify_items）として渡す。 */
     const tasks = [];
-    if(gate && gate["次の一手"]) tasks.push({ due_text: "", action: String(gate["次の一手"]), must_verify: true });
-    if(gate && Array.isArray(gate["確認事項"])){
-      gate["確認事項"].forEach(x => { if(x) tasks.push({ due_text: "", action: String(x), must_verify: true }); });
-    }
-    if(!tsIsCatalog(id)){
-      tasks.push({ due_text: "", action: "公募要領を読み込み、制度固有の必要書類と提出期限を確定する（TriGateの詳細から「公募要領を読み取る」）", must_verify: true });
+    const due = (d && d.acceptance_end_datetime) ? String(d.acceptance_end_datetime) : "";
+    if(tsIsCatalog(id)){
+      tasks.push({
+        due_text: due,
+        action: "公募要領を入手する（公式ページから公募要領のPDFを落とし、TriGateの読み取り欄に入れる）",
+        must_verify: true,
+        need: "",
+        make: "公募要領（PDF）",
+        goto: (d && d.front_subsidy_detail_page_url) ? String(d.front_subsidy_detail_page_url) : "交付元の公式ページ",
+        bring: "公募要領（PDF）・申請様式"
+      });
     }else{
-      tasks.push({ due_text: "", action: "公式ページから公募要領を入手し、TriGateの読み取り欄に入れて制度固有の必要書類を確定する", must_verify: true });
+      tasks.push({
+        due_text: due,
+        action: "公募要領を入手する（TriGateの詳細にある「公募要領を読み取る」を押す）",
+        must_verify: true,
+        need: "",
+        make: "公募要領（PDF）",
+        goto: "TriGate の案件詳細",
+        bring: "公募要領（PDF）・申請様式"
+      });
     }
 
+    /* 2026-09-03：トライタスクの受信箱は deadlines を文字列として読む（dueOf/gitemEl）。
+       オブジェクトで渡すと「期限記載なし」になり、締切が伝わらない。 */
     const deadlines = [];
-    if(d && d.acceptance_end_datetime) deadlines.push({ label: "受付期間の終わり", date_text: String(d.acceptance_end_datetime) });
+    if(d && d.acceptance_end_datetime) deadlines.push(String(d.acceptance_end_datetime));
 
     const name = (d && (d.title || d.program_name || d.name)) || "（名称不明）";
     const issuer = (d && (d.issuer || d.ts_source)) || "";
@@ -2184,7 +2203,12 @@ body.presenMode table{font-size:1.02em}
       deadlines: deadlines,
       reverse_tasks: tasks,
       required_documents: [],
-      verify_items: (gate && Array.isArray(gate["確認事項"])) ? gate["確認事項"].map(String) : [],
+      verify_items: (function(){
+        const v = [];
+        if(gate && gate["次の一手"]) v.push(String(gate["次の一手"]));
+        if(gate && Array.isArray(gate["確認事項"])) gate["確認事項"].forEach(x => { if(x) v.push(String(x)); });
+        return v;
+      })(),
       contact: (d && d.contact) || "",
       source_text: "",
       gate: gate,
@@ -4181,7 +4205,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-03-01';
+  const TRIGATE_VERSION = '2026-09-03-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

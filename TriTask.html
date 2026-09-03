@@ -584,6 +584,43 @@
   const LEGACY_INBOX_KEY = "tritask_grants"; // 旧キー（読み込みのみ・後方互換）
   const RESULTS_KEY = "tritask_results";
 
+  /* 2026-09-03：契約していない製品の入口を出さない。
+     トライゲイト＋トライフォーム＋トライタスクの利用者に TriSight®・
+     TriGrantSupport®・TriCare® の名前を出しても、貼る中身が無い。 */
+  function tsTrimSrcChips(){
+    const row = $("srcRow");
+    if(!row) return;
+    const family = isFamilyTier(myAuthCode());
+    let firstVisible = null;
+    row.querySelectorAll(".src-chip").forEach(c=>{
+      const label = String(c.dataset.src || "");
+      const parentOnly = label.indexOf("TriSight®") === 0
+        || label.indexOf("TriGrantSupport®") === 0
+        || label.indexOf("TriCare®") === 0;
+      const hide = parentOnly && !family;
+      c.style.display = hide ? "none" : "";
+      if(!hide && !firstVisible) firstVisible = c;
+    });
+    const on = row.querySelector(".src-chip.on");
+    if((!on || on.style.display === "none") && firstVisible){
+      row.querySelectorAll(".src-chip").forEach(c=>c.classList.remove("on"));
+      firstVisible.classList.add("on");
+      selectedSrc = firstVisible.dataset.src;
+    }
+  }
+
+  /* 届いた案件があるときは貼り付け欄を畳む。受信箱から選ぶのが主で、
+     文章を貼るのは副。両方を同時に見せると、届いているのに空欄を
+     埋めるものだと読まれる。 */
+  function tsFoldTheoryCard(){
+    const card = $("inputCard"), row = $("theoryToggleRow");
+    if(!card || !row) return;
+    if(card.dataset.userOpened === "1") return;
+    const has = visibleInbox().length > 0;
+    card.style.display = has ? "none" : "";
+    row.style.display = has ? "" : "none";
+  }
+
   // ソース選択チップ
   $("srcRow").addEventListener("click", e=>{
     const chip = e.target.closest(".src-chip");
@@ -598,6 +635,7 @@
     $("result").classList.remove("show");
     $("inputCard").style.display="block";
     $("grantListCard").style.display="block";
+    try{ tsFoldTheoryCard(); }catch(e){}
     currentGrantId = null;
     renderGrantList();
     renderResultsSummary();
@@ -630,6 +668,7 @@
     return allInbox().filter(g => !g.auth_code || g.auth_code === code);
   }
   function renderGrantList(){
+    try{ tsTrimSrcChips(); }catch(e){}
     // 2026-08-20 廉価版（トライゲイト＋トライタスク）でも受信箱を動かす。
     // 親機との差は TriForm（型による工程分解）に置く。
     $("grantListCard").style.display = "";
@@ -1213,6 +1252,19 @@
 
   renderGrantList();
   renderResultsSummary();
+  try{ tsFoldTheoryCard(); }catch(e){}
+  (function(){
+    const t = document.getElementById("theoryToggle");
+    if(!t) return;
+    t.addEventListener("click", function(ev){
+      ev.preventDefault();
+      const card = $("inputCard");
+      card.dataset.userOpened = "1";
+      card.style.display = "";
+      document.getElementById("theoryToggleRow").style.display = "none";
+      card.scrollIntoView({behavior:"smooth", block:"start"});
+    });
+  })();
 })();
 </script>
 

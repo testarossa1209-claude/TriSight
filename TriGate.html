@@ -1001,11 +1001,8 @@ body.presenMode table{font-size:1.02em}
     }
     if(btn){ btn.disabled = true; btn.textContent = "要領を読んで突き合わせ中…"; }
     box.style.display = "";
-    /* 2026-09-04：時計と結果を同じ場所に書いていたため、時計の最後の書き換えが
-       結果を上書きして、画面が空になっていた。置き場所を分ける。 */
-    box.innerHTML = '<div id="comboTimer"></div><div id="comboOut"></div>';
-    const tm = tsTimer(document.getElementById("comboTimer"),
-                       "要領の中の併給に関する記述と、掘ってある制度を突き合わせています。", tsComboCheck);
+    let raw = "";
+    const tm = tsTimer(box, "要領の中の併給に関する記述と、掘ってある制度を突き合わせています。", tsComboCheck);
     try{
       const sys = "あなたは、補助金の併給（2つ以上の制度を同じ工事で受けること）の可否を、公募要領の記述だけから判定する役です。"
         + "次の規律を必ず守ってください。"
@@ -1034,6 +1031,7 @@ body.presenMode table{font-size:1.02em}
       const data = await res.json();
       const text = (data.content||[]).filter(function(b){ return b.type==="text"; })
                    .map(function(b){ return b.text; }).join("\n").trim();
+      raw = text || JSON.stringify(data).slice(0, 1200);
       const j = JSON.parse(text.replace(/^```(json)?/i,"").replace(/```$/,"").trim());
       const pairs = Array.isArray(j.pairs) ? j.pairs : [];
       if(!pairs.length) throw new Error("結果が返りませんでした。");
@@ -1055,16 +1053,20 @@ body.presenMode table{font-size:1.02em}
           + '</div>';
       }).join("");
       try{ tm.stop(); }catch(_){}
-      const tEl = document.getElementById("comboTimer"); if(tEl) tEl.innerHTML = "";
-      const oEl = document.getElementById("comboOut");
-      if(oEl) oEl.innerHTML = h; else box.innerHTML = h;
+      box.style.display = "";
+      box.innerHTML = h;
     }catch(err){
+      /* 2026-09-04：結果を書けずに画面が空になる件が続いたため、
+         何が返ってきたかをそのまま残す。原因を一度で特定するための手当て。 */
       try{ tm.stop(); }catch(_){}
-      const tEl2 = document.getElementById("comboTimer"); if(tEl2) tEl2.innerHTML = "";
-      const oEl2 = document.getElementById("comboOut");
-      const msg = '<div class="combo-note" style="color:#b0203a">調べられませんでした：'
-        + e(String(err && err.message ? err.message : err)) + "</div>";
-      if(oEl2) oEl2.innerHTML = msg; else box.innerHTML = msg;
+      box.style.display = "";
+      let dump = "";
+      try{ dump = String(raw || "").slice(0, 1200); }catch(_){ dump = ""; }
+      box.innerHTML = '<div class="combo-note" style="color:#b0203a"><b>調べられませんでした：</b>'
+        + e(String(err && err.message ? err.message : err)) + '</div>'
+        + (dump ? '<div class="combo-note"><b>返ってきた中身（先頭のみ）</b><br>'
+                  + '<pre style="white-space:pre-wrap;font-size:11.5px;margin:6px 0 0">'
+                  + e(dump) + '</pre></div>' : "");
     }finally{
       try{ tm.stop(); }catch(_){}
       if(btn){ btn.disabled = false; btn.textContent = "併せて取れる制度を調べる"; }
@@ -4756,7 +4758,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-04-12';
+  const TRIGATE_VERSION = '2026-09-04-13';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

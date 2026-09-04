@@ -487,10 +487,12 @@ body.presenMode table{font-size:1.02em}
     <button id="printBtn" class="rbtn">印刷する</button>
     <button id="taskBtn" class="rbtn">TriTaskへ送る</button>
     <button id="matchBtn" class="rbtn">要件を照合する</button>
+    <button id="comboBtn" class="rbtn">併せて取れる制度を調べる</button>
     <button id="resultRegBtn" class="rbtn ghost">獲得実績を登録</button>
     <button id="resetBtn" class="rbtn ghost">次の案件へ（最初から）</button>
     <span id="taskMsg" class="rmsg" style="display:none"></span>
   </div>
+  <div id="comboBox" class="no-print" style="display:none;margin-top:10px"></div>
 
   <!-- TriTask送信前の確認・編集パネル（AI出力を無検証で流さないための人の確認工程） -->
   <div id="sendReview" class="no-print" style="display:none;border:2px solid #c9772a;border-radius:10px;padding:18px 20px;margin:14px 0;background:#fffaf3">
@@ -518,6 +520,11 @@ body.presenMode table{font-size:1.02em}
     #matchOut table{width:100%;border-collapse:collapse;font-size:13px}
     #matchOut th,#matchOut td{border:1px solid var(--line,#ddd);padding:6px 8px;vertical-align:top;text-align:left}
     #matchOut th{background:#f6f7f9}
+    .combo-note{background:#fff;border:1px solid var(--line,#ddd);border-radius:10px;padding:12px 14px;font-size:13px;margin-bottom:8px;line-height:1.7}
+    .combo-row{background:#fff;border:1px solid var(--line,#ddd);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:6px}
+    .combo-v{font-weight:700;margin-right:6px}
+    .combo-r{margin-top:4px;line-height:1.7}
+    .combo-b{margin-top:4px;color:var(--muted,#868e96);font-size:12px;line-height:1.6}
   </style>
 
   <footer>
@@ -879,6 +886,108 @@ body.presenMode table{font-size:1.02em}
     resetTaskBtn();
     autoSendToTask(TG_LAST);
   });
+
+  /* ===== 併給の突き合わせ（2026-09-04） =====
+     2つ以上の制度を並行して取ろうとすると、増えるのは書類の数だけではない。
+     順序が絡み、同じ経費を二重に載せられず、片方が落ちると前提が崩れる。
+     人は足し算のつもりで見てしまうが、実際は掛け算で難しくなる。
+     日々の営業をしながらこれを突き合わせるのは専門家の仕事であり、
+     読み返しを厭わない機械の側が向いている。
+     ただし当社が「併用できます」と言い切ることはしない。
+     要領に書いてあることだけを拾い、書いていない組み合わせは確認事項として残す。 */
+  const ANTHROPIC_RELAY = "https://trisight-relay.vercel.app/api/anthropic";
+
+  async function tsComboCheck(){
+    const btn = document.getElementById("comboBtn");
+    const box = document.getElementById("comboBox");
+    if(!box) return;
+    const src = (typeof srcTextForTask === "function") ? srcTextForTask() : "";
+    if(!src){
+      box.style.display = "";
+      box.innerHTML = '<div class="combo-note"><b>要領の本文がありません。</b>'
+        + '併給の可否は要領に書かれていることだけを根拠にするため、'
+        + '公募要領を読み取ってからでないと調べられません。'
+        + '上の「公募要領」から要領を読み取ってください。</div>';
+      return;
+    }
+    const mine = String((typeof TG_LAST !== "undefined" && TG_LAST && TG_LAST.program_name) || "");
+    const others = ((typeof lastShow !== "undefined" && lastShow) ? lastShow : [])
+      .filter(function(it){
+        return it && !it.__offBiz && String(it.title || it.name || "") !== mine;
+      })
+      .slice(0, 40)
+      .map(function(it, i){
+        return (i+1) + "．" + String(it.title || it.name || "")
+             + "（" + (it.target_area_search || "地域の記載なし") + "）";
+      }).join("\n");
+    if(!others){
+      box.style.display = "";
+      box.innerHTML = '<div class="combo-note">突き合わせる相手がありません。先に発掘してください。</div>';
+      return;
+    }
+    if(btn){ btn.disabled = true; btn.textContent = "要領を読んで突き合わせ中…"; }
+    box.style.display = "";
+    box.innerHTML = '<div class="combo-note">いま読み取った制度の要領と、掘ってある制度を突き合わせています。少し長めにかかります。</div>';
+    try{
+      const sys = "あなたは、補助金の併給（2つ以上の制度を同じ工事で受けること）の可否を、公募要領の記述だけから判定する役です。"
+        + "次の規律を必ず守ってください。"
+        + "①判定は3つのいずれか。"
+        + "『不可』＝要領に併給できない旨が書かれているもの。制度名が明記されている場合に限る。"
+        + "『可』＝要領に併用できる旨が明記されているもの。"
+        + "『要確認』＝要領に記載が無い、または記載があっても対象経費の重なり方で結論が変わるもの。"
+        + "②迷ったら必ず『要確認』にする。書かれていないことを推測で『可』にしてはいけない。"
+        + "間違えれば申請者が二重取りとみなされ、返還を求められる。安全な側へ倒すこと。"
+        + "③判定の根拠として、要領のどこに書いてあるか（章・項番・見出し）を basis に必ず書く。"
+        + "『要確認』の場合は basis に『要領に記載なし』と書き、確認先を contact に書く。"
+        + "④要領に制度名が明記されている併給不可の制度は、渡された一覧に無くても列挙する。"
+        + "⑤順序の縛り（片方を先に申し込まないと取れない等）が要領にあれば order に書く。無ければ空。"
+        + "出力はJSONのみ。前置きもコードブロックも付けないでください。"
+        + '形式：{"pairs":[{"name":"相手の制度名","verdict":"不可|可|要確認","reason":"短い理由","basis":"要領の該当箇所","contact":"確認先","order":"順序の縛り"}]}';
+      const user = "■ いま読み取った制度\n" + mine + "\n\n"
+        + "■ その公募要領の本文\n" + String(src).slice(0, 50000) + "\n\n"
+        + "■ 突き合わせる相手（掘ってある制度）\n" + others;
+      const res = await fetch(ANTHROPIC_RELAY, {
+        method: "POST",
+        headers: {"Content-Type":"application/json", "x-trisight-code": tsCode()},
+        body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:4000,
+                               system: sys, messages:[{role:"user", content:user}] })
+      });
+      if(!res.ok) throw new Error("リレー応答 " + res.status + (res.status===401 ? "（認証コードをご確認ください）" : ""));
+      const data = await res.json();
+      const text = (data.content||[]).filter(function(b){ return b.type==="text"; })
+                   .map(function(b){ return b.text; }).join("\n").trim();
+      const j = JSON.parse(text.replace(/^```(json)?/i,"").replace(/```$/,"").trim());
+      const pairs = Array.isArray(j.pairs) ? j.pairs : [];
+      if(!pairs.length) throw new Error("結果が返りませんでした。");
+      const rank = { "不可":0, "要確認":1, "可":2 };
+      pairs.sort(function(a,b){ return (rank[a.verdict]||1) - (rank[b.verdict]||1); });
+      const color = { "不可":"#b0203a", "可":"#1a7f37", "要確認":"#9a3412" };
+      let h = '<div class="combo-note"><b>併給の突き合わせ（' + pairs.length + '件）</b><br>'
+        + '判定は<b>この制度の要領に書かれていることだけ</b>を根拠にしています。'
+        + '相手側の要領にも別の定めがある場合がありますので、<b>両方を確かめてから客先へお伝えください</b>。</div>';
+      h += pairs.map(function(pr){
+        const v = String(pr.verdict || "要確認");
+        return '<div class="combo-row">'
+          + '<span class="combo-v" style="color:' + (color[v] || "#9a3412") + '">' + e(v) + '</span> '
+          + '<b>' + e(String(pr.name||"")) + '</b>'
+          + (pr.reason ? '<div class="combo-r">' + e(String(pr.reason)) + '</div>' : "")
+          + (pr.order ? '<div class="combo-r"><b>順序：</b>' + e(String(pr.order)) + '</div>' : "")
+          + '<div class="combo-b">根拠：' + e(String(pr.basis || "要領に記載なし"))
+          + (pr.contact ? '　／　確認先：' + e(String(pr.contact)) : "") + '</div>'
+          + '</div>';
+      }).join("");
+      box.innerHTML = h;
+    }catch(err){
+      box.innerHTML = '<div class="combo-note" style="color:#b0203a">調べられませんでした：'
+        + e(String(err && err.message ? err.message : err)) + "</div>";
+    }finally{
+      if(btn){ btn.disabled = false; btn.textContent = "併せて取れる制度を調べる"; }
+    }
+  }
+  (function(){
+    const b = document.getElementById("comboBtn");
+    if(b) b.addEventListener("click", tsComboCheck);
+  })();
 
   /* ===== 発掘（新着探索・Jグランツ）2026-07-13 ===== */
   const JG_RELAY = "https://trisight-relay.vercel.app/api/jgrants";
@@ -4539,7 +4648,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-04-07';
+  const TRIGATE_VERSION = '2026-09-04-08';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

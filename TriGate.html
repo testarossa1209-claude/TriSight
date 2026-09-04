@@ -1000,7 +1000,7 @@ body.presenMode table{font-size:1.02em}
       .filter(function(it){
         return it && !it.__offBiz && String(it.title || it.name || "") !== mine;
       })
-      .slice(0, 40)
+      .slice(0, 12)
       .map(function(it, i){
         return (i+1) + "．" + String(it.title || it.name || "")
              + "（" + (it.target_area_search || "地域の記載なし") + "）";
@@ -1038,7 +1038,7 @@ body.presenMode table{font-size:1.02em}
       const res = await fetch(ANTHROPIC_RELAY, {
         method: "POST",
         headers: {"Content-Type":"application/json", "x-trisight-code": tsCode()},
-        body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:4000,
+        body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:12000,
                                system: sys, messages:[{role:"user", content:user}] })
       });
       if(!res.ok) throw new Error("リレー応答 " + res.status + (res.status===401 ? "（認証コードをご確認ください）" : ""));
@@ -1046,13 +1046,33 @@ body.presenMode table{font-size:1.02em}
       const text = (data.content||[]).filter(function(b){ return b.type==="text"; })
                    .map(function(b){ return b.text; }).join("\n").trim();
       raw = text || JSON.stringify(data).slice(0, 1200);
-      const j = JSON.parse(text.replace(/^```(json)?/i,"").replace(/```$/,"").trim());
-      const pairs = Array.isArray(j.pairs) ? j.pairs : [];
+      const body = text.replace(/^```(json)?/i,"").replace(/```$/,"").trim();
+      let pairs = [];
+      try{
+        const j = JSON.parse(body);
+        pairs = Array.isArray(j.pairs) ? j.pairs : [];
+      }catch(_){
+        /* 2026-09-04：返答が枠に収まらず途中で切れると、JSON全体が壊れて
+           そこまでの判定も捨てていた。判定は1件ずつ独立しているので、
+           閉じている分だけを拾って出す。切れたことは画面に添える。 */
+        const found = [];
+        const re2 = /\{[^{}]*"verdict"[^{}]*\}/g;
+        let m2;
+        while((m2 = re2.exec(body)) !== null){
+          try{ found.push(JSON.parse(m2[0])); }catch(_){}
+        }
+        if(!found.length) throw new Error("結果を読み取れませんでした。");
+        pairs = found;
+        pairs.__cut = true;
+      }
       if(!pairs.length) throw new Error("結果が返りませんでした。");
       const rank = { "不可":0, "要確認":1, "可":2 };
       pairs.sort(function(a,b){ return (rank[a.verdict]||1) - (rank[b.verdict]||1); });
       const color = { "不可":"#b0203a", "可":"#1a7f37", "要確認":"#9a3412" };
-      let h = '<div class="combo-note"><b>併給の突き合わせ（' + pairs.length + '件）</b><br>'
+      let h = '<div class="combo-note"><b>併給の突き合わせ（' + pairs.length + '件）</b>'
+        + (pairs.__cut ? '<span style="color:#b0203a">　※ 返答が途中で切れたため、'
+                         + '読み取れた分だけを表示しています。もう一度押すと全件を試します。</span>' : "")
+        + '<br>'
         + '判定は<b>この制度の要領に書かれていることだけ</b>を根拠にしています。'
         + '相手側の要領にも別の定めがある場合がありますので、<b>両方を確かめてから客先へお伝えください</b>。</div>';
       h += pairs.map(function(pr){
@@ -4772,7 +4792,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-04-15';
+  const TRIGATE_VERSION = '2026-09-04-16';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -159,6 +159,7 @@
 
   <div id="matchBox"></div>
   <div id="factBox"></div>
+  <div id="caseFactBox"></div>
   <div id="noMatchBox"></div>
 
   <div class="tsec">
@@ -201,7 +202,7 @@
 
 <footer>
   合同会社トライサイト　TriSight&reg; ファミリー
-  <div class="verline">版 <span id="verLabel">2026-09-04-03</span>（v3）</div>
+  <div class="verline">版 <span id="verLabel">2026-09-04-04</span>（v3）</div>
 </footer>
 </div>
 
@@ -466,13 +467,24 @@
         + "①要領本文に書かれている事柄は、その旨を basis に短く書く。"
         + "②要領に書かれていないが一般の手続きとして必要な段取りは書いてよいが、その工程は must_verify を true にし、"
         + "why に『なぜ交付元へ確かめる必要があるか』を書く。断定しない。"
-        + "③その書類を作るのに申請者の会社の事実（法人番号・代表者・本店所在地・従業員数・決算期など）が要る場合は facts に列挙する。"
+        + "③その書類を作るのに要る情報を2つに分ける。"
+        + "　facts＝どの制度でも同じ『会社そのものの事実』だけ（法人名・法人番号・代表者・本店所在地・設立年月日・資本金・従業員数・決算期・法人種別・連絡先など）。"
+        + "　case_facts＝この申請でしか使わない『案件ごとの事実』（設備の型式、能力、走行距離、申請区分、実施時期など）。"
+        + "　会社の基礎情報に持っているはずのないものを facts に入れてはいけない。迷ったら case_facts に入れる。"
         + "④結論（この会社が対象かどうか、通るかどうか）は一切書かない。判断は人間がする。"
         + "⑤工程は1書類あたり多くて5件。役所や取引先へ出向く工程には submit_to と receive を必ず書く。"
+        + "⑥must_verify を true にしてよいのは、次の2つだけである。"
+        + "　（ア）その会社の現物を見ないと決まらないこと（設備の設置状況、保有の有無、過去の実績など）。"
+        + "　（イ）制度ごとに違い、要領にも法令にも書かれていないこと（見積の必要社数、資本関係の要否など）。"
+        + "　法令に根拠がある段取り（届出義務、法定点検、受理印など）は、根拠となる法令名を basis に書き、"
+        + "　must_verify は false にする。法令で決まっていることを人に確かめさせない。"
         + "出力はJSONのみ。前置きもコードブロックも付けないでください。"
         + '形式：{"patterns":[{"doc":"書類名（渡されたものをそのまま）","name":"型の名前","keys":["引き当てる語"],'
-        + '"facts":["会社の事実"],"steps":[{"action":"やること","inputs":"手元に要るもの","output":"この工程でできるもの",'
-        + '"submit_to":"持っていく先","receive":"持ち帰るもの","must_verify":false,"why":"","basis":"要領の該当箇所"}]}]}';
+        + '"facts":["会社そのものの事実"],"case_facts":["この申請で用意する情報"],'
+        + '"steps":[{"action":"やること","inputs":"手元に要るもの","output":"この工程でできるもの",'
+        + '"submit_to":"持っていく先","receive":"持ち帰るもの","must_verify":false,"why":"","basis":"要領または法令の該当箇所"}]}]}';
+      /* 2026-09-04：5件ずつに分けたことで、23ページの要領本文を回ごとに送り直していた。
+         待ち時間の大半がこの往復。本文は長いので、2回目以降は要点だけに絞る。 */
       const user = "■ 要領本文\n" + src + "\n\n"
         + "■ 制度名\n" + ((g && g.program_name) || "") + "\n\n"
         + "■ 型を作る書類\n" + names;
@@ -503,6 +515,7 @@
                           name:String(pt.name || pt.doc || "書類の型"),
                           keys:keys.map(String),
                           facts:(Array.isArray(pt.facts)?pt.facts.map(String):[]),
+                          case_facts:(Array.isArray(pt.case_facts)?pt.case_facts.map(String):[]),
                           steps:steps });
         n++;
       });
@@ -583,8 +596,49 @@
     });
     return need;
   }
+  /* 2026-09-04：会社の基礎情報に持っているはずのないもの（設備の型式、走行距離など）まで
+     「基礎情報にありません」と並べていた。無いのが当たり前のものを不足として数えると、
+     78件の不足という数字になり、本当に足りない10件ほどが埋もれる。
+     案件ごとに用意する情報は、不足ではなく「この申請で用意するもの」として別に並べる。 */
+  function collectCaseFacts(){
+    const need = [], seen = new Set();
+    matchLog.forEach(m=>{
+      const pat = loadPatterns().find(p=>p.id === m.id);
+      if(!pat) return;
+      (pat.case_facts||[]).forEach(f=>{
+        if(seen.has(f)) return;
+        seen.add(f);
+        need.push({ name:f, from:pat.name });
+      });
+    });
+    return need;
+  }
+  function renderCaseFacts(){
+    const box = $("caseFactBox");
+    if(!box) return;
+    const list = collectCaseFacts();
+    if(!list.length){ box.innerHTML = ""; return; }
+    let open = false;
+    const draw = ()=>{
+      box.innerHTML = '<div style="background:var(--white);border:1px solid var(--line);border-radius:10px;padding:13px 16px;margin-bottom:12px">'
+        + '<div style="font-weight:700;margin-bottom:6px">この申請で用意する情報（' + list.length + '件）</div>'
+        + '<div style="font-size:12.5px;color:var(--ink-soft)">会社の基礎情報に持つ性質のものではありません。'
+        + 'この案件の書類を作るときに、現場から拾ってくる項目です。</div>'
+        + '<button type="button" class="sbtn" id="caseFactToggle" style="margin-top:8px">'
+        + (open ? "閉じる" : "中身を見る") + '</button>'
+        + (open ? ('<div style="margin-top:8px">' + list.map(n=>
+            '<div style="margin:4px 0">・' + esc(n.name)
+            + '<span style="color:var(--muted)">（' + esc(n.from) + '）</span></div>').join("") + '</div>') : "")
+        + '</div>';
+      const b = $("caseFactToggle");
+      if(b) b.addEventListener("click", ()=>{ open = !open; draw(); });
+    };
+    draw();
+  }
+
   function renderFacts(){
     const box = $("factBox");
+    renderCaseFacts();
     factNeeds = collectFacts();
     if(!factNeeds.length){ box.innerHTML = ""; factMissing = []; updateApply(); return; }
 

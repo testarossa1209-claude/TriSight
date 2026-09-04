@@ -202,7 +202,7 @@
 
 <footer>
   合同会社トライサイト　TriSight&reg; ファミリー
-  <div class="verline">版 <span id="verLabel">2026-09-04-05</span>（v3）</div>
+  <div class="verline">版 <span id="verLabel">2026-09-04-06</span>（v3）</div>
 </footer>
 </div>
 
@@ -511,8 +511,12 @@
                    why: String(x.why||"") + (x.basis ? "（要領：" + String(x.basis) + "）" : "") };
         }).filter(function(x){ return x.action; });
         if(!steps.length) return;
+        /* 2026-09-04：型の名前に implementation_plan のような英語のキーが入る回があり、
+           利用者に見せる画面へそのまま出ていた。英数字だけの名前は書類名で置き換える。 */
+        let pname = String(pt.name || pt.doc || "書類の型").trim();
+        if(!/[^\x00-\x7F]/.test(pname)) pname = String(pt.doc || "書類の型").trim() || pname;
         saveUserPattern({ id:"a-" + Date.now() + "-" + i,
-                          name:String(pt.name || pt.doc || "書類の型"),
+                          name:pname,
                           keys:keys.map(String),
                           facts:(Array.isArray(pt.facts)?pt.facts.map(String):[]),
                           case_facts:(Array.isArray(pt.case_facts)?pt.case_facts.map(String):[]),
@@ -528,10 +532,19 @@
      判断・相談・検討は一切しない（トライフォームの定義的制約）。
      基礎情報の現物はトライゲイトが端末に置いたもの（trisight_dig_company）をそのまま読む。 */
   const COMPANY_KEY = "trisight_dig_company";
+  /* 2026-09-04：要領から組み立てた型が名乗る事実（法人名・法人種別・設立年月日・決算期・
+     連絡先・事業目的など）に当たる語が無く、基礎情報にあっても「ありません」と出ていた。 */
   const FACT_ALIASES = {
     "法人番号":       ["法人番号"],
+    "法人名":         ["法人名", "名称", "商号"],
+    "法人種別":       ["法人種別", "法人形態"],
     "代表者":         ["代表者", "代表社員", "代表取締役"],
     "本店所在地":     ["本店所在地", "所在地", "住所"],
+    "設立年月日":     ["設立年月日", "設立"],
+    "決算期":         ["決算期", "事業年度"],
+    "資本金":         ["資本金"],
+    "連絡先":         ["連絡先", "電話番号", "メールアドレス", "担当者"],
+    "事業目的":       ["事業目的", "主要事業", "事業内容"],
     "従業員数":       ["従業員数", "常時使用する労働者", "職員数"],
     "GビズID":        ["GビズID", "gBizID", "Gビズ"],
     "対象人材の状況": ["対象人材", "対象となりうる人材"],
@@ -565,7 +578,17 @@
   /* 基礎情報のキー名は版によって揺れるため、経路を決め打ちせず名前で探す。
      見つけた経路をそのまま画面に出し、当たり方を人が確かめられるようにする（v2の根拠表示と同じ考え）。 */
   function findFact(company, factName){
-    const words = FACT_ALIASES[factName] || [factName];
+    /* 型が名乗る名前は「法人名（正式名称）」のように括弧や補足が付くため、
+       そのままでは当たらない。括弧の前と、別名表の語の両方で探す（2026-09-04）。 */
+    let words = FACT_ALIASES[factName];
+    if(!words){
+      const head = String(factName).split(/[（(・／\/]/)[0].trim();
+      words = [factName];
+      if(head && head !== factName) words.push(head);
+      Object.keys(FACT_ALIASES).forEach(function(k){
+        if(String(factName).indexOf(k) >= 0) words = words.concat(FACT_ALIASES[k]);
+      });
+    }
     let hit = null;
     (function walk(node, path){
       if(hit || node === null || node === undefined) return;

@@ -202,7 +202,7 @@
 
 <footer>
   合同会社トライサイト　TriSight&reg; ファミリー
-  <div class="verline">版 <span id="verLabel">2026-09-04-04</span>（v3）</div>
+  <div class="verline">版 <span id="verLabel">2026-09-04-05</span>（v3）</div>
 </footer>
 </div>
 
@@ -869,7 +869,8 @@
       const m = matchPattern(d.name);
       if(!m || !m.pattern || seen.has(m.pattern.id)) return;
       seen.add(m.pattern.id);
-      matchLog.push({ doc:d.name||"", key:m.key, pattern:m.pattern.name, id:m.pattern.id });
+      matchLog.push({ doc:d.name||"", key:m.key, pattern:m.pattern.name, id:m.pattern.id,
+                      made_for: String(m.pattern.id||"").indexOf("a-") === 0 });
       (m.pattern.steps||[]).forEach(s=>{
         out.push({
           from:m.pattern.name, pid:m.pattern.id, due_text:"", action:s.action||"",
@@ -885,14 +886,30 @@
   function renderMatchLog(){
     const box = $("matchBox");
     if(!matchLog.length){ box.innerHTML = ""; return; }
+    /* 2026-09-04：型が増えるほど「この当てはめは違う」の点検が件数ぶん並び、
+       全件を人に見直させる形になっていた。外れる余地があるのは書類名の語で
+       引き当てた型だけ。その書類のために組み立てた型は根拠の一覧に出さない。 */
+    const shown = matchLog.map((m,i)=>({m:m,i:i})).filter(x=>!x.m.made_for);
+    const madeN = matchLog.length - shown.length;
+    if(!shown.length){
+      box.innerHTML = '<div style="background:var(--white);border:1px solid var(--line);border-radius:10px;'
+        + 'padding:13px 16px;margin-top:14px;font-size:13px">'
+        + '<div style="font-weight:700">型を当てた根拠</div>'
+        + '<div style="color:var(--ink-soft);margin-top:4px">' + madeN + '件は、この案件の書類のために要領から組み立てた型です。'
+        + '書類名の語で引き当てたものではないので、当てはめの外れようがありません。'
+        + '中身は「手続きの型を見る」で確かめられます。</div></div>';
+      return;
+    }
     box.innerHTML = '<div style="background:var(--white);border:1px solid var(--line);border-radius:10px;'
       + 'padding:13px 16px;margin-top:14px;font-size:13px">'
-      + '<div style="font-weight:700;margin-bottom:6px">型を当てた根拠（' + matchLog.length + '件）</div>'
-      + matchLog.map((m,i)=>
-          '<div style="margin:5px 0">「' + esc(m.doc) + '」の中の<b>' + esc(m.key) + '</b>で、'
+      + '<div style="font-weight:700;margin-bottom:6px">型を当てた根拠（' + shown.length + '件）'
+      + (madeN ? '<span style="font-weight:400;color:var(--muted)">　ほかに' + madeN + '件は要領から組み立てた型（外れようがないため省略）</span>' : "")
+      + '</div>'
+      + shown.map(function(x){ const m = x.m, i = x.i;
+          return '<div style="margin:5px 0">「' + esc(m.doc) + '」の中の<b>' + esc(m.key) + '</b>で、'
           + '<b>' + esc(m.pattern) + '</b>に当てました。'
-          + '<button type="button" class="sbtn danger" data-unmatch="' + i + '" style="margin-left:8px">この当てはめは違う</button></div>'
-        ).join("")
+          + '<button type="button" class="sbtn danger" data-unmatch="' + i + '" style="margin-left:8px">この当てはめは違う</button></div>';
+        }).join("")
       + '</div>';
     box.querySelectorAll("button[data-unmatch]").forEach(el=>{
       el.addEventListener("click", ()=>{
@@ -1185,14 +1202,40 @@
   $("closePatternBtn").addEventListener("click", ()=>$("patternDlg").close());
   $("addPatternBtn").addEventListener("click", ()=>{ $("patternDlg").close(); openEdit(""); });
 
+  /* 2026-09-04：この一覧に当社の組み込み型しか見えず、要領から組み立てた型を
+     確かめることも消すこともできなかった。出どころを出し、消す口を付ける。 */
   function renderPatternList(){
     const all = loadPatterns();
-    $("patternList").innerHTML = '<ul class="plist">' + all.map(p=>
-      '<li class="pitem"><div class="pn">' + esc(p.name||"") + '</div>'
+    let user = [];
+    try{ user = JSON.parse(localStorage.getItem(PATTERN_KEY) || "[]"); }catch(e){ user = []; }
+    const uid = new Set((Array.isArray(user)?user:[]).map(x=>x.id));
+    $("patternList").innerHTML = '<ul class="plist">' + all.map(p=>{
+      const mine = uid.has(p.id);
+      const auto = String(p.id||"").indexOf("a-") === 0;
+      const tag = !mine ? '<span style="color:var(--muted);font-size:11.5px">当社の組み込み</span>'
+                : (auto ? '<span style="color:#9a3412;font-size:11.5px">要領から組み立て</span>'
+                        : '<span style="color:#9a3412;font-size:11.5px">この端末で作成</span>');
+      return '<li class="pitem"><div class="pn">' + esc(p.name||"") + '　' + tag + '</div>'
       + '<div class="pm">引き当てる語：' + esc((p.keys||[]).join("、")) + '</div>'
       + ((p.facts||[]).length ? '<div class="pm">要る会社の事実：' + esc((p.facts||[]).join("、")) + '</div>' : "")
-      + '<div class="pc">' + (p.steps||[]).map((s,i)=>(i+1)+"．"+esc(s.action||"")).join("<br>") + '</div></li>'
-    ).join("") + '</ul>';
+      + ((p.case_facts||[]).length ? '<div class="pm">この申請で用意する情報：' + esc((p.case_facts||[]).join("、")) + '</div>' : "")
+      + '<div class="pc">' + (p.steps||[]).map((s,i)=>(i+1)+"．"+esc(s.action||"")).join("<br>") + '</div>'
+      + (mine ? '<div style="margin-top:6px"><button type="button" class="sbtn danger" data-delpat="'
+                + esc(p.id) + '">この型を消す</button></div>' : "")
+      + '</li>';
+    }).join("") + '</ul>';
+    $("patternList").querySelectorAll("button[data-delpat]").forEach(el=>{
+      el.addEventListener("click", ()=>{
+        const id = el.dataset.delpat;
+        let u = [];
+        try{ u = JSON.parse(localStorage.getItem(PATTERN_KEY) || "[]"); }catch(e){ u = []; }
+        if(!Array.isArray(u)) u = [];
+        u = u.filter(x=>x.id !== id);
+        try{ localStorage.setItem(PATTERN_KEY, JSON.stringify(u)); }catch(e){}
+        renderPatternList();
+        if(current){ rows = buildRows(current); renderMatchLog(); renderRows(); renderNoMatch(current); renderFacts(); }
+      });
+    });
   }
 
   function openEdit(prefillKey){

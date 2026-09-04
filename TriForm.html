@@ -164,8 +164,9 @@
   <div class="tsec">
     <h3>この分解でよいかを確かめる</h3>
     <div class="h">
-      工程の並びは、書類の名前に型を当てて機械的に出したものです。<b>当たったこと自体は、正しさの保証ではありません。</b>
-      交付元の要領に照らして確かめる点を作らせ、<b>ひとつずつご自身で確かめてください</b>。判断するのはあなたです。
+      当社が組み立てた工程のうち、<b>要領に根拠のあるもの・法令で決まっているものは、確かめる対象から外してあります</b>。
+      残しているのは、<b>御社の現物を見ないと決まらないこと</b>と、<b>制度ごとに違って要領にも書かれていないこと</b>だけです。
+      そこだけをご自身で確かめてください。判断するのはあなたです。
     </div>
     <button class="go ghost" id="critBtn">確かめる点を作る</button>
     <div id="critBox"></div>
@@ -200,7 +201,7 @@
 
 <footer>
   合同会社トライサイト　TriSight&reg; ファミリー
-  <div class="verline">版 <span id="verLabel">2026-09-04-01</span>（v3）</div>
+  <div class="verline">版 <span id="verLabel">2026-09-04-03</span>（v3）</div>
 </footer>
 </div>
 
@@ -423,8 +424,40 @@
       return;
     }
     if(btn){ btn.disabled = true; btn.textContent = "要領を読んで組み立てています…"; }
-    if(note) note.textContent = "書類 " + unmatched.length + " 件ぶんを一度に組み立てます。少し長めにかかります。";
+    /* 2026-09-04：21件を一度に返させたところ、応答の枠を超えてJSONが途中で切れた。
+       書類ごとに工程が最大5件つくため、全件を1回で返させる作りが無理だった。
+       5件ずつに分け、回ごとに保存する。途中で失敗しても、そこまでは残る。 */
+    const CHUNK = 5;
+    let madeTotal = 0, failed = 0;
     try{
+      for(let ci = 0; ci < unmatched.length; ci += CHUNK){
+        const part = unmatched.slice(ci, ci + CHUNK);
+        if(note) note.textContent = "組み立て中… " + Math.min(ci + CHUNK, unmatched.length)
+          + " / " + unmatched.length + " 件目まで";
+        try{
+          madeTotal += await tfMakeChunk(g, part);
+        }catch(e){ failed += part.length; }
+      }
+      rows = buildRows(g); renderRows(); renderNoMatch(g); renderFacts();
+      const nb = $("autoPatternMsg");
+      if(nb) nb.innerHTML = "<b>" + madeTotal + "件の型を作りました。</b>"
+        + (failed ? "（" + failed + "件は組み立てられませんでした。もう一度押すと残りを作り直します。）" : "")
+        + "要領に根拠のある工程はそのまま、要領に書かれていない段取りは「人の確認が要る工程」として印を付けてあります。"
+        + "<b>中身が正しいかどうかは、交付元の要領に照らしてご自身で確かめてください。</b>";
+    }catch(err){
+      const nb = $("autoPatternMsg");
+      if(nb) nb.innerHTML = '<span style="color:#b0203a">組み立てられませんでした：'
+        + esc(String(err && err.message ? err.message : err)) + "</span>";
+    }finally{
+      const bb = $("autoPatternBtn");
+      if(bb){ bb.disabled = false; bb.textContent = "要領からまとめて型を作る（AI・API利用）"; }
+    }
+  }
+
+  /* 書類を数件ずつ受け取って型を作り、保存した件数を返す */
+  async function tfMakeChunk(g, unmatched){
+    const src = String((g && g.source_text) || "");
+    {
       const names = unmatched.map((d,i)=>(i+1)+"．"+(d.name||"")+(d.note?"（"+d.note+"）":"")).join("\n");
       const sys = "あなたは、補助金の申請に添付する書類について「その書類をどうやって用意するのか」の手順を組み立てる役です。"
         + "公募要領には『◯◯を添付すること』としか書かれておらず、実際に用意するには要領に書かれていない段取り"
@@ -456,6 +489,7 @@
       const made = Array.isArray(j.patterns) ? j.patterns : [];
       if(!made.length) throw new Error("型が返りませんでした。");
       let n = 0;
+      /* 保存だけして件数を返す。画面の描き直しは呼び出し側でまとめて行う */
       made.forEach(function(pt, i){
         const keys = (Array.isArray(pt.keys) && pt.keys.length) ? pt.keys : [String(pt.doc||"").slice(0,12)];
         const steps = (Array.isArray(pt.steps) ? pt.steps : []).map(function(x){
@@ -472,18 +506,7 @@
                           steps:steps });
         n++;
       });
-      rows = buildRows(g); renderRows(); renderNoMatch(g); renderFacts();
-      const nb = $("autoPatternMsg");
-      if(nb) nb.innerHTML = "<b>" + n + "件の型を作りました。</b>"
-        + "要領に根拠のある工程はそのまま、要領に書かれていない段取りは「人の確認が要る工程」として印を付けてあります。"
-        + "<b>中身が正しいかどうかは、交付元の要領に照らしてご自身で確かめてください。</b>";
-    }catch(err){
-      const nb = $("autoPatternMsg");
-      if(nb) nb.innerHTML = '<span style="color:#b0203a">組み立てられませんでした：'
-        + esc(String(err && err.message ? err.message : err)) + "</span>";
-    }finally{
-      const bb = $("autoPatternBtn");
-      if(bb){ bb.disabled = false; bb.textContent = "要領からまとめて型を作る（AI・API利用）"; }
+      return n;
     }
   }
 
@@ -848,13 +871,31 @@
     if(ab) ab.addEventListener("click", ()=>autoMakePatterns(g, un));
   }
 
+  /* 2026-09-04：全件を並べて「ひとつずつご自身で確かめてください」と言うのは、
+     確認作業を件数ぶん人へ渡しているだけで、手間は一つも減っていない。
+     人の判断が要る工程だけを前に出し、当社が組み立てて済んでいる工程は
+     「工程処理情報」として畳む。減った数を画面に出す。 */
+  let showDone = false;
   function renderRows(){
     const wrap = $("tList");
     wrap.innerHTML = "";
-    $("tHint").textContent = rows.length + "件。内容はここで直せます。直したものがトライタスクへ渡ります。";
+    const needN = rows.filter(r=>r.must_verify).length;
+    const doneN = rows.length - needN;
+    $("tHint").innerHTML = "全" + rows.length + "工程のうち、<b>ご自身の判断が要るのは " + needN + "件</b>です。"
+      + "残る " + doneN + "件は当社が組み立てて済んでいます。内容はここで直せます。直したものがトライタスクへ渡ります。";
+    if(doneN){
+      const tg = document.createElement("button");
+      tg.type = "button"; tg.className = "sbtn";
+      tg.style.marginBottom = "10px";
+      tg.textContent = showDone ? ("工程処理情報を閉じる（" + doneN + "件）") : ("工程処理情報を見る（" + doneN + "件）");
+      tg.addEventListener("click", ()=>{ showDone = !showDone; renderRows(); });
+      wrap.appendChild(tg);
+    }
     rows.forEach((r,i)=>{
+      if(!r.must_verify && !showDone) return;
       const div = document.createElement("div");
       div.className = "tcard" + (r.from!=="制度" ? " expanded" : "");
+      if(!r.must_verify) div.style.opacity = ".72";
       div.innerHTML =
         (r.from!=="制度" ? '<div class="tsrc">型：' + esc(r.from) + '</div>' : '')
         + '<div class="tt">' + (i+1) + '．' + esc(r.action||"（未記入）") + '</div>'
@@ -983,6 +1024,46 @@
     }
   });
 
+  /* ===== 処理済みの箱（2026-09-04） =====
+     当社が組み立てて済ませた工程を、案件ごとと書類の種類ごとの両方で端末に残す。
+     年度が替わって同じ制度・同じ書類が出てきたときに呼び戻し、AIに作り直させないため。
+     保存先は利用者の端末のみ。当社は持たない。 */
+  const DONE_KEY = "triform_processed";
+  function loadProcessed(){
+    try{ const o = JSON.parse(localStorage.getItem(DONE_KEY) || "{}");
+         return (o && typeof o === "object") ? o : {}; }catch(e){ return {}; }
+  }
+  function saveProcessed(g, rowsNow){
+    if(!g) return;
+    const store = loadProcessed();
+    if(!store.by_case) store.by_case = {};
+    if(!store.by_doc) store.by_doc = {};
+    const doneRows = (rowsNow||[]).filter(r=>!r.must_verify);
+    const stamp = new Date().toISOString();
+    store.by_case[g.id] = {
+      program_name: g.program_name || "",
+      issuer: g.issuer || "",
+      saved_at: stamp,
+      documents: (g.required_documents||[]).map(d=>({ name:d.name||"", note:d.note||"" })),
+      steps: doneRows.map(r=>({ from:r.from||"", action:r.action||"", inputs:r.inputs||"",
+                                output:r.output||"", submit_to:r.submit_to||"", receive:r.receive||"" }))
+    };
+    /* 書類の種類ごと：当てた型の名前を鍵にして、制度をまたいで引けるようにする */
+    doneRows.forEach(function(r){
+      const key = String(r.from||"").trim();
+      if(!key || key === "制度" || key === "手入力") return;
+      if(!store.by_doc[key]) store.by_doc[key] = { steps: [], used_in: [], saved_at: stamp };
+      const rec = store.by_doc[key];
+      if(!rec.steps.length){
+        rec.steps = doneRows.filter(x=>x.from===key).map(x=>({ action:x.action||"", inputs:x.inputs||"",
+          output:x.output||"", submit_to:x.submit_to||"", receive:x.receive||"" }));
+      }
+      if(rec.used_in.indexOf(g.program_name||"") < 0) rec.used_in.push(g.program_name||"");
+      rec.saved_at = stamp;
+    });
+    try{ localStorage.setItem(DONE_KEY, JSON.stringify(store)); }catch(e){}
+  }
+
   /* ===== 書き戻し ===== */
   $("applyBtn").addEventListener("click", function(){
     if(!current) return;
@@ -990,6 +1071,7 @@
     const list = allInbox();
     const idx = list.findIndex(x=>x.id===current.id);
     if(idx < 0){ m.className="msg ng show"; m.textContent="× 案件が見つかりませんでした。一覧に戻ってやり直してください。"; return; }
+    try{ saveProcessed(current, rows); }catch(e){}
     /* 分解そのものを、人が確かめる対象として先頭に置く（2026-08-01）。
        型が当たったことは正しさの保証ではないため、分解を信じさせず、まず疑わせる工程を作る。
        未確認の項目があればその中身を理由に載せ、トライタスク側でも見えるようにする。 */

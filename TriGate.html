@@ -897,6 +897,17 @@ body.presenMode table{font-size:1.02em}
      要領に書いてあることだけを拾い、書いていない組み合わせは確認事項として残す。 */
   const ANTHROPIC_RELAY = "https://trisight-relay.vercel.app/api/anthropic";
 
+  /* 2026-09-04：文字を逃がす e() は発掘のまとまりの中で定義されており、
+     ここからは見えない。使った瞬間にエラーになり、その後始末でも同じ関数を
+     使っていたため二重に落ち、画面に何も残らなかった（時計だけ止まり、
+     ボタンだけ戻る）。lastShow と同じスコープの取り違えで、今日3度目。
+     この塊の中で完結する逃がし関数を持つ。 */
+  const ce = function(x){
+    return (x == null ? "" : String(x)).replace(/[&<>"]/g, function(c){
+      return {"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;"}[c];
+    });
+  };
+
   /* 長い処理の経過を画面に出す（2026-09-04）。
      道具を動かしている間は画面が黙るため、待つ側は動いているのか止まったのか
      見分けられず、余計な操作をしてしまう。秒数を出し、3分を超えたら
@@ -1002,15 +1013,9 @@ body.presenMode table{font-size:1.02em}
     if(btn){ btn.disabled = true; btn.textContent = "要領を読んで突き合わせ中…"; }
     box.style.display = "";
     let raw = "";
-    /* 2026-09-04：時計と結果を同じ枠でやり取りして三度失敗した。
-       時計の枠には触らず、その下に結果専用の枠を置いて、そちらへ書く。 */
-    let outEl = document.getElementById("comboResult");
-    if(!outEl){
-      outEl = document.createElement("div");
-      outEl.id = "comboResult";
-      box.parentNode.insertBefore(outEl, box.nextSibling);
-    }
-    outEl.innerHTML = "";
+    /* 2026-09-04：時計を止めてから、同じ枠へ結果を書く。
+       枠を増やしたり消したりするのをやめ、書き換えを一箇所にする。 */
+    const outEl = box;
     const tm = tsTimer(box, "要領の中の併給に関する記述と、掘ってある制度を突き合わせています。", tsComboCheck);
     try{
       const sys = "あなたは、補助金の併給（2つ以上の制度を同じ工事で受けること）の可否を、公募要領の記述だけから判定する役です。"
@@ -1053,12 +1058,12 @@ body.presenMode table{font-size:1.02em}
       h += pairs.map(function(pr){
         const v = String(pr.verdict || "要確認");
         return '<div class="combo-row">'
-          + '<span class="combo-v" style="color:' + (color[v] || "#9a3412") + '">' + e(v) + '</span> '
-          + '<b>' + e(String(pr.name||"")) + '</b>'
-          + (pr.reason ? '<div class="combo-r">' + e(String(pr.reason)) + '</div>' : "")
-          + (pr.order ? '<div class="combo-r"><b>順序：</b>' + e(String(pr.order)) + '</div>' : "")
-          + '<div class="combo-b">根拠：' + e(String(pr.basis || "要領に記載なし"))
-          + (pr.contact ? '　／　確認先：' + e(String(pr.contact)) : "") + '</div>'
+          + '<span class="combo-v" style="color:' + (color[v] || "#9a3412") + '">' + ce(v) + '</span> '
+          + '<b>' + ce(String(pr.name||"")) + '</b>'
+          + (pr.reason ? '<div class="combo-r">' + ce(String(pr.reason)) + '</div>' : "")
+          + (pr.order ? '<div class="combo-r"><b>順序：</b>' + ce(String(pr.order)) + '</div>' : "")
+          + '<div class="combo-b">根拠：' + ce(String(pr.basis || "要領に記載なし"))
+          + (pr.contact ? '　／　確認先：' + ce(String(pr.contact)) : "") + '</div>'
           + '</div>';
       }).join("");
       try{ tm.stop(); }catch(_){}
@@ -1070,14 +1075,14 @@ body.presenMode table{font-size:1.02em}
       let dump = "";
       try{ dump = String(raw || "").slice(0, 1200); }catch(_){ dump = ""; }
       outEl.innerHTML = '<div class="combo-note" style="color:#b0203a"><b>調べられませんでした：</b>'
-        + e(String(err && err.message ? err.message : err)) + '</div>'
+        + ce(String(err && err.message ? err.message : err)) + '</div>'
         + (dump ? '<div class="combo-note"><b>返ってきた中身（先頭のみ）</b><br>'
                   + '<pre style="white-space:pre-wrap;font-size:11.5px;margin:6px 0 0">'
-                  + e(dump) + '</pre></div>' : "");
+                  + ce(dump) + '</pre></div>' : "");
     }finally{
+      /* 2026-09-04：ここで box を空にして display:none にしていたため、
+         結果の枠ごと画面から消えていた。時計は残して構わないので、片付けない。 */
       try{ tm.stop(); }catch(_){}
-      box.innerHTML = "";
-      box.style.display = "none";
       if(btn){ btn.disabled = false; btn.textContent = "併せて取れる制度を調べる"; }
     }
   }
@@ -4767,7 +4772,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-04-14';
+  const TRIGATE_VERSION = '2026-09-04-15';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

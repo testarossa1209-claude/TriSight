@@ -816,11 +816,18 @@
     });
     /* 必要書類は、書類名が作業文に出てくる工程へ。出てこなければ配らない（散らかるため） */
     const dFor = tasks.map(()=>[]);
+    /* 2026-09-04：書類名が作業文に出てこないものを「配らない」で捨てていたため、
+       要領から発掘した22件の添付書類が画面から丸ごと消えていた（水素ステーションの案件）。
+       書類番号つきの正式名称は作業文にそのまま現れないので、ほぼ全件が捨てられていた。
+       配り先が決まらないものは、提出の工程（無ければ最初の工程）へまとめて添える。 */
+    const dRest = [];
     docs.forEach(d=>{
       const nm = (d && d.name) || "";
       const at = tasks.findIndex(t => nm && String(t.action||"").indexOf(nm) >= 0);
-      if(at >= 0) dFor[at].push(d);
+      if(at >= 0) dFor[at].push(d); else dRest.push(d);
     });
+    let dRestAt = tasks.findIndex(t => /提出|応募|申請/.test(String(t.action||"")));
+    if(dRestAt < 0) dRestAt = 0;
 
     return tasks.map((t,i)=>{
       const mine = vFor[i], myDocs = dFor[i];
@@ -842,6 +849,10 @@
       }
       if(myDocs.length){
         verify += "\n□ 使う書類：" + myDocs.map(d => (d.name||"") + (d.note ? "（"+d.note+"）" : "")).join("／");
+      }
+      if(i === dRestAt && dRest.length){
+        verify += "\n□ この案件の添付書類（全" + dRest.length + "件・どの工程に要るかは要領でお確かめください）：\n"
+                + dRest.map(d => "　・" + (d.name||"") + (d.note ? "（"+d.note+"）" : "")).join("\n");
       }
       /* TriFormが分解した工程は、材料・出来上がるもの・提出先・受け取るものを持つ（2026-08-01）。
          「何を元に、何を作り、どこへ持っていき、何を受け取るか」が見えて初めて伴走になる。 */

@@ -3424,7 +3424,8 @@ body.presenMode table{font-size:1.02em}
     /* 送った先へその場から行けるようにする（2026-09-04）。
        これまで送信済みの表示だけで行き先が無く、画面の一番上まで戻らせていた。 */
     showTaskMsg((existingId && idx>=0 ? "✓ 修正内容を保存しました " : "✓ 自動でTriTaskへ送信されました ") + hhmm, true,
-                '　<a href="TriTask.html" target="_blank" rel="noopener">TriTaskで開く</a>');
+                '　<a href="TriTask.html" target="_blank" rel="noopener">TriTaskで開く</a>'
+                + '　<a href="TriForm.html" target="_blank" rel="noopener">TriFormで分解する</a>');
     const b = $("taskBtn");
     b.disabled = false;
     b.textContent = "送信内容を確認・修正する";
@@ -4538,7 +4539,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-04-06';
+  const TRIGATE_VERSION = '2026-09-04-07';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -200,7 +200,7 @@
 
 <footer>
   合同会社トライサイト　TriSight&reg; ファミリー
-  <div class="verline">版 <span id="verLabel">2026-09-03-02</span>（v3）</div>
+  <div class="verline">版 <span id="verLabel">2026-09-04-01</span>（v3）</div>
 </footer>
 </div>
 
@@ -406,6 +406,87 @@
     if(i>=0) user[i]=p; else user.push(p);
     try{ localStorage.setItem(PATTERN_KEY, JSON.stringify(user)); }catch(e){}
   }
+  /* ===== 型が無い書類の型を、要領から組み立てる（2026-09-04） =====
+     当社が渡すのは「型の中身」ではなく「型の作り方」である。
+     制度ごとに出てくる書類は違い、当社が先回りして揃えられるものではない。
+     トライゲイトが要領から発掘した書類名に対して、その要領本文を根拠に
+     「どう用意するのか」を組み立て、型として端末へ残す。
+     組み立ての基準（何を必ず書かせ、何を書かせないか）が当社の資産にあたる。 */
+  async function autoMakePatterns(g, unmatched){
+    const btn = $("autoPatternBtn"), note = $("autoPatternMsg");
+    const src = String((g && g.source_text) || "");
+    if(!unmatched || !unmatched.length) return;
+    if(!src){
+      if(note) note.innerHTML = '<b>要領の本文がこの案件に付いていません。</b>'
+        + '本文が無いまま作ると、当社が確かめていない手順を「やること」として並べることになります。'
+        + 'トライゲイトの詳細で公募要領を読み取ってから、もう一度この案件を分解してください。';
+      return;
+    }
+    if(btn){ btn.disabled = true; btn.textContent = "要領を読んで組み立てています…"; }
+    if(note) note.textContent = "書類 " + unmatched.length + " 件ぶんを一度に組み立てます。少し長めにかかります。";
+    try{
+      const names = unmatched.map((d,i)=>(i+1)+"．"+(d.name||"")+(d.note?"（"+d.note+"）":"")).join("\n");
+      const sys = "あなたは、補助金の申請に添付する書類について「その書類をどうやって用意するのか」の手順を組み立てる役です。"
+        + "公募要領には『◯◯を添付すること』としか書かれておらず、実際に用意するには要領に書かれていない段取り"
+        + "（届出・受理印・第三者の署名・役所での取得など）が要ることがあります。そこを人が手を動かせる形にするのが仕事です。"
+        + "次の規律を必ず守ってください。"
+        + "①要領本文に書かれている事柄は、その旨を basis に短く書く。"
+        + "②要領に書かれていないが一般の手続きとして必要な段取りは書いてよいが、その工程は must_verify を true にし、"
+        + "why に『なぜ交付元へ確かめる必要があるか』を書く。断定しない。"
+        + "③その書類を作るのに申請者の会社の事実（法人番号・代表者・本店所在地・従業員数・決算期など）が要る場合は facts に列挙する。"
+        + "④結論（この会社が対象かどうか、通るかどうか）は一切書かない。判断は人間がする。"
+        + "⑤工程は1書類あたり多くて5件。役所や取引先へ出向く工程には submit_to と receive を必ず書く。"
+        + "出力はJSONのみ。前置きもコードブロックも付けないでください。"
+        + '形式：{"patterns":[{"doc":"書類名（渡されたものをそのまま）","name":"型の名前","keys":["引き当てる語"],'
+        + '"facts":["会社の事実"],"steps":[{"action":"やること","inputs":"手元に要るもの","output":"この工程でできるもの",'
+        + '"submit_to":"持っていく先","receive":"持ち帰るもの","must_verify":false,"why":"","basis":"要領の該当箇所"}]}]}';
+      const user = "■ 要領本文\n" + src + "\n\n"
+        + "■ 制度名\n" + ((g && g.program_name) || "") + "\n\n"
+        + "■ 型を作る書類\n" + names;
+      let code = ""; try{ code = localStorage.getItem("trisight_access_code") || ""; }catch(e){}
+      const res = await fetch(RELAY, {
+        method:"POST",
+        headers:{"Content-Type":"application/json","x-trisight-code":code},
+        body:JSON.stringify({ model:MODEL, max_tokens:8000, system:sys, messages:[{role:"user",content:user}] })
+      });
+      if(!res.ok) throw new Error("リレー応答 " + res.status + (res.status===401?"（認証コードをご確認ください）":""));
+      const data = await res.json();
+      const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
+      const j = JSON.parse(text.replace(/^```(json)?/i,"").replace(/```$/,"").trim());
+      const made = Array.isArray(j.patterns) ? j.patterns : [];
+      if(!made.length) throw new Error("型が返りませんでした。");
+      let n = 0;
+      made.forEach(function(pt, i){
+        const keys = (Array.isArray(pt.keys) && pt.keys.length) ? pt.keys : [String(pt.doc||"").slice(0,12)];
+        const steps = (Array.isArray(pt.steps) ? pt.steps : []).map(function(x){
+          return { action:String(x.action||""), inputs:String(x.inputs||""), output:String(x.output||""),
+                   submit_to:String(x.submit_to||""), receive:String(x.receive||""),
+                   must_verify: !!x.must_verify,
+                   why: String(x.why||"") + (x.basis ? "（要領：" + String(x.basis) + "）" : "") };
+        }).filter(function(x){ return x.action; });
+        if(!steps.length) return;
+        saveUserPattern({ id:"a-" + Date.now() + "-" + i,
+                          name:String(pt.name || pt.doc || "書類の型"),
+                          keys:keys.map(String),
+                          facts:(Array.isArray(pt.facts)?pt.facts.map(String):[]),
+                          steps:steps });
+        n++;
+      });
+      rows = buildRows(g); renderRows(); renderNoMatch(g); renderFacts();
+      const nb = $("autoPatternMsg");
+      if(nb) nb.innerHTML = "<b>" + n + "件の型を作りました。</b>"
+        + "要領に根拠のある工程はそのまま、要領に書かれていない段取りは「人の確認が要る工程」として印を付けてあります。"
+        + "<b>中身が正しいかどうかは、交付元の要領に照らしてご自身で確かめてください。</b>";
+    }catch(err){
+      const nb = $("autoPatternMsg");
+      if(nb) nb.innerHTML = '<span style="color:#b0203a">組み立てられませんでした：'
+        + esc(String(err && err.message ? err.message : err)) + "</span>";
+    }finally{
+      const bb = $("autoPatternBtn");
+      if(bb){ bb.disabled = false; bb.textContent = "要領からまとめて型を作る（AI・API利用）"; }
+    }
+  }
+
   /* ===== 企業基礎情報の照合（v3・2026-08-16） =====
      型は「この手続きにはこの事実が要る」を facts で名乗る。ここでやるのは照合だけで、
      判断・相談・検討は一切しない（トライフォームの定義的制約）。
@@ -755,9 +836,16 @@
     box.innerHTML = '<div class="nomatch"><b>型がまだ無い書類が' + un.length + '件あります。</b><br>'
       + un.map(d=>"・"+esc(d.name||"")).join("<br>")
       + '<br><br>この書類をどう用意するかの型を作っておくと、次に同じ書類が出てきたときも同じ並びが自動で出ます。'
-      + '<button type="button" class="sbtn" id="mkPatternBtn" style="margin-top:8px">この書類の型を作る</button></div>';
+      + '<div style="margin-top:8px">'
+      + '<button type="button" class="sbtn" id="autoPatternBtn">要領からまとめて型を作る（AI・API利用）</button>'
+      + '<button type="button" class="sbtn" id="mkPatternBtn" style="margin-left:8px">手で1件ずつ作る</button>'
+      + '</div>'
+      + '<div id="autoPatternMsg" style="font-size:12.5px;color:var(--ink-soft);margin-top:6px"></div>'
+      + '</div>';
     const b = $("mkPatternBtn");
     if(b) b.addEventListener("click", ()=>openEdit(un[0].name||""));
+    const ab = $("autoPatternBtn");
+    if(ab) ab.addEventListener("click", ()=>autoMakePatterns(g, un));
   }
 
   function renderRows(){

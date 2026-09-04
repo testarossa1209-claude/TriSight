@@ -897,6 +897,72 @@ body.presenMode table{font-size:1.02em}
      要領に書いてあることだけを拾い、書いていない組み合わせは確認事項として残す。 */
   const ANTHROPIC_RELAY = "https://trisight-relay.vercel.app/api/anthropic";
 
+  /* 長い処理の経過を画面に出す（2026-09-04）。
+     道具を動かしている間は画面が黙るため、待つ側は動いているのか止まったのか
+     見分けられず、余計な操作をしてしまう。秒数を出し、3分を超えたら
+     止まっている可能性を告げてやり直しの口を出す。
+     ただし押し直せばAPIをもう一度使うので、その旨も必ず添える。 */
+  function tsTimer(el, label, onRetry){
+    const t0 = Date.now();
+    let stopped = false;
+    const draw = function(){
+      if(stopped) return;
+      const sec = Math.floor((Date.now() - t0) / 1000);
+      const mm = Math.floor(sec / 60), ss = sec % 60;
+      const disp = (mm ? mm + "分" : "") + ss + "秒";
+      const over = sec >= 180;
+      el.innerHTML = '<div class="combo-note"' + (over ? ' style="border-color:#b0203a"' : '') + '>'
+        + label + '　<b>' + disp + '</b>'
+        + (over
+           ? '<br><span style="color:#b0203a"><b>3分を超えました。止まっている可能性があります。</b></span>'
+             + '<br>やり直す場合は下のボタンを押してください。'
+             + '<span style="color:var(--muted,#868e96)">（押し直すとAPIをもう一度使います）</span>'
+             + '<br><button type="button" class="rbtn" id="tsRetryBtn" style="margin-top:6px">もう一度試す</button>'
+           : '')
+        + '</div>';
+      if(over){
+        const rb = document.getElementById("tsRetryBtn");
+        if(rb && onRetry) rb.addEventListener("click", function(){ stop(); onRetry(); });
+      }
+    };
+    draw();
+    const iv = setInterval(draw, 1000);
+    function stop(){ stopped = true; clearInterval(iv); }
+    return { stop: stop };
+  }
+
+  /* 要領の全文から、併給に関わる箇所だけを抜き出す（2026-09-04）。
+     5万文字を丸ごと送ったところ3分を超えて返らなかった。
+     併給の判定に要るのは併給・重複・他の補助金に関する記述だけなので、
+     その語の周りを切り出して渡す。見落とすより送りすぎるほうが害が小さいので、
+     前後を広めに取り、該当が少なければ冒頭も足す。 */
+  function tsPickCombo(src){
+    const text = String(src || "");
+    const words = ["併給", "重複", "二重", "他の補助", "他の助成", "国庫補助", "他制度",
+                   "国又は地方公共団体", "国及び地方公共団体", "他の国庫", "交付を受けて",
+                   "併用", "同一の経費", "同一経費", "重ねて"];
+    const spans = [];
+    words.forEach(function(w){
+      let from = 0, at;
+      while((at = text.indexOf(w, from)) >= 0){
+        spans.push([Math.max(0, at - 600), Math.min(text.length, at + 900)]);
+        from = at + w.length;
+        if(spans.length > 60) break;
+      }
+    });
+    if(!spans.length) return text.slice(0, 12000);
+    spans.sort(function(a,b){ return a[0] - b[0]; });
+    const merged = [];
+    spans.forEach(function(sp){
+      const last = merged[merged.length - 1];
+      if(last && sp[0] <= last[1]) last[1] = Math.max(last[1], sp[1]);
+      else merged.push([sp[0], sp[1]]);
+    });
+    let out = text.slice(0, 1500) + "\n……\n";
+    merged.forEach(function(sp){ out += text.slice(sp[0], sp[1]) + "\n……\n"; });
+    return out.slice(0, 20000);
+  }
+
   async function tsComboCheck(){
     const btn = document.getElementById("comboBtn");
     const box = document.getElementById("comboBox");
@@ -935,7 +1001,7 @@ body.presenMode table{font-size:1.02em}
     }
     if(btn){ btn.disabled = true; btn.textContent = "要領を読んで突き合わせ中…"; }
     box.style.display = "";
-    box.innerHTML = '<div class="combo-note">いま読み取った制度の要領と、掘ってある制度を突き合わせています。少し長めにかかります。</div>';
+    const tm = tsTimer(box, "要領の中の併給に関する記述と、掘ってある制度を突き合わせています。", tsComboCheck);
     try{
       const sys = "あなたは、補助金の併給（2つ以上の制度を同じ工事で受けること）の可否を、公募要領の記述だけから判定する役です。"
         + "次の規律を必ず守ってください。"
@@ -952,7 +1018,7 @@ body.presenMode table{font-size:1.02em}
         + "出力はJSONのみ。前置きもコードブロックも付けないでください。"
         + '形式：{"pairs":[{"name":"相手の制度名","verdict":"不可|可|要確認","reason":"短い理由","basis":"要領の該当箇所","contact":"確認先","order":"順序の縛り"}]}';
       const user = "■ いま読み取った制度\n" + mine + "\n\n"
-        + "■ その公募要領の本文\n" + String(src).slice(0, 50000) + "\n\n"
+        + "■ その公募要領のうち、併給・重複に関わる箇所\n" + tsPickCombo(src) + "\n\n"
         + "■ 突き合わせる相手（掘ってある制度）\n" + others;
       const res = await fetch(ANTHROPIC_RELAY, {
         method: "POST",
@@ -989,6 +1055,7 @@ body.presenMode table{font-size:1.02em}
       box.innerHTML = '<div class="combo-note" style="color:#b0203a">調べられませんでした：'
         + e(String(err && err.message ? err.message : err)) + "</div>";
     }finally{
+      try{ tm.stop(); }catch(_){}
       if(btn){ btn.disabled = false; btn.textContent = "併せて取れる制度を調べる"; }
     }
   }
@@ -4656,7 +4723,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-04-09';
+  const TRIGATE_VERSION = '2026-09-04-10';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

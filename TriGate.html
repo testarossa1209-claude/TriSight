@@ -1001,7 +1001,11 @@ body.presenMode table{font-size:1.02em}
     }
     if(btn){ btn.disabled = true; btn.textContent = "要領を読んで突き合わせ中…"; }
     box.style.display = "";
-    const tm = tsTimer(box, "要領の中の併給に関する記述と、掘ってある制度を突き合わせています。", tsComboCheck);
+    /* 2026-09-04：時計と結果を同じ場所に書いていたため、時計の最後の書き換えが
+       結果を上書きして、画面が空になっていた。置き場所を分ける。 */
+    box.innerHTML = '<div id="comboTimer"></div><div id="comboOut"></div>';
+    const tm = tsTimer(document.getElementById("comboTimer"),
+                       "要領の中の併給に関する記述と、掘ってある制度を突き合わせています。", tsComboCheck);
     try{
       const sys = "あなたは、補助金の併給（2つ以上の制度を同じ工事で受けること）の可否を、公募要領の記述だけから判定する役です。"
         + "次の規律を必ず守ってください。"
@@ -1050,10 +1054,17 @@ body.presenMode table{font-size:1.02em}
           + (pr.contact ? '　／　確認先：' + e(String(pr.contact)) : "") + '</div>'
           + '</div>';
       }).join("");
-      box.innerHTML = h;
+      try{ tm.stop(); }catch(_){}
+      const tEl = document.getElementById("comboTimer"); if(tEl) tEl.innerHTML = "";
+      const oEl = document.getElementById("comboOut");
+      if(oEl) oEl.innerHTML = h; else box.innerHTML = h;
     }catch(err){
-      box.innerHTML = '<div class="combo-note" style="color:#b0203a">調べられませんでした：'
+      try{ tm.stop(); }catch(_){}
+      const tEl2 = document.getElementById("comboTimer"); if(tEl2) tEl2.innerHTML = "";
+      const oEl2 = document.getElementById("comboOut");
+      const msg = '<div class="combo-note" style="color:#b0203a">調べられませんでした：'
         + e(String(err && err.message ? err.message : err)) + "</div>";
+      if(oEl2) oEl2.innerHTML = msg; else box.innerHTML = msg;
     }finally{
       try{ tm.stop(); }catch(_){}
       if(btn){ btn.disabled = false; btn.textContent = "併せて取れる制度を調べる"; }
@@ -1969,12 +1980,30 @@ body.presenMode table{font-size:1.02em}
       }catch(_){}
     }
 
-    function restoreDigResult(){
+    /* 2026-09-04：呼び戻しは会社の一致を条件にしているため、呼び戻しが走る時点で
+       まだ会社の読み込みが済んでいないと、黙って素通りしていた。
+       ページを開き直すと掘った結果が消えたように見えるのはこのため。
+       素通りするときは、控えがあることを画面に出して呼び戻す口を添える。 */
+    function restoreDigResult(force){
       let sv = null;
       try{ sv = JSON.parse(localStorage.getItem(DIG_SAVE_KEY) || "null"); }catch(_){ sv = null; }
-      if(!sv || !Array.isArray(sv.rows) || !sv.rows.length) return;
+      if(!sv || !Array.isArray(sv.rows) || !sv.rows.length) return false;
       const now = (typeof tsCompanyKey === "function" ? tsCompanyKey() : "");
-      if((sv.company || "") !== now) return;   /* 会社が違えば呼び戻さない */
+      if(!force && (sv.company || "") !== now){
+        let when2 = "";
+        try{
+          const d2 = new Date(sv.savedAt);
+          when2 = (d2.getMonth()+1) + "月" + d2.getDate() + "日 "
+                + String(d2.getHours()).padStart(2,"0") + ":" + String(d2.getMinutes()).padStart(2,"0");
+        }catch(_){}
+        st.innerHTML = '<span style="color:#a45a1a">' + e(when2)
+          + ' に掘った結果がこの端末に残っています（' + sv.rows.length + '件）。'
+          + '読み込んでいる会社が違うため、自動では表示していません。</span>'
+          + ' <button type="button" class="rbtn" id="digForceBtn" style="margin-left:6px">前回の結果を表示する</button>';
+        const fb = document.getElementById("digForceBtn");
+        if(fb) fb.addEventListener("click", function(){ restoreDigResult(true); });
+        return false;
+      }
       out.innerHTML = digRowsHtml(sv.rows);
       lastShow = sv.rows;
       if(fullGateBtn) fullGateBtn.style.display = "";
@@ -1989,6 +2018,7 @@ body.presenMode table{font-size:1.02em}
         + '<br><span style="color:#a45a1a">※ ' + e(when) + ' に掘った結果を、この端末から呼び戻して表示しています。'
         + '最新にするには「新着を掘る」を押してください。</span>';
       try{ if(typeof pjRefreshRowBadges === "function") pjRefreshRowBadges(); }catch(_){}
+      return true;
     }
 
     /* 掘った一覧を画面から消す（2026-08-17）。
@@ -2020,7 +2050,10 @@ body.presenMode table{font-size:1.02em}
       if(cb) cb.addEventListener("click", clearDigResult);
     })();
 
-    setTimeout(restoreDigResult, 0);
+    /* 会社の読み込みが後から済む場合があるので、少し置いてもう一度試す（2026-09-04） */
+    setTimeout(function(){
+      if(!restoreDigResult()) setTimeout(function(){ restoreDigResult(); }, 800);
+    }, 0);
 
     btn.addEventListener("click", async ()=>{
       const kw = (document.getElementById("digKeyword").value || "").trim() || "事業";
@@ -4723,7 +4756,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-04-10';
+  const TRIGATE_VERSION = '2026-09-04-12';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

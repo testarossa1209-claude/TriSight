@@ -472,7 +472,7 @@ body.presenMode table{font-size:1.02em}
   <div class="step"><span class="no">STEP 3</span><h2>文書の外の前提（任意）</h2><span class="hint">この案件を活かすうえで、文書に書かれていない期限や条件があれば</span></div>
   <div class="card">
     <textarea id="premise" placeholder="例：この補助金で職員研修を実施したい。ただし別の助成金の申請締切が先に来るので、それも考慮してほしい。"></textarea>
-    <div class="premise-eg">※ 機械は文書の中の締切は拾えますが、別制度の前提までは拾えません。ここに一行足すと、その前提からも逆算タスクが生えます。</div>
+    <div class="premise-eg">※ 機械は文書の中の締切は拾えますが、別制度の前提までは拾えません。ここに一行足していただくと、その前提も含めて逆算タスクを組み立てます。</div>
   </div>
 
   <div class="run">
@@ -911,7 +911,15 @@ body.presenMode table{font-size:1.02em}
       return;
     }
     const mine = String((typeof TG_LAST !== "undefined" && TG_LAST && TG_LAST.program_name) || "");
-    const others = ((typeof lastShow !== "undefined" && lastShow) ? lastShow : [])
+    /* 2026-09-04：lastShow は発掘のまとまりの中にあり、この関数からは見えない。
+       2026-08-20の併記で同じ躓きをしており、そのときと同じく端末の控えを直接読む。
+       ページを開き直しても効く。 */
+    let digRows = [];
+    try{
+      const sv = JSON.parse(localStorage.getItem("trisight_dig_saved") || "null");
+      if(sv && Array.isArray(sv.rows)) digRows = sv.rows;
+    }catch(_){ digRows = []; }
+    const others = digRows
       .filter(function(it){
         return it && !it.__offBiz && String(it.title || it.name || "") !== mine;
       })
@@ -4648,7 +4656,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-04-08';
+  const TRIGATE_VERSION = '2026-09-04-09';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

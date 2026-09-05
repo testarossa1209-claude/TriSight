@@ -2366,6 +2366,12 @@ body.presenMode table{font-size:1.02em}
                  送られていないことに気づけず、指示文を三度書き換えた失敗への手当て。 */
               window.__sieveAsked = askList.length;
               window.__sieveMemo = show.filter(it => !it.__shunushi).length - askList.length;
+              /* 2026-09-05：送信0件の原因を切り分けるため、内訳をそのまま出す。
+                 記憶（sieve）は0件と確認済みなので、残る原因は施主向けの除外しかない。
+                 見立てが外れているなら、この数字が教えてくれる。 */
+              window.__sieveTotal = show.length;
+              window.__sieveShunushi = show.filter(it => !!it.__shunushi).length;
+              window.__sieveMemoHit = show.filter(it => !it.__shunushi && tsJudgeGet("sieve", it.id) !== null).length;
               let keptSet = null;
               if(askList.length){
                 const keptIdx = await aiTitleSort(askList);
@@ -2427,7 +2433,10 @@ body.presenMode table{font-size:1.02em}
           }
           st.textContent = "受付中 "+list.length+" 件 → 事業に照らして仕分け "+aiCount+" 件"
               + (typeof window.__sieveAsked === "number"
-                  ? "（今回AIに送ったのは "+window.__sieveAsked+" 件。残り "+window.__sieveMemo+" 件は前回までの判定を使っています）" : "")
+                  ? "（今回AIに送ったのは "+window.__sieveAsked+" 件"
+                    + "／内訳：仕分けにかけた対象 "+window.__sieveTotal+" 件"
+                    + "・施主向けとして除外 "+window.__sieveShunushi+" 件"
+                    + "・前回の判定を使った "+window.__sieveMemoHit+" 件）" : "")
               + " → 掲載内容と突き合わせて "+show.length+" 件を表示"+sortNote+"（キーワード："+kw+"）"+mechAlert();
         }else{
           st.textContent = "受付中 "+list.length+" 件（キーワード："+kw+"）※基礎情報が未読み込みのため全件表示";
@@ -4957,7 +4966,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-05-06';
+  const TRIGATE_VERSION = '2026-09-05-07';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

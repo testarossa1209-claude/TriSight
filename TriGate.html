@@ -1470,6 +1470,7 @@ body.presenMode table{font-size:1.02em}
      消すのは掲載元が「受付を終了しました」と書いたときだけ、が当社の線。
      残る心配は端末の保存容量だけなので、入らなかったときは黙って捨てず知らせる。 */
   const WEB_LEDGER_KEY = "trisight_dig_web_ledger";
+  const WEB_RULE_V = 2;         /* 終了と読む規則の版。上げると、古い規則で付いた印は捨てて確認し直す */
   const WEB_RECHECK_MAX = 3;    /* 1回の発掘で掲載元に当たりに行く件数 */
   const WEB_RECHECK_DAYS = 7;   /* 前回の確認からこれだけ空いたものが対象 */
   function tsWebLedgerAll(){
@@ -1486,6 +1487,42 @@ body.presenMode table{font-size:1.02em}
       return false;
     }
   }
+  /* 終了と読む規則を変えたときは、古い規則で付いた印を捨てて確認し直す（2026-09-05）。
+     誤って「受付が終わった案件」へ回された分を、利用者の操作なしで元へ戻すため。 */
+  function tsWebLedgerMigrate(){
+    const all = tsWebLedgerAll();
+    let n = 0;
+    Object.keys(all).forEach(function(a){
+      const rec = all[a] || {};
+      Object.keys(rec).forEach(function(id){
+        const r = rec[id];
+        if(r && r.closed && r.closed.v !== WEB_RULE_V){ r.closed = null; r.checked = ""; n++; }
+      });
+    });
+    if(n) tsWebLedgerStore(all);
+    return n;
+  }
+  /* 当社の読み取りを利用者が取り消せる口。誤って終了と読んだときの逃げ道（2026-09-05）。
+     「事業外の可能性」の印と同じ考え方で、取り消した案件には次から印を付けない。 */
+  const TG_CLOSED_OV = "trigate_closed_override";
+  function tsClosedOverride(id){
+    try{
+      const m = JSON.parse(localStorage.getItem(TG_CLOSED_OV) || "{}");
+      return m[String(id)] === true;
+    }catch(_){ return false; }
+  }
+  window.tsClosedUndo = function(id){
+    try{
+      const m = JSON.parse(localStorage.getItem(TG_CLOSED_OV) || "{}");
+      m[String(id)] = true;
+      localStorage.setItem(TG_CLOSED_OV, JSON.stringify(m));
+    }catch(_){}
+    const row = document.querySelector('[data-id="' + String(id).replace(/"/g, '') + '"]');
+    if(row){
+      const cell = row.querySelector(".tg-closed");
+      if(cell) cell.outerHTML = '<div style="font-size:11px;color:var(--muted)">この印は取り消しました。次の発掘から一覧に戻ります</div>';
+    }
+  };
   /* 今回拾った分を台帳へ足す。同じ制度は上書きし、最終確認日だけ新しくする */
   function tsWebLedgerPut(area, fresh){
     const key = String(area || "");
@@ -1519,27 +1556,71 @@ body.presenMode table{font-size:1.02em}
     catch(_){ txt = String(html).replace(/<[^>]*>/g, " "); }
     return txt.replace(/[ \t\u3000]+/g, " ").replace(/\s*\n\s*/g, "\n");
   }
-  /* 受付終了と読める記載を探す。見つかった一文をそのまま返す（当社の言い換えはしない） */
-  const TS_CLOSE_WORDS = ["受付を終了", "受付は終了", "受付終了", "申請受付を停止",
-    "募集を終了", "募集は終了", "募集終了", "締め切りました", "締切りました",
-    "予算上限に達し", "予算に達したため"];
-  function tsFindClosingWord(text){
-    const t = String(text || "");
-    for(let i = 0; i < TS_CLOSE_WORDS.length; i++){
-      const w = TS_CLOSE_WORDS[i];
-      const at = t.indexOf(w);
-      if(at >= 0){
-        return t.slice(Math.max(0, at - 40), Math.min(t.length, at + w.length + 40))
-                .replace(/\s+/g, " ").trim();
+  /* 受付終了と読める記載を探す（2026-09-05 改定）。
+     最初の作りは、ページのどこかに終了の語があれば当たる形だった。
+     自治体のページは複数の制度が一覧で並ぶため、別の制度についての「受付を終了しました」を
+     拾って、見ている制度に貼ってしまう。実際に、締切が2027/03/31の東京ゼロエミ住宅を含む
+     3件を受付終了と判定した。当社が一番やってはいけない形＝生きている制度を当社の判断で閉じる。
+     そこで、次の3つを全部満たしたときだけ終了と読む。ひとつでも欠ければ終了扱いにしない。
+       ①掲載元が書いた受付終了日が未来なら、終了扱いにしない（掲載元の記載と矛盾するため）
+       ②断定の言い切り（「受付を終了しました」等）だけを見る。一覧の見出し語「受付終了」は見ない
+       ③その言い切りが、制度名の近く（前後300字）にあること。無ければ他の制度の話とみなす */
+  const TS_CLOSE_WORDS = [
+    "受付を終了しました", "受付は終了しました", "受付を終了いたしました",
+    "申請の受付は終了", "申請受付は終了しました", "申請受付を終了しました", "申請受付を停止",
+    "募集を終了しました", "募集は終了しました", "募集を終了いたしました",
+    "受付を締め切りました", "受付は締め切りました",
+    "予算上限に達したため受付を終了", "予算額に達したため受付を終了"];
+  /* 制度名から、ページ本文の中で探す手がかりの語を作る */
+  function tsCloseKey(item){
+    const t = String((item && (item.title || item.name)) || "")
+      .replace(/[【】〔〕（）()\[\]]/g, " ")
+      .replace(/(令和|平成)\s*[0-9０-９元]+\s*年度?/g, " ")
+      .replace(/[\s　]/g, "");
+    const m = t.match(/[^\x00-\x7F]{6,}/g);
+    if(!m || !m.length) return "";
+    m.sort(function(a, b){ return b.length - a.length; });
+    return m[0].slice(0, 20);
+  }
+  /* 制度名のまわりだけを切り出す。ここに書かれていることだけを、その制度の話として読む */
+  function tsCloseWindows(text, key){
+    const t = String(text || ""), out = [];
+    if(!key) return out;
+    let at = t.indexOf(key), guard = 0;
+    while(at >= 0 && guard++ < 20){
+      out.push(t.slice(Math.max(0, at - 300), Math.min(t.length, at + key.length + 300)));
+      at = t.indexOf(key, at + key.length);
+    }
+    return out;
+  }
+  function tsFindClosingWord(text, item){
+    /* ①掲載元が未来の受付終了日を書いているなら、終了扱いにしない */
+    const end = item && item.acceptance_end_datetime;
+    if(end && typeof tsIsClosed === "function" && !tsIsClosed(end)) return "";
+    const wins = tsCloseWindows(text, tsCloseKey(item));
+    if(!wins.length) return "";   /* ③制度名が本文に無い＝この制度の話だと言えない */
+    for(let i = 0; i < wins.length; i++){
+      for(let j = 0; j < TS_CLOSE_WORDS.length; j++){
+        const w = TS_CLOSE_WORDS[j];
+        const at = wins[i].indexOf(w);
+        if(at >= 0){
+          return wins[i].slice(Math.max(0, at - 40), Math.min(wins[i].length, at + w.length + 40))
+                        .replace(/\s+/g, " ").trim();
+        }
       }
     }
     return "";
   }
-  /* 受付終了日が書かれていれば、掲載元の表記のまま返す（当社では書き換えない） */
-  function tsFindEndDate(text){
+  /* 受付終了日が書かれていれば、掲載元の表記のまま返す（当社では書き換えない）。
+     終了語と同じく、制度名のまわりに書かれているものだけを読む。 */
+  function tsFindEndDate(text, item){
     const re = /(受付|申請|募集)[^。\n]{0,40}?((?:令和|平成)?\s*[0-9０-９元]{1,4}\s*年\s*[0-9０-９]{1,2}\s*月\s*[0-9０-９]{1,2}\s*日)[^。\n]{0,12}?まで/;
-    const m = re.exec(String(text || ""));
-    return m ? m[2].replace(/\s+/g, "") : "";
+    const wins = tsCloseWindows(text, tsCloseKey(item));
+    for(let i = 0; i < wins.length; i++){
+      const m = re.exec(wins[i]);
+      if(m) return m[2].replace(/\s+/g, "");
+    }
+    return "";
   }
   /* 台帳の見直し。掲載元は後から終了日を書き足すので、掘るたびに当たりに行く。
      発掘のなかで待ってから一覧を組むため、結果はその回の表示に出る（2026-09-05）。 */
@@ -1569,13 +1650,13 @@ body.presenMode table{font-size:1.02em}
       if(!url){ r.checked = today; continue; }
       try{
         const t = await tsFetchPageText(url);
-        const hit = tsFindClosingWord(t);
+        const hit = tsFindClosingWord(t, r.item);
         r.checked = today;
-        if(hit){ r.closed = { verdict: "closed", on: today, quote: hit }; closed++; }
-        else { r.closed = { verdict: "open", on: today, end: tsFindEndDate(t) }; ok++; }
+        if(hit){ r.closed = { verdict: "closed", on: today, quote: hit, v: WEB_RULE_V }; closed++; }
+        else { r.closed = { verdict: "open", on: today, end: tsFindEndDate(t, r.item), v: WEB_RULE_V }; ok++; }
       }catch(e){
         r.checked = today;
-        r.closed = { verdict: "ng", on: today, why: String(e && e.message ? e.message : e).slice(0, 40) };
+        r.closed = { verdict: "ng", on: today, why: String(e && e.message ? e.message : e).slice(0, 40), v: WEB_RULE_V };
         ng++;
       }
     }
@@ -1592,6 +1673,7 @@ body.presenMode table{font-size:1.02em}
   function tsLedgerMark(c, ck){
     if(!c || !ck) return;
     if(ck.verdict === "closed"){
+      if(tsClosedOverride(c.id)) return;   /* 利用者が取り消した案件には付けない */
       c.__closedWord = true;
       c.ts_source = (c.ts_source || "") + "／掲載元に受付終了と読める記載（" + ck.on + "確認）";
       c.detail = String(c.detail || "")
@@ -2557,6 +2639,8 @@ body.presenMode table{font-size:1.02em}
             /* 拾えた入口ページを台帳へ足す（次回の掘りで渡す材料になる） */
             try{ tsEntrySave(selArea, webEntries); }catch(e){}
             const webFresh = webItems.length;
+            /* 終了の読み取り規則が変わっていれば、古い印を捨ててから足す */
+            try{ tsWebLedgerMigrate(); }catch(e){}
             /* 今回の分を台帳へ足す（この時点では一覧を組まない） */
             try{ tsWebLedgerPut(selArea, webItems); }catch(e){}
             /* 情報の新旧を見るのが発掘の仕事なので、終了日の確認もこの場で済ませる。
@@ -2839,9 +2923,20 @@ body.presenMode table{font-size:1.02em}
                   + (cutByArea ? "。" + cutByArea + "件を地域で除外" : "") + "）。" : "") + "</div>"
               + (typeof tsSieveLogHtml === "function" ? tsSieveLogHtml() : "");
         /* 畳んだ置き場。開かなければ見なくてよい。消えたわけではないと分かる形にする */
-        const foldTbl = function(items){
+        const foldTbl = function(items, undo){
           return '<table class="digtbl"><thead><tr>' + headCells + '</tr></thead><tbody>'
-               + items.map(rowOf).join("") + "</tbody></table>";
+               + items.map(function(it){
+                   let row = rowOf(it);
+                   if(undo && it && it.id){
+                     const mark = '<div class="tg-closed" style="font-size:11px;color:#b0203a;line-height:1.5">'
+                       + '掲載元に受付終了と読める記載'
+                       + '<br><button type="button" class="rbtn" style="font-weight:400;font-size:10px;padding:1px 6px;margin-top:2px"'
+                       + ' title="受付中だと分かっている場合は、この印を取り消せます。取り消した案件は次の発掘から一覧に戻ります"'
+                       + ' onclick="tsClosedUndo(\'' + String(it.id).replace(/'/g, "") + '\')">この印を取り消す</button></div>';
+                     row = row.replace("</td></tr>", mark + "</td></tr>");
+                   }
+                   return row;
+                 }).join("") + "</tbody></table>";
         };
         if(carriedList.length){
           html += '<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:600;font-size:13px">'
@@ -2855,8 +2950,9 @@ body.presenMode table{font-size:1.02em}
                 + '受付が終わった案件　' + closedList.length + '件</summary>'
                 + '<div style="font-size:12px;color:var(--muted);margin:6px 0">'
                 + '掲載元のページに「受付を終了しました」にあたる記載がありました。'
-                + '当社の読み取りであり確定ではありません。確認した日と掲載元の記載は各案件の詳細に出ています。</div>'
-                + foldTbl(closedList) + '</details>';
+                + '当社の読み取りであり確定ではありません。確認した日と掲載元の記載は各案件の詳細に出ています。'
+                + '受付中だと分かっている案件は、行の「この印を取り消す」で一覧へ戻せます。</div>'
+                + foldTbl(closedList, true) + '</details>';
         }
         /* 入口ページ（2026-08-22）：制度個別まで行けなかったものを、拾い方の案内つきで出す。
            捨てると0件になるが、人が拾えるなら価値がある。ただし制度の一覧とは必ず分ける。 */
@@ -5274,7 +5370,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-05-16';
+  const TRIGATE_VERSION = '2026-09-05-17';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

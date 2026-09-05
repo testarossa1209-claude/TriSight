@@ -2004,7 +2004,32 @@ body.presenMode table{font-size:1.02em}
        検索で拾った一つの数字を上限額として出すと、営業の現場で誤った金額を伝えることになる。
        実例＝令和8年度前橋市家庭用ゼロカーボン推進補助事業。画面は8万円と出したが、
        要領では 太陽光3万／蓄電池は1kW当たり1万（上限5万）／給湯機5万 と設備ごとに別（2026-09-01）。 */
-    window.tsAmountCell = function(it, fyFn){
+    /* 2026-09-05：控えた仕分けの往復を画面で開く。折りたたみなので普段は邪魔にならない。 */
+  window.tsSieveLogHtml = function(){
+    let d = null;
+    try{ d = JSON.parse(localStorage.getItem("trigate_sieve_log") || "null"); }catch(_){ d = null; }
+    if(!d) return "";
+    const esc = function(x){ return String(x == null ? "" : x)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); };
+    let comp = d.company;
+    try{ comp = JSON.stringify(JSON.parse(d.company), null, 2); }catch(_){}
+    return '<details style="margin-top:10px;font-size:12px">'
+      + '<summary style="cursor:pointer;color:var(--muted)">事業に照らした仕分けの中身を見る（'
+      + esc(String(d.at || "").slice(0,19).replace("T"," ")) + '）</summary>'
+      + '<div style="margin-top:6px"><b>仕分けへ渡した会社の情報</b>'
+      + '<pre style="white-space:pre-wrap;word-break:break-all;background:#f6f6f6;padding:6px;border-radius:4px">'
+      + esc(comp) + '</pre></div>'
+      + '<div><b>渡した案件名の一覧</b>'
+      + '<pre style="white-space:pre-wrap;background:#f6f6f6;padding:6px;border-radius:4px">'
+      + esc(d.titles) + '</pre></div>'
+      + '<div><b>仕分けが返した答え（残す番号）</b>'
+      + '<pre style="white-space:pre-wrap;background:#f6f6f6;padding:6px;border-radius:4px">'
+      + esc(d.answer) + '</pre></div>'
+      + '<div style="color:var(--muted)">番号は「渡した案件名の一覧」の番号です。'
+      + '一覧に無い番号が残っていれば、その案件が事業外の印を付けられなかったものです。</div>'
+      + '</details>';
+  };
+  window.tsAmountCell = function(it, fyFn){
       /* 2026-09-04：印を案件名の後ろに置いたところ画面に現れなかったため、
          金額の欄の中へ移す。目安を外れたことは、金額の隣にあるのが自然でもある。 */
       const mark = (it && (it.__offBiz || it.__amtOut))
@@ -2474,7 +2499,8 @@ body.presenMode table{font-size:1.02em}
               + e(webNote)
               + (cutByClosed ? "／受付が終わっている制度 " + cutByClosed + "件を一覧から外しています。" : "")
               + (selPref ? "／地域は「" + e(selArea) + "」で絞っています（全国区と" + e(selPref) + "の制度は残しています"
-                  + (cutByArea ? "。" + cutByArea + "件を地域で除外" : "") + "）。" : "") + "</div>";
+                  + (cutByArea ? "。" + cutByArea + "件を地域で除外" : "") + "）。" : "") + "</div>"
+              + (typeof tsSieveLogHtml === "function" ? tsSieveLogHtml() : "");
         /* 入口ページ（2026-08-22）：制度個別まで行けなかったものを、拾い方の案内つきで出す。
            捨てると0件になるが、人が拾えるなら価値がある。ただし制度の一覧とは必ず分ける。 */
         if(webEntries.length){
@@ -2898,7 +2924,24 @@ body.presenMode table{font-size:1.02em}
         "今後の計画": (company && (company["今後の計画"] || company["事業計画"])) || ""
       });
       const titles = items.map((it, i) => (i + 1) + ". " + String(it.title || it.name || "（名称不明）")).join("\n");
-      const text = await tsAsk("title", { company: compBrief, titles: titles });
+      /* 2026-09-05：仕分けが何を受け取り何を返したかが画面のどこにも出ておらず、
+         印が付かない原因を推測でしか語れなかった。渡した材料と返答をそのまま控え、
+         一覧の下で開けるようにする。指示文が届いていないのか、届いていて判断が違うのかが
+         これで分かる。開発者ツールを開かせずに済ませるための欄でもある。 */
+      let __raw = "";
+      try{
+        __raw = await tsAsk("title", { company: compBrief, titles: titles });
+      }catch(e){
+        try{ localStorage.setItem("trigate_sieve_log", JSON.stringify({
+          at: new Date().toISOString(), company: compBrief, titles: titles,
+          answer: "（呼び出しに失敗：" + (e && e.message ? e.message : "不明") + "）" })); }catch(_){}
+        throw e;
+      }
+      try{
+        localStorage.setItem("trigate_sieve_log", JSON.stringify({
+          at: new Date().toISOString(), company: compBrief, titles: titles, answer: String(__raw || "") }));
+      }catch(_){}
+      const text = __raw;
       if(!text) throw new Error("空の応答");
       const parsed = gateParse(text);
       const arr = Array.isArray(parsed) ? parsed : parsed["残す"];
@@ -4874,7 +4917,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-05-02';
+  const TRIGATE_VERSION = '2026-09-05-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

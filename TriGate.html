@@ -1362,13 +1362,21 @@ body.presenMode table{font-size:1.02em}
         ts_source: (x.area || pref) + "（入口ページ）",
         ts_verified_on: today
       }));
+    /* ===== 拾った額の台帳（2026-09-05） =====
+       ウェブ検索で拾った案件は、掘るたびに額が動く（蓄電池が72万→120万→72万）。
+       公式ページに設備ごとの額が並んでおり、どれを拾うかが回ごとに変わるため。
+       営業の場では「120万と言って72万だった」が最悪なので、低いほうへ寄せる。
+       ただし低い額のせいで案件を捨てさせないこと。額に幅があることを画面に出し、
+       目安による「規模小」の印は付けない。要領を読み取ったら、その額を正とする。 */
     const kept = raw.filter(x => x.kind !== "entry" && okUrl(x.source_url) && okContent(x));
     tsWebDropped = 0;
     return kept.map((x, i) => ({
       id: "web-" + pref + "-" + i,
       title: x.title, name: x.title,
       subsidy_catch_phrase: x.catch || "",
-      subsidy_max_limit: (typeof x.max_limit === "number") ? x.max_limit : null,
+      subsidy_max_limit: tgAmtSee(x.title, (typeof x.max_limit === "number") ? x.max_limit : null).value,
+      ts_amt_spread: tgAmtSee(x.title, null).spread,
+      ts_amt_seen: tgAmtSee(x.title, null).seen || [],
       subsidy_rate: x.rate || null,
       use_purpose: "",
       industry: x.industry || "",
@@ -1387,6 +1395,45 @@ body.presenMode table{font-size:1.02em}
         ? [{ label: "公募要領", name: "公募要領.pdf", url: x.guideline_url }] : [],
       application_guidelines: [], outline_of_grant: [], application_form: []
     }));
+  }
+
+  /* ===== 拾った額の台帳（2026-09-05） =====
+     制度名を鍵にして、これまでに拾った額をすべて残す。画面に出すのは最も低い額。
+     要領を読み取って確定した額があれば、それを正として上書きする。 */
+  const TG_AMT_KEY = "trigate_amount_ledger";
+  function tgAmtName(nm){
+    return String(nm || "")
+      .replace(/[【】〔〕（）()\[\]]/g, "")
+      .replace(/(令和|平成)\s*[0-9０-９元]+\s*年度?/g, "")
+      .replace(/[\s　]/g, "");
+  }
+  function tgAmtLoad(){
+    try{ return JSON.parse(localStorage.getItem(TG_AMT_KEY) || "{}") || {}; }catch(_){ return {}; }
+  }
+  function tgAmtStore(l){
+    try{ localStorage.setItem(TG_AMT_KEY, JSON.stringify(l)); }catch(_){}
+  }
+  /* 拾った額を台帳へ入れ、画面に出す額（最も低い額）と幅の有無を返す */
+  function tgAmtSee(name, v){
+    const k = tgAmtName(name);
+    if(!k) return { value: (typeof v === "number" ? v : null), spread:false, fixed:false };
+    const l = tgAmtLoad();
+    const e = l[k] || { seen: [], fixed: null };
+    if(typeof v === "number" && isFinite(v) && v > 0 && e.seen.indexOf(v) < 0){
+      e.seen.push(v); e.seen.sort(function(a,b){ return a-b; });
+    }
+    l[k] = e; tgAmtStore(l);
+    if(e.fixed != null) return { value: e.fixed, spread:false, fixed:true };
+    if(!e.seen.length) return { value:null, spread:false, fixed:false };
+    return { value: e.seen[0], spread: (e.seen.length > 1), fixed:false, seen: e.seen };
+  }
+  /* 要領を読み取って確定した額。以後はこれを正とする */
+  function tgAmtFix(name, v){
+    const k = tgAmtName(name);
+    if(!k || typeof v !== "number" || !isFinite(v)) return;
+    const l = tgAmtLoad();
+    const e = l[k] || { seen: [], fixed: null };
+    e.fixed = v; l[k] = e; tgAmtStore(l);
   }
 
   /* ===== 公募要領の自動取り寄せ 2026-08-22 =====
@@ -2327,7 +2374,11 @@ body.presenMode table{font-size:1.02em}
              金額が分からないだけのものを小さいと決めつけない。0と空欄は触らない。 */
           if(v == null || v === 0) return;
           __amtSeen++;
+          /* 2026-09-05：拾った額に幅がある案件は、低いほうを出している。
+             その低い額で「規模小」を付けると、本当は額の大きい制度を自分で下げてしまう。
+             幅がある間は下限側の印を付けず、額に幅があることだけを出す。 */
           if(__lim.max != null && v > __lim.max){ it.__amtOut = "規模大"; __amtHit++; }
+          else if(it.ts_amt_spread){ it.__amtOut = "額に幅あり"; }
           else if(__lim.min != null && v < __lim.min){ it.__amtOut = "規模小"; __amtHit++; }
         });
         /* 2026-09-04：印が付かない原因を画面で見えるようにする。
@@ -2476,7 +2527,9 @@ body.presenMode table{font-size:1.02em}
       add("対象業種", d.industry);
       add("従業員規模", d.target_number_of_employees);
       add("対象地域", d.target_area_detail || d.target_area_search);
-      add("上限額", fy(d.subsidy_max_limit));
+      add("上限額", fy(d.subsidy_max_limit) + (d.ts_amt_spread
+        ? "（これまでに確認した中で最も低い額。設備・容量により上がります。正確な額は公募要領でお確かめください）"
+        : ""));
       add("補助率", d.subsidy_rate);
       add("受付期間", fd(d.acceptance_start_datetime) + " 〜 " + fd(d.acceptance_end_datetime));
       if(d.project_end_deadline) add("事業終了期限", fd(d.project_end_deadline));
@@ -2884,7 +2937,9 @@ body.presenMode table{font-size:1.02em}
       const rows = [];
       const add = (k,v)=>{ if(v!=null && v!=="") rows.push("<dt>"+k+"</dt><dd>"+v+"</dd>"); };
       add("キャッチコピー", e(d.subsidy_catch_phrase));
-      add("上限額", fy(d.subsidy_max_limit));
+      add("上限額", fy(d.subsidy_max_limit) + (d.ts_amt_spread
+        ? "（これまでに確認した中で最も低い額。設備・容量により上がります。正確な額は公募要領でお確かめください）"
+        : ""));
       add("補助率", e(d.subsidy_rate));
       add("利用目的", e(d.use_purpose));
       add("対象業種", e(d.industry));
@@ -4792,7 +4847,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-04-16';
+  const TRIGATE_VERSION = '2026-09-05-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

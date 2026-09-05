@@ -1307,6 +1307,21 @@ body.presenMode table{font-size:1.02em}
     if(big && a.indexOf(big) < 0) a.unshift(big);
     return a.join("，");
   }
+  /* ===== ウェブ検索で拾った案件のID（2026-09-05） =====================
+     従来は "web-" + 地域 + 連番 で付けていた。連番は並び順なので、掘り直して
+     拾う制度が入れ替わると、同じIDが別の制度を指してしまう。
+     判定の記憶（sieve/gate/give）も詳細の控え（trisight_dig_web_items）も
+     IDで引くため、記憶や中身が別の制度に付くおそれがあった。
+     制度そのもの（掲載元URL。無ければ題名）からIDを作り、
+     同じ制度なら何度掘っても同じIDになるようにする。 */
+  function tsWebStableId(x){
+    const src = String((x && (x.source_url || x.title)) || "");
+    let h = 5381;
+    for(let i = 0; i < src.length; i++){
+      h = ((h * 33) ^ src.charCodeAt(i)) >>> 0;
+    }
+    return h.toString(36);
+  }
   async function tsDigWebPref(pref, industryHint, cityHint){
     tsWebDropped = 0; tsWebEntries = [];
     if(!pref) return [];
@@ -1362,7 +1377,7 @@ body.presenMode table{font-size:1.02em}
     /* entry（入口ページ）は捨てない。道案内を付けて別枠で見せる。 */
     tsWebEntries = raw.filter(x => x.kind === "entry" || !(okUrl(x.source_url) && okContent(x)))
       .slice(0, 4).map((x, i) => ({
-        id: "webentry-" + pref + "-" + i,
+        id: "webentry-" + tsWebStableId(x),
         title: x.title, name: x.title,
         subsidy_catch_phrase: x.catch || x.why || "",
         target_area_search: x.area || pref,
@@ -1381,7 +1396,7 @@ body.presenMode table{font-size:1.02em}
     const kept = raw.filter(x => x.kind !== "entry" && okUrl(x.source_url) && okContent(x));
     tsWebDropped = 0;
     return kept.map((x, i) => ({
-      id: "web-" + pref + "-" + i,
+      id: "web-" + tsWebStableId(x),
       title: x.title, name: x.title,
       subsidy_catch_phrase: x.catch || "",
       subsidy_max_limit: tgAmtSee(x.title, (typeof x.max_limit === "number") ? x.max_limit : null).value,
@@ -5001,7 +5016,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-05-08';
+  const TRIGATE_VERSION = '2026-09-05-09';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

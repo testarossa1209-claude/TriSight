@@ -2038,18 +2038,28 @@ body.presenMode table{font-size:1.02em}
     const b = document.getElementById("digSieveResetBtn");
     if(!b) return;
     b.addEventListener("click", function(){
-      let n = 0;
+      /* 2026-09-05：0件としか出ず、記憶がどこにあるのか分からなかった。
+         消す前に何が入っているかを画面へ出す。手元の思い込みで消す先を決めない。 */
+      let n = 0, all = 0, kinds = {};
       try{
         const m = JSON.parse(localStorage.getItem("trisight_judge_memo") || "{}");
         const out = {};
         Object.keys(m).forEach(function(k){
-          if(k.indexOf("\u0001sieve\u0001") >= 0 || k.indexOf("sieve") >= 0){ n++; return; }
+          all++;
+          const parts = String(k).split("\u0001");
+          const kind = (parts.length >= 2) ? parts[1] : "（区切りなし）";
+          kinds[kind] = (kinds[kind] || 0) + 1;
+          if(kind === "sieve"){ n++; return; }
           out[k] = m[k];
         });
         localStorage.setItem("trisight_judge_memo", JSON.stringify(out));
       }catch(_){}
-      b.textContent = "仕分けの記憶を消しました（" + n + "件）。もう一度掘ってください";
-      setTimeout(function(){ b.textContent = "事業に照らした仕分けをやり直す"; }, 6000);
+      const detail = Object.keys(kinds).map(function(k){ return k + "＝" + kinds[k] + "件"; }).join("／");
+      b.textContent = n
+        ? "仕分けの記憶を消しました（" + n + "件）。もう一度「新着探索」を押してください"
+        : "消せる仕分けの記憶がありませんでした（記憶は全" + all + "件"
+          + (detail ? "：" + detail : "") + "）";
+      setTimeout(function(){ b.textContent = "事業に照らした仕分けをやり直す"; }, 15000);
     });
   })();
   window.tsAmountCell = function(it, fyFn){
@@ -4947,7 +4957,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-05-05';
+  const TRIGATE_VERSION = '2026-09-05-06';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

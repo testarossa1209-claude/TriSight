@@ -405,6 +405,7 @@ body.presenMode table{font-size:1.02em}
     <div class="digrow" style="margin-top:8px">
       <button id="digFullGateBtn" class="dbtn" style="display:none">この一覧すべてで詳細AIゲート判定を実行する（API複数回・時間がかかります）</button>
       <button type="button" class="rc-toggle" id="digClearBtn" style="display:none" title="掘った一覧と見込み額を消します。判定の記憶は残るので、掘り直せば元に戻ります。獲得実績の記録は消えません">掘った一覧と見込み額を消す</button>
+      <button type="button" class="rc-toggle" id="digSieveResetBtn" title="事業に照らした仕分けの記憶だけを消します。次に掘るとき、全件をもう一度AIが仕分けます。仕分けの当て方を変えたときに使ってください">事業に照らした仕分けをやり直す</button>
     </div>
     <div id="digOut"></div>
   </div>
@@ -2029,6 +2030,28 @@ body.presenMode table{font-size:1.02em}
       + '一覧に無い番号が残っていれば、その案件が事業外の印を付けられなかったものです。</div>'
       + '</details>';
   };
+  /* 2026-09-05：仕分けの結果は案件ごとに記憶され、記憶のあるものはAIに問い直さない作り。
+     そのため仕分けの当て方（指示文）を変えても、既に判定済みの案件には一生反映されなかった。
+     判定を安定させるための記憶が、直しを試せなくする壁になっていた。
+     仕分けの記憶だけを消す口をここに置く。見込み額や獲得実績の記録には触らない。 */
+  (function(){
+    const b = document.getElementById("digSieveResetBtn");
+    if(!b) return;
+    b.addEventListener("click", function(){
+      let n = 0;
+      try{
+        const m = JSON.parse(localStorage.getItem("trisight_judge_memo") || "{}");
+        const out = {};
+        Object.keys(m).forEach(function(k){
+          if(k.indexOf("\u0001sieve\u0001") >= 0 || k.indexOf("sieve") >= 0){ n++; return; }
+          out[k] = m[k];
+        });
+        localStorage.setItem("trisight_judge_memo", JSON.stringify(out));
+      }catch(_){}
+      b.textContent = "仕分けの記憶を消しました（" + n + "件）。もう一度掘ってください";
+      setTimeout(function(){ b.textContent = "事業に照らした仕分けをやり直す"; }, 6000);
+    });
+  })();
   window.tsAmountCell = function(it, fyFn){
       /* 2026-09-04：印を案件名の後ろに置いたところ画面に現れなかったため、
          金額の欄の中へ移す。目安を外れたことは、金額の隣にあるのが自然でもある。 */
@@ -2329,6 +2352,10 @@ body.presenMode table{font-size:1.02em}
               /* 施主（個人）向けとして拾った候補は、会社を基準にした仕分けにかけない。
                  受け取るのが会社ではないので、業種や規模で判定すると必ず落ちる（2026-09-01）。 */
               const askList = show.filter(it => !it.__shunushi && tsJudgeGet("sieve", it.id) === null);
+              /* 2026-09-05：何件がAIに送られ、何件が記憶で済んだかを画面に出す。
+                 送られていないことに気づけず、指示文を三度書き換えた失敗への手当て。 */
+              window.__sieveAsked = askList.length;
+              window.__sieveMemo = show.filter(it => !it.__shunushi).length - askList.length;
               let keptSet = null;
               if(askList.length){
                 const keptIdx = await aiTitleSort(askList);
@@ -2388,7 +2415,10 @@ body.presenMode table{font-size:1.02em}
             st.textContent = "受付中 "+list.length+" 件　※精密足切りで全件が除外されました。"+mechAlert();
             return;
           }
-          st.textContent = "受付中 "+list.length+" 件 → 事業に照らして仕分け "+aiCount+" 件 → 掲載内容と突き合わせて "+show.length+" 件を表示"+sortNote+"（キーワード："+kw+"）"+mechAlert();
+          st.textContent = "受付中 "+list.length+" 件 → 事業に照らして仕分け "+aiCount+" 件"
+              + (typeof window.__sieveAsked === "number"
+                  ? "（今回AIに送ったのは "+window.__sieveAsked+" 件。残り "+window.__sieveMemo+" 件は前回までの判定を使っています）" : "")
+              + " → 掲載内容と突き合わせて "+show.length+" 件を表示"+sortNote+"（キーワード："+kw+"）"+mechAlert();
         }else{
           st.textContent = "受付中 "+list.length+" 件（キーワード："+kw+"）※基礎情報が未読み込みのため全件表示";
         }
@@ -4917,7 +4947,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-05-03';
+  const TRIGATE_VERSION = '2026-09-05-04';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

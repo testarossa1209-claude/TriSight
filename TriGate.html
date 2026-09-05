@@ -382,7 +382,7 @@ body.presenMode table{font-size:1.02em}
   </div>
 
   <!-- 発掘（新着探索・Jグランツ） 2026-07-13 -->
-  <div class="step"><span class="no">発掘</span><h2>新着の補助金を掘る</h2><span class="hint">Jグランツ・国土交通省・厚生労働省に加え、選んだ都道府県・市区町村の独自制度をその場で検索して掘ります</span></div>
+  <div class="step"><span class="no">発掘</span><h2>新着補助金探索</h2><span class="hint">Jグランツ・国土交通省・厚生労働省に加え、選んだ都道府県・市区町村の独自制度をその場で検索して掘ります</span></div>
   <div class="card">
     <div class="digrow">
       <label class="digkwlabel" for="digKeyword">検索する語</label>
@@ -393,7 +393,7 @@ body.presenMode table{font-size:1.02em}
         <label style="margin-left:10px;font-size:13px;white-space:nowrap" title="住宅用の補助のように、受け取るのが会社ではなく個人（施主）の制度も探します">
           <input type="checkbox" id="digShunushi"> 施主（個人）が受け取る制度も探す
         </label>
-      <button id="digBtn" class="rbtn">新着を掘る</button>
+      <button id="digBtn" class="rbtn">新着探索</button>
     </div>
     <div class="digrow" style="margin-top:8px">
       <label class="digfile">企業基礎情報を追加：<input type="file" id="digCompanyFile" accept=".json,application/json"></label>
@@ -1883,7 +1883,7 @@ body.presenMode table{font-size:1.02em}
         try{ localStorage.setItem("trisight_dig_company", JSON.stringify(company)); }catch(e){}
         compLabel();
         const st = document.getElementById("digStatus");
-        if(st) st.textContent = "診断する会社を「"+nm+"」に切り替えました。あらためて「新着を掘る」を押してください。";
+        if(st) st.textContent = "診断する会社を「"+nm+"」に切り替えました。あらためて「新着探索」を押してください。";
       });
     }
     const compDel = document.getElementById("digCompanyDel");
@@ -2156,7 +2156,7 @@ body.presenMode table{font-size:1.02em}
       }catch(_){}
       st.innerHTML = e(sv.status || "")
         + '<br><span style="color:#a45a1a">※ ' + e(when) + ' に掘った結果を、この端末から呼び戻して表示しています。'
-        + '最新にするには「新着を掘る」を押してください。</span>';
+        + '最新にするには「新着探索」を押してください。</span>';
       try{ if(typeof pjRefreshRowBadges === "function") pjRefreshRowBadges(); }catch(_){}
       return true;
     }
@@ -3013,7 +3013,7 @@ body.presenMode table{font-size:1.02em}
           }, hit);
           return safe;
         }
-        throw new Error("この案件の中身が手元にありません。もう一度「新着を掘る」を押してください。");
+        throw new Error("この案件の中身が手元にありません。もう一度「新着探索」を押してください。");
       }
       const code = tsCode();
       if(!code) throw new Error("認証コードが未入力です。");
@@ -4549,7 +4549,7 @@ body.presenMode table{font-size:1.02em}
     const nm = tsCompanyKey();
     if(!confirm((nm ? "「"+nm+"」" : "この端末")+"について記憶している判定結果を消します。\n次の発掘で、AIがすべて判定し直します（時間がかかります）。\n\n企業基礎情報を直したときは、こちらを押してください。\n\nよろしいですか？")) return;
     try{ if(typeof tsJudgeClearCompany === "function") tsJudgeClearCompany(); }catch(e){}
-    alert("判定の記憶を消しました。あらためて「新着を掘る」を押してください。");
+    alert("判定の記憶を消しました。あらためて「新着探索」を押してください。");
   });
 
   /* プレゼン表示（2026-08-13追加）：全画面・文字大・管理コードなど内部表示を隠す */
@@ -4947,7 +4947,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-05-04';
+  const TRIGATE_VERSION = '2026-09-05-05';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

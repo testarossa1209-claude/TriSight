@@ -202,7 +202,7 @@
 
 <footer>
   合同会社トライサイト　TriSight&reg; ファミリー
-  <div class="verline">版 <span id="verLabel">2026-09-04-06</span>（v3）</div>
+  <div class="verline">版 <span id="verLabel">2026-09-05-01</span>（v3）</div>
 </footer>
 </div>
 
@@ -485,9 +485,9 @@
         + '"submit_to":"持っていく先","receive":"持ち帰るもの","must_verify":false,"why":"","basis":"要領または法令の該当箇所"}]}]}';
       /* 2026-09-04：5件ずつに分けたことで、23ページの要領本文を回ごとに送り直していた。
          待ち時間の大半がこの往復。本文は長いので、2回目以降は要点だけに絞る。 */
-      const user = "■ 要領本文\n" + src + "\n\n"
-        + "■ 制度名\n" + ((g && g.program_name) || "") + "\n\n"
+      const userRest = "■ 制度名\n" + ((g && g.program_name) || "") + "\n\n"
         + "■ 型を作る書類\n" + names;
+      const user = tfSrcBlocks(src, userRest);
       let code = ""; try{ code = localStorage.getItem("trisight_access_code") || ""; }catch(e){}
       const res = await fetch(RELAY, {
         method:"POST",
@@ -1051,6 +1051,23 @@
      ここでAIがするのは「何を確かめるべきか」を要領から拾って並べることまで。
      当てはめが正しいかどうかの結論は出さない。○×を付けるのは人。
      根拠が要領に見つからない項目は「根拠なし」として区別し、推測を根拠のように見せない。 */
+  /* ===== 要領本文の預け方（2026-09-05） =====
+     同じ要領本文を、型の作成・書類の分解・確認事項の作成で何度も積み直していた。
+     43ページの要領なら5万字を超え、書類を5件ずつ回すたびに全部が乗る。待ち時間の大半がこれ。
+     Anthropic側に預けておく仕組み（プロンプトキャッシュ）があるので、本文の塊に印を置く。
+     2回目以降は預けた先を読むだけになり、料金は通常の入力の1割になる。
+     保持は既定5分だが、分解は5分を超えるため1時間を指定する。
+     印は先頭からの一致で効くので、本文は必ず最初のブロックに置くこと。 */
+  function tfSrcBlocks(src, rest){
+    const blocks = [];
+    if(src){
+      blocks.push({ type:"text", text:"■ 要領本文\n" + src,
+                    cache_control:{ type:"ephemeral", ttl:"1h" } });
+    }
+    blocks.push({ type:"text", text:rest });
+    return blocks;
+  }
+
   const RELAY = "https://trisight-relay.vercel.app/api/anthropic";
   const MODEL = "claude-sonnet-4-6";
 
@@ -1089,10 +1106,11 @@
         + "出力はJSONのみ。前置きもコードブロックも付けないでください。"
         + '形式：{"items":[{"q":"確かめること（一文）","basis":"要領の該当箇所（見出しや条項番号など短く）","found":true}]}'
         + "項目は多くて8件までにしてください。";
-      const user = (src ? "■ 要領本文\n" + src + "\n\n" : "■ 要領本文\n（本文が渡されていません。本文に基づく根拠は作れないため、found はすべて false にしてください）\n\n")
+      const userRest = (src ? "" : "■ 要領本文\n（本文が渡されていません。本文に基づく根拠は作れないため、found はすべて false にしてください）\n\n")
         + "■ 制度名\n" + (current.program_name||"") + "\n\n"
         + "■ 添付書類\n" + (docs||"（なし）") + "\n\n"
         + "■ いまの分解（この並びが妥当かを人が確かめます）\n" + plan;
+      const user = tfSrcBlocks(src, userRest);
       let code = ""; try{ code = localStorage.getItem("trisight_access_code") || ""; }catch(e){}
       const res = await fetch(RELAY, {
         method:"POST",

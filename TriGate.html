@@ -1297,6 +1297,15 @@ body.presenMode table{font-size:1.02em}
     try{ localStorage.setItem(TS_ENTRY_KEY, JSON.stringify(all)); }catch(e){ return 0; }
     return rec.list.length;
   }
+  /* 2026-09-05：発掘へ渡す業種が「建設業」1語だったため、手がかりの案内文が
+     すべて建設業前提で書かれていた。会社が名乗った業種の語をすべて渡す。 */
+  function tsIndustryWords(comp){
+    const b = (comp && comp["事業"]) || {};
+    const a = [].concat(b["業種_該当するもの"] || []).filter(Boolean);
+    const big = b["業種_大分類"] || "";
+    if(big && a.indexOf(big) < 0) a.unshift(big);
+    return a.join("，");
+  }
   async function tsDigWebPref(pref, industryHint, cityHint){
     tsWebDropped = 0; tsWebEntries = [];
     if(!pref) return [];
@@ -2218,7 +2227,14 @@ body.presenMode table{font-size:1.02em}
                会社の業種で探すと、事業者向けの制度しか返ってこないため（2026-09-01）。 */
             const ind = wantShunushi
               ? "受給者が個人（住宅の所有者・居住者）である住宅用の制度。太陽光発電・蓄電池・V2H・省エネ改修など。事業者向けは不要"
-              : ((company && company["機械足切り条件"] && company["機械足切り条件"]["業種"]) || "");
+              : (function(){
+                  /* 2026-09-05：機械足切りの業種と、事業側で選ばれた業種の両方を渡す。
+                     どちらか片方しか書かれていない基礎情報でも取りこぼさない。 */
+                  const a = (company && company["機械足切り条件"] && company["機械足切り条件"]["業種"]) || "";
+                  const b = tsIndustryWords(company);
+                  const w = (a + "，" + b).split(/[，,、\s]+/).filter(Boolean);
+                  return w.filter(function(x, i){ return w.indexOf(x) === i; }).join("，");
+                })();
             const webItems = await tsDigWebPref(selArea, ind, selCity);
             if(wantShunushi) webItems.forEach(it => { if(it) it.__shunushi = true; });
             webEntries = tsWebEntries.slice();
@@ -2864,9 +2880,20 @@ body.presenMode table{font-size:1.02em}
          建設業として残り、1件ずつ課金する段まで運ばれていた。
          基礎情報の「事業」（業種の大分類・事業内容・提供エリア）を渡し、
          会社の実際の仕事に照らして見られるようにする。 */
+      /* 2026-09-05：業種の大分類だけでは落とせない。前橋ソーラーは業種が「建設業」であり、
+         水素ステーションの保守点検は建設業の仕事に見えるため、事業内容を渡しても残っていた。
+         そこで「取り扱う設備・技術」を別立てで渡す。ここに無いものは扱わない、という
+         宣言の形にすることで、扱わない技術を一つずつ列挙させずに済む。
+         業種は当てに行くための欄（広いほど拾える）、設備・技術は落とすための欄。軸が違う。 */
+      const __biz = (company && company["事業"]) || {};
+      const __gear = [].concat(__biz["取り扱う設備_技術"] || []).filter(Boolean);
       const compBrief = JSON.stringify({
         "会社": (company && company["会社"]) || {},
-        "事業": (company && company["事業"]) || {},
+        "事業": __biz,
+        "取り扱う設備・技術": __gear,
+        "取り扱う設備・技術の扱い": __gear.length
+          ? "この一覧に無い設備・技術は取り扱っていません。一覧に無い設備・技術を対象とする制度は事業外として落としてください。業種の大分類が広くても、この一覧が優先します。"
+          : "（未記入。設備・技術による絞り込みは行わないでください）",
         "探索キーワード": (company && company["探索キーワード"]) || [],
         "今後の計画": (company && (company["今後の計画"] || company["事業計画"])) || ""
       });
@@ -4847,7 +4874,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-05-01';
+  const TRIGATE_VERSION = '2026-09-05-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

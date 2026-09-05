@@ -2062,12 +2062,41 @@ body.presenMode table{font-size:1.02em}
       setTimeout(function(){ b.textContent = "事業に照らした仕分けをやり直す"; }, 15000);
     });
   })();
+  /* 2026-09-05：当社が付けた「事業外の可能性」の印を、利用者が取り消せるようにする。
+     取り消した案件は端末に控え、次に掘っても印が付かない。
+     当社の仕分けを利用者が上書きする口であり、判断を人の側へ返すための仕組み。 */
+  const TG_OFFBIZ_OV = "trigate_offbiz_override";
+  function tsOffBizOverride(id){
+    try{
+      const m = JSON.parse(localStorage.getItem(TG_OFFBIZ_OV) || "{}");
+      return m[String(id)] === true;
+    }catch(_){ return false; }
+  }
+  window.tsOffBizOverride = tsOffBizOverride;
+  window.tsOffBizUndo = function(id){
+    try{
+      const m = JSON.parse(localStorage.getItem(TG_OFFBIZ_OV) || "{}");
+      m[String(id)] = true;
+      localStorage.setItem(TG_OFFBIZ_OV, JSON.stringify(m));
+    }catch(_){}
+    const row = document.querySelector('[data-id="' + String(id).replace(/"/g, '') + '"]');
+    if(row){
+      const cell = row.querySelector(".tg-offbiz");
+      if(cell) cell.outerHTML = '<div style="font-size:11px;color:var(--muted)">この印は取り消しました</div>';
+    }
+  };
   window.tsAmountCell = function(it, fyFn){
       /* 2026-09-04：印を案件名の後ろに置いたところ画面に現れなかったため、
          金額の欄の中へ移す。目安を外れたことは、金額の隣にあるのが自然でもある。 */
       const mark = (it && (it.__offBiz || it.__amtOut))
-        ? '<div style="font-size:11px;color:#b0203a;font-weight:700;line-height:1.4">'
-          + [it.__offBiz, it.__amtOut].filter(Boolean).join("・") + "</div>"
+        ? '<div class="tg-offbiz" style="font-size:11px;color:#b0203a;font-weight:700;line-height:1.4">'
+          + [it.__offBiz, it.__amtOut].filter(Boolean).join("・")
+          + (it.__offBiz
+              ? '<br><button type="button" class="rbtn" style="font-weight:400;font-size:10px;padding:1px 6px;margin-top:2px"'
+                + ' title="御社の事業に関わる制度だと思われる場合は、この印を取り消せます。取り消した案件には次から印が付きません"'
+                + ' onclick="tsOffBizUndo(\'' + String(it.id || "").replace(/'/g, "") + '\')">この印を取り消す</button>'
+              : "")
+          + "</div>"
         : "";
       const base = mark + fyFn(it && it.subsidy_max_limit);
       const isWeb = String(it && it.id || "").indexOf("web-") === 0;
@@ -2388,7 +2417,13 @@ body.presenMode table{font-size:1.02em}
                    要るか要らないかを決めるのは使う人であり、当社が代わりに捨てるのは筋違い。
                    自社が申請しない制度でも、顧客へ渡す材料になることがある。 */
                 show.forEach(it => {
-                  it.__offBiz = (!it.__shunushi && tsJudgeGet("sieve", it.id) === false) ? "事業外" : "";
+                  /* 2026-09-05：印の言葉を「事業外」から「事業外の可能性」へ改める。
+                     太陽光パネルのリサイクルは、太陽光を売り施工する会社にとって商材の出口であり、
+                     当社が事業外と断ずるのは越権。決めるのは利用者であって当社ではない。
+                     あわせて、利用者が印を取り消せるようにした（取り消しは端末に残る）。 */
+                  const __ov = tsOffBizOverride(it.id);
+                  it.__offBiz = (__ov === true) ? ""
+                    : ((!it.__shunushi && tsJudgeGet("sieve", it.id) === false) ? "事業外の可能性" : "");
                 });
               }else{
                 sortNote = "（事業に照らした仕分けは結果を読めず未適用）";
@@ -4966,7 +5001,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-05-07';
+  const TRIGATE_VERSION = '2026-09-05-08';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -405,6 +405,7 @@ body.presenMode table{font-size:1.02em}
     <div class="digrow" style="margin-top:8px">
       <button id="digFullGateBtn" class="dbtn" style="display:none">この一覧すべてで詳細AIゲート判定を実行する（API複数回・時間がかかります）</button>
       <button type="button" class="rc-toggle" id="digClearBtn" style="display:none" title="掘った一覧と見込み額を消します。判定の記憶は残るので、掘り直せば元に戻ります。獲得実績の記録は消えません">掘った一覧と見込み額を消す</button>
+      <button type="button" class="rc-toggle" id="digLedgerClearBtn" title="ウェブ検索で拾った案件の台帳を消します。判定の記憶・見込み額・獲得実績には触れません">拾った案件の台帳を消す</button>
       <button type="button" class="rc-toggle" id="digSieveResetBtn" title="事業に照らした仕分けの記憶だけを消します。次に掘るとき、全件をもう一度AIが仕分けます。仕分けの当て方を変えたときに使ってください">事業に照らした仕分けをやり直す</button>
     </div>
     <div id="digOut"></div>
@@ -1461,6 +1462,178 @@ body.presenMode table{font-size:1.02em}
     e.fixed = v; l[k] = e; tgAmtStore(l);
   }
 
+  /* ===== 拾った案件の台帳（2026-09-05） ==============================
+     ウェブ検索で拾った案件を地域ごとに貯める。掘るたびに足し、今回の検索で
+     返ってこなかったものも持ち越して出す。
+     件数の上限は置かない。当初60件で古いものから落とす作りにしたが、その60に
+     根拠が無く、落とされるのは「掲載元がまだ終了と言っていない制度」だった。
+     消すのは掲載元が「受付を終了しました」と書いたときだけ、が当社の線。
+     残る心配は端末の保存容量だけなので、入らなかったときは黙って捨てず知らせる。 */
+  const WEB_LEDGER_KEY = "trisight_dig_web_ledger";
+  const WEB_RECHECK_MAX = 3;    /* 1回の発掘で掲載元に当たりに行く件数 */
+  const WEB_RECHECK_DAYS = 7;   /* 前回の確認からこれだけ空いたものが対象 */
+  function tsWebLedgerAll(){
+    try{ return JSON.parse(localStorage.getItem(WEB_LEDGER_KEY) || "{}") || {}; }catch(_){ return {}; }
+  }
+  function tsWebLedgerStore(all){
+    try{ localStorage.setItem(WEB_LEDGER_KEY, JSON.stringify(all)); return true; }
+    catch(e){
+      /* 端末の保存容量が足りない。黙って捨てず、利用者に知らせる */
+      const el = document.getElementById("digStatus");
+      const msg = "この端末の保存容量がいっぱいで、拾った案件の台帳を保存できませんでした。"
+                + "一覧上の「拾った案件の台帳を消す」で、使わない地域の分を消してください。";
+      if(el) el.textContent = msg; else alert(msg);
+      return false;
+    }
+  }
+  /* 今回拾った分を台帳へ足す。同じ制度は上書きし、最終確認日だけ新しくする */
+  function tsWebLedgerPut(area, fresh){
+    const key = String(area || "");
+    if(!key || !Array.isArray(fresh) || !fresh.length) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const all = tsWebLedgerAll();
+    const rec = (all[key] && typeof all[key] === "object") ? all[key] : {};
+    fresh.forEach(function(x){
+      if(!x || !x.id) return;
+      const old = rec[x.id] || {};
+      rec[x.id] = { item: x, last: today, closed: old.closed || null, checked: old.checked || "" };
+    });
+    all[key] = rec;
+    tsWebLedgerStore(all);
+  }
+  /* 掲載元のページを取り寄せて本文を返す（PDFの取り寄せと同じリレーを使う） */
+  async function tsFetchPageText(url){
+    const code = (typeof tsCode === "function") ? tsCode() : "";
+    if(!code) throw new Error("認証コードが未入力です。");
+    const res = await fetch(FD_RELAY, {
+      method: "POST",
+      headers: {"Content-Type": "application/json", "x-trisight-code": code},
+      body: JSON.stringify({ url: url, name: "page.html" })
+    });
+    if(!res.ok) throw new Error("取り寄せに失敗（" + res.status + "）");
+    const d = await res.json();
+    if(!d.base64) throw new Error("中身が空で返りました。");
+    const html = tsB64ToText(d.base64);
+    let txt = "";
+    try{ txt = new DOMParser().parseFromString(html, "text/html").body.textContent || ""; }
+    catch(_){ txt = String(html).replace(/<[^>]*>/g, " "); }
+    return txt.replace(/[ \t\u3000]+/g, " ").replace(/\s*\n\s*/g, "\n");
+  }
+  /* 受付終了と読める記載を探す。見つかった一文をそのまま返す（当社の言い換えはしない） */
+  const TS_CLOSE_WORDS = ["受付を終了", "受付は終了", "受付終了", "申請受付を停止",
+    "募集を終了", "募集は終了", "募集終了", "締め切りました", "締切りました",
+    "予算上限に達し", "予算に達したため"];
+  function tsFindClosingWord(text){
+    const t = String(text || "");
+    for(let i = 0; i < TS_CLOSE_WORDS.length; i++){
+      const w = TS_CLOSE_WORDS[i];
+      const at = t.indexOf(w);
+      if(at >= 0){
+        return t.slice(Math.max(0, at - 40), Math.min(t.length, at + w.length + 40))
+                .replace(/\s+/g, " ").trim();
+      }
+    }
+    return "";
+  }
+  /* 受付終了日が書かれていれば、掲載元の表記のまま返す（当社では書き換えない） */
+  function tsFindEndDate(text){
+    const re = /(受付|申請|募集)[^。\n]{0,40}?((?:令和|平成)?\s*[0-9０-９元]{1,4}\s*年\s*[0-9０-９]{1,2}\s*月\s*[0-9０-９]{1,2}\s*日)[^。\n]{0,12}?まで/;
+    const m = re.exec(String(text || ""));
+    return m ? m[2].replace(/\s+/g, "") : "";
+  }
+  /* 台帳の見直し。掲載元は後から終了日を書き足すので、掘るたびに当たりに行く。
+     発掘のなかで待ってから一覧を組むため、結果はその回の表示に出る（2026-09-05）。 */
+  async function tsWebLedgerRecheck(area){
+    const key = String(area || "");
+    if(!key) return;
+    const all = tsWebLedgerAll();
+    const rec = all[key];
+    if(!rec) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const stale = function(on){
+      if(!on) return true;
+      const d = (Date.now() - new Date(String(on) + "T00:00:00").getTime()) / 86400000;
+      return !(d >= 0 && d < WEB_RECHECK_DAYS);
+    };
+    const ids = Object.keys(rec).filter(function(id){
+      const r = rec[id];
+      if(!r || !r.item) return false;
+      if(r.closed && r.closed.verdict === "closed") return false;  /* 一度終了と読めたものは追わない */
+      return stale(r.checked);
+    }).slice(0, WEB_RECHECK_MAX);
+    if(!ids.length) return;
+    let closed = 0, ng = 0, ok = 0;
+    for(let i = 0; i < ids.length; i++){
+      const r = rec[ids[i]];
+      const url = (r.item && (r.item.ts_source_url || r.item.front_subsidy_detail_page_url)) || "";
+      if(!url){ r.checked = today; continue; }
+      try{
+        const t = await tsFetchPageText(url);
+        const hit = tsFindClosingWord(t);
+        r.checked = today;
+        if(hit){ r.closed = { verdict: "closed", on: today, quote: hit }; closed++; }
+        else { r.closed = { verdict: "open", on: today, end: tsFindEndDate(t) }; ok++; }
+      }catch(e){
+        r.checked = today;
+        r.closed = { verdict: "ng", on: today, why: String(e && e.message ? e.message : e).slice(0, 40) };
+        ng++;
+      }
+    }
+    all[key] = rec;
+    tsWebLedgerStore(all);
+    const el = document.getElementById("digStatus");
+    if(el){
+      el.textContent = "台帳の見直し：" + key + "の" + (ok + closed + ng) + "件を掲載元で確認しました"
+        + (closed ? "（受付終了と読める記載 " + closed + "件）" : "（受付終了と読める記載はありません）")
+        + (ng ? "／取り寄せられなかったもの " + ng + "件" : "") + "。";
+    }
+  }
+  /* 見直しの結果を、案件の出所欄と詳細へ印として書き入れる */
+  function tsLedgerMark(c, ck){
+    if(!c || !ck) return;
+    if(ck.verdict === "closed"){
+      c.__closedWord = true;
+      c.ts_source = (c.ts_source || "") + "／掲載元に受付終了と読める記載（" + ck.on + "確認）";
+      c.detail = String(c.detail || "")
+        + "\n\n【受付終了の可能性】" + ck.on + "に掲載元のページを確認したところ、受付が終わっていると"
+        + "読める記載がありました。当社の読み取りであり、確定ではありません。"
+        + "掲載元の記載：「" + String(ck.quote || "").slice(0, 120) + "」";
+    }else if(ck.verdict === "ng"){
+      c.ts_source = (c.ts_source || "") + "／掲載元を確認できませんでした（" + ck.on + "）";
+      c.detail = String(c.detail || "")
+        + "\n\n【未確認】" + ck.on + "に掲載元のページを取り寄せようとしましたが、届きませんでした。"
+        + "受付状況はご自身で掲載元をお確かめください。";
+    }else if(ck.verdict === "open" && ck.end){
+      c.ts_source = (c.ts_source || "") + "／掲載元の受付終了日 " + ck.end + "（" + ck.on + "確認）";
+    }
+  }
+  /* 台帳の中身を、今回の検索結果と合わせて一覧用にそろえる */
+  function tsWebLedgerMerge(area, fresh){
+    const key = String(area || "");
+    const out = Array.isArray(fresh) ? fresh.slice() : [];
+    const all = tsWebLedgerAll();
+    const rec = all[key];
+    if(!rec) return out;
+    const byId = {};
+    out.forEach(function(x){ if(x && x.id) byId[x.id] = x; });
+    Object.keys(rec).forEach(function(id){
+      const r = rec[id];
+      if(!r || !r.item) return;
+      if(byId[id]){ tsLedgerMark(byId[id], r.closed); return; }
+      let c = null;
+      try{ c = JSON.parse(JSON.stringify(r.item)); }catch(_){ return; }
+      if(!c) return;
+      c.ts_carried = true;
+      c.ts_source = (c.ts_source || "") + "／前回までの検索分・最終確認 " + r.last;
+      c.detail = String(c.detail || "")
+        + "\n\n※この案件は、前回までの検索で拾ったものです（最終確認 " + r.last
+        + "）。今回の検索では返ってきませんでした。受付状況は掲載元でお確かめください。";
+      tsLedgerMark(c, r.closed);
+      out.push(c);
+    });
+    return out;
+  }
+
   /* ===== 公募要領の自動取り寄せ 2026-08-22 =====
      ブラウザからは他ドメインのPDFを直接読めないため、リレーに取りに行かせる。
      取れたPDFは、STEP2の読み取り欄へ人が落としたのと同じ経路へ流し込む。 */
@@ -2077,6 +2250,47 @@ body.presenMode table{font-size:1.02em}
       setTimeout(function(){ b.textContent = "事業に照らした仕分けをやり直す"; }, 15000);
     });
   })();
+  /* 拾った案件の台帳を消す（2026-09-05）。いきなり消さず、いま何が入っているかを
+     地域ごとに見せてから確認を出す。選んでいる地域があれば、その地域だけを消す。
+     判定の記憶・見込み額・獲得実績には触れない。 */
+  (function(){
+    const b = document.getElementById("digLedgerClearBtn");
+    if(!b) return;
+    const label = "拾った案件の台帳を消す";
+    b.addEventListener("click", function(){
+      const all = tsWebLedgerAll();
+      const areas = Object.keys(all);
+      if(!areas.length){
+        b.textContent = "拾った案件の台帳はまだ空です";
+        setTimeout(function(){ b.textContent = label; }, 10000);
+        return;
+      }
+      const lines = areas.map(function(a){
+        return "・" + a + "　" + Object.keys(all[a] || {}).length + "件";
+      }).join("\n");
+      const ps = document.getElementById("digPref");
+      const cs = document.getElementById("digCity");
+      const sel = (ps ? ps.value : "") + ((cs && !cs.disabled) ? cs.value : "");
+      let msg, target = "";
+      if(sel && all[sel]){
+        target = sel;
+        msg = "いま台帳に入っているもの\n\n" + lines
+            + "\n\nこのうち「" + sel + "」の分だけを消します。他の地域は残ります。"
+            + "\n判定の記憶・見込み額・獲得実績には触れません。\n\n消してよろしいですか。";
+      }else{
+        msg = "いま台帳に入っているもの\n\n" + lines
+            + "\n\n選んでいる地域の台帳がありません。全部消しますか。"
+            + "\n判定の記憶・見込み額・獲得実績には触れません。";
+      }
+      if(!confirm(msg)){ return; }
+      let n = 0;
+      if(target){ n = Object.keys(all[target] || {}).length; delete all[target]; }
+      else { areas.forEach(function(a){ n += Object.keys(all[a] || {}).length; delete all[a]; }); }
+      tsWebLedgerStore(all);
+      b.textContent = "台帳を消しました（" + (target || "全地域") + "・" + n + "件）";
+      setTimeout(function(){ b.textContent = label; }, 15000);
+    });
+  })();
   /* 2026-09-05：当社が付けた「事業外の可能性」の印を、利用者が取り消せるようにする。
      取り消した案件は端末に控え、次に掘っても印が付かない。
      当社の仕分けを利用者が上書きする口であり、判断を人の側へ返すための仕組み。 */
@@ -2337,12 +2551,22 @@ body.presenMode table{font-size:1.02em}
                   const w = (a + "，" + b).split(/[，,、\s]+/).filter(Boolean);
                   return w.filter(function(x, i){ return w.indexOf(x) === i; }).join("，");
                 })();
-            const webItems = await tsDigWebPref(selArea, ind, selCity);
+            let webItems = await tsDigWebPref(selArea, ind, selCity);
             if(wantShunushi) webItems.forEach(it => { if(it) it.__shunushi = true; });
             webEntries = tsWebEntries.slice();
             /* 拾えた入口ページを台帳へ足す（次回の掘りで渡す材料になる） */
             try{ tsEntrySave(selArea, webEntries); }catch(e){}
-            srcTally.push({ label: selArea + "（ウェブ検索）", n: webItems.length, ok: true, entries: webEntries.length });
+            const webFresh = webItems.length;
+            /* 今回の分を台帳へ足す（この時点では一覧を組まない） */
+            try{ tsWebLedgerPut(selArea, webItems); }catch(e){}
+            /* 情報の新旧を見るのが発掘の仕事なので、終了日の確認もこの場で済ませる。
+               確認を待ってから一覧を組み立て、その回の表示に反映する（2026-09-05）。 */
+            try{
+              st.textContent = selArea + "の台帳にある案件を掲載元で確認しています…";
+              await tsWebLedgerRecheck(selArea);
+            }catch(e){}
+            try{ webItems = tsWebLedgerMerge(selArea, webItems); }catch(e){}
+            srcTally.push({ label: selArea + "（ウェブ検索）", n: webFresh, ok: true, entries: webEntries.length });
             if(webItems.length){
               const seen = {};
               list.forEach(it => { if(it && it.id) seen[it.id] = true; });
@@ -2353,7 +2577,8 @@ body.presenMode table{font-size:1.02em}
                 list.forEach(it => { if(it && wid[it.id]) it.__shunushi = true; });
               }
               tsWebCacheSave(webItems);
-              webNote = "／" + selArea + "の検索で " + webItems.length + "件"
+              webNote = "／" + selArea + "の検索で " + webFresh + "件"
+                     + (webItems.length > webFresh ? "（前回までに拾った分と合わせて " + webItems.length + "件）" : "")
                      + (webEntries.length ? "（ほかに探す手がかり" + webEntries.length + "件）" : "");
             }else{
               webNote = "／" + selArea + "の検索では制度個別のページに行き着けませんでした"
@@ -2494,10 +2719,10 @@ body.presenMode table{font-size:1.02em}
         /* 業界固有のものを先に並べる（2026-08-22）。
            どこでも手に入る全業種向けの制度と、その業界にしか当たらない制度を分けて見せる。
            全業種向けを捨てるのではない（金額が大きいのはむしろそちら）。順序と見出しで分ける。 */
-        const grpS = show.filter(it => it.__shunushi);
-        const rest = show.filter(it => !it.__shunushi);
-        const grpA = rest.filter(it => tsIsIndustrySpecific(it));
-        const grpB = rest.filter(it => !tsIsIndustrySpecific(it));
+        let grpS = show.filter(it => it.__shunushi);
+        let rest = show.filter(it => !it.__shunushi);
+        let grpA = rest.filter(it => tsIsIndustrySpecific(it));
+        let grpB = rest.filter(it => !tsIsIndustrySpecific(it));
         /* 上限・下限の目安を一覧にも効かせる（2026-09-04）。
            これまで目安は見込み額パネルの中だけで使っており、「上限1,000万円」と入れてあるのに
            73億円の案件が上に並んでいた。入力させておいて一覧に効かないのは機能として成立しない。
@@ -2537,6 +2762,19 @@ body.presenMode table{font-size:1.02em}
           return arr.slice().sort(function(a, b){ return rank(a) - rank(b); });
         };
         show = byRange(grpS).concat(byRange(grpA), byRange(grpB));
+        /* 表に出すのは今回の検索で見つかったものだけにする（2026-09-05）。
+           台帳から持ち越した分と、受付が終わった分は下の畳んだ置き場へ回す。
+           掘るたびに人が見る量が増えるのでは、当社が売っているものの逆になる。 */
+        const closedList = [], carriedList = [];
+        const pickOut = function(arr){
+          return (arr || []).filter(function(it){
+            if(!it) return false;
+            if(it.__closedWord){ if(closedList.indexOf(it) < 0) closedList.push(it); return false; }
+            if(it.ts_carried){ if(carriedList.indexOf(it) < 0) carriedList.push(it); return false; }
+            return true;
+          });
+        };
+        grpS = pickOut(grpS); grpA = pickOut(grpA); grpB = pickOut(grpB); rest = pickOut(rest);
         try{ if(st && __amtNote) st.textContent = st.textContent + __amtNote; }catch(e){}
         const headCells = '<th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th>';
         const rowOf = (it) => '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'" data-end="'+e(it.acceptance_end_datetime||"")+'">'
@@ -2600,6 +2838,26 @@ body.presenMode table{font-size:1.02em}
               + (selPref ? "／地域は「" + e(selArea) + "」で絞っています（全国区と" + e(selPref) + "の制度は残しています"
                   + (cutByArea ? "。" + cutByArea + "件を地域で除外" : "") + "）。" : "") + "</div>"
               + (typeof tsSieveLogHtml === "function" ? tsSieveLogHtml() : "");
+        /* 畳んだ置き場。開かなければ見なくてよい。消えたわけではないと分かる形にする */
+        const foldTbl = function(items){
+          return '<table class="digtbl"><thead><tr>' + headCells + '</tr></thead><tbody>'
+               + items.map(rowOf).join("") + "</tbody></table>";
+        };
+        if(carriedList.length){
+          html += '<details style="margin-top:12px"><summary style="cursor:pointer;font-weight:600;font-size:13px">'
+                + '前回までに拾った案件（今回の検索では返ってこなかったもの）　' + carriedList.length + '件</summary>'
+                + '<div style="font-size:12px;color:var(--muted);margin:6px 0">'
+                + '掲載元が今回の検索に出さなかっただけで、終わったとは限りません。各案件に最終確認日を添えています。</div>'
+                + foldTbl(carriedList) + '</details>';
+        }
+        if(closedList.length){
+          html += '<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:600;font-size:13px">'
+                + '受付が終わった案件　' + closedList.length + '件</summary>'
+                + '<div style="font-size:12px;color:var(--muted);margin:6px 0">'
+                + '掲載元のページに「受付を終了しました」にあたる記載がありました。'
+                + '当社の読み取りであり確定ではありません。確認した日と掲載元の記載は各案件の詳細に出ています。</div>'
+                + foldTbl(closedList) + '</details>';
+        }
         /* 入口ページ（2026-08-22）：制度個別まで行けなかったものを、拾い方の案内つきで出す。
            捨てると0件になるが、人が拾えるなら価値がある。ただし制度の一覧とは必ず分ける。 */
         if(webEntries.length){
@@ -5016,7 +5274,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-05-09';
+  const TRIGATE_VERSION = '2026-09-05-16';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

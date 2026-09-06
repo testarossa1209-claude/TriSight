@@ -1403,18 +1403,32 @@ body.presenMode table{font-size:1.02em}
     }
     return h.toString(36);
   }
-  async function tsDigWebPref(pref, industryHint, cityHint){
+  /* 2026-09-06 改定：これまでは「東京都世田谷区」という一つの地域名をリレーへ渡し、
+     リレー側は市区町村を無視して、その文字列をそのまま検索の地域にしていた。
+     そのため市区町村を選ぶと、探す重心が区に寄り、県の制度を探しに行かなくなる。
+     世田谷区は東京都の一部なのだから、区を選んだときも県の制度は拾えなければならない。
+     県と市区町村を分けて渡し、リレー側で両方を探させる。
+     入口ページも、県の箱と市区町村の箱の両方から渡す（区を選んだ人にも県の入口を使わせる）。
+       pref    ＝ 都道府県だけ（例＝東京都）
+       cityHint＝ 市区町村だけ（例＝世田谷区。全域なら空）
+       areaKey ＝ 箱の名前（例＝東京都世田谷区）。貯める先と出所の表示に使う */
+  async function tsDigWebPref(pref, industryHint, cityHint, areaKey){
     tsWebDropped = 0; tsWebEntries = [];
     if(!pref) return [];
     const code = tsCode();
     if(!code) return [];
+    const area = areaKey || (pref + (cityHint || ""));
     let text = "";
-    /* pref には市区町村まで含めた地域名（例＝群馬県前橋市）を渡す。
-       リレー側は pref をそのまま検索の地域として使うため、これで市区町村のページを直接掘れる。
-       city は別に添える（リレー側が使う場合に備えて。使わなければ無視される）。 */
     /* 2026-09-03：この地域について当社が持っている入口ページを一緒に渡す。
-       毎回ゼロから探させないことで、同じ地域なら同じ範囲を当たらせる。 */
-    const known = tsEntryGet(pref);
+       毎回ゼロから探させないことで、同じ地域なら同じ範囲を当たらせる。
+       2026-09-06：市区町村を選んだときは、県の箱の入口も一緒に渡す。 */
+    const seen = {};
+    const known = [].concat(tsEntryGet(area), (area !== pref ? tsEntryGet(pref) : []))
+      .filter(function(x){
+        const u = x && x.url;
+        if(!u || seen[u]) return false;
+        seen[u] = true; return true;
+      });
     try{ text = await tsAsk("dig_web", {
       pref: pref, city: cityHint || "", industry: industryHint || "",
       entries: known.map(function(x){ return { url: x.url, title: x.title }; })
@@ -1467,11 +1481,11 @@ body.presenMode table{font-size:1.02em}
         id: "webentry-" + tsWebStableId(x),
         title: x.title, name: x.title,
         subsidy_catch_phrase: x.catch || x.why || "",
-        target_area_search: x.area || pref,
+        target_area_search: x.area || area,
         front_subsidy_detail_page_url: x.source_url,
         ts_why: x.why || "",
         ts_guide: Array.isArray(x.guide) ? x.guide : [],
-        ts_source: (x.area || pref) + "（入口ページ）",
+        ts_source: (x.area || area) + "（入口ページ）",
         ts_verified_on: today
       }));
     /* ===== 拾った額の台帳（2026-09-05） =====
@@ -2822,7 +2836,7 @@ body.presenMode table{font-size:1.02em}
                   const w = (a + "，" + b).split(/[，,、\s]+/).filter(Boolean);
                   return w.filter(function(x, i){ return w.indexOf(x) === i; }).join("，");
                 })();
-            let webItems = await tsDigWebPref(selArea, ind, selCity);
+            let webItems = await tsDigWebPref(selPref, ind, selCity, selArea);
             if(wantShunushi) webItems.forEach(it => { if(it) it.__shunushi = true; });
             webEntries = tsWebEntries.slice();
             /* 拾えた入口ページを台帳へ足す（次回の掘りで渡す材料になる。道案内のあるものだけ） */
@@ -5601,7 +5615,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-06-10';
+  const TRIGATE_VERSION = '2026-09-06-11';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

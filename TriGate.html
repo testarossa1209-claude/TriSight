@@ -1168,6 +1168,36 @@ body.presenMode table{font-size:1.02em}
   window.tsSrcOf = tsSrcOf;
   window.tsSrcBadge = tsSrcBadge;
 
+  /* ===== 案件名の横に出す印（2026-09-06） ==============================
+     印を出す場所が4か所ある——掘った直後の表・見込み額の判定が終わったあとの
+     書き直し・画面を開き直したときの呼び戻し・畳んだ置き場。
+     最初は掘った直後の表にだけ入れたため、判定が終わった瞬間に消えていた。
+     どこから呼んでも同じ印が出るよう、作る処理をここへ一本化する。
+     行そのもの（data-steady / data-work）に持たせ、書き直しのときも戻す。 */
+  function tsSteadyBadgeHtml(v){
+    if(v !== "1" && v !== "0") return "";
+    return v === "1"
+      ? ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#e8f3ea;color:#2f6b3a;white-space:nowrap" title="当社が毎回見に行く入口ページから拾ったものです。掘り直しても同じものが出ます">定点</span>'
+      : ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#fdf3e3;color:#8a5a1a;white-space:nowrap" title="この回にAIが探して見つけたものです。掘り直すと入れ替わることがあります">その回</span>';
+  }
+  function tsWorkBadgeHtml(v){
+    if(v !== "1") return "";
+    return ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#f1f3f5;color:#5a6672;white-space:nowrap" title="当社は要領のありかを掴めていません。公式ページから公募要領を落として、読み取り欄に入れる手数が発生します">起案者の作業が増えます</span>';
+  }
+  /* 案件から、行に持たせる値（"1" / "0" / ""）を決める */
+  function tsSteadyOf(it){
+    if(!it || String(it.id || "").indexOf("web-") !== 0) return "";
+    return it.ts_from_entry ? "1" : "0";
+  }
+  function tsWorkOf(it){
+    if(!it) return "";
+    const g = (Array.isArray(it.ts_guidelines) && it.ts_guidelines.length)
+           || (Array.isArray(it.application_guidelines) && it.application_guidelines.length);
+    return g ? "" : "1";
+  }
+  window.tsSteadyBadgeHtml = tsSteadyBadgeHtml;
+  window.tsWorkBadgeHtml = tsWorkBadgeHtml;
+
   /* ===== 地域の指定と、業界固有かどうかの区分 2026-08-22 ===== */
   const TS_PREFS = ["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県",
     "埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県",
@@ -2150,7 +2180,13 @@ body.presenMode table{font-size:1.02em}
           hurry = '<br><span style="font-size:11px;font-weight:700;color:' + col + '">' + e(lab.replace(/^・/, "")) + '</span>';
         }
       }catch(_){}
-      cell.innerHTML = e(row.dataset.title || "") + (typeof window.tsSrcBadgeSafe === "function" ? window.tsSrcBadgeSafe(id) : "") + badgeHtml + hurry;
+      /* 2026-09-06：ここでセルを丸ごと書き直しているため、掘った直後に付けた
+         「定点」「起案者の作業が増えます」が消えていた。行に持たせた値から戻す。 */
+      const steady = (typeof window.tsSteadyBadgeHtml === "function")
+        ? window.tsSteadyBadgeHtml(row.dataset.steady || "") : "";
+      const work = (typeof window.tsWorkBadgeHtml === "function")
+        ? window.tsWorkBadgeHtml(row.dataset.work || "") : "";
+      cell.innerHTML = e(row.dataset.title || "") + (typeof window.tsSrcBadgeSafe === "function" ? window.tsSrcBadgeSafe(id) : "") + steady + work + badgeHtml + hurry;
     }
     /* 判定が付いた行を、見出し（この業界向け／業種を問わない）の区切りを保ったまま並べ替える。
        順序は ①急ぎ（締切21日以内で間に合うもの）②優先度の高い順 ③締切の近い順 ④未判定。
@@ -2571,8 +2607,10 @@ body.presenMode table{font-size:1.02em}
     function digRowsHtml(rows){
       let html = '<table class="digtbl"><thead><tr><th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th></tr></thead><tbody>';
       for(const it of rows){
-        html += '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'">'
+        html += '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'"'
+              + ' data-steady="'+e(it.__steady||"")+'" data-work="'+e(it.__work||"")+'">'
               + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)
+                + tsSteadyBadgeHtml(it.__steady || "") + tsWorkBadgeHtml(it.__work || "")
                 + (it.__offBiz ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__offBiz)+'</span>' : "")
           + (it.__amtOut ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__amtOut)+'</span>' : "")
                 + "</td>"
@@ -2596,7 +2634,11 @@ body.presenMode table{font-size:1.02em}
           acceptance_end_datetime: it.acceptance_end_datetime,
           target_area_search: it.target_area_search,
           __offBiz: it.__offBiz || "",
-          __amtOut: it.__amtOut || ""
+          __amtOut: it.__amtOut || "",
+          /* 2026-09-06：印を控えていないと、画面を開き直したときに消える。
+             2026-09-04に事業外・規模大で同じことが起きているので、まとめて控える。 */
+          __steady: (typeof tsSteadyOf === "function" ? tsSteadyOf(it) : ""),
+          __work: (typeof tsWorkOf === "function" ? tsWorkOf(it) : "")
         }));
         localStorage.setItem(DIG_SAVE_KEY, JSON.stringify({
           company: (typeof tsCompanyKey === "function" ? tsCompanyKey() : ""),
@@ -3008,25 +3050,10 @@ body.presenMode table{font-size:1.02em}
         grpS = pickOut(grpS); grpA = pickOut(grpA); grpB = pickOut(grpB); rest = pickOut(rest);
         try{ if(st && __amtNote) st.textContent = st.textContent + __amtNote; }catch(e){}
         const headCells = '<th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th>';
-        /* 2026-09-06：当社が毎回見に行く場所から拾ったものは「定点」、
-           その回に見つけたものは「その回」。揺れる情報と揺れない情報を分けて示す。 */
-        const steadyBadge = (it) => {
-          if(!it || String(it.id || "").indexOf("web-") !== 0) return "";
-          return it.ts_from_entry
-            ? ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#e8f3ea;color:#2f6b3a" title="当社が毎回見に行く入口ページから拾ったものです。掘り直しても同じものが出ます">定点</span>'
-            : ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#fdf3e3;color:#8a5a1a" title="この回にAIが探して見つけたものです。掘り直すと入れ替わることがあります">その回</span>';
-        };
-        /* 2026-09-06：当社が要領のありかを掴めていない案件は、利用者が
-           公式ページから自分で探すことになる。追う前に分かるよう印を付ける。 */
-        const workBadge = (it) => {
-          if(!it) return "";
-          const g = (Array.isArray(it.ts_guidelines) && it.ts_guidelines.length)
-                 || (Array.isArray(it.application_guidelines) && it.application_guidelines.length);
-          if(g) return "";
-          return ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#f1f3f5;color:#5a6672" title="当社は要領のありかを掴めていません。公式ページから公募要領を落として、読み取り欄に入れる手数が発生します">起案者の作業が増えます</span>';
-        };
-        const rowOf = (it) => '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'" data-end="'+e(it.acceptance_end_datetime||"")+'">'
-                + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)+steadyBadge(it)+workBadge(it)
+        const rowOf = (it) => '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'" data-end="'+e(it.acceptance_end_datetime||"")+'"'
+                + ' data-steady="'+e(tsSteadyOf(it))+'" data-work="'+e(tsWorkOf(it))+'">'
+                + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)
+                + tsSteadyBadgeHtml(tsSteadyOf(it)) + tsWorkBadgeHtml(tsWorkOf(it))
                 + (it.__offBiz ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__offBiz)+'</span>' : "")
           + (it.__amtOut ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__amtOut)+'</span>' : "")
                 + "</td>"
@@ -5548,7 +5575,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-06-07';
+  const TRIGATE_VERSION = '2026-09-06-08';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -1467,6 +1467,10 @@ body.presenMode table{font-size:1.02em}
       detail: (x.detail || "") + "\n\n※この案件は、発掘時にウェブ検索で拾ったものです。当社が内容を確認したものではありません。金額・期間・要件は必ず掲載元でお確かめください。",
       ts_source: (x.area || pref) + "（ウェブ検索・当社未確認）",
       ts_source_short: "検索",
+      /* 2026-09-06：当社が毎回見に行く入口ページから拾ったものか、
+         その回にAIが探して見つけたものか。前者は毎回同じものが出る＝揺れない。
+         後者は回ごとに変わる。利用者が見分けられるように分けて持つ。 */
+      ts_from_entry: (x.from_entry === true),
       ts_source_url: x.source_url,
       ts_verified_on: today,
       ts_guidelines: x.guideline_url
@@ -1917,6 +1921,68 @@ body.presenMode table{font-size:1.02em}
     out.sort(function(a, b){ return b.score - a.score; });
     return out.slice(0, 8);
   }
+  /* ===== 保存したページから公募要領を見つける（2026-09-06） =================
+     公式ページを当社が取りに行けないことがある（403・ログイン必須・
+     画面を組み立ててから表示する作りのページなど）。そのとき利用者は、
+     ページに並んでいる資料のどれが公募要領かを自分で見分けることになる。
+     案件ごとに毎回発生する手数のうち、ここが一番詰まる場所である。
+     そこで、そのページを丸ごと保存して落としてもらい、当社が中を読んで
+     どれが公募要領かを示す。「探す」作業を「落とす」作業に置き換える。
+     読み取りの中身は、当社が取りに行けたときと同じ処理を使う。 */
+  function tsPageFileHtml(page, title){
+    const q = function(v){ return String(v == null ? "" : v).replace(/"/g, "&quot;"); };
+    return '<div class="digpagefile" style="margin-top:8px;padding:8px;border:1px dashed var(--line,#ccc);'
+         + 'border-radius:6px;font-size:12.5px;background:#fcfcfd">'
+         + '<b>どれが公募要領か分からないときは</b><br>'
+         + 'いま開いた公式ページを、ブラウザの「名前を付けて保存」で保存して、'
+         + 'そのファイルをここに入れてください。当社が中を読んで、どれを落とせばよいかをお示しします。'
+         + '<br><span style="color:var(--muted)">保存の形式は「ウェブページ、HTMLのみ」を選んでください。</span>'
+         + '<br><input type="file" accept=".html,.htm,.mht,.mhtml,text/html" data-act="pagefile"'
+         + ' data-page="' + q(page) + '" data-title="' + q(title) + '" style="margin-top:6px">'
+         + '<div class="digguide2" style="margin-top:6px"></div></div>';
+  }
+  document.addEventListener("change", function(ev){
+    const inp = ev.target;
+    if(!inp || inp.tagName !== "INPUT" || (inp.dataset && inp.dataset.act) !== "pagefile") return;
+    const f = inp.files && inp.files[0];
+    if(!f) return;
+    const out = inp.parentElement ? inp.parentElement.querySelector(".digguide2") : null;
+    const esc = function(v){
+      return String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    };
+    if(out) out.textContent = "ページを読んでいます…";
+    const fr = new FileReader();
+    fr.onerror = function(){ if(out) out.textContent = "ファイルを読めませんでした。"; };
+    fr.onload = function(){
+      let links = [];
+      try{
+        links = tsGuidelineLinksFromHtml(String(fr.result || ""),
+                 inp.dataset.page || "", inp.dataset.title || "");
+      }catch(_){ links = []; }
+      if(!out) return;
+      if(!links.length){
+        out.innerHTML = 'このページからは資料の入ったリンクが見つかりませんでした。'
+          + '<br><span style="color:var(--muted)">保存の形式が「ウェブページ、完全」だと'
+          + 'リンクが書き換わって読めないことがあります。「ウェブページ、HTMLのみ」で保存し直すか、'
+          + '公式ページでPDFを直接落として、下の読み取り欄に入れてください。</span>';
+        return;
+      }
+      out.innerHTML = '<b>このページに入っていた資料です。読み取るものを選んでください。</b><br>'
+        + links.map(function(g){
+            const lb = g.label.length > 44 ? (g.label.slice(0, 44) + "…") : g.label;
+            const st = (g.other || g.old)
+              ? ' style="margin:4px 6px 0 0;opacity:.6"' : ' style="margin:4px 6px 0 0"';
+            const tag = (g.other ? '<span style="font-size:11px;color:var(--fix)">別コース </span>' : "")
+              + (g.old ? '<span style="font-size:11px;color:var(--fix)">旧年度 </span>' : "");
+            return '<button class="rbtn" data-act="guide" data-url="' + esc(g.url)
+              + '" data-name="' + esc(g.name) + '"' + st + '>' + tag + esc(lb) + "</button>";
+          }).join("")
+        + '<div class="digguide" style="margin-top:4px;color:var(--muted)"></div>';
+    };
+    fr.readAsText(f);
+  });
+
   async function tsFindGuidelinesOnPage(pageUrl, title){
     const code = (typeof tsCode === "function") ? tsCode() : "";
     if(!code) throw new Error("認証コードが未入力です。");
@@ -2295,13 +2361,18 @@ body.presenMode table{font-size:1.02em}
       const compSlim = {
         "会社": (function(c){
           const o = {};
-          ["本店所在地_都道府県","本店所在地_市区町村","従業員数_合計","予想年商","年商","進出予定地域","過去の申請実績"]
+          /* 2026-09-06：支社・事業所のある都道府県を足す。本店とは別に、
+             いま実際に拠点がある県。進出予定地域（これから出る計画）とは性質が違うため
+             別の欄として持つ。地域の足切りは、本店・支社・進出予定の3つを見る。 */
+          ["本店所在地_都道府県","本店所在地_市区町村","支社等所在地_都道府県",
+           "従業員数_合計","予想年商","年商","進出予定地域","過去の申請実績"]
             .forEach(k => { if(c[k] !== undefined) o[k] = c[k]; });
           return o;
         })(company["会社"] || {}),
         "機械足切り条件": company["機械足切り条件"] || {},
         "案件名の除外キーワード": company["案件名の除外キーワード"] || [],
         "探索キーワード": company["探索キーワード"] || [],
+        "支社等所在地_都道府県": company["支社等所在地_都道府県"] || [],
         "進出予定地域": company["進出予定地域"] || [],
         "過去の申請実績": company["過去の申請実績"] || []
       };
@@ -2937,8 +3008,25 @@ body.presenMode table{font-size:1.02em}
         grpS = pickOut(grpS); grpA = pickOut(grpA); grpB = pickOut(grpB); rest = pickOut(rest);
         try{ if(st && __amtNote) st.textContent = st.textContent + __amtNote; }catch(e){}
         const headCells = '<th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th>';
+        /* 2026-09-06：当社が毎回見に行く場所から拾ったものは「定点」、
+           その回に見つけたものは「その回」。揺れる情報と揺れない情報を分けて示す。 */
+        const steadyBadge = (it) => {
+          if(!it || String(it.id || "").indexOf("web-") !== 0) return "";
+          return it.ts_from_entry
+            ? ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#e8f3ea;color:#2f6b3a" title="当社が毎回見に行く入口ページから拾ったものです。掘り直しても同じものが出ます">定点</span>'
+            : ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#fdf3e3;color:#8a5a1a" title="この回にAIが探して見つけたものです。掘り直すと入れ替わることがあります">その回</span>';
+        };
+        /* 2026-09-06：当社が要領のありかを掴めていない案件は、利用者が
+           公式ページから自分で探すことになる。追う前に分かるよう印を付ける。 */
+        const workBadge = (it) => {
+          if(!it) return "";
+          const g = (Array.isArray(it.ts_guidelines) && it.ts_guidelines.length)
+                 || (Array.isArray(it.application_guidelines) && it.application_guidelines.length);
+          if(g) return "";
+          return ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#f1f3f5;color:#5a6672" title="当社は要領のありかを掴めていません。公式ページから公募要領を落として、読み取り欄に入れる手数が発生します">起案者の作業が増えます</span>';
+        };
         const rowOf = (it) => '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'" data-end="'+e(it.acceptance_end_datetime||"")+'">'
-                + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)
+                + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)+steadyBadge(it)+workBadge(it)
                 + (it.__offBiz ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__offBiz)+'</span>' : "")
           + (it.__amtOut ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__amtOut)+'</span>' : "")
                 + "</td>"
@@ -3801,13 +3889,20 @@ body.presenMode table{font-size:1.02em}
         const page = b.dataset.page;
         const orig = b.textContent;
         b.disabled = true; b.textContent = "公式ページを見ています…";
-        if(note) note.innerHTML = "";
+        /* 2026-09-06：資料の名前は発出元ごとに違う。並んでいるものの中から
+           どれを落とせばよいかを、探しに行く前に示す。ここが一番詰まる場所のため。 */
+        if(note) note.innerHTML = '<div style="font-size:12.5px;color:var(--muted);margin-bottom:4px">'
+          + '<b style="color:var(--ink,#212529)">落とすのは「公募要領」です。</b>'
+          + '呼び名は発出元ごとに違い、「募集要領」「募集要項」「実施要領」「申請の手引」も同じものです。'
+          + '<br>同じページに並んでいても、<b>交付要綱・申請様式・Q&amp;A・チラシは今は要りません。</b>'
+          + '年度の表示があれば、今の年度のものを選んでください。</div>';
         try{
           const links = await tsFindGuidelinesOnPage(page, b.dataset.title || "");
           if(!links.length){
             if(note) note.innerHTML = "このページからは資料の直リンクが見つかりませんでした。"
               + '<a href="' + e(page) + '" target="_blank" rel="noopener">公式ページを開く</a>'
-              + "から公募要領を落として、下の読み取り欄に入れてください。";
+              + "から公募要領を落として、下の読み取り欄に入れてください。"
+              + tsPageFileHtml(page, b.dataset.title || "");
           }else{
             if(note) note.innerHTML = "見つかった資料です。読み取るものを選んでください。<br>"
               + links.map(function(g){
@@ -3821,11 +3916,13 @@ body.presenMode table{font-size:1.02em}
                   return '<button class="rbtn" data-act="guide" data-url="' + e(g.url)
                     + '" data-name="' + e(g.name) + '"' + st + '>' + tag + e(lb) + "</button>";
                 }).join("")
-              + '<div class="digguide" style="margin-top:4px;color:var(--muted)"></div>';
+              + '<div class="digguide" style="margin-top:4px;color:var(--muted)"></div>'
+              + tsPageFileHtml(page, b.dataset.title || "");
           }
         }catch(err){
           if(note) note.innerHTML = e(String(err && err.message ? err.message : err))
-            + '　<a href="' + e(page) + '" target="_blank" rel="noopener">公式ページを開く</a>';
+            + '　<a href="' + e(page) + '" target="_blank" rel="noopener">公式ページを開く</a>'
+            + tsPageFileHtml(page, b.dataset.title || "");
         }finally{ b.disabled = false; b.textContent = orig; }
         return;
       }
@@ -5451,7 +5548,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-06-05';
+  const TRIGATE_VERSION = '2026-09-06-07';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

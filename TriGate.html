@@ -328,6 +328,8 @@ body.presenMode table{font-size:1.02em}
       認証コード：<span id="authCodeLabel">確認中…</span>
       <button type="button" id="authCodeChangeBtn" style="margin-left:8px;font-size:12.5px;padding:3px 10px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer">認証コードを確認・変更する</button>
       <button type="button" id="planChangeBtn" style="margin-left:6px;font-size:12.5px;padding:3px 10px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer">契約プラン</button>
+      <button type="button" id="usageBtn" style="margin-left:6px;font-size:12.5px;padding:3px 10px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer" title="この認証コードで今月使ったトークン数を、仕事の種類ごとに表示します">今月の使用量を見る</button>
+      <div id="usageBox" style="display:none;margin-top:8px"></div>
       <button type="button" id="testSendBtn" style="margin-left:8px;font-size:12.5px;padding:3px 10px;border:1px solid #c9772a;border-radius:6px;background:#fff8ef;color:#a45a1a;cursor:pointer">仮の補助金案件をTriTaskへ送る（動作確認用）</button>
       <a href="TriForm.html" style="margin-left:8px;font-size:12.5px;color:#c9772a">TriForm で届いた案件を見る</a>
       <span id="testSendMsg" style="margin-left:8px;font-size:12.5px"></span>
@@ -1565,6 +1567,84 @@ body.presenMode table{font-size:1.02em}
     const e = l[k] || { seen: [], fixed: null };
     e.fixed = v; l[k] = e; tgAmtStore(l);
   }
+
+  /* ===== 今月の使用量（2026-09-06） ==================================
+     料金の建付けを決めるには、1回の発掘・読み取り・分解が何トークンかを
+     知る必要がある。リレー側は仕事の種類ごとに積んでいるので、それを読んで
+     金額に直して見せる。単価はリレーが添えて返す（変わったらリレー側だけ直す）。
+     為替は当社が置く前提値。実際の請求はドル建てのため、円は目安。 */
+  const USD_JPY = 150;
+  const TASK_LABEL = {
+    dig_web: "発掘（ウェブ検索）", gate: "個別の詳細判定", give: "給付方式の一括仕分け",
+    title: "案件名の粗選別", read: "公募要領の読み取り", match: "要件照合",
+    sift: "精密足切り（AIを呼ばない）"
+  };
+  (function(){
+    const b = document.getElementById("usageBtn");
+    const box = document.getElementById("usageBox");
+    if(!b || !box) return;
+    b.addEventListener("click", async function(){
+      if(box.style.display !== "none"){ box.style.display = "none"; return; }
+      box.style.display = "";
+      box.innerHTML = "読み込んでいます…";
+      let d = null;
+      try{
+        const code = tsCode();
+        if(!code) throw new Error("認証コードが未入力です。");
+        const res = await fetch(GATE_RELAY, {
+          method: "POST",
+          headers: {"Content-Type": "application/json", "x-trisight-code": code},
+          body: JSON.stringify({ task: "usage", payload: {} })
+        });
+        d = await res.json();
+        if(!res.ok) throw new Error((d && d.error) || ("読み出しに失敗しました（" + res.status + "）"));
+      }catch(e){
+        box.innerHTML = '<span style="color:var(--fix)">' + String(e && e.message ? e.message : e) + '</span>';
+        return;
+      }
+      if(!d || !d.ok){
+        box.innerHTML = '<span style="color:var(--fix)">' + ((d && d.why) || "記録がありません") + '</span>';
+        return;
+      }
+      const p = d.price || { in_per_mtok: 3, out_per_mtok: 15, web_per_1k: 10 };
+      const yen = function(u){ return Math.round(u * USD_JPY * 100) / 100; };
+      let tIn = 0, tOut = 0, tWeb = 0, tN = 0, tUsd = 0;
+      const rows = (d.rows || []).map(function(r){
+        const usd = r.in / 1e6 * p.in_per_mtok + r.out / 1e6 * p.out_per_mtok
+                  + r.web / 1000 * p.web_per_1k;
+        tIn += r.in; tOut += r.out; tWeb += r.web; tN += r.n; tUsd += usd;
+        const per = r.n ? (usd / r.n) : 0;
+        return "<tr><td>" + (TASK_LABEL[r.task] || r.task) + "</td>"
+          + "<td style='text-align:right'>" + r.n.toLocaleString() + "</td>"
+          + "<td style='text-align:right'>" + r.in.toLocaleString() + "</td>"
+          + "<td style='text-align:right'>" + r.out.toLocaleString() + "</td>"
+          + "<td style='text-align:right'>" + (r.web ? r.web.toLocaleString() : "—") + "</td>"
+          + "<td style='text-align:right'>" + yen(usd).toLocaleString() + " 円</td>"
+          + "<td style='text-align:right'><b>" + yen(per).toLocaleString() + " 円</b></td></tr>";
+      }).join("");
+      box.innerHTML = '<div style="border:1px solid var(--line,#ddd);border-radius:10px;padding:12px 14px;background:#fbfbfc">'
+        + '<b>' + e(d.month || "") + ' の使用量</b>'
+        + '<span style="font-size:12px;color:var(--muted);margin-left:8px">この認証コードの分だけです</span>'
+        + (rows
+            ? '<table class="digtbl" style="margin-top:8px"><thead><tr>'
+              + '<th>仕事の種類</th><th>回数</th><th>入力トークン</th><th>出力トークン</th>'
+              + '<th>ウェブ検索</th><th>金額</th><th>1回あたり</th></tr></thead><tbody>'
+              + rows
+              + '<tr><td><b>合計</b></td><td style="text-align:right"><b>' + tN.toLocaleString() + '</b></td>'
+              + '<td style="text-align:right"><b>' + tIn.toLocaleString() + '</b></td>'
+              + '<td style="text-align:right"><b>' + tOut.toLocaleString() + '</b></td>'
+              + '<td style="text-align:right"><b>' + (tWeb ? tWeb.toLocaleString() : "—") + '</b></td>'
+              + '<td style="text-align:right"><b>' + yen(tUsd).toLocaleString() + ' 円</b></td>'
+              + '<td></td></tr></tbody></table>'
+            : '<div style="margin-top:8px">今月の記録はまだありません。</div>')
+        + '<div style="font-size:12px;color:var(--muted);margin-top:8px">'
+        + '単価（' + e(String(p.as_of || "")) + '時点・' + e(String(d.model || "")) + '）＝'
+        + '入力 100万トークンあたり ' + p.in_per_mtok + 'ドル／出力 ' + p.out_per_mtok + 'ドル／'
+        + 'ウェブ検索 1000回あたり ' + p.web_per_1k + 'ドル。'
+        + '円は1ドル' + USD_JPY + '円で計算した<b>目安</b>です。実際の請求はドル建てで、為替で動きます。'
+        + '</div></div>';
+    });
+  })();
 
   /* ===== 拾った案件の台帳（2026-09-05） ==============================
      ウェブ検索で拾った案件を地域ごとに貯める。掘るたびに足し、今回の検索で
@@ -5615,7 +5695,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-06-11';
+  const TRIGATE_VERSION = '2026-09-06-12';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

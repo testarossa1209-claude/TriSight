@@ -1278,7 +1278,15 @@ body.presenMode table{font-size:1.02em}
      地域あたり12件まで（古いものから落とす）。 */
   function tsEntrySave(area, entries){
     const key = String(area || "");
-    if(!key || !Array.isArray(entries) || !entries.length) return 0;
+    if(!key || !Array.isArray(entries)) return 0;
+    /* 2026-09-06：制度1件のページが「入口ページ」として返ってくる回があり、
+       それを台帳に貯めると、次の発掘で「まずここを当たれ」と渡す先が
+       制度1件のページに置き換わっていく。道案内が書けているものだけを入口として貯める。
+       画面には従来どおり全部出す（人が拾えるなら値打ちがあるため）。 */
+    entries = entries.filter(function(x){
+      return x && Array.isArray(x.ts_guide) && x.ts_guide.length >= 2;
+    });
+    if(!entries.length) return 0;
     const all = tsEntryAll();
     const rec = all[key] && Array.isArray(all[key].list) ? all[key] : { list: [] };
     const byUrl = {};
@@ -1315,8 +1323,21 @@ body.presenMode table{font-size:1.02em}
      IDで引くため、記憶や中身が別の制度に付くおそれがあった。
      制度そのもの（掲載元URL。無ければ題名）からIDを作り、
      同じ制度なら何度掘っても同じIDになるようにする。 */
+  /* 2026-09-06：同じ制度でもURLの末尾や記号が回ごとに違い、別の制度として台帳に入っていた。
+     IDを作る前にURLをそろえる。大文字小文字・追跡記号（?以降）・飛び先（#以降）・
+     末尾のスラッシュ・index.html を落とす。制度の実体は同じなので、同じIDになるべき。 */
+  function tsNormUrl(u){
+    const raw = String(u || "");
+    if(!/^https?:\/\//i.test(raw)) return raw;
+    try{
+      const url = new URL(raw);
+      let path = (url.pathname || "").replace(/\/index\.html?$/i, "/").replace(/\/+$/, "");
+      return (url.protocol + "//" + url.hostname.toLowerCase() + path).toLowerCase();
+    }catch(_){ return raw.split("#")[0].split("?")[0].replace(/\/+$/, "").toLowerCase(); }
+  }
   function tsWebStableId(x){
-    const src = String((x && (x.source_url || x.title)) || "");
+    const u = (x && x.source_url) ? tsNormUrl(x.source_url) : "";
+    const src = u || String((x && x.title) || "");
     let h = 5381;
     for(let i = 0; i < src.length; i++){
       h = ((h * 33) ^ src.charCodeAt(i)) >>> 0;
@@ -1533,6 +1554,21 @@ body.presenMode table{font-size:1.02em}
     fresh.forEach(function(x){
       if(!x || !x.id) return;
       const old = rec[x.id] || {};
+      /* 2026-09-06：同じ制度でも、掘る回によって受付終了日や補助率が空で返ってくる。
+         掲載元が消したのではなく、AIがその回に読まなかっただけ。
+         一度拾えた項目を、空の回で上書きして失わない。名前も最初に拾ったものを保つ
+         （回ごとに名前が変わると、利用者には別の制度に見えるため）。 */
+      const prev = old.item || null;
+      if(prev){
+        ["acceptance_end_datetime", "acceptance_start_datetime", "subsidy_rate",
+         "ts_guidelines", "title", "name"].forEach(function(k){
+          const v = x[k];
+          const empty = (v == null || v === "" || (Array.isArray(v) && !v.length));
+          if(empty && prev[k] != null && prev[k] !== "") x[k] = prev[k];
+        });
+        /* 名前は最初に拾ったものを正とする */
+        if(prev.title){ x.title = prev.title; x.name = prev.title; }
+      }
       rec[x.id] = { item: x, last: today, closed: old.closed || null, checked: old.checked || "" };
     });
     all[key] = rec;
@@ -5370,7 +5406,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-05-17';
+  const TRIGATE_VERSION = '2026-09-06-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

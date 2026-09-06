@@ -376,7 +376,7 @@
     <div style="text-align:center"><button class="reset" id="resetBtn">別の理論で、最初からやり直す</button></div>
   </section>
 
-  <footer>TriTask® v0.3 ／ TriSight® Family 共通基盤エンジン</footer>
+  <footer>TriTask® v0.3（版 2026-09-06-01） ／ TriSight® Family 共通基盤エンジン</footer>
 </div>
 
 <script>
@@ -820,13 +820,27 @@
        要領から発掘した22件の添付書類が画面から丸ごと消えていた（水素ステーションの案件）。
        書類番号つきの正式名称は作業文にそのまま現れないので、ほぼ全件が捨てられていた。
        配り先が決まらないものは、提出の工程（無ければ最初の工程）へまとめて添える。 */
+    /* 2026-09-06：書類名が工程の文に出てこないものを、全部まとめて
+       最初の「提出」の工程にぶら下げていた。実例＝V2H助成金で、事前申込の工程に
+       17件が並んだ（その工程で要るのは2件だけ）。最初に全部揃えるものと読める。
+       書類の注記には「事前申込時に提出」「交付申請時に提出」と書かれていることが多い。
+       その言葉を手がかりに、対応する工程へ配る。配れないものだけを別に置く。 */
     const dRest = [];
+    const STAGE = ["事前申込", "交付申請", "実績報告", "完了報告", "変更申請", "請求"];
     docs.forEach(d=>{
       const nm = (d && d.name) || "";
-      const at = tasks.findIndex(t => nm && String(t.action||"").indexOf(nm) >= 0);
+      let at = tasks.findIndex(t => nm && String(t.action||"").indexOf(nm) >= 0);
+      if(at < 0){
+        const note = String((d && d.note) || "");
+        for(let k = 0; k < STAGE.length && at < 0; k++){
+          if(note.indexOf(STAGE[k]) < 0) continue;
+          at = tasks.findIndex(t => (String(t.action||"") + String(t.due_text||"")).indexOf(STAGE[k]) >= 0);
+        }
+      }
       if(at >= 0) dFor[at].push(d); else dRest.push(d);
     });
-    let dRestAt = tasks.findIndex(t => /提出|応募|申請/.test(String(t.action||"")));
+    /* 配れなかったものは「提出」の工程に混ぜず、最後の工程に別立てで置く */
+    let dRestAt = tasks.length - 1;
     if(dRestAt < 0) dRestAt = 0;
 
     return tasks.map((t,i)=>{
@@ -851,7 +865,8 @@
         verify += "\n□ 使う書類：" + myDocs.map(d => (d.name||"") + (d.note ? "（"+d.note+"）" : "")).join("／");
       }
       if(i === dRestAt && dRest.length){
-        verify += "\n□ この案件の添付書類（全" + dRest.length + "件・どの工程に要るかは要領でお確かめください）：\n"
+        verify += "\n□ どの工程で要るかを、要領から読み取れなかった書類（" + dRest.length + "件）："
+                + "この工程で要るという意味ではありません。要領でお確かめください。\n"
                 + dRest.map(d => "　・" + (d.name||"") + (d.note ? "（"+d.note+"）" : "")).join("\n");
       }
       /* TriFormが分解した工程は、材料・出来上がるもの・提出先・受け取るものを持つ（2026-08-01）。

@@ -187,6 +187,7 @@
     <div id="tList"></div>
   </div>
 
+  <div id="noBasisBox" style="display:none"></div>
   <button class="go" id="applyBtn">この内容でトライタスクへ渡す</button>
   <button class="go ghost" id="backBtn">一覧へ戻る</button>
   <div class="msg" id="msg"></div>
@@ -202,7 +203,7 @@
 
 <footer>
   合同会社トライサイト　TriSight&reg; ファミリー
-  <div class="verline">版 <span id="verLabel">2026-09-05-01</span>（v3）</div>
+  <div class="verline">版 <span id="verLabel">2026-09-06-01</span>（v3）</div>
 </footer>
 </div>
 
@@ -1071,6 +1072,54 @@
   const RELAY = "https://trisight-relay.vercel.app/api/anthropic";
   const MODEL = "claude-sonnet-4-6";
 
+  /* ===== 要領に根拠の無い工程（2026-09-06） =========================
+     当社の型が持ち込んだ工程が、制度の要求と同じ顔でトライタスクへ渡っていた。
+     実例＝V2H助成金で「相見積もりの取得」「納税証明書の取得」の2件。
+     どちらも確認事項の側では「要領に根拠が見つかりませんでした」と判定できている。
+     判定できているのに渡していたのが誤り。既定では渡さず、別枠に置いて
+     利用者が要ると判断したものだけを足す形にする。 */
+  function tfNoBasisSteps(){
+    const set = {};
+    (criteria || []).forEach(function(c){
+      if(!c || c.found) return;
+      const m = String(c.q || "").match(/分解ステップ\s*([0-9０-９]+(?:\s*[・、,と]\s*[0-9０-９]+)*)/);
+      if(!m) return;
+      String(m[1]).split(/[・、,と\s]+/).forEach(function(x){
+        const n = Number(String(x).replace(/[０-９]/g, function(ch){
+          return String.fromCharCode(ch.charCodeAt(0) - 0xFEE0); }));
+        if(n >= 1) set[n - 1] = (c.q || "");
+      });
+    });
+    return set;
+  }
+  function renderNoBasis(){
+    const box = document.getElementById("noBasisBox");
+    if(!box) return;
+    const set = tfNoBasisSteps();
+    const keys = Object.keys(set);
+    if(!keys.length){ box.innerHTML = ""; box.style.display = "none"; return; }
+    box.style.display = "";
+    box.innerHTML = '<div style="background:#fff8e8;border:1px solid var(--amber,#e0a800);'
+      + 'border-radius:10px;padding:12px 15px;margin-top:12px">'
+      + '<b>要領に根拠が見つからなかった工程が ' + keys.length + ' 件あります。</b>'
+      + '<div style="font-size:12.5px;color:var(--ink-soft);margin:6px 0">'
+      + 'これは当社の型が持ち込んだ工程で、交付元の要領には求める記載が見つかりませんでした。'
+      + '<b>既定ではトライタスクへ渡しません。</b>必要だとご判断のものだけ、チェックを入れてください。</div>'
+      + keys.map(function(k){
+          const r = rows[Number(k)] || {};
+          return '<label style="display:block;font-size:13px;margin:4px 0;cursor:pointer">'
+            + '<input type="checkbox" data-nobasis="' + Number(k) + '"> '
+            + (Number(k) + 1) + '．' + esc(r.action || "（工程' + k + '）")
+            + '<span style="color:var(--ink-soft);font-size:12px"> ／ ' + esc(set[k]) + '</span></label>';
+        }).join("")
+      + '</div>';
+    box.querySelectorAll("input[data-nobasis]").forEach(function(el){
+      el.addEventListener("change", function(){
+        const i = Number(el.dataset.nobasis);
+        if(rows[i]) rows[i].__send_no_basis = el.checked;
+      });
+    });
+  }
   function renderCrit(){
     const box = $("critBox");
     if(!criteria.length){ box.innerHTML = ""; return; }
@@ -1087,6 +1136,7 @@
     box.querySelectorAll("input[data-crit]").forEach(el=>{
       el.addEventListener("change", ()=>{ criteria[Number(el.dataset.crit)].ok = el.checked; });
     });
+    try{ renderNoBasis(); }catch(e){}
   }
 
   $("critBtn").addEventListener("click", async function(){
@@ -1206,8 +1256,18 @@
         : "工程は書類の名前に型を当てて機械的に出したものです。当たったこと自体は正しさの保証ではないため、要領の該当箇所で確かめてください。"
     };
     if(missTxt) guard.why = missTxt + "　" + guard.why;
+    /* 2026-09-06：要領に根拠の無い工程は、利用者が要ると言ったものだけ渡す */
+    const noBasis = tfNoBasisSteps();
+    const dropped = [];
+    const sendRows = rows.filter(function(r, i){
+      if(noBasis[i] === undefined) return true;
+      if(r && r.__send_no_basis) return true;
+      dropped.push({ action: (r && r.action) || "", why: noBasis[i] });
+      return false;
+    });
     list[idx] = Object.assign({}, list[idx], {
-      reverse_tasks: [guard].concat(rows.map(r=>({
+      triform_dropped: dropped,
+      reverse_tasks: [guard].concat(sendRows.map(r=>({
         due_text:r.due_text||"", action:r.action||"", must_verify:!!r.must_verify,
         inputs:r.inputs||"", output:r.output||"", submit_to:r.submit_to||"",
         receive:r.receive||"", why:r.why||"", from:r.from||""
@@ -1223,7 +1283,9 @@
     if(!saveInbox(list)){ m.className="msg ng show"; m.textContent="× 保存できませんでした。"; return; }
     current = list[idx];
     m.className = "msg ok show";
-    m.textContent = "○ " + (rows.length + 1) + "件の工程をトライタスクへ渡しました（先頭に「要領で確かめる」工程を入れています）。"
+    m.textContent = "○ " + (sendRows.length + 1) + "件の工程をトライタスクへ渡しました（先頭に「要領で確かめる」工程を入れています）。"
+      + (dropped.length ? "要領に根拠が見つからなかった工程 " + dropped.length + "件は渡していません（"
+          + dropped.map(function(x){ return x.action; }).join("／") + "）。" : "")
       + (unchecked.length ? "未確認の項目が" + unchecked.length + "件あり、その工程の中に書き出してあります。" : "")
       + (factMissing.length ? "基礎情報の不足" + factMissing.length + "件も、先頭の工程に書き出してあります。" : "");
     renderList();

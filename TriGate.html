@@ -1266,6 +1266,29 @@ body.presenMode table{font-size:1.02em}
      ※リレー側の指示文が entries を読む作りでなければ無視される。
        その場合でも渡す側は無害で、リレーを直した時点で効くようになる。 */
   const TS_ENTRY_KEY = "trisight_web_entries";
+  /* 2026-09-06：制度1件のページが「入口ページ」として返る回があり、それを貯めていたため、
+     次の発掘で「まずここを当たれ」と渡す先が制度1件のページに置き換わっていた。
+     これから貯める分には道案内の有無で歯止めを入れたが、既に入っている分は
+     道案内を保存していなかったため見分けられない。一度きれいにして貯め直す。
+     この掃除は端末ごとに一度だけ走る（印を残して二度は走らせない）。 */
+  const TS_ENTRY_V_KEY = "trisight_web_entries_v";
+  const TS_ENTRY_V = "2";
+  function tsEntryTidy(){
+    try{
+      if(localStorage.getItem(TS_ENTRY_V_KEY) === TS_ENTRY_V) return 0;
+      let n = 0;
+      try{
+        const all = JSON.parse(localStorage.getItem(TS_ENTRY_KEY) || "{}");
+        Object.keys(all).forEach(function(a){
+          const r = all[a];
+          if(r && Array.isArray(r.list)) n += r.list.length;
+        });
+      }catch(_){}
+      localStorage.removeItem(TS_ENTRY_KEY);
+      localStorage.setItem(TS_ENTRY_V_KEY, TS_ENTRY_V);
+      return n;
+    }catch(_){ return 0; }
+  }
   function tsEntryAll(){
     try{ return JSON.parse(localStorage.getItem(TS_ENTRY_KEY) || "{}"); }catch(e){ return {}; }
   }
@@ -1298,6 +1321,8 @@ body.presenMode table{font-size:1.02em}
         url: u,
         title: x.title || "",
         why: x.ts_why || "",
+        /* 2026-09-06：道案内も残す。次に見分けられるようにするため */
+        guide: Array.isArray(x.ts_guide) ? x.ts_guide.slice(0, 5) : [],
         seen: new Date().toISOString().slice(0, 10)
       };
     });
@@ -2672,10 +2697,15 @@ body.presenMode table{font-size:1.02em}
             let webItems = await tsDigWebPref(selArea, ind, selCity);
             if(wantShunushi) webItems.forEach(it => { if(it) it.__shunushi = true; });
             webEntries = tsWebEntries.slice();
-            /* 拾えた入口ページを台帳へ足す（次回の掘りで渡す材料になる） */
+            /* 拾えた入口ページを台帳へ足す（次回の掘りで渡す材料になる。道案内のあるものだけ） */
             try{ tsEntrySave(selArea, webEntries); }catch(e){}
             const webFresh = webItems.length;
-            /* 終了の読み取り規則が変わっていれば、古い印を捨ててから足す */
+            /* 入口ページの台帳の掃除（端末ごとに一度だけ）と、終了の読み取り規則の版直し */
+            try{
+              const tidied = tsEntryTidy();
+              if(tidied) st.textContent = "入口ページの台帳を一度きれいにしました（" + tidied
+                + "件）。この回から貯め直します。";
+            }catch(e){}
             try{ tsWebLedgerMigrate(); }catch(e){}
             /* 今回の分を台帳へ足す（この時点では一覧を組まない） */
             try{ tsWebLedgerPut(selArea, webItems); }catch(e){}
@@ -5406,7 +5436,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-06-01';
+  const TRIGATE_VERSION = '2026-09-06-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

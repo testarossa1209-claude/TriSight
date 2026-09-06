@@ -567,6 +567,141 @@ body.presenMode table{font-size:1.02em}
 </script>
 
 <script>
+/* ===== 保管庫の受け皿　tsBox　2026-09-07 ==============================
+   認証コード（契約単位）ごとに、拾った案件・判定・工程をリレー側へ預ける。
+   画面側の読み書きは localStorage のまま。ここが写しを持ち、変更を送る。
+   ── 端末をまたいで同じ中身を見るための一枚。
+   置き場所：保存領域の安全弁（file:// 対策）の直後、tsCode() の前。
+======================================================================= */
+(function(){
+  var BOX_RELAY = "https://trisight-relay.vercel.app/api/box";
+
+  /* 保管庫へ載せる鍵。ここに無いものは、これまでどおり端末に残る。
+     main = 案件によらない小さいもの／web = 地域ごとに大きくなるもの */
+  var BOX_MAIN = [
+    "trigate_amount_ledger",      /* 金額台帳 */
+    "trisight_judge_memo",        /* 判定メモ */
+    "trigate_closed_override",    /* 受付終了の取り消し印 */
+    "trigate_offbiz_override",    /* 事業外の取り消し印 */
+    "trigate_results",            /* 成果カウンター */
+    "trigate_pj_threshold",       /* しきい値の設定 */
+    "trisight_dig_company",       /* 企業基礎情報 */
+    "trisight_dig_company_name",
+    "trisight_dig_company_lib",
+    "tritask_inbox"               /* トライタスクへの受け渡し箱 */
+  ];
+  var BOX_WEB = "trisight_dig_web_ledger";  /* 拾った案件の台帳（中が地域ごと） */
+
+  var isBox = function(k){ return BOX_MAIN.indexOf(k) >= 0 || k === BOX_WEB; };
+
+  /* ---- 素の保存領域を先に押さえる（この後 window を差し替えるため） ---- */
+  var raw = window.localStorage;
+  var mem = {};                 /* 写し */
+  var dirty = {};               /* 変わった鍵 */
+  var ready = false;
+  var timer = null;
+
+  function code(){
+    try{ return raw.getItem("trisight_access_code") || ""; }catch(_){ return ""; }
+  }
+
+  /* ---- 画面へ差し出す口。読みは写しから、書きは写しと素の両方へ ---- */
+  var shim = {
+    getItem: function(k){
+      if(isBox(k) && Object.prototype.hasOwnProperty.call(mem,k)) return mem[k];
+      return raw.getItem(k);
+    },
+    setItem: function(k,v){
+      v = String(v);
+      raw.setItem(k,v);                       /* 端末にも残す（通信が切れても動く） */
+      if(isBox(k)){ mem[k] = v; dirty[k] = 1; schedule(); }
+    },
+    removeItem: function(k){
+      raw.removeItem(k);
+      if(isBox(k)){ delete mem[k]; dirty[k] = 1; schedule(); }
+    },
+    clear: function(){ raw.clear(); mem = {}; },
+    key: function(i){ return raw.key(i); }
+  };
+  Object.defineProperty(shim,"length",{ get:function(){ return raw.length; } });
+
+  /* ---- 送るのは、変更が止まってから一度だけ（無料枠のコマンド数を抑える） ---- */
+  function schedule(){
+    if(!ready) return;
+    if(timer) clearTimeout(timer);
+    timer = setTimeout(push, 2500);
+  }
+
+  function push(){
+    timer = null;
+    var c = code(); if(!c) return;
+    var keys = Object.keys(dirty); if(!keys.length) return;
+    var body = {};
+    keys.forEach(function(k){ body[k] = Object.prototype.hasOwnProperty.call(mem,k) ? mem[k] : null; });
+    dirty = {};
+    var bytes = JSON.stringify(body).length;
+    fetch(BOX_RELAY, {
+      method: "POST",
+      headers: { "Content-Type":"application/json", "x-trisight-code": c },
+      body: JSON.stringify({ op:"put", data: body })
+    }).then(function(res){
+      if(res.status === 401){ window.tsBoxNote("認証コードが合わないため、保管庫へ預けられませんでした。"); return; }
+      if(!res.ok){ window.tsBoxNote("保管庫へ預けられませんでした（この端末には残っています）。"); return; }
+      window.tsBoxUsage.puts++; window.tsBoxUsage.bytesOut += bytes;
+    }).catch(function(){
+      window.tsBoxNote("保管庫へつながりませんでした（この端末には残っています）。");
+    });
+  }
+
+  /* ---- 画面が開いたときに1回だけ取りに行く ---- */
+  window.tsBoxLoad = function(){
+    var c = code();
+    if(!c){ ready = true; return Promise.resolve(false); }
+    return fetch(BOX_RELAY, {
+      method: "POST",
+      headers: { "Content-Type":"application/json", "x-trisight-code": c },
+      body: JSON.stringify({ op:"get" })
+    }).then(function(res){
+      if(!res.ok) throw new Error(String(res.status));
+      return res.json();
+    }).then(function(j){
+      var d = (j && j.data) || {};
+      Object.keys(d).forEach(function(k){
+        if(!isBox(k) || d[k] == null) return;
+        if(dirty[k]) return;            /* 取り込み中に画面側が書いたものは残す */
+        mem[k] = String(d[k]);
+        try{ raw.setItem(k, mem[k]); }catch(_){}   /* 端末の写しも合わせる */
+      });
+      window.tsBoxUsage.gets++;
+      window.tsBoxUsage.bytesIn += JSON.stringify(d).length;
+      ready = true;
+      if(Object.keys(dirty).length) schedule();
+      return true;
+    }).catch(function(){
+      /* つながらないときは、端末の中身でそのまま動かす（止めない） */
+      BOX_MAIN.concat([BOX_WEB]).forEach(function(k){
+        var v = raw.getItem(k); if(v != null) mem[k] = v;
+      });
+      ready = true;
+      window.tsBoxNote("保管庫につながらないため、この端末の中身で動いています。");
+      return false;
+    });
+  };
+
+  /* ---- 使用量。無料枠（月50万コマンド・256MB）に対する目安を画面に出すため ---- */
+  window.tsBoxUsage = { gets:0, puts:0, bytesIn:0, bytesOut:0 };
+  window.tsBoxNote = function(msg){
+    var el = document.getElementById("digStatus");
+    if(el) el.textContent = msg; else console.warn(msg);
+  };
+
+  try{
+    Object.defineProperty(window,"localStorage",{ configurable:true, value:shim });
+  }catch(e){ /* 差し替えられない環境では、これまでどおり端末だけで動く */ }
+})();
+</script>
+
+<script>
   // ---- 設定 ----------------------------------------------------
 
   /* ===== TriSight 認証コード（リレー保護・2026-07-11導入） ===== */
@@ -849,6 +984,26 @@ body.presenMode table{font-size:1.02em}
     var __c = '';
     try{ __c = localStorage.getItem('trisight_access_code') || ''; }catch(e){}
     if(__c) tsSyncPlan(__c).then(function(changed){ refreshAuthCodeLabel(); if(changed) location.reload(); });
+  })();
+
+  /* ===== 保管庫の取り込み（2026-09-07） ==============================
+     認証コードごとの箱から、案件・判定・工程を取りに行く。
+     取り込みが終わるまで発掘ボタンを止める（端末の古い中身の上に
+     掘り足して、あとから入れ替わるのを防ぐため）。 */
+  (function(){
+    if(typeof window.tsBoxLoad !== 'function') return;
+    var btn = document.getElementById('digBtn');
+    var st  = document.getElementById('digStatus');
+    var lab = btn ? btn.textContent : '';
+    if(btn){ btn.disabled = true; btn.textContent = '保管庫を読み込み中…'; }
+    if(st && !st.textContent) st.textContent = '保管庫から、これまでに拾った案件を取り込んでいます…';
+    window.tsBoxReady = window.tsBoxLoad().then(function(ok){
+      if(btn){ btn.disabled = false; btn.textContent = lab; }
+      if(st && st.textContent.indexOf('取り込んでいます') >= 0) st.textContent = '';
+      try{ if(typeof window.tsBoardRefresh === 'function') window.tsBoardRefresh(); }catch(e){}
+      try{ window.dispatchEvent(new Event('storage')); }catch(e){}
+      return ok;
+    });
   })();
 
   /* ===== 動作確認用：仮の補助金案件をTriTaskへ送る ===== */
@@ -1642,7 +1797,19 @@ body.presenMode table{font-size:1.02em}
         + '入力 100万トークンあたり ' + p.in_per_mtok + 'ドル／出力 ' + p.out_per_mtok + 'ドル／'
         + 'ウェブ検索 1000回あたり ' + p.web_per_1k + 'ドル。'
         + '円は1ドル' + USD_JPY + '円で計算した<b>目安</b>です。実際の請求はドル建てで、為替で動きます。'
-        + '</div></div>';
+        + '</div>'
+        + (function(){
+            var u = window.tsBoxUsage || null;
+            if(!u) return '';
+            var kb = Math.round((u.bytesIn + u.bytesOut) / 1024);
+            var cmds = u.gets + u.puts;
+            return '<div style="font-size:12px;color:var(--muted);margin-top:6px;border-top:1px solid var(--line,#ddd);padding-top:6px">'
+              + '保管庫（Upstash・無料枠）＝このセッションで取り出し ' + u.gets + ' 回／預け入れ ' + u.puts + ' 回'
+              + '（合計 ' + cmds + ' 回・' + kb.toLocaleString() + 'KB）。'
+              + '無料枠は月50万コマンド・256MB。1回の発掘でおおむね数回です。'
+              + '</div>';
+          })()
+        + '</div>';
     });
   })();
 
@@ -5695,7 +5862,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-06-12';
+  const TRIGATE_VERSION = '2026-09-07-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

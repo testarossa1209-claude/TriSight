@@ -2471,8 +2471,8 @@ body.presenMode table{font-size:1.02em}
           + [it.__offBiz, it.__amtOut].filter(Boolean).join("・")
           + (it.__offBiz
               ? '<br><button type="button" class="rbtn" style="font-weight:400;font-size:10px;padding:1px 6px;margin-top:2px"'
-                + ' title="御社の事業に関わる制度だと思われる場合は、この印を取り消せます。取り消した案件には次から印が付きません"'
-                + ' onclick="tsOffBizUndo(\'' + String(it.id || "").replace(/'/g, "") + '\')">この印を取り消す</button>'
+                + ' title="当社の見立てが違うときは、ここを押してください。押した案件には次から「事業外の可能性」が付きません"'
+                + ' onclick="tsOffBizUndo(\'' + String(it.id || "").replace(/'/g, "") + '\')">御社に関係があります</button>'
               : "")
           + "</div>"
         : "";
@@ -2917,7 +2917,11 @@ body.presenMode table{font-size:1.02em}
           const rank = function(x){ return (x.__offBiz ? 2 : 0) + (x.__amtOut ? 1 : 0); };
           return arr.slice().sort(function(a, b){ return rank(a) - rank(b); });
         };
-        show = byRange(grpS).concat(byRange(grpA), byRange(grpB));
+        /* 2026-09-06：ここで並べ替えた結果を show にだけ入れていたため、
+           表は並べ替え前のまま組まれていた（印の付いた案件が、印の無い案件より上に出る）。
+           計算はしていたが、表に届いていなかった。組み立てに使う側にも入れ直す。 */
+        grpS = byRange(grpS); grpA = byRange(grpA); grpB = byRange(grpB); rest = byRange(rest);
+        show = grpS.concat(grpA, grpB);
         /* 表に出すのは今回の検索で見つかったものだけにする（2026-09-05）。
            台帳から持ち越した分と、受付が終わった分は下の畳んだ置き場へ回す。
            掘るたびに人が見る量が増えるのでは、当社が売っているものの逆になる。 */
@@ -3003,8 +3007,8 @@ body.presenMode table{font-size:1.02em}
                      const mark = '<div class="tg-closed" style="font-size:11px;color:#b0203a;line-height:1.5">'
                        + '掲載元に受付終了と読める記載'
                        + '<br><button type="button" class="rbtn" style="font-weight:400;font-size:10px;padding:1px 6px;margin-top:2px"'
-                       + ' title="受付中だと分かっている場合は、この印を取り消せます。取り消した案件は次の発掘から一覧に戻ります"'
-                       + ' onclick="tsClosedUndo(\'' + String(it.id).replace(/'/g, "") + '\')">この印を取り消す</button></div>';
+                       + ' title="受付中だと分かっているときは、ここを押してください。次の発掘から一覧に戻ります"'
+                       + ' onclick="tsClosedUndo(\'' + String(it.id).replace(/'/g, "") + '\')">まだ受付中です</button></div>';
                      row = row.replace("</td></tr>", mark + "</td></tr>");
                    }
                    return row;
@@ -3023,7 +3027,7 @@ body.presenMode table{font-size:1.02em}
                 + '<div style="font-size:12px;color:var(--muted);margin:6px 0">'
                 + '掲載元のページに「受付を終了しました」にあたる記載がありました。'
                 + '当社の読み取りであり確定ではありません。確認した日と掲載元の記載は各案件の詳細に出ています。'
-                + '受付中だと分かっている案件は、行の「この印を取り消す」で一覧へ戻せます。</div>'
+                + '受付中だと分かっている案件は、行の「まだ受付中です」を押せば一覧へ戻せます。</div>'
                 + foldTbl(closedList, true) + '</details>';
         }
         /* 入口ページ（2026-08-22）：制度個別まで行けなかったものを、拾い方の案内つきで出す。
@@ -3042,7 +3046,12 @@ body.presenMode table{font-size:1.02em}
                       ? '<ol style="margin:8px 0 8px 18px;font-size:13px">'
                         + en.ts_guide.map(g => "<li style='margin:3px 0'>" + e(String(g)) + "</li>").join("")
                         + "</ol>"
-                      : "")
+                      /* 2026-09-06：道案内が付かずに返るものがある。空欄で出すと
+                         「何をすればよいか分からないもの」を並べただけになるため、
+                         そう書く。無いものを有るように見せない。 */
+                      : '<div style="font-size:12.5px;color:var(--muted);margin:8px 0">'
+                        + '拾い方の道案内が付いていません。制度そのもののページの可能性があります。'
+                        + 'ページを開いて、受付期間と対象者をご確認ください。</div>')
                   + '<a href="' + e(en.front_subsidy_detail_page_url || "") + '" target="_blank" rel="noopener" style="font-size:13px">このページを開く</a>'
                   + '<div style="font-size:12px;color:var(--muted);margin-top:6px">出所：' + e(en.ts_source || "")
                   + "（当社確認日 " + e(en.ts_verified_on || "") + "）</div></div>";
@@ -5442,7 +5451,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-06-03';
+  const TRIGATE_VERSION = '2026-09-06-05';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -2642,7 +2642,12 @@ body.presenMode table{font-size:1.02em}
           /* 2026-09-06：印を控えていないと、画面を開き直したときに消える。
              2026-09-04に事業外・規模大で同じことが起きているので、まとめて控える。 */
           __steady: (typeof tsSteadyOf === "function" ? tsSteadyOf(it) : ""),
-          __work: (typeof tsWorkOf === "function" ? tsWorkOf(it) : "")
+          __work: (typeof tsWorkOf === "function" ? tsWorkOf(it) : ""),
+          /* 2026-09-06：この2つを控えていなかったため、画面を開き直したあとに
+             詳細を開くと公式ページへ行く道が消えていた。要領を人が拾う運びを
+             正規の手順にする以上、その入口が消えるのは致命的なので必ず残す。 */
+          front_subsidy_detail_page_url: it.front_subsidy_detail_page_url || "",
+          ts_guidelines: Array.isArray(it.ts_guidelines) ? it.ts_guidelines : []
         }));
         localStorage.setItem(DIG_SAVE_KEY, JSON.stringify({
           company: (typeof tsCompanyKey === "function" ? tsCompanyKey() : ""),
@@ -3623,7 +3628,14 @@ body.presenMode table{font-size:1.02em}
     async function fetchDetail(id){
       /* 検索分は手元の控えから返す */
       if(String(id || "").indexOf("web-") === 0){
-        const hit = (lastShow || []).find(x => x && x.id === id) || tsWebCacheGet(id);
+        /* 2026-09-06：画面を開き直したあと、lastShow には控えから戻した「軽い行」が
+           入っている。そこには公式ページのURLも要領のリンクも入っていないため、
+           詳細を開いても公式ページの行が出ず、要領へ行く道が一つも無くなっていた。
+           中身の揃った控え（trisight_dig_web_items）を土台にし、
+           画面側で付いた印などをその上に重ねる。 */
+        const full = tsWebCacheGet(id);
+        const shown = (lastShow || []).find(x => x && x.id === id);
+        const hit = (full || shown) ? Object.assign({}, full || {}, shown || {}) : null;
         if(hit){
           /* 詳細の組み立てで参照する項目を、欠けていても落ちないように埋めておく */
           const safe = Object.assign({
@@ -3719,6 +3731,16 @@ body.presenMode table{font-size:1.02em}
         }
         if(btns.length){
           add("公募要領", btns.join("") + '<div class="digguide" style="margin-top:4px;color:var(--muted)"></div>');
+        }else{
+          /* 2026-09-06：要領へ行く道が一つも出ない案件があった。
+             当社が要領のありかを掴めていない案件ほど、人が拾いに行く必要があるのに、
+             その入口が画面に無かった。無いなら無いと言い、次の一手を書く。 */
+          add("公募要領", '<span style="color:var(--fix)">当社は要領のありかを掴めていません。</span>'
+            + '<div style="font-size:12.5px;color:var(--muted);margin-top:4px">'
+            + '掲載元の公式ページも取れていないため、この画面からは取り寄せられません。'
+            + '制度名で検索して公式ページを開き、<b>公募要領</b>（募集要領・募集要項・申請の手引も同じもの）のPDFを'
+            + '落として、下の読み取り欄に入れてください。'
+            + '<b>交付要綱・申請様式・Q&amp;A・チラシは今は要りません。</b></div>');
         }
       }
       let ov = "";
@@ -5579,7 +5601,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-06-09';
+  const TRIGATE_VERSION = '2026-09-06-10';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

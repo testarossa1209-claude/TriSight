@@ -1180,9 +1180,13 @@ body.presenMode table{font-size:1.02em}
       ? ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#e8f3ea;color:#2f6b3a;white-space:nowrap" title="当社が毎回見に行く入口ページから拾ったものです。掘り直しても同じものが出ます">定点</span>'
       : ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#fdf3e3;color:#8a5a1a;white-space:nowrap" title="この回にAIが探して見つけたものです。掘り直すと入れ替わることがあります">その回</span>';
   }
+  /* 2026-09-06 改定：はじめは「起案者の作業が増えます」を、当社が要領のありかを
+     掴めていない案件に付けた。ところが実機では25件中23件に付き、印として
+     見分けの用をなさなかった。当社が要領を掴めているのは少数のほうなので、
+     そちら側に印を付ける形へ裏返す。 */
   function tsWorkBadgeHtml(v){
     if(v !== "1") return "";
-    return ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#f1f3f5;color:#5a6672;white-space:nowrap" title="当社は要領のありかを掴めていません。公式ページから公募要領を落として、読み取り欄に入れる手数が発生します">起案者の作業が増えます</span>';
+    return ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#e8f0fb;color:#2c4a8a;white-space:nowrap" title="当社が公募要領のありかを掴んでいます。詳細から取り寄せて、そのまま読み取りへ進めます">要領あり</span>';
   }
   /* 案件から、行に持たせる値（"1" / "0" / ""）を決める */
   function tsSteadyOf(it){
@@ -1193,7 +1197,7 @@ body.presenMode table{font-size:1.02em}
     if(!it) return "";
     const g = (Array.isArray(it.ts_guidelines) && it.ts_guidelines.length)
            || (Array.isArray(it.application_guidelines) && it.application_guidelines.length);
-    return g ? "" : "1";
+    return g ? "1" : "";
   }
   window.tsSteadyBadgeHtml = tsSteadyBadgeHtml;
   window.tsWorkBadgeHtml = tsWorkBadgeHtml;
@@ -5575,7 +5579,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-06-08';
+  const TRIGATE_VERSION = '2026-09-06-09';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

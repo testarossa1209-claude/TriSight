@@ -1398,14 +1398,20 @@ body.presenMode table{font-size:1.02em}
        実例＝千葉県「令和8年度千葉県地域交通等次世代自動車導入促進補助金【地域交通事業者等向け】」。
        入口かどうかの判断は、返す側が kind:"entry" で既に答えている。
        ここで二重に落とす必要はないため、明らかな入口だけを弾く形に緩める。 */
-    const badPath = /(index|ichiran|一覧)(\.html?|\/|$)/i;
+    /* 2026-09-06：この門が、制度ページを軒並み入口ページへ押しやっていた。
+       行政サイトはディレクトリごとに index.html を置くのが普通で、
+       例＝東京都中小企業振興公社「経営統合等による産業力強化支援事業」
+       https://www.tokyo-kosha.or.jp/support/josei/keiei_togo/index.html
+       これを「明らかな一覧ページ」として弾いていたため、AIが制度として返したものが
+       道案内の無い「探す手がかり」として並び、入口ページの台帳も汚れていた。
+       URLの綴りで制度か一覧かを見分けるのは無理があるため、この判定をやめる。
+       入口かどうかは、返す側が kind:"entry" で既に答えている。 */
     const okUrl = (u) => {
       if(!/^https?:\/\//.test(u || "")) return false;
       try{
         const url = new URL(u);
         const segs = (url.pathname || "").split("/").filter(Boolean);
-        if(!segs.length) return false;                       /* ドメイン直 */
-        if(badPath.test(url.pathname)) return false;         /* 明らかな一覧ページ */
+        if(!segs.length) return false;                       /* ドメイン直だけは弾く */
         return true;
       }catch(_){ return false; }
     };
@@ -5436,7 +5442,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-06-02';
+  const TRIGATE_VERSION = '2026-09-06-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -330,6 +330,7 @@ body.presenMode table{font-size:1.02em}
       <button type="button" id="planChangeBtn" style="margin-left:6px;font-size:12.5px;padding:3px 10px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer">契約プラン</button>
       <button type="button" id="usageBtn" style="margin-left:6px;font-size:12.5px;padding:3px 10px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer" title="この認証コードで今月使ったトークン数を、仕事の種類ごとに表示します">今月の使用量を見る</button>
       <div id="usageBox" style="display:none;margin-top:8px"></div>
+      <div id="boxState" style="margin-top:6px;font-size:12.5px;color:#5a6070">保管庫：確認中…</div>
       <button type="button" id="testSendBtn" style="margin-left:8px;font-size:12.5px;padding:3px 10px;border:1px solid #c9772a;border-radius:6px;background:#fff8ef;color:#a45a1a;cursor:pointer">仮の補助金案件をTriTaskへ送る（動作確認用）</button>
       <a href="TriForm.html" style="margin-left:8px;font-size:12.5px;color:#c9772a">TriForm で届いた案件を見る</a>
       <span id="testSendMsg" style="margin-left:8px;font-size:12.5px"></span>
@@ -650,18 +651,20 @@ body.presenMode table{font-size:1.02em}
       headers: { "Content-Type":"application/json", "x-trisight-code": c },
       body: JSON.stringify({ op:"put", data: body })
     }).then(function(res){
-      if(res.status === 401){ window.tsBoxNote("認証コードが合わないため、保管庫へ預けられませんでした。"); return; }
-      if(!res.ok){ window.tsBoxNote("保管庫へ預けられませんでした（この端末には残っています）。"); return; }
+      if(res.status === 401){ window.tsBoxNote("認証コードが合わないため、保管庫へ預けられませんでした。"); if(window.tsBoxState) window.tsBoxState('預け入れ失敗（認証コード不一致）'); return; }
+      if(!res.ok){ window.tsBoxNote("保管庫へ預けられませんでした（この端末には残っています）。"); if(window.tsBoxState) window.tsBoxState('預け入れ失敗（' + res.status + '）'); return; }
       window.tsBoxUsage.puts++; window.tsBoxUsage.bytesOut += bytes;
+      if(window.tsBoxState) window.tsBoxState('預けました');
     }).catch(function(){
       window.tsBoxNote("保管庫へつながりませんでした（この端末には残っています）。");
+      if(window.tsBoxState) window.tsBoxState('預け入れできず（つながりません）');
     });
   }
 
   /* ---- 画面が開いたときに1回だけ取りに行く ---- */
   window.tsBoxLoad = function(){
     var c = code();
-    if(!c){ ready = true; return Promise.resolve(false); }
+    if(!c){ ready = true; if(window.tsBoxState) window.tsBoxState('認証コードが未入力のため使いません'); return Promise.resolve(false); }
     return fetch(BOX_RELAY, {
       method: "POST",
       headers: { "Content-Type":"application/json", "x-trisight-code": c },
@@ -680,6 +683,7 @@ body.presenMode table{font-size:1.02em}
       window.tsBoxUsage.gets++;
       window.tsBoxUsage.bytesIn += JSON.stringify(d).length;
       ready = true;
+      if(window.tsBoxState) window.tsBoxState('取り込みました　項目 ' + Object.keys(d).length + ' 件');
       if(Object.keys(dirty).length) schedule();
       return true;
     }).catch(function(){
@@ -688,6 +692,7 @@ body.presenMode table{font-size:1.02em}
         var v = raw.getItem(k); if(v != null) mem[k] = v;
       });
       ready = true;
+      if(window.tsBoxState) window.tsBoxState('つながりません（この端末の中身で動いています）');
       window.tsBoxNote("保管庫につながらないため、この端末の中身で動いています。");
       return false;
     });
@@ -695,6 +700,15 @@ body.presenMode table{font-size:1.02em}
 
   /* ---- 使用量。無料枠（月50万コマンド・256MB）に対する目安を画面に出すため ---- */
   window.tsBoxUsage = { gets:0, puts:0, bytesIn:0, bytesOut:0 };
+  /* 状態を画面へ常時出す（2026-09-07）。押す操作なしで見えるようにするため。 */
+  window.tsBoxState = function(msg){
+    var el = document.getElementById('boxState');
+    if(!el) return;
+    var u = window.tsBoxUsage;
+    var kb = Math.round((u.bytesIn + u.bytesOut) / 1024);
+    el.textContent = '保管庫：' + msg
+      + '（取り出し ' + u.gets + ' 回／預け入れ ' + u.puts + ' 回・' + kb + 'KB）';
+  };
   window.tsBoxNote = function(msg){
     var el = document.getElementById("digStatus");
     if(el) el.textContent = msg; else console.warn(msg);
@@ -5873,7 +5887,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-07-02';
+  const TRIGATE_VERSION = '2026-09-07-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

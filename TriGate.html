@@ -588,7 +588,12 @@ body.presenMode table{font-size:1.02em}
     "trisight_dig_company",       /* 企業基礎情報 */
     "trisight_dig_company_name",
     "trisight_dig_company_lib",
-    "tritask_inbox"               /* トライタスクへの受け渡し箱 */
+    "tritask_inbox",              /* トライタスクへの受け渡し箱 */
+    /* 2026-09-07 追加：画面に並ぶ一覧そのもの。これを載せていなかったため、
+       2台目で「掘らずに同じ一覧を見る」が原理上できていなかった。
+       台帳や判定は一覧に印を付けるためのもので、一覧の中身ではない。 */
+    "trisight_dig_saved",         /* 掘った結果の控え（画面の一覧の実体） */
+    "trisight_dig_candidates"     /* 掘った候補 */
   ];
   var BOX_WEB = "trisight_dig_web_ledger";  /* 拾った案件の台帳（中が地域ごと） */
 
@@ -1001,6 +1006,9 @@ body.presenMode table{font-size:1.02em}
       if(btn){ btn.disabled = false; btn.textContent = lab; }
       if(st && st.textContent.indexOf('取り込んでいます') >= 0) st.textContent = '';
       try{ if(typeof window.tsBoardRefresh === 'function') window.tsBoardRefresh(); }catch(e){}
+      /* 保管庫から届いた一覧を画面へ出す。取り込みの前に一度走った呼び戻しは
+         まだ中身が無く空振りしているため、ここでもう一度呼ぶ（2026-09-07） */
+      try{ if(typeof window.tsDigRestore === 'function') window.tsDigRestore(); }catch(e){}
       try{ window.dispatchEvent(new Event('storage')); }catch(e){}
       return ok;
     });
@@ -2993,6 +3001,9 @@ body.presenMode table{font-size:1.02em}
     /* 会社の読み込みが後から済む場合があるので、少し置いてもう一度試す（2026-09-04） */
     setTimeout(function(){
       if(!restoreDigResult()) setTimeout(function(){ restoreDigResult(); }, 800);
+    /* 2026-09-07：保管庫の取り込みは通信を伴うため、800ミリ秒では間に合わないことがある。
+       取り込みが終わった時点でもう一度呼べるよう、外から叩ける口を出しておく。 */
+    window.tsDigRestore = restoreDigResult;
     }, 0);
 
     btn.addEventListener("click", async ()=>{
@@ -5862,7 +5873,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-07-01';
+  const TRIGATE_VERSION = '2026-09-07-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -4166,7 +4166,19 @@ body.presenMode table{font-size:1.02em}
           act = '<div class="digpick"><span style="color:var(--ok)">掲載内容との突き合わせ：問題なし</span><br>' + lines
               + '<br>'
               + '　<button class="rbtn" data-act="gate" data-id="'+e(id)+'" style="margin-top:6px">この案件を深く読む（AI判定・API利用）</button>'
-              + '<span class="digpicked"></span><div class="diggate"></div></div>';
+              + '<span class="digpicked"></span><div class="diggate">'
+              + ((function(){
+                  /* 2026-09-09：判定の理由・懸念・確認事項・優先度の内訳は記憶に入っているのに、
+                     詳細を開き直したときには何も出ていなかった。gateHtml は判定を実行した
+                     直後にしか差し込まれておらず、記憶からは一度も描かれていなかった。
+                     結論（見送り・優先度）だけが一覧に出て、理由が画面のどこにも無い状態で、
+                     突き合わせが「問題なし」であるだけに、読む人には矛盾に見える。 */
+                  try{
+                    const __g = (typeof tsJudgeGet === "function") ? tsJudgeGet("gate", id) : null;
+                    return __g ? gateHtml(__g, id) : "";
+                  }catch(_){ return ""; }
+                })())
+              + '</div></div>';
         }else{
           act = '<div class="digpick"><span style="color:var(--fix)">掲載内容との突き合わせ：条件が合いません</span><br>' + lines
               + '<br><span style="color:var(--muted);font-weight:400">この案件は条件不適合のため、候補登録・AIゲート判定の対象外です。</span></div>';
@@ -5981,7 +5993,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-09-02';
+  const TRIGATE_VERSION = '2026-09-09-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

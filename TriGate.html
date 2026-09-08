@@ -579,7 +579,7 @@ body.presenMode table{font-size:1.02em}
   /* 2026-09-08：保管庫の中身を消すには、専用の消去コードが要る。
      照合はリレー側（/api/erase）で行う。画面側では判定しない。 */
   var ERASE_RELAY = "https://trisight-relay.vercel.app/api/erase";
-  window.tsEraseBox = async function(){
+  window.tsEraseBox = async function(scope){
     var c = "";
     try{ c = localStorage.getItem("trisight_access_code") || ""; }catch(_){}
     if(!c){ alert("認証コードが未入力です。"); return false; }
@@ -591,13 +591,14 @@ body.presenMode table{font-size:1.02em}
       var res = await fetch(ERASE_RELAY, {
         method: "POST",
         headers: { "Content-Type":"application/json", "x-trisight-code": c },
-        body: JSON.stringify({ eraseCode: ec })
+        body: JSON.stringify({ eraseCode: ec, scope: scope || "all" })
       });
-      if(res.status === 403){ alert("この消去コードでは消せません。"); return false; }
-      if(!res.ok){ alert("保管庫を消せませんでした（" + res.status + "）。"); return false; }
-      return true;
+      var j = null; try{ j = await res.json(); }catch(_){}
+      if(res.ok) return true;
+      alert((j && j.error) ? j.error : ("保管庫を消せませんでした（" + res.status + "）。"));
+      return false;
     }catch(_){
-      alert("保管庫へつながらないため、消せませんでした。");
+      alert("保管庫へつながりませんでした。通信の状態をご確認ください。");
       return false;
     }
   };
@@ -2795,7 +2796,7 @@ body.presenMode table{font-size:1.02em}
     if(!b) return;
     b.addEventListener("click", async function(){
       /* 2026-09-08：判定の記憶も保管庫に載るため、消去コードの照合を先に通す。 */
-      if(!(await window.tsEraseBox())) return;
+      if(!(await window.tsEraseBox("sieve"))) return;
       /* 2026-09-05：0件としか出ず、記憶がどこにあるのか分からなかった。
          消す前に何が入っているかを画面へ出す。手元の思い込みで消す先を決めない。 */
       let n = 0, all = 0, kinds = {};
@@ -2829,7 +2830,7 @@ body.presenMode table{font-size:1.02em}
     const label = "拾った案件の台帳を消す";
     b.addEventListener("click", async function(){
       /* 2026-09-08：台帳も保管庫に載るため、消去コードの照合を先に通す。 */
-      if(!(await window.tsEraseBox())) return;
+      if(!(await window.tsEraseBox("ledger"))) return;
       const all = tsWebLedgerAll();
       const areas = Object.keys(all);
       if(!areas.length){
@@ -3040,7 +3041,7 @@ body.presenMode table{font-size:1.02em}
       const cb = document.getElementById("digClearBtn");
       /* 2026-09-08：保管庫の中身も消えるため、消去コードの照合を先に通す。 */
       if(cb) cb.addEventListener("click", async function(){
-        if(await window.tsEraseBox()) clearDigResult();
+        if(await window.tsEraseBox("dig")) clearDigResult();
       });
     })();
 
@@ -5916,7 +5917,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-08-02';
+  const TRIGATE_VERSION = '2026-09-08-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

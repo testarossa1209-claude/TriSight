@@ -393,13 +393,26 @@ body.presenMode table{font-size:1.02em}
       <label class="digkwlabel" for="digPref" style="margin-left:10px">地域</label>
         <select id="digPref" title="この地域と「全国」の制度だけを表示します"></select>
         <select id="digCity" title="市区町村まで絞ると、その市区町村のページを直接掘りに行きます" style="margin-left:6px"></select>
-        <label style="margin-left:10px;font-size:13px;white-space:nowrap" title="住宅用の補助のように、受け取るのが会社ではなく個人（施主）の制度も探します">
-          <input type="checkbox" id="digShunushi"> 施主（個人）が受け取る制度も探す
+        <div style="margin-top:6px;font-size:12px;color:var(--muted)">
+          発掘の目的を選んでください（複数可）
+        </div>
+        <label style="margin-left:4px;font-size:13px;white-space:nowrap" title="住宅用の補助のように、受け取るのが会社ではなく個人（施主）の制度も探します。営業マンが顧客（施主）へ渡す情報として使えます">
+          <input type="checkbox" id="digShunushi"> ① 施主（個人）が受け取る制度を探す
         </label>
-        <label style="margin-left:10px;font-size:13px;white-space:nowrap" title="まだ拠点の無い地域へ出る場合に使える制度を探します。会社の所在地は地域の足切りに使いません（業種・規模の足切りはそのまま働きます）">
-          <input type="checkbox" id="digShinchi"> この地域へ出る場合の制度を探す
+        <label style="margin-left:10px;font-size:13px;white-space:nowrap" title="まだ拠点の無い地域、または顧客の住む町の制度を探します。会社の所在地は地域の足切りに使いません（業種・規模の足切りはそのまま働きます）">
+          <input type="checkbox" id="digShinchi"> ② 指定した地域の制度を探す（新規展開地・顧客の住む町）
         </label>
+        <label style="margin-left:10px;font-size:13px;white-space:nowrap" title="顧客から「こんな制度がある」と持ち込まれたPDFや資料を読み取り、要件を照合します。発掘ではなく読み取り欄へ進みます">
+          <input type="checkbox" id="digTeikyou"> ③ 顧客から持ち込まれた制度を確認する
+        </label>
+        <div id="digModeNote" style="margin-top:4px;font-size:12px;color:var(--muted)">印なし＝会社自身が申請できる制度を探します</div>
         <span id="digShinchiNote" style="display:none;margin-left:8px;font-size:12.5px;color:#a45a1a">選んだ地域へ出る前提で判定します（会社の所在地は地域の足切りに使いません）</span>
+        <div id="digTeikyouNote" style="display:none;margin-top:6px;padding:8px 12px;background:#fff8ef;border:1px solid #c9772a;border-radius:6px;font-size:13px;color:#7a4010">
+          ③ 顧客から持ち込まれた制度を確認する<br>
+          公募要領のPDFを下の「文書を入れる」欄へ入れて「読み取る」を押してください。
+          読み取り後、「要件を照合する」で御社・施主が取れるかを確かめられます。<br>
+          <span style="color:var(--muted)">※この目的のときは「新着探索」ではなく、下の読み取り欄をお使いください</span>
+        </div>
       <button id="digBtn" class="rbtn">新着探索</button>
     </div>
     <div class="digrow" style="margin-top:8px">
@@ -2445,18 +2458,50 @@ body.presenMode table{font-size:1.02em}
     }
     tsRenderPrefSel();
     tsRenderCitySel();
-    /* 2026-09-09：新規展開地の印。付け外ししたら注記を出し入れする。 */
+    /* 2026-09-09：入口の4分類。印の付け外しで注記・案内を出し入れする。 */
     (function(){
-      const sc = document.getElementById("digShinchi");
-      const nt = document.getElementById("digShinchiNote");
-      if(!sc || !nt) return;
-      sc.addEventListener("change", function(){
-        nt.style.display = sc.checked ? "" : "none";
-        const st2 = document.getElementById("digStatus");
-        if(st2) st2.textContent = sc.checked
-          ? "この地域へ出る場合の制度を探す設定にしました。地域を選んでから「新着探索」を押してください。"
-          : "通常の設定に戻しました。あらためて「新着探索」を押してください。";
-      });
+      const sc   = document.getElementById("digShinchi");
+      const nt   = document.getElementById("digShinchiNote");
+      const tc   = document.getElementById("digTeikyou");
+      const tn   = document.getElementById("digTeikyouNote");
+      const mn   = document.getElementById("digModeNote");
+      const shu  = document.getElementById("digShunushi");
+      function updateModeNote(){
+        if(!mn) return;
+        const s1 = shu  && shu.checked;
+        const s2 = sc   && sc.checked;
+        const s3 = tc   && tc.checked;
+        if(s3){
+          mn.style.display = "none";
+        }else if(!s1 && !s2){
+          mn.textContent = "印なし＝会社自身が申請できる制度を探します";
+          mn.style.display = "";
+        }else{
+          mn.style.display = "none";
+        }
+      }
+      if(sc && nt){
+        sc.addEventListener("change", function(){
+          nt.style.display = sc.checked ? "" : "none";
+          updateModeNote();
+          const st2 = document.getElementById("digStatus");
+          if(st2) st2.textContent = sc.checked
+            ? "② 指定した地域の制度を探す設定にしました。地域を選んでから「新着探索」を押してください。"
+            : "通常の設定に戻しました。あらためて「新着探索」を押してください。";
+        });
+      }
+      if(tc && tn){
+        tc.addEventListener("change", function(){
+          tn.style.display = tc.checked ? "" : "none";
+          updateModeNote();
+          const st2 = document.getElementById("digStatus");
+          if(st2) st2.textContent = tc.checked
+            ? "③ 顧客から持ち込まれた制度を確認します。下の「文書を入れる」欄へPDFを入れてください。"
+            : "通常の設定に戻しました。";
+        });
+      }
+      if(shu) shu.addEventListener("change", updateModeNote);
+      updateModeNote();
     })();
     if(prefSel) prefSel.addEventListener("change", function(){ if(citySel) citySel.value = ""; tsRenderCitySel(); });
     /* 見込み額パネルで指定された上限・下限の目安を読む（2026-09-04）。
@@ -5993,7 +6038,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-09-03';
+  const TRIGATE_VERSION = '2026-09-09-04';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

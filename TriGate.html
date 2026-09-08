@@ -2949,7 +2949,7 @@ body.presenMode table{font-size:1.02em}
           + (it.__offBiz
               ? '<br><button type="button" class="rbtn" style="font-weight:400;font-size:10px;padding:1px 6px;margin-top:2px"'
                 + ' title="当社の見立てが違うときは、ここを押してください。押した案件には次から「事業外の可能性」が付きません"'
-                + ' onclick="tsOffBizUndo(\'' + String(it.id || "").replace(/'/g, "") + '\')">御社に関係があります</button>'
+                + ' onclick="tsOffBizUndo(\'' + String(it.id || "").replace(/'/g, "") + '\')">この印を消す</button>'
               : "")
           + "</div>"
         : "";
@@ -2989,7 +2989,7 @@ body.presenMode table{font-size:1.02em}
               + "<td>"+e(it.target_area_search || "—")+"</td>"
               + "<td>"+(it.id ? '<button class="dbtn" data-act="detail">詳細</button>' : "")+"</td></tr>";
       }
-      return html + "</tbody></table>" + "<div class='digNote'>受付期間の終わりは掲載元（Jグランツ等）の表記をそのまま表示しています。申請の締切と異なる場合があります。</div>";
+      return html + "</tbody></table>" + "<div class='digNote'>国土交通省・厚生労働省・自治体の制度は、検索する語では絞っていません。業種・規模・地域で当てています（語で絞ると、業種から当たる制度を取りこぼすため）。／受付期間の終わりは掲載元（Jグランツ等）の表記をそのまま表示しています。申請の締切と異なる場合があります。</div>";
     }
 
     function saveDigResult(kw, statusText, rows){
@@ -3118,7 +3118,11 @@ body.presenMode table{font-size:1.02em}
         return;
       }
       btn.disabled = true;
-      st.textContent = "Jグランツ・国土交通省・厚生労働省・自治体へ探しに行っています…";
+      /* 2026-09-09：待つ人には工程の区切りが見えない。押してから結果が出るまでが待ち時間。
+         従来は都道府県の検索の段階だけに「1分半」と出していたが、実測は全体で2分半前後で、
+         予告より長くかかると止まったと思わせていた。全体の長さを、押した直後に出す。
+         数字だけ出すと約束に見えるため、前後することを同じ文に添える。 */
+      st.textContent = "Jグランツ・国土交通省・厚生労働省・自治体へ探しに行っています…（150秒ほどかかります。探す件数や地域により前後します）";
       out.innerHTML = "";
       if(fullGateBtn) fullGateBtn.style.display = "none";
       lastShow = [];
@@ -3184,7 +3188,7 @@ body.presenMode table{font-size:1.02em}
         let webNote = "";
         let webEntries = [];
         if(selPref){
-          st.textContent = selArea + "の独自制度を検索しています…（1分半ほどかかります）";
+          st.textContent = selArea + "の独自制度を検索しています…（もう少しかかります）";
           try{
             const shu = document.getElementById("digShunushi");
             const wantShunushi = !!(shu && shu.checked);
@@ -3491,7 +3495,7 @@ body.presenMode table{font-size:1.02em}
           /* 施主向けは上で出しているので、ここでは残りだけ出す（2026-09-01） */
           rest.forEach(it => { html += rowOf(it); });
         }
-        html += "</tbody></table>" + "<div class='digNote'>受付期間の終わりは掲載元（Jグランツ等）の表記をそのまま表示しています。申請の締切と異なる場合があります。"
+        html += "</tbody></table>" + "<div class='digNote'>国土交通省・厚生労働省・自治体の制度は、検索する語では絞っていません。業種・規模・地域で当てています（語で絞ると、業種から当たる制度を取りこぼすため）。／受付期間の終わりは掲載元（Jグランツ等）の表記をそのまま表示しています。申請の締切と異なる場合があります。"
               + e(webNote)
               + (cutByClosed ? "／受付が終わっている制度 " + cutByClosed + "件を一覧から外しています。" : "")
               + (selPref ? "／地域は「" + e(selArea) + "」で絞っています（全国区と" + e(selPref) + "の制度は残しています"
@@ -5977,7 +5981,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-09-01';
+  const TRIGATE_VERSION = '2026-09-09-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

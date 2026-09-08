@@ -396,6 +396,10 @@ body.presenMode table{font-size:1.02em}
         <label style="margin-left:10px;font-size:13px;white-space:nowrap" title="住宅用の補助のように、受け取るのが会社ではなく個人（施主）の制度も探します">
           <input type="checkbox" id="digShunushi"> 施主（個人）が受け取る制度も探す
         </label>
+        <label style="margin-left:10px;font-size:13px;white-space:nowrap" title="まだ拠点の無い地域へ出る場合に使える制度を探します。会社の所在地は地域の足切りに使いません（業種・規模の足切りはそのまま働きます）">
+          <input type="checkbox" id="digShinchi"> この地域へ出る場合の制度を探す
+        </label>
+        <span id="digShinchiNote" style="display:none;margin-left:8px;font-size:12.5px;color:#a45a1a">選んだ地域へ出る前提で判定します（会社の所在地は地域の足切りに使いません）</span>
       <button id="digBtn" class="rbtn">新着探索</button>
     </div>
     <div class="digrow" style="margin-top:8px">
@@ -2441,6 +2445,19 @@ body.presenMode table{font-size:1.02em}
     }
     tsRenderPrefSel();
     tsRenderCitySel();
+    /* 2026-09-09：新規展開地の印。付け外ししたら注記を出し入れする。 */
+    (function(){
+      const sc = document.getElementById("digShinchi");
+      const nt = document.getElementById("digShinchiNote");
+      if(!sc || !nt) return;
+      sc.addEventListener("change", function(){
+        nt.style.display = sc.checked ? "" : "none";
+        const st2 = document.getElementById("digStatus");
+        if(st2) st2.textContent = sc.checked
+          ? "この地域へ出る場合の制度を探す設定にしました。地域を選んでから「新着探索」を押してください。"
+          : "通常の設定に戻しました。あらためて「新着探索」を押してください。";
+      });
+    })();
     if(prefSel) prefSel.addEventListener("change", function(){ if(citySel) citySel.value = ""; tsRenderCitySel(); });
     /* 見込み額パネルで指定された上限・下限の目安を読む（2026-09-04）。
      保存形式は trigate_pj_threshold の {認証コード: {min, max}}。
@@ -2674,12 +2691,47 @@ body.presenMode table{font-size:1.02em}
         ? "　⚠ 足切りが働いていません（判定に届きませんでした）。落とすべき案件がそのまま残っています。もう一度掘り直してください。"
         : "　⚠ 足切りの一部が届きませんでした（" + mechFailed + "/" + mechAsked + " 回）。落とすべき案件が残っている可能性があります。";
     }
+    /* 2026-09-09：新規展開地の発掘。
+       会社がまだその地域に居ないため、会社の所在地で地域を足切りすると必ず落ちる。
+       ただし受給するのは会社のままなので、業種・規模の足切りは効かせる。外すのは地域だけ。
+       施主向け（足切りを全部外す）とは、外す範囲が違う。 */
+    function digShinchiOn(){
+      const b = document.getElementById("digShinchi");
+      return !!(b && b.checked);
+    }
+    function digShinchiArea(){
+      const p = document.getElementById("digPref");
+      const c = document.getElementById("digCity");
+      return { pref: (p && p.value) || "", city: (c && c.value) || "" };
+    }
+    function digShinchiSig(){
+      if(!digShinchiOn()) return "";
+      const a = digShinchiArea();
+      return a.pref ? ("\u0002shinchi:" + a.pref + "/" + a.city) : "";
+    }
+    function digCompanyForJudge(){
+      if(!company || !digShinchiOn()) return company;
+      const a = digShinchiArea();
+      if(!a.pref) return company;
+      let o;
+      try{ o = JSON.parse(JSON.stringify(company)); }catch(_){ return company; }
+      o["会社"] = o["会社"] || {};
+      o["会社"]["本店所在地_都道府県"] = a.pref;
+      o["会社"]["本店所在地_市区町村"] = a.city || "";
+      o["会社"]["支社等所在地_都道府県"] = a.pref;
+      o["会社"]["進出予定地域"] = a.pref;
+      o["会社"]["新規展開地の判定"] = "この会社は現在この地域に拠点を持たない。これから出る前提で判定するため、所在地を理由に落とさないこと。業種・規模・除外条件は、記載どおりに判定すること。";
+      o["支社等所在地_都道府県"] = a.pref;
+      o["進出予定地域"] = a.pref;
+      return o;
+    }
     function mechKey(d){
       d = d || {};
       return [d.id||"", d.title||d.name||"", d.industry||"",
               d.target_area_search||"", d.target_area_detail||"",
               d.target_number_of_employees||"",
-              (d.subsidy_max_limit==null?"":d.subsidy_max_limit)].join("\u0001");
+              (d.subsidy_max_limit==null?"":d.subsidy_max_limit)].join("\u0001")
+              + digShinchiSig();
     }
     function mechSend(d){
       d = d || {};
@@ -2707,6 +2759,7 @@ body.presenMode table{font-size:1.02em}
          返事が来ないまま待ち続けないよう、1回あたりの待ち時間にも区切りを置く。 */
       const CH = 20, WAIT = 20000;
       /* 企業基礎情報は毎回まるごと送らず、足切りに要るところだけを送る */
+      const __cj = digCompanyForJudge() || {};
       const compSlim = {
         "会社": (function(c){
           const o = {};
@@ -2717,13 +2770,13 @@ body.presenMode table{font-size:1.02em}
            "従業員数_合計","予想年商","年商","進出予定地域","過去の申請実績"]
             .forEach(k => { if(c[k] !== undefined) o[k] = c[k]; });
           return o;
-        })(company["会社"] || {}),
-        "機械足切り条件": company["機械足切り条件"] || {},
-        "案件名の除外キーワード": company["案件名の除外キーワード"] || [],
-        "探索キーワード": company["探索キーワード"] || [],
-        "支社等所在地_都道府県": company["支社等所在地_都道府県"] || [],
-        "進出予定地域": company["進出予定地域"] || [],
-        "過去の申請実績": company["過去の申請実績"] || []
+        })(__cj["会社"] || {}),
+        "機械足切り条件": __cj["機械足切り条件"] || {},
+        "案件名の除外キーワード": __cj["案件名の除外キーワード"] || [],
+        "探索キーワード": __cj["探索キーワード"] || [],
+        "支社等所在地_都道府県": __cj["支社等所在地_都道府県"] || [],
+        "進出予定地域": __cj["進出予定地域"] || [],
+        "過去の申請実績": __cj["過去の申請実績"] || []
       };
       for(let i=0;i<need.length;i+=CH){
         const part=need.slice(i,i+CH), pk=keys.slice(i,i+CH);
@@ -3058,6 +3111,12 @@ body.presenMode table{font-size:1.02em}
       if(kw.length < 2){ st.textContent = "キーワードは2文字以上で入力してください。"; return; }
       const code = tsCode();
       if(!code){ st.textContent = "認証コードが未入力のため中止しました。"; return; }
+      /* 2026-09-09：新規展開地の印が付いているのに地域が選ばれていないと、
+         差し替える先が無いまま会社の所在地で判定してしまう。ここで止める。 */
+      if(digShinchiOn() && !digShinchiArea().pref){
+        st.textContent = "「この地域へ出る場合の制度を探す」に印が付いていますが、都道府県が選ばれていません。地域を選んでから押してください。";
+        return;
+      }
       btn.disabled = true;
       st.textContent = "Jグランツ・国土交通省・厚生労働省・自治体へ探しに行っています…";
       out.innerHTML = "";
@@ -3577,7 +3636,7 @@ body.presenMode table{font-size:1.02em}
       return g;
     }
     async function aiGateCheckRaw(d){
-      const text = await tsAsk("gate", { source: gateSourceText(d), company: company });
+      const text = await tsAsk("gate", { source: gateSourceText(d), company: digCompanyForJudge() });
       if(!text) throw new Error("空の応答が返りました。");
       return gateParse(text);
     }
@@ -3600,7 +3659,7 @@ body.presenMode table{font-size:1.02em}
       return "id:" + id + " ／案件名:" + (d.title || d.name || "") + " ／上限額:" + amt + " ／概要:" + ov;
     }
     async function aiGiveBatchCheck(ids){
-      const text = await tsAsk("give", { company: company, items: ids.map(giveSourceTextShort) });
+      const text = await tsAsk("give", { company: digCompanyForJudge(), items: ids.map(giveSourceTextShort) });
       if(!text) throw new Error("空の応答が返りました。");
       let s = text.replace(/```json/gi, "").replace(/```/g, "").trim();
       const a = s.indexOf("[");
@@ -3887,8 +3946,9 @@ body.presenMode table{font-size:1.02em}
          業種は当てに行くための欄（広いほど拾える）、設備・技術は落とすための欄。軸が違う。 */
       const __biz = (company && company["事業"]) || {};
       const __gear = [].concat(__biz["取り扱う設備_技術"] || []).filter(Boolean);
+      const __sj = digCompanyForJudge();
       const compBrief = JSON.stringify({
-        "会社": (company && company["会社"]) || {},
+        "会社": (__sj && __sj["会社"]) || {},
         "事業": __biz,
         "取り扱う設備・技術": __gear,
         "取り扱う設備・技術の扱い": __gear.length
@@ -5917,7 +5977,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-08-03';
+  const TRIGATE_VERSION = '2026-09-09-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -4475,44 +4475,33 @@ body.presenMode table{font-size:1.02em}
               return '<button class="rbtn" data-act="guide" data-url="' + e(g.url)
                 + '" data-name="' + e(g.name) + '"' + st + '>' + tag + e(lb) + "</button>";
             }).join("");
-            if(note) note.innerHTML = '<div id="digPdfAi" style="margin-bottom:6px;font-size:12.5px;color:var(--muted)">どのPDFを読むか判断しています…</div>'
+            /* 2026-09-09：B案。APIを使わず、ファイル名のパターンで推薦を決める。
+               「公募要領」「募集要領」「申請の手引」を含むものを優先。
+               「様式」「Q&A」「チラシ」「交付要綱」「変更点」「改正」は後回し。
+               古い年度のもの（g.old）や別コース（g.other）は除いた候補から選ぶ。 */
+            const PREFER = /公募要領|募集要領|募集要項|申請の手引|実施要領|事業概要/;
+            const DEFER  = /様式|Q&A|Q＆A|チラシ|交付要綱|変更点|改正|ご案内|パンフ|リーフ/;
+            var picked = null;
+            /* 1. preferパターンに当たるものを探す */
+            for(var pi=0;pi<mainLinks.length;pi++){
+              if(PREFER.test(mainLinks[pi].label) && !DEFER.test(mainLinks[pi].label)){ picked=mainLinks[pi]; break; }
+            }
+            /* 2. 見つからなければ、deferパターンに当たらない最初のもの */
+            if(!picked){ for(var pi2=0;pi2<mainLinks.length;pi2++){ if(!DEFER.test(mainLinks[pi2].label)){ picked=mainLinks[pi2]; break; } } }
+            /* 3. それでも無ければ先頭 */
+            if(!picked && mainLinks.length){ picked=mainLinks[0]; }
+            var recBlock = picked
+              ? '<div style="padding:8px 12px;background:#eaf4ff;border:1px solid #5b8fd4;border-radius:6px;margin-bottom:8px">'
+                +'<div style="font-size:12.5px;font-weight:bold;color:#1a4a8a">📄 まずこれを読んでください</div>'
+                +'<div style="font-size:12px;margin:4px 0 8px">'+e(picked.label)+'</div>'
+                +'<button class="rbtn" data-act="guide" data-url="'+e(picked.url)+'" data-name="'+e(picked.name)+'" style="background:#1a4a8a;color:#fff;border:none">すぐ読み取る</button>'
+                +'</div>'
+              : "";
+            if(note) note.innerHTML = recBlock
+              + '<div style="font-size:12px;color:var(--muted);margin-bottom:4px">ほかの資料（別コース・旧年度・様式等）</div>'
               + allBtns
               + '<div class="digguide" style="margin-top:4px;color:var(--muted)"></div>'
               + tsPageFileHtml(page, b.dataset.title || "");
-            /* AIに推薦させる */
-            (async function(){
-              const aiDiv = note ? note.querySelector("#digPdfAi") : null;
-              try{
-                const listText = mainLinks.map(function(g,i){ return (i+1)+". "+g.label+" ("+g.url+")"; }).join("\n");
-                const prompt = "以下はある補助金・助成金の公式ページから見つかったPDFファイルの一覧です。\n"
-                  + "申請要件・対象者・補助額・申請手続きが書かれているメインの公募要領はどれですか？\n"
-                  + "番号1つだけを答えてください。理由は不要です。\n\n" + listText;
-                const res = await fetch("https://api.anthropic.com/v1/messages",{
-                  method:"POST",
-                  headers:{"Content-Type":"application/json"},
-                  body:JSON.stringify({
-                    model:"claude-sonnet-4-6",
-                    max_tokens:16,
-                    messages:[{role:"user",content:prompt}]
-                  })
-                });
-                const dat = await res.json();
-                const ans = ((dat.content||[])[0]||{}).text||"";
-                const num = parseInt(ans.trim(), 10);
-                if(num >= 1 && num <= mainLinks.length){
-                  const pick = mainLinks[num-1];
-                  if(aiDiv) aiDiv.innerHTML = '<div style="padding:8px 12px;background:#eaf4ff;border:1px solid #5b8fd4;border-radius:6px;margin-bottom:6px">'
-                    +'<div style="font-size:12.5px;font-weight:bold;color:#1a4a8a">📄 まずこれを読んでください</div>'
-                    +'<div style="font-size:12px;margin:4px 0 8px">'+e(pick.label)+'</div>'
-                    +'<button class="rbtn" data-act="guide" data-url="'+e(pick.url)+'" data-name="'+e(pick.name)+'" style="background:#1a4a8a;color:#fff;border:none">すぐ読み取る</button>'
-                    +'</div>';
-                }else{
-                  if(aiDiv) aiDiv.textContent = "見つかった資料を選んでください。";
-                }
-              }catch(err){
-                if(aiDiv) aiDiv.textContent = "見つかった資料を選んでください。";
-              }
-            })();
           }
         }catch(err){
           if(note) note.innerHTML = e(String(err && err.message ? err.message : err))
@@ -6143,7 +6132,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-09-08';
+  const TRIGATE_VERSION = '2026-09-09-09';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

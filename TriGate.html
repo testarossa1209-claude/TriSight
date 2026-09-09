@@ -411,7 +411,8 @@ body.presenMode table{font-size:1.02em}
           ③ 顧客から持ち込まれた制度を確認する<br>
           公募要領のPDFを下の「文書を入れる」欄へ入れて「読み取る」を押してください。
           読み取り後、「要件を照合する」で御社・施主が取れるかを確かめられます。<br>
-          <span style="color:var(--muted)">※この目的のときは「新着探索」ではなく、下の読み取り欄をお使いください</span>
+          <span style="color:var(--muted)">※この目的のときは「新着探索」ではなく、下の読み取り欄をお使いください</span><br>
+          <a href="#drop" style="display:inline-block;margin-top:8px;padding:5px 16px;background:#c9772a;color:#fff;border-radius:4px;text-decoration:none;font-size:13px;font-weight:bold">▼ PDFの入力欄へ進む</a>
         </div>
       <button id="digBtn" class="rbtn">新着探索</button>
     </div>
@@ -4461,20 +4462,57 @@ body.presenMode table{font-size:1.02em}
               + "から公募要領を落として、下の読み取り欄に入れてください。"
               + tsPageFileHtml(page, b.dataset.title || "");
           }else{
-            if(note) note.innerHTML = "見つかった資料です。読み取るものを選んでください。<br>"
-              + links.map(function(g){
-                  const lb = g.label.length > 44 ? (g.label.slice(0, 44) + "…") : g.label;
-                  /* 別のコース・区分の資料は消さずに残すが、区別がつく形で下に置く（2026-09-03） */
-                  const st = (g.other || g.old)
-                    ? ' style="margin:4px 6px 0 0;opacity:.6"'
-                    : ' style="margin:4px 6px 0 0"';
-                  const tag = (g.other ? '<span style="font-size:11px;color:var(--fix)">別コース </span>' : "")
-                    + (g.old ? '<span style="font-size:11px;color:var(--fix)">旧年度 </span>' : "");
-                  return '<button class="rbtn" data-act="guide" data-url="' + e(g.url)
-                    + '" data-name="' + e(g.name) + '"' + st + '>' + tag + e(lb) + "</button>";
-                }).join("")
+            /* 2026-09-09：A案。PDFリンクが並んだあと、AIに「どれを読むか」を判断させる。
+               リレー側は触らず、クライアント側でAnthropicAPIを呼ぶ。
+               判断が出たら推薦PDFを先頭に強調表示し、「すぐ読み取る」を出す。
+               その下に全リンクを残す（利用者が別のものを選べる余地を残す）。 */
+            const mainLinks = links.filter(function(g){ return !g.other && !g.old; });
+            const allBtns = links.map(function(g){
+              const lb = g.label.length > 44 ? (g.label.slice(0, 44) + "…") : g.label;
+              const st = (g.other || g.old) ? ' style="margin:4px 6px 0 0;opacity:.6"' : ' style="margin:4px 6px 0 0"';
+              const tag = (g.other ? '<span style="font-size:11px;color:var(--fix)">別コース </span>' : "")
+                + (g.old ? '<span style="font-size:11px;color:var(--fix)">旧年度 </span>' : "");
+              return '<button class="rbtn" data-act="guide" data-url="' + e(g.url)
+                + '" data-name="' + e(g.name) + '"' + st + '>' + tag + e(lb) + "</button>";
+            }).join("");
+            if(note) note.innerHTML = '<div id="digPdfAi" style="margin-bottom:6px;font-size:12.5px;color:var(--muted)">どのPDFを読むか判断しています…</div>'
+              + allBtns
               + '<div class="digguide" style="margin-top:4px;color:var(--muted)"></div>'
               + tsPageFileHtml(page, b.dataset.title || "");
+            /* AIに推薦させる */
+            (async function(){
+              const aiDiv = note ? note.querySelector("#digPdfAi") : null;
+              try{
+                const listText = mainLinks.map(function(g,i){ return (i+1)+". "+g.label+" ("+g.url+")"; }).join("\n");
+                const prompt = "以下はある補助金・助成金の公式ページから見つかったPDFファイルの一覧です。\n"
+                  + "申請要件・対象者・補助額・申請手続きが書かれているメインの公募要領はどれですか？\n"
+                  + "番号1つだけを答えてください。理由は不要です。\n\n" + listText;
+                const res = await fetch("https://api.anthropic.com/v1/messages",{
+                  method:"POST",
+                  headers:{"Content-Type":"application/json"},
+                  body:JSON.stringify({
+                    model:"claude-sonnet-4-6",
+                    max_tokens:16,
+                    messages:[{role:"user",content:prompt}]
+                  })
+                });
+                const dat = await res.json();
+                const ans = ((dat.content||[])[0]||{}).text||"";
+                const num = parseInt(ans.trim(), 10);
+                if(num >= 1 && num <= mainLinks.length){
+                  const pick = mainLinks[num-1];
+                  if(aiDiv) aiDiv.innerHTML = '<div style="padding:8px 12px;background:#eaf4ff;border:1px solid #5b8fd4;border-radius:6px;margin-bottom:6px">'
+                    +'<div style="font-size:12.5px;font-weight:bold;color:#1a4a8a">📄 まずこれを読んでください</div>'
+                    +'<div style="font-size:12px;margin:4px 0 8px">'+e(pick.label)+'</div>'
+                    +'<button class="rbtn" data-act="guide" data-url="'+e(pick.url)+'" data-name="'+e(pick.name)+'" style="background:#1a4a8a;color:#fff;border:none">すぐ読み取る</button>'
+                    +'</div>';
+                }else{
+                  if(aiDiv) aiDiv.textContent = "見つかった資料を選んでください。";
+                }
+              }catch(err){
+                if(aiDiv) aiDiv.textContent = "見つかった資料を選んでください。";
+              }
+            })();
           }
         }catch(err){
           if(note) note.innerHTML = e(String(err && err.message ? err.message : err))
@@ -6105,7 +6143,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-09-06';
+  const TRIGATE_VERSION = '2026-09-09-08';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

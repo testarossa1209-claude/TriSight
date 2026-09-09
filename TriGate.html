@@ -3020,6 +3020,19 @@ body.presenMode table{font-size:1.02em}
      取り消した案件は端末に控え、次に掘っても印が付かない。
      当社の仕分けを利用者が上書きする口であり、判断を人の側へ返すための仕組み。 */
   const TG_OFFBIZ_OV = "trigate_offbiz_override";
+  /* 2026-09-09：利用者が「この案件を一覧から外す」を押した案件IDを記憶する */
+  const TG_HIDDEN_IDS = "trigate_hidden_ids";
+  function tsIsHidden(id){
+    try{ var m=JSON.parse(localStorage.getItem(TG_HIDDEN_IDS)||"{}"); return m[String(id)]===true; }catch(_){ return false; }
+  }
+  window.tsHideRow = function(id){
+    try{ var m=JSON.parse(localStorage.getItem(TG_HIDDEN_IDS)||"{}"); m[String(id)]=true; localStorage.setItem(TG_HIDDEN_IDS,JSON.stringify(m)); }catch(_){}
+    var row=document.querySelector('[data-id="'+String(id).replace(/"/g,"")+'"]');
+    if(row) row.style.display="none";
+  };
+  function tsHiddenClear(){
+    try{ localStorage.removeItem(TG_HIDDEN_IDS); }catch(_){}
+  }
   function tsOffBizOverride(id){
     try{
       const m = JSON.parse(localStorage.getItem(TG_OFFBIZ_OV) || "{}");
@@ -3048,7 +3061,7 @@ body.presenMode table{font-size:1.02em}
           + (it.__offBiz
               ? '<br><button type="button" class="rbtn" style="font-weight:400;font-size:10px;padding:1px 6px;margin-top:2px"'
                 + ' title="当社の見立てが違うときは、ここを押してください。押した案件には次から「事業外の可能性」が付きません"'
-                + ' onclick="tsOffBizUndo(\'' + String(it.id || "").replace(/'/g, "") + '\')">この印を消す</button>'
+                + ' onclick="tsOffBizUndo(\'' + String(it.id || "").replace(/'/g, "") + '\')">この判定を外す</button>'
               : "")
           + "</div>"
         : "";
@@ -3189,11 +3202,26 @@ body.presenMode table{font-size:1.02em}
       const cb = document.getElementById("digClearBtn");
       if(cb) cb.style.display = "none";
     }
+    /* 2026-09-09：「この案件を一覧から外す」ボタンのイベント委譲 */
+    (function(){
+      const outEl = document.getElementById("digOut");
+      if(outEl) outEl.addEventListener("click", function(e){
+        const btn = e.target.closest(".digHideBtn");
+        if(!btn) return;
+        const id = btn.dataset.hideid || "";
+        if(!id) return;
+        window.tsHideRow(id);
+        const tr = btn.closest("tr");
+        if(tr) tr.style.display = "none";
+        const dtr = tr && tr.nextElementSibling;
+        if(dtr && dtr.classList.contains("digdetail")) dtr.style.display = "none";
+      });
+    })();
     (function(){
       const cb = document.getElementById("digClearBtn");
       /* 2026-09-08：保管庫の中身も消えるため、消去コードの照合を先に通す。 */
       if(cb) cb.addEventListener("click", async function(){
-        if(await window.tsEraseBox("dig")) clearDigResult();
+        if(await window.tsEraseBox("dig")){ clearDigResult(); tsHiddenClear(); }
       });
     })();
 
@@ -3661,6 +3689,8 @@ body.presenMode table{font-size:1.02em}
           });
           html += "</div>";
         }
+        /* 2026-09-09：利用者が「一覧から外す」を押した案件を除いて描く */
+        show = show.filter(function(it){ return !tsIsHidden(it.id); });
         out.innerHTML = html;
         lastShow = show;
         saveDigResult(kw, st.textContent, show);
@@ -4297,7 +4327,13 @@ body.presenMode table{font-size:1.02em}
         +"<div id=\"" + uid2 + "\" style=\"display:none;margin-top:6px\">" + digUsageDetail(digPurpose, isS2) + "</div>"
         +"</div>"
         +"</div>";
-      return "<dl>"+rows.join("")+"</dl>"+ovHtml + act + usageBlock;
+      var safeId2 = String(d.id||"").replace(/[^a-zA-Z0-9_\-]/g,"");
+      var hideBtn2 = "<div style=\"margin:10px 0 0;text-align:right\">"
+        + "<button data-hideid=\"" + safeId2 + "\" class=\"digHideBtn\" "
+        + "style=\"font-size:11px;padding:2px 8px;color:#c00;border:1px solid #c00;background:none;cursor:pointer\" "
+        + "title=\"この案件を一覧から外します。外した案件は掘り直せば戻ります\">この案件を一覧から外す</button>"
+        + "</div>";
+      return "<dl>"+rows.join("")+"</dl>"+ovHtml + act + usageBlock + hideBtn2;
     }
 
     if(fullGateBtn){
@@ -6132,7 +6168,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-09-09';
+  const TRIGATE_VERSION = '2026-09-09-10';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -309,6 +309,36 @@ body.presenMode #tsPresenBtn:hover{opacity:1}
 body.presenMode .digfile,
 body.presenMode .presenHide{display:none !important}
 body.presenMode table{font-size:1.02em}
+
+  /* ===== 読み手ごとの渡し分け（2026-09-11） ===== */
+  #hoBox{border:1px solid #c8d3e6;border-radius:10px;padding:14px 16px;background:#fff}
+  #hoBox .ho-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  #hoBox .ho-tabs button{border:1px solid #9aa7bf;background:#f4f6fa;border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer}
+  #hoBox .ho-tabs button.on{background:#16213a;color:#fff;border-color:#16213a}
+  #hoBox .ho-lead{font-size:12px;color:#555;margin:0 0 10px}
+  #hoPrintArea .ho-doc{font-family:inherit;color:#1a1a1a}
+  #hoPrintArea .ho-doc h4{font-size:16px;margin:0 0 2px}
+  #hoPrintArea .ho-doc .ho-to{font-size:12px;color:#2a6ab0;margin:0 0 8px}
+  #hoPrintArea .ho-doc h5{font-size:13px;margin:12px 0 4px;border-bottom:1px solid #999;padding-bottom:2px}
+  #hoPrintArea .ho-doc table{width:100%;border-collapse:collapse;font-size:12px}
+  #hoPrintArea .ho-doc th,#hoPrintArea .ho-doc td{border:1px solid #999;padding:4px 6px;text-align:left;vertical-align:top}
+  #hoPrintArea .ho-doc ol,#hoPrintArea .ho-doc ul{margin:4px 0 4px 1.4em;padding:0;font-size:12px}
+  #hoPrintArea .ho-doc .ho-sub{font-size:11px;color:#555}
+  #hoPrintArea .ho-doc .ho-foot{font-size:10.5px;color:#555;margin-top:12px;border-top:1px dashed #999;padding-top:6px}
+  #hoBox .ho-doc h4{font-size:15px;margin:0 0 2px}
+  #hoBox .ho-doc .ho-to{font-size:12px;color:#2a6ab0;margin:0 0 8px}
+  #hoBox .ho-doc h5{font-size:13px;margin:12px 0 4px;border-bottom:1px solid #ddd;padding-bottom:2px}
+  #hoBox .ho-doc table{width:100%;border-collapse:collapse;font-size:12.5px}
+  #hoBox .ho-doc th,#hoBox .ho-doc td{border:1px solid #ccc;padding:4px 6px;text-align:left;vertical-align:top}
+  #hoBox .ho-doc ol,#hoBox .ho-doc ul{margin:4px 0 4px 1.4em;padding:0;font-size:12.5px}
+  #hoBox .ho-doc .ho-sub{font-size:11.5px;color:#666}
+  #hoBox .ho-doc .ho-foot{font-size:11px;color:#666;margin-top:12px;border-top:1px dashed #bbb;padding-top:6px}
+  #hoPrintArea{display:none}
+  @media print{
+    body:not(.tgHoPrinting) #hoBox{display:none !important}
+    body.tgHoPrinting > *:not(#hoPrintArea){display:none !important}
+    body.tgHoPrinting #hoPrintArea{display:block !important}
+  }
 </style>
 </head>
 <body>
@@ -511,11 +541,13 @@ body.presenMode table{font-size:1.02em}
     <button id="taskBtn" class="rbtn">TriTaskへ送る</button>
     <button id="matchBtn" class="rbtn">要件を照合する</button>
     <button id="comboBtn" class="rbtn">併せて取れる制度を調べる</button>
+    <button id="hoBtn" class="rbtn">読み手ごとに渡す</button>
     <button id="resultRegBtn" class="rbtn ghost">獲得実績を登録</button>
     <button id="resetBtn" class="rbtn ghost">次の案件へ（最初から）</button>
     <span id="taskMsg" class="rmsg" style="display:none"></span>
   </div>
   <div id="comboBox" class="no-print" style="display:none;margin-top:10px"></div>
+  <div id="hoBox" style="display:none;margin-top:10px"></div>
 
   <!-- TriTask送信前の確認・編集パネル（AI出力を無検証で流さないための人の確認工程） -->
   <div id="sendReview" class="no-print" style="display:none;border:2px solid #c9772a;border-radius:10px;padding:18px 20px;margin:14px 0;background:#fffaf3">
@@ -5100,6 +5132,7 @@ body.presenMode table{font-size:1.02em}
     outEl.innerHTML=""; outEl.style.display="none";
     { const mo = document.getElementById("matchOut"); if(mo){ mo.innerHTML=""; mo.style.display="none"; } }
     $("resultBar").style.display="none";
+    if($("hoBox")) $("hoBox").style.display="none";
     resetTaskBtn();
     TG_LAST=null;
     hideErr();
@@ -6017,6 +6050,7 @@ body.presenMode table{font-size:1.02em}
 
   function render(d){
     TG_LAST = d;
+    if($("hoBox")) $("hoBox").style.display="none";
     resetTaskBtn();
     autoSendToTask(d);
     const parts=[];
@@ -6131,6 +6165,129 @@ body.presenMode table{font-size:1.02em}
     $("resultBar").scrollIntoView({behavior:"smooth",block:"start"});
   }
 
+
+
+  /* ===== 読み手ごとの渡し分け（2026-09-11） =================================
+     同じ読み取り結果を、本部・営業所・お客様の3通りに組み替えて渡す。
+     AIは呼ばない（トークンを使わない・何度押しても同じものが出る）。
+     読み取り結果に無い情報は足さない（推測で埋めない）。 */
+  const HO_VIEWS = {
+    hq:   { tab:"本部（全体）", to:"本部・取りまとめの方へ",
+            lead:"要領から読み取った内容をすべて載せています。営業所・お客様へ渡す前の元になる一式です。" },
+    shop: { tab:"営業所", to:"営業所・営業担当の方へ",
+            lead:"お客様に提案するときに使う部分だけに絞っています。対象の見分け方と、確認が要る点・確認先です。" },
+    cust: { tab:"お客様", to:"お客様（申請されるご本人）へ",
+            lead:"ご用意いただくものと、進める順番だけに絞っています。" }
+  };
+  let hoView = "hq";
+  function hoLeadDeadline(d){
+    const dls = (d && d.deadlines) || [];
+    const withIso = dls.filter(x => x && typeof x === "object" && x.date_iso);
+    const abs = withIso.filter(x => x.is_absolute);
+    const pick = (abs.length ? abs : withIso).slice().sort((a,b)=>new Date(a.date_iso)-new Date(b.date_iso))[0];
+    return pick || null;
+  }
+  function hoBuild(d, view){
+    const v = HO_VIEWS[view];
+    const el = d.eligibility || {};
+    const tasks = d.reverse_tasks || [];
+    const docs = d.required_documents || [];
+    const vers = d.verify_items || [];
+    const dls = (d.deadlines || []).filter(x => x && typeof x === "object");
+    const lead = hoLeadDeadline(d);
+    let h = '<div class="ho-doc">';
+    h += '<h4>' + esc(d.program_name || "（名称不明）") + '</h4>';
+    h += '<p class="ho-to">' + esc(v.to) + (d.issuer ? '　／　' + esc(d.issuer) : '') + '</p>';
+
+    if(view === "hq"){
+      if(d.summary) h += '<p>' + esc(d.summary) + '</p>';
+      if(el.who || (el.checklist||[]).length){
+        h += '<h5>対象</h5>';
+        if(el.who) h += '<p>' + esc(el.who) + '</p>';
+        if((el.checklist||[]).length) h += '<ul>' + el.checklist.map(c=>'<li>'+esc(c)+'</li>').join("") + '</ul>';
+        if(el.note) h += '<p class="ho-sub">' + esc(el.note) + '</p>';
+      }
+      if(dls.length){
+        h += '<h5>期日</h5><ul>' + dls.map(x=>'<li>'+esc(x.label||"")+'＝'+esc(x.date_text||"")+(x.type&&x.type!=="不明"?'（'+esc(x.type)+'）':'')+'</li>').join("") + '</ul>';
+      }
+      if(tasks.length){
+        h += '<h5>工程（全' + tasks.length + '件）</h5><table><tr><th style="width:22%">期日</th><th>やること</th></tr>'
+           + tasks.map(t=>'<tr><td>'+esc(t.due_text||"")+'</td><td>'+esc(t.action||"")+(t.must_verify?'（要確認）':'')+'</td></tr>').join("") + '</table>';
+      }
+      if(docs.length){
+        h += '<h5>必要書類（全' + docs.length + '件）</h5><ul>'
+           + docs.map(x=>'<li>'+esc(x.name||"")+(x.note?'<span class="ho-sub">　'+esc(x.note)+'</span>':'')+(x.must_verify?'（要確認）':'')+'</li>').join("") + '</ul>';
+      }
+      if(vers.length){
+        h += '<h5>確認が要る点（全' + vers.length + '件）</h5><ol>'
+           + vers.map(x=>'<li>'+esc(x.item||"")+(x.why?'<br><span class="ho-sub">理由：'+esc(x.why)+'</span>':'')+(x.contact?'<br><span class="ho-sub">確認先：'+esc(x.contact)+'</span>':'')+'</li>').join("") + '</ol>';
+      }
+    }
+
+    if(view === "shop"){
+      if(d.summary) h += '<p>' + esc(d.summary) + '</p>';
+      if(lead) h += '<p><b>いちばん近い期日：</b>' + esc(lead.label||"") + '＝' + esc(lead.date_text||"") + '</p>';
+      if(el.who || (el.checklist||[]).length){
+        h += '<h5>お客様が対象になるかの見分け方</h5>';
+        if(el.who) h += '<p>' + esc(el.who) + '</p>';
+        if((el.checklist||[]).length) h += '<ul>' + el.checklist.map(c=>'<li>'+esc(c)+'</li>').join("") + '</ul>';
+      }
+      if(vers.length){
+        h += '<h5>提案の前に確かめる点</h5><ol>'
+           + vers.map(x=>'<li>'+esc(x.item||"")+(x.why?'<br><span class="ho-sub">理由：'+esc(x.why)+'</span>':'')+(x.contact?'<br><span class="ho-sub">確認先：'+esc(x.contact)+'</span>':'')+'</li>').join("") + '</ol>';
+      }
+      h += '<p class="ho-sub">お客様にご用意いただく書類は ' + docs.length + ' 件、工程は ' + tasks.length + ' 件です（一式は本部版にあります）。</p>';
+    }
+
+    if(view === "cust"){
+      if(lead) h += '<p><b>期限：</b>' + esc(lead.label||"") + '＝' + esc(lead.date_text||"") + (lead.type&&lead.type!=="不明"?'（'+esc(lead.type)+'）':'') + '</p>';
+      if(docs.length){
+        h += '<h5>ご用意いただくもの</h5><ol>'
+           + docs.map(x=>'<li>'+esc(x.name||"")+(x.note?'<br><span class="ho-sub">'+esc(x.note)+'</span>':'')+'</li>').join("") + '</ol>';
+      }
+      if(tasks.length){
+        h += '<h5>進める順番</h5><ol>'
+           + tasks.map(t=>'<li>'+esc(t.action||"")+(t.due_text?'<span class="ho-sub">　（'+esc(t.due_text)+'）</span>':'')+'</li>').join("") + '</ol>';
+      }
+      h += '<p class="ho-sub">申請書類はお客様ご自身で作成・提出していただきます。</p>';
+    }
+
+    if(d.contact) h += '<p class="ho-sub">問合せ先：' + esc(d.contact) + '</p>';
+    h += '<div class="ho-foot">要領から読み取った内容を、読み手に合わせて並べ替えたものです。要領に書かれていないことは足していません。最終的な判断は、要領の原文と問合せ先でお確かめください。（作成日 ' + new Date().toISOString().slice(0,10) + '）</div>';
+    h += '</div>';
+    return h;
+  }
+  function hoRender(){
+    const box = $("hoBox");
+    if(!box) return;
+    if(!TG_LAST){ box.style.display="none"; return; }
+    const tabs = Object.keys(HO_VIEWS).map(k=>'<button type="button" data-ho="'+k+'" class="'+(k===hoView?'on':'')+'">'+esc(HO_VIEWS[k].tab)+'</button>').join("");
+    box.innerHTML = '<div class="ho-tabs no-print">' + tabs
+      + '<button type="button" id="hoPrint" style="margin-left:auto">この内容を印刷する</button>'
+      + '<button type="button" id="hoClose">閉じる</button></div>'
+      + '<p class="ho-lead no-print">' + esc(HO_VIEWS[hoView].lead) + '</p>'
+      + hoBuild(TG_LAST, hoView);
+    box.style.display = "block";
+    box.querySelectorAll("[data-ho]").forEach(b=>b.addEventListener("click",()=>{ hoView=b.getAttribute("data-ho"); hoRender(); }));
+    $("hoPrint").addEventListener("click",()=>{
+      let area=document.getElementById("hoPrintArea");
+      if(!area){ area=document.createElement("div"); area.id="hoPrintArea"; document.body.appendChild(area); }
+      area.innerHTML='<div id="hoBoxPrint">'+box.querySelector(".ho-doc").outerHTML+'</div>';
+      document.body.classList.add("tgHoPrinting");
+      const off=()=>{ document.body.classList.remove("tgHoPrinting"); area.innerHTML=""; window.removeEventListener("afterprint",off); };
+      window.addEventListener("afterprint",off);
+      window.print();
+      setTimeout(off, 1500);
+    });
+    $("hoClose").addEventListener("click",()=>{ box.style.display="none"; });
+  }
+  if($("hoBtn")) $("hoBtn").addEventListener("click",()=>{
+    const box=$("hoBox");
+    if(box.style.display==="block"){ box.style.display="none"; return; }
+    hoView="hq"; hoRender();
+    box.scrollIntoView({behavior:"smooth",block:"start"});
+  });
+
   function showErr(m){errEl.textContent=m;errEl.style.display="block";}
   function hideErr(){errEl.style.display="none";}
 
@@ -6168,7 +6325,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-09-10';
+  const TRIGATE_VERSION = '2026-09-11-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

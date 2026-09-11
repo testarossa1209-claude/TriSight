@@ -5611,7 +5611,23 @@ body.presenMode table{font-size:1.02em}
   function pjPending(){
     return pjBase().filter(c => String(c.gate["判定"] || "") === "要確認");
   }
+  /* 2026-09-11：先着順の制度は見込み額の本数字に入れない（7/22の原則）。ただし画面から消すと
+     「早く動けば取れる」という知らせまで消えるため、別枠に件数だけを並べる。
+     金額は足さない（2026-08-13「合計を出す限り実態から離れる」）。 */
+  function pjSenchaku(){
+    if(window.TS_PJ_COUNT_SENCHAKU === true) return [];
+    return pjCandidates().filter(c => c.gate && c.gate["給付方式"] === "先着順・予算到達で終了" && c.gate["除外条件抵触"] === false);
+  }
+  function pjSenchakuHtml(){
+    const q = pjDedupe(pjSenchaku()).list;
+    if(!q.length) return "";
+    return '<span class="rc-fig" style="color:#9a5b00">別枠：<b>' + q.length + '件</b>は「先着順・予算到達で終了」の制度です。'
+      + '要件を満たしても、予算に達した時点で受付が終わります。受付期間の終わりと併せてご確認ください。</span>';
+  }
   function pjPendingHtml(){
+    return pjPendingOnlyHtml() + pjSenchakuHtml();
+  }
+  function pjPendingOnlyHtml(){
     const p = pjDedupe(pjPending()).list;
     if(!p.length) return "";
     return '<span class="rc-fig" style="color:var(--muted)">別枠：<b>' + p.length + '件</b>は「要確認」です。'
@@ -6344,7 +6360,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-11-02';
+  const TRIGATE_VERSION = '2026-09-11-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -3812,6 +3812,12 @@ body.presenMode table{font-size:1.02em}
        精密足切り通過後の全件をまとめて数回のAPI呼び出しで粗く仕分け、見込み額カウンターへ自動反映する。
        理由・懸念・確認事項などは持たず、給付方式と除外条件抵触の2点だけを判定する軽量プロンプト。 */
     const GIVE_CHUNK = 15;
+  /* 2026-09-11：給付方式を2択（要件充足型／審査・採択枠あり）から4択に改めた
+     （先着順・予算到達で終了 を追加）。前橋市・青森市の住宅用補助は「予算に達し次第終了」の
+     先着の制度なのに、旧定義では「予算上限で不採択があり得る＝審査・採択枠あり」に入っていた。
+     古い2択の記憶を使い回すと直した定義が一生効かないため、記憶の名札を付け替える。
+     古い記憶は消さずに読まないだけにする（消去コード・保管庫には触れない）。 */
+  const TS_GIVE_KIND = "give4";
     function giveSourceTextShort(id){
       const d = digDetails[id] || {};
       let ov = "";
@@ -3843,7 +3849,7 @@ body.presenMode table{font-size:1.02em}
       /* 記憶済みの案件は問い直さない（同じ会社・同じ案件なら毎回同じ結果になる） */
       const askIds = [];
       ids.forEach(id => {
-        const memo = tsJudgeGet("give", id);
+        const memo = tsJudgeGet(TS_GIVE_KIND, id);
         if(memo) resultMap[id] = memo; else askIds.push(id);
       });
       for(let i = 0; i < askIds.length; i += GIVE_CHUNK){
@@ -3856,7 +3862,7 @@ body.presenMode table{font-size:1.02em}
           /* このチャンクは判定失敗として飛ばす。他チャンクの処理は継続する（見込み額は分かる範囲だけ反映） */
         }
         if(Array.isArray(arr)){
-          arr.forEach(g => { if(g && g.id){ resultMap[g.id] = g; tsJudgeSet("give", g.id, g); } });
+          arr.forEach(g => { if(g && g.id){ resultMap[g.id] = g; tsJudgeSet(TS_GIVE_KIND, g.id, g); } });
         }
         /* このチャンク分を候補storageへ反映し、対応する行のバッジ・見込み額をその場で更新する
            （一覧が既に表示された後に判定が追いついてくる形にするため、チャンク完了ごとに反映する） */
@@ -5588,8 +5594,16 @@ body.presenMode table{font-size:1.02em}
   /* 2026-09-03：見込み額は「AIゲート判定を通過（追う）」した案件だけを本数字にする。
      候補に入れただけ／見送り判定のものまで数えると実態より大きく出るため。
      「要確認」は取れないという判定ではなく確かめていないだけなので、消さずに別枠で併記する。 */
+  /* 2026-09-11：先着順の制度を見込み額に入れるか。7/22の原則（条件を満たせば構造的に受給が
+     保証される制度だけを数える）を守り、いまは入れない。入れるときはここを true にする。 */
+  window.TS_PJ_COUNT_SENCHAKU = false;
+  function tsPjCountable(g){
+    if(!g) return false;
+    const f = g["給付方式"];
+    return f === "要件充足型" || (window.TS_PJ_COUNT_SENCHAKU === true && f === "先着順・予算到達で終了");
+  }
   function pjBase(){
-    return pjCandidates().filter(c => c.gate && c.gate["給付方式"] === "要件充足型" && c.gate["除外条件抵触"] === false);
+    return pjCandidates().filter(c => c.gate && tsPjCountable(c.gate) && c.gate["除外条件抵触"] === false);
   }
   function pjEligible(){
     return pjBase().filter(c => String(c.gate["判定"] || "") === "追う");
@@ -5622,6 +5636,8 @@ body.presenMode table{font-size:1.02em}
         if(tooHigh) label += "・上限額が"+pjYen(max)+"超のため要確認";
         else if(tooLow) label += "・上限額が"+pjYen(min)+"未満（書類労力とのバランス要確認）";
         else label += "・要件を満たせば原則支給";
+      }else if(gv["給付方式"] === "先着順・予算到達で終了"){
+        label += "・先着順・予算到達で終了";
       }
       return '<br><span style="font-size:11px;color:'+col+'">'+esc(label)+'</span>';
     }
@@ -5633,6 +5649,9 @@ body.presenMode table{font-size:1.02em}
     }
     if(gv["給付方式"] === "要件充足型"){
       return '<br><span style="font-size:11px;color:var(--ok);font-weight:700">要件充足（満たせば原則支給）</span>';
+    }
+    if(gv["給付方式"] === "先着順・予算到達で終了"){
+      return '<br><span style="font-size:11px;color:#9a5b00;font-weight:700">先着順・予算到達で終了</span>';
     }
     if(gv["給付方式"] === "審査・採択枠あり"){
       return '<br><span style="font-size:11px;color:var(--muted)">審査・採択枠あり</span>';
@@ -6325,7 +6344,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-11-01';
+  const TRIGATE_VERSION = '2026-09-11-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -6458,7 +6477,7 @@ window.TSB_HOST = "gate";
   }
   function eligible(){
     return cands().filter(function(c){
-      return c && c.gate && c.gate["給付方式"] === "要件充足型" && c.gate["除外条件抵触"] === false;
+      return c && c.gate && (c.gate["給付方式"] === "要件充足型" || (window.TS_PJ_COUNT_SENCHAKU === true && c.gate["給付方式"] === "先着順・予算到達で終了")) && c.gate["除外条件抵触"] === false;
     });
   }
   /* 実績は既存の獲得実績パネルと同じ規則で読む。
@@ -6780,7 +6799,8 @@ window.TSB_HOST = "gate";
       var g = c.gate || {};
       var mark = (g["除外条件抵触"] === true) ? '<span style="color:#b3261e">除外条件に抵触</span>'
         : (g["給付方式"] === "要件充足型" ? '<span style="color:#2f6b3a;font-weight:700">要件を満たせば原則支給</span>'
-        : (g["給付方式"] === "審査・採択枠あり" ? '<span style="color:#7a7a7a">審査・採択枠あり</span>' : '<span style="color:#7a7a7a">未判定</span>'));
+        : (g["給付方式"] === "先着順・予算到達で終了" ? '<span style="color:#9a5b00;font-weight:700">先着順・予算到達で終了</span>'
+        : (g["給付方式"] === "審査・採択枠あり" ? '<span style="color:#7a7a7a">審査・採択枠あり</span>' : '<span style="color:#7a7a7a">未判定</span>')));
       var amt = (c.amount_max != null && isFinite(Number(c.amount_max)) && Number(c.amount_max) > 0)
         ? yen(c.amount_max) : "記載なし";
       var day = String(c.saved || "").slice(0, 10);

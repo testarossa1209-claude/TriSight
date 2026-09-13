@@ -3069,6 +3069,18 @@ body.presenMode table{font-size:1.02em}
         return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" })[c];
       });
     };
+    /* 上限額は、一覧と同じ見え方にする（生の数字のままだと桁が読めない） */
+    const yen = function(v){
+      if(v == null || v === "") return "—";
+      const n = Number(v);
+      if(!isFinite(n)) return String(v);
+      if(n === 0) return "記載なし";
+      if(n >= 10000){
+        const m = n / 10000;
+        return (Math.round(m * 10) / 10).toLocaleString() + "万円";
+      }
+      return n.toLocaleString() + "円";
+    };
     b.addEventListener("click", function(){
       if(box.style.display !== "none"){ box.style.display = "none"; box.innerHTML = ""; return; }
       const all = (typeof tsWebLedgerAll === "function") ? tsWebLedgerAll() : {};
@@ -3095,10 +3107,17 @@ body.presenMode table{font-size:1.02em}
            .forEach(function(r){
           const it = (r && r.item) || {};
           const nm = it.title || it.name || "（名称不明）";
-          const amt = (it.subsidy_max_limit != null && it.subsidy_max_limit !== "")
-                    ? it.subsidy_max_limit : "—";
+          const amt = yen(it.subsidy_max_limit);
           const end = it.acceptance_end_datetime || "—";
-          const closed = (r && r.closed) ? '<span style="color:#b0203a;font-size:11px">（受付終了と読める記載）</span>' : "";
+          /* 2026-09-13：台帳の closed は「終了と読めた／開いている／確認できなかった」の
+             三通りを持つ。記録があるだけで終了と出していたため、受付中の制度にまで
+             終了の印が付いていた。verdict を見て出し分ける。 */
+          const v = (r && r.closed && r.closed.verdict) || "";
+          const closed = (v === "closed")
+            ? '<span style="color:#b0203a;font-size:11px">（受付終了と読める記載）</span>'
+            : (v === "ng"
+                ? '<span style="color:var(--muted);font-size:11px">（掲載元を確認できませんでした）</span>'
+                : "");
           html += "<tr><td>" + esc(nm) + closed + "</td><td>" + esc(amt) + "</td><td>"
                +  esc(end) + "</td><td>" + esc((r && r.last) || "") + "</td></tr>";
         });
@@ -6462,7 +6481,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-13-01';
+  const TRIGATE_VERSION = '2026-09-13-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

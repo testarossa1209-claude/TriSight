@@ -456,9 +456,11 @@ body.presenMode table{font-size:1.02em}
     <div class="digrow" style="margin-top:8px">
       <button id="digFullGateBtn" class="dbtn" style="display:none">この一覧すべてで詳細AIゲート判定を実行する（API複数回・時間がかかります）</button>
       <button type="button" class="rc-toggle" id="digClearBtn" style="display:none" title="掘った一覧と見込み額を消します。判定の記憶は残るので、掘り直せば元に戻ります。獲得実績の記録は消えません">掘った一覧と見込み額を消す</button>
+      <button type="button" class="rc-toggle" id="digLedgerViewBtn" title="ウェブ検索で拾って台帳に貯まっている案件を、地域ごとに一覧で出します">拾った案件の台帳を見る</button>
       <button type="button" class="rc-toggle" id="digLedgerClearBtn" title="ウェブ検索で拾った案件の台帳を消します。判定の記憶・見込み額・獲得実績には触れません">拾った案件の台帳を消す</button>
       <button type="button" class="rc-toggle" id="digSieveResetBtn" title="事業に照らした仕分けの記憶だけを消します。次に掘るとき、全件をもう一度AIが仕分けます。仕分けの当て方を変えたときに使ってください">事業に照らした仕分けをやり直す</button>
     </div>
+    <div id="digLedgerBox" style="display:none;margin-top:10px"></div>
     <div id="digOut"></div>
   </div>
 
@@ -676,6 +678,39 @@ body.presenMode table{font-size:1.02em}
 
   var isBox = function(k){ return BOX_MAIN.indexOf(k) >= 0 || k === BOX_WEB; };
 
+  /* 拾った案件の台帳を、端末の中身と箱の中身から足し合わせる（2026-09-13）。
+     どちらか一方にしか無い案件は残す。両方にある案件は最終確認日の
+     新しいほうを採る。読めない中身のときは、失わない側を返す。 */
+  function mergeLedger(localStr, boxStr){
+    var a=null,b=null;
+    try{ a=JSON.parse(localStr||"{}")||{}; }catch(_){ a=null; }
+    try{ b=JSON.parse(boxStr ||"{}")||{}; }catch(_){ b=null; }
+    if(!a||typeof a!=="object") return String(boxStr||"{}");
+    if(!b||typeof b!=="object") return String(localStr||"{}");
+    var out={},areas={};
+    Object.keys(a).forEach(function(k){ areas[k]=1; });
+    Object.keys(b).forEach(function(k){ areas[k]=1; });
+    Object.keys(areas).forEach(function(area){
+      var ra=(a[area]&&typeof a[area]==="object")?a[area]:{};
+      var rb=(b[area]&&typeof b[area]==="object")?b[area]:{};
+      var rec={},ids={};
+      Object.keys(ra).forEach(function(k){ ids[k]=1; });
+      Object.keys(rb).forEach(function(k){ ids[k]=1; });
+      Object.keys(ids).forEach(function(id){
+        var x=ra[id],y=rb[id];
+        if(x&&!y){ rec[id]=x; return; }
+        if(y&&!x){ rec[id]=y; return; }
+        /* 新しさは last（最後に拾った日）で見る。checked は掲載元に
+           当たり直した日で、空のことが多いため副の目安にする。 */
+        var cx=String((x&&x.last)||"")+"/"+String((x&&x.checked)||"");
+        var cy=String((y&&y.last)||"")+"/"+String((y&&y.checked)||"");
+        rec[id]=(cy>cx)?y:x;
+      });
+      out[area]=rec;
+    });
+    try{ return JSON.stringify(out); }catch(_){ return String(localStr||"{}"); }
+  }
+
   /* ---- 素の保存領域を先に押さえる（この後 window を差し替えるため） ---- */
   var raw = window.localStorage;
   var mem = {};                 /* 写し */
@@ -719,8 +754,14 @@ body.presenMode table{font-size:1.02em}
     var c = code(); if(!c) return;
     var keys = Object.keys(dirty); if(!keys.length) return;
     var body = {};
-    keys.forEach(function(k){ body[k] = Object.prototype.hasOwnProperty.call(mem,k) ? mem[k] : null; });
+    keys.forEach(function(k){
+      /* 2026-09-13：台帳は、手元に無いというだけで箱を空にしない。
+         消すのは「拾った案件の台帳を消す」を押したときだけ。 */
+      if(k === BOX_WEB && !Object.prototype.hasOwnProperty.call(mem,k)) return;
+      body[k] = Object.prototype.hasOwnProperty.call(mem,k) ? mem[k] : null;
+    });
     dirty = {};
+    if(!Object.keys(body).length) return;
     var bytes = JSON.stringify(body).length;
     fetch(BOX_RELAY, {
       method: "POST",
@@ -753,7 +794,15 @@ body.presenMode table{font-size:1.02em}
       Object.keys(d).forEach(function(k){
         if(!isBox(k) || d[k] == null) return;
         if(dirty[k]) return;            /* 取り込み中に画面側が書いたものは残す */
-        mem[k] = String(d[k]);
+        /* 2026-09-13：台帳だけは上書きせず、端末の中身と足し合わせる。
+           箱は後から預けたほうが勝つ作りのため、上書きにすると
+           一度拾った案件が、別の端末が開いただけで消える。 */
+        if(k === BOX_WEB){
+          mem[k] = mergeLedger(raw.getItem(k), String(d[k]));
+          dirty[k] = 1;                 /* 足した結果を箱へ戻す */
+        }else{
+          mem[k] = String(d[k]);
+        }
         try{ raw.setItem(k, mem[k]); }catch(_){}   /* 端末の写しも合わせる */
       });
       window.tsBoxUsage.gets++;
@@ -3008,6 +3057,59 @@ body.presenMode table{font-size:1.02em}
   /* 拾った案件の台帳を消す（2026-09-05）。いきなり消さず、いま何が入っているかを
      地域ごとに見せてから確認を出す。選んでいる地域があれば、その地域だけを消す。
      判定の記憶・見込み額・獲得実績には触れない。 */
+  /* 拾った案件の台帳を見る（2026-09-13）。消す口だけがあって見る口が無かった。
+     掘らなくても、いま何を持っているかを地域ごとに出す。
+     押すたびに開閉する。台帳の中身には触れない。 */
+  (function(){
+    const b = document.getElementById("digLedgerViewBtn");
+    const box = document.getElementById("digLedgerBox");
+    if(!b || !box) return;
+    const esc = function(t){
+      return String(t == null ? "" : t).replace(/[&<>"]/g, function(c){
+        return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" })[c];
+      });
+    };
+    b.addEventListener("click", function(){
+      if(box.style.display !== "none"){ box.style.display = "none"; box.innerHTML = ""; return; }
+      const all = (typeof tsWebLedgerAll === "function") ? tsWebLedgerAll() : {};
+      const areas = Object.keys(all);
+      if(!areas.length){
+        box.innerHTML = '<div style="font-size:13px;color:var(--muted);border:1px dashed var(--line,#ccc);'
+          + 'border-radius:8px;padding:12px">拾った案件の台帳は、まだ空です。'
+          + '発掘すると、ウェブ検索で見つかった案件がここに貯まります。</div>';
+        box.style.display = "block";
+        return;
+      }
+      let total = 0;
+      let html = "";
+      areas.sort().forEach(function(area){
+        const rec = all[area] || {};
+        const ids = Object.keys(rec);
+        total += ids.length;
+        html += '<div style="font-weight:700;font-size:13px;margin:10px 0 4px">' + esc(area)
+             +  '\u3000' + ids.length + '件</div>'
+             +  '<table class="digtbl"><thead><tr><th>案件名</th><th>上限額</th>'
+             +  '<th>受付期間の終わり</th><th>最後に拾った日</th></tr></thead><tbody>';
+        ids.map(function(id){ return rec[id] || {}; })
+           .sort(function(p, q){ return String((q && q.last) || "") > String((p && p.last) || "") ? 1 : -1; })
+           .forEach(function(r){
+          const it = (r && r.item) || {};
+          const nm = it.title || it.name || "（名称不明）";
+          const amt = (it.subsidy_max_limit != null && it.subsidy_max_limit !== "")
+                    ? it.subsidy_max_limit : "—";
+          const end = it.acceptance_end_datetime || "—";
+          const closed = (r && r.closed) ? '<span style="color:#b0203a;font-size:11px">（受付終了と読める記載）</span>' : "";
+          html += "<tr><td>" + esc(nm) + closed + "</td><td>" + esc(amt) + "</td><td>"
+               +  esc(end) + "</td><td>" + esc((r && r.last) || "") + "</td></tr>";
+        });
+        html += "</tbody></table>";
+      });
+      box.innerHTML = '<div style="font-size:12.5px;color:var(--muted);margin-bottom:6px">'
+        + '台帳にあるもの　合計 ' + total + '件（地域 ' + areas.length + '）。'
+        + '掘った回の検索で返ってこなかった案件も、ここに残っています。</div>' + html;
+      box.style.display = "block";
+    });
+  })();
   (function(){
     const b = document.getElementById("digLedgerClearBtn");
     if(!b) return;
@@ -6360,7 +6462,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-11-03';
+  const TRIGATE_VERSION = '2026-09-13-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

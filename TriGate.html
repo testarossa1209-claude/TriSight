@@ -664,9 +664,12 @@ body.presenMode table{font-size:1.02em}
     "trigate_offbiz_override",    /* 事業外の取り消し印 */
     "trigate_results",            /* 成果カウンター */
     "trigate_pj_threshold",       /* しきい値の設定 */
-    "trisight_dig_company",       /* 企業基礎情報 */
-    "trisight_dig_company_name",
-    "trisight_dig_company_lib",
+    /* 2026-09-14：企業基礎情報の3つの鍵を保管庫から外した。
+       他の端末が抱えている会社の情報が保管庫を経由して戻り、
+       この端末で読み込んだ会社を上書きしてしまうため。
+       2026-08-26の「記入済みの会社情報は当社のリレーに置かない」にも戻る。
+       会社の情報は、これまでどおり端末の中だけに残る。
+       "trisight_dig_company", "trisight_dig_company_name", "trisight_dig_company_lib" */
     "tritask_inbox",              /* トライタスクへの受け渡し箱 */
     /* 2026-09-07 追加：画面に並ぶ一覧そのもの。これを載せていなかったため、
        2台目で「掘らずに同じ一覧を見る」が原理上できていなかった。
@@ -6494,7 +6497,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-13-04';
+  const TRIGATE_VERSION = '2026-09-14-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

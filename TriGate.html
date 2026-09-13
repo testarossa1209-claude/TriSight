@@ -1848,7 +1848,17 @@ body.presenMode table{font-size:1.02em}
     try{ localStorage.setItem(TG_AMT_KEY, JSON.stringify(l)); }catch(_){}
   }
   /* 拾った額を台帳へ入れ、画面に出す額（最も低い額）と幅の有無を返す */
+  /* 拾った上限額の単位を揃える（2026-09-13）。
+     掲載元が「400万円」と書けば 400、「1,200,000円」と書けば 1200000 で入ってくるため、
+     同じ欄に万円と円が混ざっていた。補助金の上限額が1万円を下回ることはまず無いので、
+     1万円未満の数字は万円で書かれたものとみなして円に直す。
+     1万円以上はそのまま（前橋の7万円＝70000 のような実額を壊さないため）。 */
+  function tgAmtUnit(v){
+    if(typeof v !== "number" || !isFinite(v) || v <= 0) return v;
+    return (v < 10000) ? v * 10000 : v;
+  }
   function tgAmtSee(name, v){
+    v = tgAmtUnit(v);
     const k = tgAmtName(name);
     if(!k) return { value: (typeof v === "number" ? v : null), spread:false, fixed:false };
     const l = tgAmtLoad();
@@ -1859,7 +1869,9 @@ body.presenMode table{font-size:1.02em}
     l[k] = e; tgAmtStore(l);
     if(e.fixed != null) return { value: e.fixed, spread:false, fixed:true };
     if(!e.seen.length) return { value:null, spread:false, fixed:false };
-    return { value: e.seen[0], spread: (e.seen.length > 1), fixed:false, seen: e.seen };
+    /* 既に台帳へ入っている古い数字も、出すときに揃える */
+    return { value: tgAmtUnit(e.seen[0]), spread: (e.seen.length > 1), fixed:false,
+             seen: e.seen.map(tgAmtUnit) };
   }
   /* 要領を読み取って確定した額。以後はこれを正とする */
   function tgAmtFix(name, v){
@@ -3069,17 +3081,18 @@ body.presenMode table{font-size:1.02em}
         return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" })[c];
       });
     };
-    /* 上限額は、一覧と同じ見え方にする（生の数字のままだと桁が読めない） */
+    /* 上限額の見せ方は、一覧が使っている換算とまったく同じにする（2026-09-13）。
+       自前で桁を決めたため、億円の段が無く、端数の丸め方も違っていた。 */
     const yen = function(v){
       if(v == null || v === "") return "—";
-      const n = Number(v);
-      if(!isFinite(n)) return String(v);
+      let n = Number(v);
+      if(isNaN(n)) return String(v);
       if(n === 0) return "記載なし";
-      if(n >= 10000){
-        const m = n / 10000;
-        return (Math.round(m * 10) / 10).toLocaleString() + "万円";
-      }
-      return n.toLocaleString() + "円";
+      /* 台帳に既に入っている古い数字は万円と円が混ざっている。出すときに揃える */
+      if(n > 0 && n < 10000) n = n * 10000;
+      if(n >= 100000000) return (n/100000000).toLocaleString("ja-JP",{maximumFractionDigits:1}) + "億円";
+      if(n >= 10000) return Math.round(n/10000).toLocaleString("ja-JP") + "万円";
+      return n.toLocaleString("ja-JP") + "円";
     };
     b.addEventListener("click", function(){
       if(box.style.display !== "none"){ box.style.display = "none"; box.innerHTML = ""; return; }
@@ -6481,7 +6494,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-13-02';
+  const TRIGATE_VERSION = '2026-09-13-04';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

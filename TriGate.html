@@ -2952,7 +2952,10 @@ body.presenMode table{font-size:1.02em}
       /* 一度に送る件数は小さく刻む。まとめて送ると返事が返らずに止まる
          （2026-08-29：120件で待ち続ける事象が実機で出たため 20件へ）。
          返事が来ないまま待ち続けないよう、1回あたりの待ち時間にも区切りを置く。 */
-      const CH = 20, WAIT = 20000;
+      /* 2026-09-14：20件をまとめて送ると、足切りの答えを書き切る前に20秒で打ち切られ、
+         2回のうち1回が「届きませんでした」になっていた。1回の量を半分にして、
+         待ち時間も伸ばす。回数は増えるが、届かないより取りこぼしが少ない。 */
+      const CH = 10, WAIT = 30000;
       /* 企業基礎情報は毎回まるごと送らず、足切りに要るところだけを送る */
       const __cj = digCompanyForJudge() || {};
       const compSlim = {
@@ -6497,7 +6500,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-14-01';
+  const TRIGATE_VERSION = '2026-09-14-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

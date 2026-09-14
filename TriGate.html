@@ -1633,10 +1633,53 @@ body.presenMode table{font-size:1.02em}
   function tsEntryAll(){
     try{ return JSON.parse(localStorage.getItem(TS_ENTRY_KEY) || "{}"); }catch(e){ return {}; }
   }
+  /* 2026-09-14：当社が最初から持っている入口ページ。
+     これまで入口の台帳は、AIが入口として返した回にだけ貯まる作りだった。
+     最初の一回が当たらなければ次も当たらず、掘るたびに見に行く先が変わっていた
+     （東京ゼロエミが出る回と出ない回がある）。当たりが出るまで掘り直させるのは、
+     人に時間と費用を払わせているのと同じなので、確かな入口は当社が持って渡す。
+     ここに書いたものは消えない。AIが見つけた分は、これまでどおり端末の台帳に貯まる。
+     出所＝クール・ネット東京（公益財団法人東京都環境公社）および世田谷区公式サイト。
+     いずれも2026-09-14に現物を開いて所在を確認した。
+     他の都道府県・市区町村も、同じ形でここへ足していく。 */
+  const TS_ENTRY_FIXED = {
+    "東京都": [
+      { url: "https://www.tokyo-co2down.jp/subsidy/tokyo_zero_emission_house/tokyo_zero_emission_house_r08_fukyu/",
+        title: "令和8年度 東京ゼロエミ住宅普及促進事業（クール・ネット東京）",
+        why: "都内の新築住宅。太陽光・蓄電池・V2Hの設置も併せて助成対象",
+        guide: ["ページ内の「概要」「助成金額」の表を見る", "「実施要綱等」から助成金申請の手引のPDFを開く"],
+        seen: "2026-09-14" },
+      { url: "https://www.tokyo-co2down.jp/subsidy/",
+        title: "クール・ネット東京　補助金・助成金の一覧",
+        why: "東京都の家庭向け・事業者向けの助成が並ぶ入口",
+        guide: ["一覧から家庭向けの助成を開く", "年度の表記が令和8年度のものを選ぶ"],
+        seen: "2026-09-14" },
+      { url: "https://www.tokyo-co2down.jp/subsidy/city/",
+        title: "区市町村の補助金等情報（クール・ネット東京）",
+        why: "都内62の区市町村の温暖化対策の補助金が、自治体ごとの対象ページとして並ぶ",
+        guide: ["表から対象の区市町村を探す", "その自治体の対象ページを開いて制度を拾う"],
+        seen: "2026-09-14" }
+    ],
+    "東京都世田谷区": [
+      { url: "https://www.city.setagaya.lg.jp/sumaimachizukuri/kankyou/category/11890.html",
+        title: "省エネルギーの推進（世田谷区公式サイト）",
+        why: "世田谷区の省エネ・再エネの補助がまとまっている区の窓口",
+        guide: ["ページ内の補助金の一覧から制度を開く", "年度と受付期間を確かめる"],
+        seen: "2026-09-14" }
+    ]
+  };
   function tsEntryGet(area){
     const all = tsEntryAll();
     const rec = all[String(area || "")];
-    return (rec && Array.isArray(rec.list)) ? rec.list : [];
+    const list = (rec && Array.isArray(rec.list)) ? rec.list : [];
+    const fixed = TS_ENTRY_FIXED[String(area || "")] || [];
+    /* 既定を先に置く。同じURLが端末の台帳にもあれば、既定のほうを残す */
+    const seen = {};
+    return fixed.concat(list).filter(function(x){
+      const u = x && x.url;
+      if(!u || seen[u]) return false;
+      seen[u] = true; return true;
+    });
   }
   /* 入口ページを地域ごとに足し込む。同じURLは増やさず、確認日だけ新しくする。
      地域あたり12件まで（古いものから落とす）。 */
@@ -6500,7 +6543,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-14-02';
+  const TRIGATE_VERSION = '2026-09-14-04';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

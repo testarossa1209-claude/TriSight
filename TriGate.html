@@ -2893,19 +2893,26 @@ body.presenMode table{font-size:1.02em}
       else if(s2 && s2.checked) digPurpose = "2";
       else digPurpose = "0";
     }
+    /* 2026-09-14：使い方の案内が、案件の性質ではなく「掘るときに選んだ目的」だけで
+       決まっていた。施主向け（①）に印を付けて掘ると、会社が受給する雇用関係の助成金にも
+       「営業マンが施主へ渡す提案資料」と出る。実例＝人材開発支援助成金（事業展開等
+       リスキリング支援コース）。受給するのは会社であって施主ではない。
+       案件そのものが施主向けかどうか（isShunushi）は画面が持っているので、そちらを優先する。
+       目的で決めてよいのは、案件が会社向けのときの見せ方（地域の営業ツールか、真偽確認か）だけ。 */
     function digUsageLabel(purpose, isShunushi){
       /* 一段目：一行ラベル */
       if(isShunushi) return "📋 営業マンが施主へ渡す提案資料として使えます";
-      if(purpose==="1") return "📋 営業マンが施主へ渡す提案資料として使えます";
-      if(purpose==="2") return "🗺️ 顧客のいる地域の案件が来たときの営業ツールとして使えます";
-      if(purpose==="12") return "📋🗺️ 施主への提案資料・地域の営業ツールとして使えます";
+      /* ここから下は、案件が会社向け（施主が受給する制度ではない）ものだけが通る */
+      if(purpose==="2" || purpose==="12") return "🗺️ 顧客のいる地域の案件が来たときの営業ツールとして使えます";
       if(purpose==="3") return "🔍 顧客から持ち込まれた制度の真偽確認結果として使えます";
       return "📁 御社自身が申請できる可能性のある制度として使えます";
     }
     function digUsageDetail(purpose, isShunushi){
       /* 二段目：展開する手順。クォートの混在を避けるため、リンクはhref形式に統一 */
       var lnk = "<li style=\"margin-top:4px\"><a href=\"#tsStep2\" style=\"font-size:12px;padding:2px 10px;text-decoration:none;background:#e8eef8;border:1px solid #aab;border-radius:3px\">詳しく分解する → トライフォームへ</a></li>";
-      if(isShunushi || purpose==="1" || purpose==="12"){
+      /* 2026-09-14：一行ラベルと同じ理由で、案件の性質を目的より優先する。
+         施主向けの手順（施主への説明文を作る等）は、施主が受給する制度にだけ出す。 */
+      if(isShunushi){
         return "<ol style=\"margin:6px 0 0 16px;padding:0;font-size:12.5px\">"
           +"<li>上限額と締切を確認する</li>"
           +"<li>「要領あり」なら取り寄せて読み取る</li>"
@@ -2913,7 +2920,7 @@ body.presenMode table{font-size:1.02em}
           +"<li>施主への説明文が必要なら「読み取り」から作成する</li>"
           +lnk+"</ol>";
       }
-      if(purpose==="2"){
+      if(purpose==="2" || purpose==="12"){
         return "<ol style=\"margin:6px 0 0 16px;padding:0;font-size:12.5px\">"
           +"<li>案件が来た地域でこの手順を繰り返す</li>"
           +"<li>受付中の制度を営業マンへ一覧で共有する</li>"
@@ -6543,7 +6550,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-14-04';
+  const TRIGATE_VERSION = '2026-09-14-05';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

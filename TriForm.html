@@ -203,7 +203,7 @@
 
 <footer>
   合同会社トライサイト　TriSight&reg; ファミリー
-  <div class="verline">版 <span id="verLabel">2026-09-06-01</span>（v3）</div>
+  <div class="verline">版 <span id="verLabel">2026-09-14-01</span>（v3）</div>
 </footer>
 </div>
 
@@ -218,9 +218,9 @@
 </div></dialog>
 
 <dialog id="editDlg"><div class="dlg">
-  <h3>型を作る</h3>
+  <h3>書類の用意のしかたを作る</h3>
   <p class="h">工程は1行に1つ。「やること｜手元に要るもの｜この工程でできるもの｜持っていく先｜持ち帰るもの」を縦棒で区切ります。後ろの4つは、無いものを空けて構いません（社内で済む工程は持っていく先・持ち帰るものが空になります）。</p>
-  <label>この型を引き当てる語（書類名に含まれる語・読点区切り）</label>
+  <label>この用意のしかたを当てる語（書類名に含まれる語・読点区切り）</label>
   <input type="text" id="pKeys" placeholder="就業規則, 就業規則の写し">
   <label>型の名前</label>
   <input type="text" id="pName" placeholder="就業規則の改定と労基署への届出">
@@ -442,9 +442,9 @@
       }
       rows = buildRows(g); renderRows(); renderNoMatch(g); renderFacts();
       const nb = $("autoPatternMsg");
-      if(nb) nb.innerHTML = "<b>" + madeTotal + "件の型を作りました。</b>"
+      if(nb) nb.innerHTML = "<b>" + madeTotal + "件の用意のしかたを作りました。</b>"
         + (failed ? "（" + failed + "件は組み立てられませんでした。もう一度押すと残りを作り直します。）" : "")
-        + "要領に根拠のある工程はそのまま、要領に書かれていない段取りは「人の確認が要る工程」として印を付けてあります。"
+        + "要領に根拠のある工程はそのまま、要領に書かれていない段取りは「ご自身で確かめる工程」として分けてあります。"
         + "<b>中身が正しいかどうかは、交付元の要領に照らしてご自身で確かめてください。</b>";
     }catch(err){
       const nb = $("autoPatternMsg");
@@ -452,7 +452,7 @@
         + esc(String(err && err.message ? err.message : err)) + "</span>";
     }finally{
       const bb = $("autoPatternBtn");
-      if(bb){ bb.disabled = false; bb.textContent = "要領からまとめて型を作る（AI・API利用）"; }
+      if(bb){ bb.disabled = false; bb.textContent = "要領からまとめて用意のしかたを作る（AI・API利用）"; }
     }
   }
 
@@ -500,7 +500,7 @@
       const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
       const j = JSON.parse(text.replace(/^```(json)?/i,"").replace(/```$/,"").trim());
       const made = Array.isArray(j.patterns) ? j.patterns : [];
-      if(!made.length) throw new Error("型が返りませんでした。");
+      if(!made.length) throw new Error("用意のしかたが返りませんでした。");
       let n = 0;
       /* 保存だけして件数を返す。画面の描き直しは呼び出し側でまとめて行う */
       made.forEach(function(pt, i){
@@ -919,7 +919,7 @@
       box.innerHTML = '<div style="background:var(--white);border:1px solid var(--line);border-radius:10px;'
         + 'padding:13px 16px;margin-top:14px;font-size:13px">'
         + '<div style="font-weight:700">型を当てた根拠</div>'
-        + '<div style="color:var(--ink-soft);margin-top:4px">' + madeN + '件は、この案件の書類のために要領から組み立てた型です。'
+        + '<div style="color:var(--ink-soft);margin-top:4px">' + madeN + '件は、この案件の書類のために要領から組み立てたものです。'
         + '書類名の語で引き当てたものではないので、当てはめの外れようがありません。'
         + '中身は「手続きの型を見る」で確かめられます。</div></div>';
       return;
@@ -927,7 +927,7 @@
     box.innerHTML = '<div style="background:var(--white);border:1px solid var(--line);border-radius:10px;'
       + 'padding:13px 16px;margin-top:14px;font-size:13px">'
       + '<div style="font-weight:700;margin-bottom:6px">型を当てた根拠（' + shown.length + '件）'
-      + (madeN ? '<span style="font-weight:400;color:var(--muted)">　ほかに' + madeN + '件は要領から組み立てた型（外れようがないため省略）</span>' : "")
+      + (madeN ? '<span style="font-weight:400;color:var(--muted)">　ほかに' + madeN + '件は要領から組み立てたもの（外れようがないため省略）</span>' : "")
       + '</div>'
       + shown.map(function(x){ const m = x.m, i = x.i;
           return '<div style="margin:5px 0">「' + esc(m.doc) + '」の中の<b>' + esc(m.key) + '</b>で、'
@@ -951,11 +951,11 @@
     const box = $("noMatchBox");
     const un = (g.required_documents||[]).filter(d=>!matchPattern(d.name));   /* nullなら型なし */
     if(!un.length){ box.innerHTML = ""; return; }
-    box.innerHTML = '<div class="nomatch"><b>型がまだ無い書類が' + un.length + '件あります。</b><br>'
+    box.innerHTML = '<div class="nomatch"><b>用意のしかたがまだ無い書類が' + un.length + '件あります。</b><br>'
       + un.map(d=>"・"+esc(d.name||"")).join("<br>")
-      + '<br><br>この書類をどう用意するかの型を作っておくと、次に同じ書類が出てきたときも同じ並びが自動で出ます。'
+      + '<br><br>この書類をどう用意するかを一度作っておくと、次に同じ書類が出てきたときも同じ並びが自動で出ます。'
       + '<div style="margin-top:8px">'
-      + '<button type="button" class="sbtn" id="autoPatternBtn">要領からまとめて型を作る（AI・API利用）</button>'
+      + '<button type="button" class="sbtn" id="autoPatternBtn">要領からまとめて用意のしかたを作る（AI・API利用）</button>'
       + '<button type="button" class="sbtn" id="mkPatternBtn" style="margin-left:8px">手で1件ずつ作る</button>'
       + '</div>'
       + '<div id="autoPatternMsg" style="font-size:12.5px;color:var(--ink-soft);margin-top:6px"></div>'
@@ -1003,7 +1003,7 @@
         + fRow(i,"receive","持ち帰るもの",r.receive)
         + '</div>'
         + '<div class="vflag"><label><input type="checkbox" data-i="' + i + '" data-f="must_verify"'
-        + (r.must_verify?" checked":"") + '> 人の確認が要る工程にする</label>'
+        + (r.must_verify?" checked":"") + '> ご自身で確かめる工程にする</label>'
         + (r.why ? '<div style="margin-top:4px">理由：' + esc(r.why) + '</div>' : '')
         + '</div>'
         + '<div class="rowbtns">'
@@ -1253,7 +1253,7 @@
         ? (unchecked.length
             ? "未確認の項目：" + unchecked.map(c=>c.q + (c.found ? "" : "（要領に根拠が見つからず。交付元へ要確認）")).join("／")
             : "確認項目はすべて確かめ済みです。要領の改訂がないかだけ見てください。")
-        : "工程は書類の名前に型を当てて機械的に出したものです。当たったこと自体は正しさの保証ではないため、要領の該当箇所で確かめてください。"
+        : "工程は書類の名前から機械的に当てて出したものです。当たったこと自体は正しさの保証ではないため、要領の該当箇所で確かめてください。"
     };
     if(missTxt) guard.why = missTxt + "　" + guard.why;
     /* 2026-09-06：要領に根拠の無い工程は、利用者が要ると言ったものだけ渡す */
@@ -1324,7 +1324,7 @@
       + ((p.case_facts||[]).length ? '<div class="pm">この申請で用意する情報：' + esc((p.case_facts||[]).join("、")) + '</div>' : "")
       + '<div class="pc">' + (p.steps||[]).map((s,i)=>(i+1)+"．"+esc(s.action||"")).join("<br>") + '</div>'
       + (mine ? '<div style="margin-top:6px"><button type="button" class="sbtn danger" data-delpat="'
-                + esc(p.id) + '">この型を消す</button></div>' : "")
+                + esc(p.id) + '">この用意のしかたを消す</button></div>' : "")
       + '</li>';
     }).join("") + '</ul>';
     $("patternList").querySelectorAll("button[data-delpat]").forEach(el=>{
@@ -1355,7 +1355,7 @@
     const name = $("pName").value.trim();
     const lines = $("pSteps").value.split("\n").map(s=>s.trim()).filter(Boolean);
     if(!keys.length || !name || !lines.length){
-      window.alert("引き当てる語・型の名前・工程は、いずれも必要です。");
+      window.alert("当てる語・名前・工程は、いずれも必要です。");
       return;
     }
     const vset = new Set($("pVerify").value.split(/[、,]/).map(s=>Number(s.trim())).filter(n=>n>0));
@@ -1368,7 +1368,7 @@
     saveUserPattern({ id:"u-"+Date.now(), name:name, keys:keys, facts:facts, steps:steps });
     $("editDlg").close();
     if(current) { rows = buildRows(current); renderRows(); renderNoMatch(current); renderFacts(); }
-    window.alert("型を保存しました。次に同じ書類が出てきたときも、この並びが出ます。");
+    window.alert("保存しました。次に同じ書類が出てきたときも、この並びが出ます。");
   });
 
   /* ===== 起動 ===== */

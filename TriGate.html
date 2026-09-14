@@ -434,7 +434,7 @@ body.presenMode table{font-size:1.02em}
           <label style="font-size:13px;cursor:pointer" title="顧客から「こんな制度がある」と持ち込まれたPDFや資料を読み取り、要件を照合します。発掘ではなく読み取り欄へ進みます">
             <input type="checkbox" id="digTeikyou"> ③ 顧客から持ち込まれた制度を確認する
           </label>
-          <div id="digModeNote" style="font-size:12px;color:var(--muted)">印なし＝会社自身が申請できる制度を探します</div>
+          <div id="digModeNote" style="font-size:12px;color:var(--muted)">どれも選ばない＝会社自身が申請できる制度を探します</div>
         </div>
         <span id="digShinchiNote" style="display:none;margin-left:8px;font-size:12.5px;color:#a45a1a">選んだ地域へ出る前提で判定します（会社の所在地は地域の足切りに使いません）</span>
         <div id="digTeikyouNote" style="display:none;margin-top:6px;padding:8px 12px;background:#fff8ef;border:1px solid #c9772a;border-radius:6px;font-size:13px;color:#7a4010">
@@ -2076,7 +2076,7 @@ body.presenMode table{font-size:1.02em}
     const row = document.querySelector('[data-id="' + String(id).replace(/"/g, '') + '"]');
     if(row){
       const cell = row.querySelector(".tg-closed");
-      if(cell) cell.outerHTML = '<div style="font-size:11px;color:var(--muted)">この印は取り消しました。次の発掘から一覧に戻ります</div>';
+      if(cell) cell.outerHTML = '<div style="font-size:11px;color:var(--muted)">この判定は取り消しました。次の発掘から一覧に戻ります</div>';
     }
   };
   /* 今回拾った分を台帳へ足す。同じ制度は上書きし、最終確認日だけ新しくする */
@@ -2614,7 +2614,7 @@ body.presenMode table{font-size:1.02em}
         if(s3){
           mn.style.display = "none";
         }else if(!s1 && !s2){
-          mn.textContent = "印なし＝会社自身が申請できる制度を探します";
+          mn.textContent = "どれも選ばない＝会社自身が申請できる制度を探します";
           mn.style.display = "";
         }else{
           mn.style.display = "none";
@@ -3085,7 +3085,7 @@ body.presenMode table{font-size:1.02em}
       + '<pre style="white-space:pre-wrap;background:#f6f6f6;padding:6px;border-radius:4px">'
       + esc(d.answer) + '</pre></div>'
       + '<div style="color:var(--muted)">番号は「渡した案件名の一覧」の番号です。'
-      + '一覧に無い番号が残っていれば、その案件が事業外の印を付けられなかったものです。</div>'
+      + '一覧に無い番号が残っていれば、その案件が事業外と判定されなかったものです。</div>'
       + '</details>';
   };
   /* 2026-09-05：仕分けの結果は案件ごとに記憶され、記憶のあるものはAIに問い直さない作り。
@@ -3271,7 +3271,7 @@ body.presenMode table{font-size:1.02em}
     const row = document.querySelector('[data-id="' + String(id).replace(/"/g, '') + '"]');
     if(row){
       const cell = row.querySelector(".tg-offbiz");
-      if(cell) cell.outerHTML = '<div style="font-size:11px;color:var(--muted)">この印は取り消しました</div>';
+      if(cell) cell.outerHTML = '<div style="font-size:11px;color:var(--muted)">この判定は取り消しました</div>';
     }
   };
   window.tsAmountCell = function(it, fyFn){
@@ -3761,7 +3761,7 @@ body.presenMode table{font-size:1.02em}
           .slice(0, 4).join("／");
         const __amtNote = "／目安 上限" + __lim.max.toLocaleString("ja-JP")
           + (__lim.min != null ? "・下限" + __lim.min.toLocaleString("ja-JP") : "・下限なし")
-          + "（金額のある案件 " + __amtSeen + " 件中 " + __amtHit + " 件に印"
+          + "（金額のある案件 " + __amtSeen + " 件中 " + __amtHit + " 件が目安の外"
           + (__amtNames ? "：" + __amtNames : "") + "）";
         /* 下へ回す順序：まず事業外、次に規模の目安外。どちらも消さない。 */
         const byRange = function(arr){
@@ -6550,7 +6550,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-14-05';
+  const TRIGATE_VERSION = '2026-09-14-06';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

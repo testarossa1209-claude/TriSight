@@ -361,6 +361,7 @@ body.presenMode table{font-size:1.02em}
       <button type="button" id="usageBtn" style="margin-left:6px;font-size:12.5px;padding:3px 10px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer" title="この認証コードで今月使ったトークン数を、仕事の種類ごとに表示します">今月の使用量を見る</button>
       <div id="usageBox" style="display:none;margin-top:8px"></div>
       <div id="boxState" style="margin-top:6px;font-size:12.5px;color:#5a6070">保管庫：確認中…</div>
+      <div id="tsSyncBanner" style="display:none;margin-top:6px;padding:8px 12px;border-radius:6px;background:#b0203a;color:#fff;font-size:13px;font-weight:600;line-height:1.6"></div>
       <button type="button" id="testSendBtn" style="margin-left:8px;font-size:12.5px;padding:3px 10px;border:1px solid #c9772a;border-radius:6px;background:#fff8ef;color:#a45a1a;cursor:pointer">仮の補助金案件をTriTaskへ送る（動作確認用）</button>
       <a href="TriForm.html" style="margin-left:8px;font-size:12.5px;color:#c9772a">TriForm で届いた案件を見る</a>
       <span id="testSendMsg" style="margin-left:8px;font-size:12.5px"></span>
@@ -457,10 +458,12 @@ body.presenMode table{font-size:1.02em}
       <button id="digFullGateBtn" class="dbtn" style="display:none">この一覧すべてで詳細AIゲート判定を実行する（API複数回・時間がかかります）</button>
       <button type="button" class="rc-toggle" id="digClearBtn" style="display:none" title="掘った一覧と見込み額を消します。判定の記憶は残るので、掘り直せば元に戻ります。獲得実績の記録は消えません">掘った一覧と見込み額を消す</button>
       <button type="button" class="rc-toggle" id="digLedgerViewBtn" title="ウェブ検索で拾って台帳に貯まっている案件を、地域ごとに一覧で出します">拾った案件の台帳を見る</button>
-      <button type="button" class="rc-toggle" id="digLedgerClearBtn" title="ウェブ検索で拾った案件の台帳を消します。判定の記憶・見込み額・獲得実績には触れません">拾った案件の台帳を消す</button>
+      <button type="button" class="rc-toggle" id="digLedgerClearBtn" title="選んでいる地域の、ウェブ検索で拾った案件を、この認証コードの一覧から外します。当社の台帳からは消えません。台帳を見るボタンから戻せます">拾った案件を一覧から外す</button>
+      <button type="button" class="rc-toggle" id="digCheckBtn" title="前回掘ったときと同じ条件で一覧を組み直し、違いがあれば理由を出します。ウェブ検索は行いません">検査（前回と比べる）</button>
       <button type="button" class="rc-toggle" id="digSieveResetBtn" title="事業に照らした仕分けの記憶だけを消します。次に掘るとき、全件をもう一度AIが仕分けます。仕分けの当て方を変えたときに使ってください">事業に照らした仕分けをやり直す</button>
     </div>
     <div id="digLedgerBox" style="display:none;margin-top:10px"></div>
+    <div id="tsCheckBox" style="display:none;margin-top:10px"></div>
     <div id="digOut"></div>
   </div>
 
@@ -532,8 +535,10 @@ body.presenMode table{font-size:1.02em}
 
   <div class="run">
     <button id="go" disabled>読み取る</button>
+    <button id="readCheckBtn" type="button" class="rbtn ghost" style="margin-left:6px" title="いま入れている文書について、この端末の記憶と保管庫の記憶が一致しているかを確かめます。AIは呼びません">検査（読み取りの記憶）</button>
     <span class="status" id="status">まずPDFを入れてください。</span>
   </div>
+  <div id="readCheckOut" style="display:none;margin:6px 0 0;padding:8px 12px;border-radius:6px;font-size:13px;line-height:1.6;border:1px solid #ccd"></div>
 
   <div class="err" id="err"></div>
 
@@ -595,6 +600,17 @@ body.presenMode table{font-size:1.02em}
 </div>
 
 <script>
+/* ===== 開き方の自動切り替え　2026-09-16 ============================
+   デスクトップに置いたHTMLをアイコンから開くと、リレーが受け付けず何も動かなかった
+   （2026-08-18 ノアPC）。利用者に「ここから開くこと」と制限を課すのは当社の都合なので、
+   手元のファイルとして開かれたときは、正規の画面へ自動で移る。 */
+(function(){
+  try{
+    if(String(location.protocol) === "file:"){
+      location.replace("https://testarossa1209-claude.github.io/TriSight/TriGate.html");
+    }
+  }catch(_){}
+})();
 /* ===== 保存領域の安全弁　2026-07-27 =============================
    ファイルをローカルに保存して直接開いた場合（file:// で開いた場合）、
    ブラウザは localStorage へのアクセスを SecurityError で拒否する。
@@ -629,6 +645,49 @@ body.presenMode table{font-size:1.02em}
    ── 端末をまたいで同じ中身を見るための一枚。
    置き場所：保存領域の安全弁（file:// 対策）の直後、tsCode() の前。
 ======================================================================= */
+/* ===== 画面が期待するリレーの版（2026-09-16） =======================
+   画面とリレーは別々に上げるため、片方だけ新しい状態で動くと噛み合わない。
+   応答に載ってくる版がこれと違えば、「リレーが古い」と出して止める。
+   gate.js・box.js を直して版を上げたら、ここも同じ回に上げること。 */
+window.TS_EXPECT = {
+  relay: "2026-09-16-02",                    /* api/gate.js の GATE_VERSION */
+  readV: "r2",                               /* api/gate.js の READ_V（読み取りの指示文の版） */
+  model: "claude-sonnet-4-5-20250929",       /* api/gate.js の MODEL */
+  box:   "2026-09-16-01"                     /* api/box.js の BOX_VERSION */
+};
+/* ===== 届かなかった理由を見分ける（2026-09-16） ======================
+   これまでは「つながりません」とだけ出し、何が原因かを利用者に探させていた。
+   端末の通信・通信の途中での遮断・外のサービスの応答を分けて出す。
+   ブラウザは、どのソフトが通信を止めたかまでは画面に教えないため、製品名は出せない。 */
+window.tsNetWhy = async function(label, status){
+  var what = label || "当社のリレー";
+  if(status){
+    if(status === 401) return "認証コードが合いません（" + what + "）。";
+    if(status === 429) return "今月のご利用回数の上限に達しました（" + what + "）。";
+    if(status >= 500) return what + "（外のサービス）が応答していません（" + status + "）。時間をおいてお試しください。";
+    return what + "が受け付けませんでした（" + status + "）。";
+  }
+  try{ if(navigator && navigator.onLine === false) return "この端末がネットワークにつながっていません。Wi-Fiの状態を確かめてください。"; }catch(_){}
+  var t0 = Date.now();
+  try{
+    var r = await fetch("version.json?probe=" + t0, { cache: "no-store" });
+    var ms = Date.now() - t0;
+    if(r && r.ok){
+      return "他の通信は届いていますが、" + what + "にだけ届きません。"
+        + "ウイルス対策ソフト等が通信の途中で止めているか、" + what + "側の障害が考えられます。"
+        + (ms > 3000 ? "（通信も遅くなっています。Wi-Fiが不安定な可能性があります）" : "");
+    }
+  }catch(_){}
+  return "通信が不安定です。Wi-Fiの状態を確かめてから、もう一度お試しください。";
+};
+/* 画面上部の赤い帯。最新を取れなかったときに出し、取れたら消す */
+window.tsSyncBanner = function(msg){
+  var el = document.getElementById("tsSyncBanner");
+  if(!el) return;
+  if(msg){ el.textContent = msg; el.style.display = "block"; }
+  else { el.textContent = ""; el.style.display = "none"; }
+};
+
 (function(){
   var BOX_RELAY = "https://trisight-relay.vercel.app/api/box";
   /* 2026-09-08：保管庫の中身を消すには、専用の消去コードが要る。
@@ -682,7 +741,12 @@ body.presenMode table{font-size:1.02em}
   ];
   var BOX_WEB = "trisight_dig_web_ledger";  /* 拾った案件の台帳（中が地域ごと） */
 
-  var isBox = function(k){ return BOX_MAIN.indexOf(k) >= 0 || k === BOX_WEB; };
+  /* 2026-09-16：拾った案件の台帳（BOX_WEB）は、年度×都道府県で1件ずつ出し入れする口
+     （api/box.js の ledger_get / ledger_put）へ移した。丸ごと送ると、量が増えたときに
+     送れなくなり、2台で同時に書くと後の側が前の側を消すため。ここでは預からない。
+     入口ページの台帳（trisight_web_entries）は、端末の中だけにあったため預ける側へ加える。 */
+  BOX_MAIN.push("trisight_web_entries");
+  var isBox = function(k){ return BOX_MAIN.indexOf(k) >= 0; };
 
   /* 拾った案件の台帳を、端末の中身と箱の中身から足し合わせる（2026-09-13）。
      どちらか一方にしか無い案件は残す。両方にある案件は最終確認日の
@@ -768,34 +832,60 @@ body.presenMode table{font-size:1.02em}
     });
     dirty = {};
     if(!Object.keys(body).length) return;
+    /* 2026-09-16：送れなかったときに、変わった印を戻して次の機会に送り直す。
+       これまでは印を先に消していたため、送れなかった変更が二度と送られなかった。 */
+    var back = function(){ keys.forEach(function(k){ dirty[k] = 1; }); };
     var bytes = JSON.stringify(body).length;
     fetch(BOX_RELAY, {
       method: "POST",
       headers: { "Content-Type":"application/json", "x-trisight-code": c },
       body: JSON.stringify({ op:"put", data: body })
     }).then(function(res){
-      if(res.status === 401){ window.tsBoxNote("認証コードが合わないため、保管庫へ預けられませんでした。"); if(window.tsBoxState) window.tsBoxState('預け入れ失敗（認証コード不一致）'); return; }
-      if(!res.ok){ window.tsBoxNote("保管庫へ預けられませんでした（この端末には残っています）。"); if(window.tsBoxState) window.tsBoxState('預け入れ失敗（' + res.status + '）'); return; }
+      if(res.status === 401){ back(); window.tsBoxNote("認証コードが合わないため、保管庫へ預けられませんでした。"); if(window.tsBoxState) window.tsBoxState('預け入れ失敗（認証コード不一致）'); return; }
+      if(!res.ok){ back(); window.tsBoxNote("保管庫へ預けられませんでした（この端末には残っています。次に通信できたときに送り直します）。"); if(window.tsBoxState) window.tsBoxState('預け入れ失敗（' + res.status + '）'); return; }
       window.tsBoxUsage.puts++; window.tsBoxUsage.bytesOut += bytes;
       if(window.tsBoxState) window.tsBoxState('預けました');
     }).catch(function(){
-      window.tsBoxNote("保管庫へつながりませんでした（この端末には残っています）。");
+      back();
+      window.tsBoxNote("保管庫へつながりませんでした（この端末には残っています。次に通信できたときに送り直します）。");
       if(window.tsBoxState) window.tsBoxState('預け入れできず（つながりません）');
     });
   }
 
-  /* ---- 画面が開いたときに1回だけ取りに行く ---- */
+  /* ---- 取りに行く（2026-09-16：開いたときだけでなく、掘る前・読む前にも呼ぶ） ----
+     取れなかった理由は window.__tsBoxWhy に置き、画面上部の赤い帯に出す。
+     取れなかったときも端末の中身で動かすが、そのことを必ず見えるようにする。 */
+  window.__tsHidden = {};
+  window.__tsBoxWhy = "";
   window.tsBoxLoad = function(){
     var c = code();
     if(!c){ ready = true; if(window.tsBoxState) window.tsBoxState('認証コードが未入力のため使いません'); return Promise.resolve(false); }
-    return fetch(BOX_RELAY, {
+    var httpStatus = 0;
+    var ac = (typeof AbortController !== "undefined") ? new AbortController() : null;
+    var tm = ac ? setTimeout(function(){ try{ ac.abort(); }catch(_){} }, 20000) : null;
+    var opt = {
       method: "POST",
       headers: { "Content-Type":"application/json", "x-trisight-code": c },
       body: JSON.stringify({ op:"get" })
-    }).then(function(res){
-      if(!res.ok) throw new Error(String(res.status));
+    };
+    if(ac) opt.signal = ac.signal;
+    return fetch(BOX_RELAY, opt).then(function(res){
+      if(tm) clearTimeout(tm);
+      if(!res.ok){ httpStatus = res.status; throw new Error(String(res.status)); }
       return res.json();
     }).then(function(j){
+      if(!j || j.box_version !== (window.TS_EXPECT && window.TS_EXPECT.box)){
+        httpStatus = -1;
+        throw new Error("box-version");
+      }
+      /* 消した印（この認証コードの分）。端末の控えにも写す */
+      window.__tsHidden = (j && j.hidden && typeof j.hidden === "object") ? j.hidden : {};
+      try{
+        var hm = JSON.parse(raw.getItem("trigate_hidden_ids") || "{}") || {};
+        Object.keys(window.__tsHidden).forEach(function(k){ hm[k] = true; });
+        raw.setItem("trigate_hidden_ids", JSON.stringify(hm));
+      }catch(_){}
+      window.__tsBoxShare = (j && j.share) || "code";
       var d = (j && j.data) || {};
       Object.keys(d).forEach(function(k){
         if(!isBox(k) || d[k] == null) return;
@@ -814,19 +904,59 @@ body.presenMode table{font-size:1.02em}
       window.tsBoxUsage.gets++;
       window.tsBoxUsage.bytesIn += JSON.stringify(d).length;
       ready = true;
+      window.__tsBoxWhy = "";
+      window.__tsBoxAt = Date.now();
+      if(window.tsSyncBanner) window.tsSyncBanner("");
       if(window.tsBoxState) window.tsBoxState('取り込みました　項目 ' + Object.keys(d).length + ' 件');
       if(Object.keys(dirty).length) schedule();
       return true;
-    }).catch(function(){
-      /* つながらないときは、端末の中身でそのまま動かす（止めない） */
-      BOX_MAIN.concat([BOX_WEB]).forEach(function(k){
+    }).catch(async function(err){
+      if(tm) clearTimeout(tm);
+      /* 取れないときは端末の中身で動かす。ただし理由を帯に出して、黙って動かさない */
+      BOX_MAIN.forEach(function(k){
         var v = raw.getItem(k); if(v != null) mem[k] = v;
       });
       ready = true;
-      if(window.tsBoxState) window.tsBoxState('つながりません（この端末の中身で動いています）');
-      window.tsBoxNote("保管庫につながらないため、この端末の中身で動いています。");
+      var why = "";
+      if(httpStatus === -1){
+        why = "保管庫の口（リレーの box.js）の版が画面と合いません。box.js を最新にしてください。";
+      }else{
+        try{ why = await window.tsNetWhy("保管庫", httpStatus || 0); }catch(_){ why = "保管庫に届きませんでした。"; }
+      }
+      window.__tsBoxWhy = why;
+      if(window.tsSyncBanner) window.tsSyncBanner("最新の台帳・記憶を取れていません。この端末の中身で表示しています。　理由：" + why);
+      if(window.tsBoxState) window.tsBoxState('取り込めません（この端末の中身で動いています）');
+      window.tsBoxNote("保管庫から最新を取れませんでした。" + why);
       return false;
     });
+  };
+  /* 掘る前・読む前に呼ぶ。送り残しを先に送ってから取りに行く */
+  window.tsBoxSync = async function(){
+    try{ if(timer){ clearTimeout(timer); timer = null; } if(Object.keys(dirty).length) push(); }catch(_){}
+    return await window.tsBoxLoad();
+  };
+  /* 利用者の操作を、保管庫の口へ送る（台帳・消した印・読み取りの記憶） */
+  window.tsBoxCall = async function(body){
+    var c = code();
+    if(!c) return { ok:false, why:"認証コードが未入力です。" };
+    var res;
+    try{
+      res = await fetch(BOX_RELAY, {
+        method: "POST",
+        headers: { "Content-Type":"application/json", "x-trisight-code": c },
+        body: JSON.stringify(body)
+      });
+    }catch(_){
+      return { ok:false, why: await window.tsNetWhy("保管庫", 0) };
+    }
+    var j = null;
+    try{ j = await res.json(); }catch(_){}
+    if(!res.ok) return { ok:false, why: (j && j.error) ? j.error : await window.tsNetWhy("保管庫", res.status) };
+    if(!j || j.box_version !== window.TS_EXPECT.box){
+      return { ok:false, why:"保管庫の口（リレーの box.js）の版が画面と合いません。box.js を最新にしてください。" };
+    }
+    window.tsBoxUsage.gets++;
+    return Object.assign({ ok:true }, j);
   };
 
   /* ---- 使用量。無料枠（月50万コマンド・256MB）に対する目安を画面に出すため ---- */
@@ -890,11 +1020,17 @@ body.presenMode table{font-size:1.02em}
   async function tsAsk(task, payload){
     const code = tsCode();
     if(!code) throw new Error("認証コードが未入力です。");
-    const res = await fetch(GATE_RELAY, {
-      method: "POST",
-      headers: {"Content-Type": "application/json", "x-trisight-code": code},
-      body: JSON.stringify({ task: task, payload: payload || {} })
-    });
+    let res;
+    try{
+      res = await fetch(GATE_RELAY, {
+        method: "POST",
+        headers: {"Content-Type": "application/json", "x-trisight-code": code},
+        body: JSON.stringify({ task: task, payload: payload || {} })
+      });
+    }catch(_){
+      /* 2026-09-16：届かなかった理由を見分けて出す */
+      throw new Error(await window.tsNetWhy("判定エンジン", 0));
+    }
     if(tsAuthFail(res.status)) throw new Error("認証エラー（401）：認証コードを確認してください。");
     if(!res.ok){
       let msg = "";
@@ -907,8 +1043,25 @@ body.presenMode table{font-size:1.02em}
       throw new Error(msg);
     }
     const data = await res.json();
+    /* 2026-09-16：リレーの版を照合する。画面とリレーの片方だけが新しい状態で動くと、
+       受け渡しの欄が噛み合わず、結果が黙って変わる（2026-09-14の7か所のずれと同じ型）。 */
+    tsCheckRelay(data);
     return (data && typeof data.text === "string") ? data.text.trim() : "";
   }
+  function tsCheckRelay(data){
+    const ex = window.TS_EXPECT || {};
+    const got = (data && data.relay_version) || "";
+    window.__tsRelayMeta = { relay: got, readV: (data && data.read_version) || "", model: (data && data.model) || "" };
+    if(got !== ex.relay){
+      throw new Error("判定エンジン（リレーの gate.js）の版が画面と合いません（画面が期待する版 " + ex.relay
+        + "／届いた版 " + (got || "版の記載なし") + "）。gate.js を最新にしてから、もう一度お試しください。");
+    }
+    if((data.read_version || "") !== ex.readV || (data.model || "") !== ex.model){
+      throw new Error("判定エンジンの読み取りの版またはモデルが、画面の想定と違います（"
+        + (data.read_version || "") + "／" + (data.model || "") + "）。gate.js と画面を同じ回のものにそろえてください。");
+    }
+  }
+  window.tsCheckRelay = tsCheckRelay;
 
   /* ===== 優先度まわりの共通処理（2026-08-29） ==========================
      旧「適合度」は、締切が近いほど点が下がる作りだった。
@@ -1566,8 +1719,41 @@ body.presenMode table{font-size:1.02em}
     if(v !== "1" && v !== "0") return "";
     return v === "1"
       ? ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#e8f3ea;color:#2f6b3a;white-space:nowrap" title="当社が毎回見に行く入口ページから拾ったものです。掘り直しても同じものが出ます">定点</span>'
-      : ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#fdf3e3;color:#8a5a1a;white-space:nowrap" title="この回にAIが探して見つけたものです。掘り直すと入れ替わることがあります">その回</span>';
+      : ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#fdf3e3;color:#8a5a1a;white-space:nowrap" title="AIがウェブ検索で見つけたものです（当社が毎回見に行く入口ページからではありません）。一度拾ったものは当社の台帳に残り、掘り直しても一覧からは外れません">その回</span>';
   }
+  /* 2026-09-16：新着・年度・同名・掲載内容未取得の印。行（data-tsnew / data-fy / data-same / data-dng）に
+     値を持たせ、表を組むとき・判定の結果を書き込むとき・見込み額の印を書き込むとき・呼び戻すとき、
+     どこからでも同じ印が出るようにする（2026-09-06の取り決めに合わせる）。 */
+  function tsRowMarksHtml(ds){
+    ds = ds || {};
+    const tag = function(t, bg, fg){
+      return ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:' + bg + ';color:' + fg + ';white-space:nowrap">' + t + '</span>';
+    };
+    let h = "";
+    if(String(ds.tsnew) === "1") h += tag("新着", "#e6f4ea", "#1a7f37");
+    const fy = Number(ds.fy) || 0;
+    if(fy && fy < tsFyNow()) h += tag(tsFyLabel(fy) + "の制度", "#fff4e5", "#9a3412");
+    if(String(ds.same) === "1") h += '<div style="font-size:11px;color:#9a3412">同じ名前の制度が別のページにもあります。区分（新築・既存など）は詳細でお確かめください</div>';
+    if(String(ds.dng) === "1") h += '<div style="font-size:11px;color:#b0203a">掲載内容を取れなかったため、突き合わせずに残しています</div>';
+    return h;
+  }
+  function tsRowDataAttrs(it){
+    const q = function(v){ return String(v == null ? "" : v).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); };
+    return ' data-tsnew="' + (it && it.ts_new ? 1 : 0) + '" data-fy="' + q(it && it.__fy || "") + '"'
+      + ' data-same="' + (it && it.ts_same_name ? 1 : 0) + '" data-dng="' + (it && it.__detailNg ? 1 : 0) + '"';
+  }
+  /* 行の最初の欄の頭（案件名と印）。書き直すところは、すべてここから作る */
+  function tsRowCellHead(row){
+    const ds = (row && row.dataset) || {};
+    const q = function(v){ return String(v == null ? "" : v).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); };
+    return q(ds.title || "")
+      + (typeof window.tsSrcBadgeSafe === "function" ? window.tsSrcBadgeSafe(ds.id) : "")
+      + tsRowMarksHtml(ds)
+      + tsSteadyBadgeHtml(ds.steady || "") + tsWorkBadgeHtml(ds.work || "");
+  }
+  window.tsRowMarksHtml = tsRowMarksHtml;
+  window.tsRowDataAttrs = tsRowDataAttrs;
+  window.tsRowCellHead = tsRowCellHead;
   /* 2026-09-06 改定：はじめは「起案者の作業が増えます」を、当社が要領のありかを
      掴めていない案件に付けた。ところが実機では25件中23件に付き、印として
      見分けの用をなさなかった。当社が要領を掴めているのは少数のほうなので、
@@ -1931,9 +2117,9 @@ body.presenMode table{font-size:1.02em}
       id: "web-" + tsWebStableId(x),
       title: x.title, name: x.title,
       subsidy_catch_phrase: x.catch || "",
-      subsidy_max_limit: tgAmtSee(x.title, (typeof x.max_limit === "number") ? x.max_limit : null).value,
-      ts_amt_spread: tgAmtSee(x.title, null).spread,
-      ts_amt_seen: tgAmtSee(x.title, null).seen || [],
+      subsidy_max_limit: tgAmtSee(x.title, (typeof x.max_limit === "number") ? x.max_limit : null, x.source_url).value,
+      ts_amt_spread: tgAmtSee(x.title, null, x.source_url).spread,
+      ts_amt_seen: tgAmtSee(x.title, null, x.source_url).seen || [],
       subsidy_rate: x.rate || null,
       use_purpose: "",
       industry: x.industry || "",
@@ -1984,9 +2170,13 @@ body.presenMode table{font-size:1.02em}
     if(typeof v !== "number" || !isFinite(v) || v <= 0) return v;
     return (v < 10000) ? v * 10000 : v;
   }
-  function tgAmtSee(name, v){
+  /* 2026-09-16：名前だけを鍵にしていたため、同じ名前で別のページの制度（36万円と100万円）の額が
+     混ざり、両方とも低いほうの額で出ていた。掲載元のURLが分かるときは、URLまで含めて鍵にする。
+     それまでに名前だけで貯めた額は混ざっている可能性があるため、URLの鍵へは引き継がない。 */
+  function tgAmtSee(name, v, url){
     v = tgAmtUnit(v);
-    const k = tgAmtName(name);
+    const base = tgAmtName(name);
+    const k = (base && url) ? (base + "@" + tsNormUrl(url)) : base;
     if(!k) return { value: (typeof v === "number" ? v : null), spread:false, fixed:false };
     const l = tgAmtLoad();
     const e = l[k] || { seen: [], fixed: null };
@@ -2002,11 +2192,17 @@ body.presenMode table{font-size:1.02em}
   }
   /* 要領を読み取って確定した額。以後はこれを正とする */
   function tgAmtFix(name, v){
-    const k = tgAmtName(name);
-    if(!k || typeof v !== "number" || !isFinite(v)) return;
+    const base = tgAmtName(name);
+    if(!base || typeof v !== "number" || !isFinite(v)) return;
     const l = tgAmtLoad();
-    const e = l[k] || { seen: [], fixed: null };
-    e.fixed = v; l[k] = e; tgAmtStore(l);
+    /* 同じ名前でURLの違う制度が複数あるときは、どれの額か決められないので当てはめない */
+    const withUrl = Object.keys(l).filter(function(k){ return k.indexOf(base + "@") === 0; });
+    const targets = withUrl.length === 1 ? [base, withUrl[0]] : [base];
+    targets.forEach(function(k){
+      const e = l[k] || { seen: [], fixed: null };
+      e.fixed = v; l[k] = e;
+    });
+    tgAmtStore(l);
   }
 
   /* ===== 今月の使用量（2026-09-06） ==================================
@@ -2106,38 +2302,252 @@ body.presenMode table{font-size:1.02em}
      根拠が無く、落とされるのは「掲載元がまだ終了と言っていない制度」だった。
      消すのは掲載元が「受付を終了しました」と書いたときだけ、が当社の線。
      残る心配は端末の保存容量だけなので、入らなかったときは黙って捨てず知らせる。 */
-  const WEB_LEDGER_KEY = "trisight_dig_web_ledger";
+  const WEB_LEDGER_KEY = "trisight_dig_web_ledger";   /* 旧台帳（2026-09-16より移し替え元としてのみ読む） */
   const WEB_RULE_V = 2;         /* 終了と読む規則の版。上げると、古い規則で付いた印は捨てて確認し直す */
   const WEB_RECHECK_MAX = 3;    /* 1回の発掘で掲載元に当たりに行く件数 */
   const WEB_RECHECK_DAYS = 7;   /* 前回の確認からこれだけ空いたものが対象 */
-  function tsWebLedgerAll(){
-    try{ return JSON.parse(localStorage.getItem(WEB_LEDGER_KEY) || "{}") || {}; }catch(_){ return {}; }
+
+  /* ===== 台帳の作り直し（2026-09-16・宏史さんの決定） ===========================
+     ・台帳は当社が保持する公開情報の倉庫とし、年度×都道府県で分けて保管庫（api/box.js）に置く。
+     ・一覧の元は台帳。ウェブ検索は台帳へ新しい制度を足すためだけに使い、足した分に「新着」を付ける。
+     ・一覧から外れるのは、掲載元で受付終了が読み取れたときと、利用者が「一覧から外す」を押したときだけ。
+     ・施主向けの印は台帳の中身として保存し、組み直すたびに付け直さない。
+     ・端末には写し（trisight_ledger_mirror）を置き、保管庫に届かないときはそれで表示する。
+     これまでの「その回の検索結果だけを表に出し、前回までの分は畳む」（2026-09-05）は、これで置き換える。 */
+  const TS_LEDGER_MIRROR = "trisight_ledger_mirror";
+  const TS_LEDGER_MOVED = "trisight_ledger_moved_v1";
+  const TS_LEDGER_PENDING = "trisight_ledger_pending";   /* 保管庫へ送れなかった台帳の分 */
+  function tsDayLocal(d){
+    const x = d || new Date();
+    return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0");
   }
-  function tsWebLedgerStore(all){
-    try{ localStorage.setItem(WEB_LEDGER_KEY, JSON.stringify(all)); return true; }
-    catch(e){
-      /* 端末の保存容量が足りない。黙って捨てず、利用者に知らせる */
-      const el = document.getElementById("digStatus");
-      const msg = "この端末の保存容量がいっぱいで、拾った案件の台帳を保存できませんでした。"
-                + "一覧上の「拾った案件の台帳を消す」で、使わない地域の分を消してください。";
-      if(el) el.textContent = msg; else alert(msg);
-      return false;
+  /* 年度（4月始まり） */
+  function tsFyOf(ymd){
+    const m = String(ymd || "").match(/^(\d{4})[-\/](\d{1,2})/);
+    if(!m) return null;
+    const y = Number(m[1]), mo = Number(m[2]);
+    return mo >= 4 ? y : y - 1;
+  }
+  function tsFyNow(){ return tsFyOf(tsDayLocal()); }
+  function tsFyLabel(fy){
+    const n = Number(fy) - 2018;
+    return (n >= 1) ? ("令和" + (n === 1 ? "元" : n) + "年度") : (fy + "年度");
+  }
+  /* 制度の年度。名前に書かれた年度を正とし、無ければ受付開始日、それも無ければ今年度 */
+  function tsItemFy(it){
+    const t = String((it && (it.title || it.name)) || "").replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
+    let m = t.match(/令和\s*(元|\d{1,2})\s*年度/);
+    if(m) return 2018 + (m[1] === "元" ? 1 : Number(m[1]));
+    m = t.match(/(20\d{2})\s*年度/);
+    if(m) return Number(m[1]);
+    const st = tsFyOf(it && it.acceptance_start_datetime);
+    if(st) return st;
+    return tsFyNow();
+  }
+  function tsLedgerFys(){ const c = tsFyNow(); return [String(c + 1), String(c), String(c - 1)]; }
+  function tsLedgerMirror(){
+    try{ const m = JSON.parse(localStorage.getItem(TS_LEDGER_MIRROR) || "{}"); return (m && typeof m === "object") ? m : {}; }
+    catch(_){ return {}; }
+  }
+  function tsLedgerMirrorSave(m){
+    try{ localStorage.setItem(TS_LEDGER_MIRROR, JSON.stringify(m)); return true; }
+    catch(_){
+      /* 端末の保存枠を超えた。いま使っている都道府県以外の写しを捨てて入れ直す（本体は保管庫にある） */
+      try{
+        const keep = window.__tsLedgerPref || "";
+        const o = {}; if(keep && m[keep]) o[keep] = m[keep];
+        localStorage.setItem(TS_LEDGER_MIRROR, JSON.stringify(o));
+        return true;
+      }catch(__){ return false; }
     }
   }
-  /* 終了と読む規則を変えたときは、古い規則で付いた印を捨てて確認し直す（2026-09-05）。
-     誤って「受付が終わった案件」へ回された分を、利用者の操作なしで元へ戻すため。 */
-  function tsWebLedgerMigrate(){
-    const all = tsWebLedgerAll();
-    let n = 0;
-    Object.keys(all).forEach(function(a){
-      const rec = all[a] || {};
+  /* 台帳へ入れる形にそろえる。画面で付ける印（__で始まる項目）は入れない */
+  function tsLedgerSlim(x, city){
+    const o = {};
+    Object.keys(x || {}).forEach(function(k){ if(k.indexOf("__") !== 0) o[k] = x[k]; });
+    o.ts_city = String(city || "");
+    return o;
+  }
+  /* 保管庫から、この都道府県の台帳（3年度分）を取りに行く */
+  async function tsLedgerLoad(pref){
+    if(!pref) return { ok:true };
+    window.__tsLedgerPref = pref;
+    const r = await window.tsBoxCall({ op:"ledger_get", pref: pref, fys: tsLedgerFys() });
+    if(!r.ok) return { ok:false, why: r.why };
+    const m = tsLedgerMirror();
+    m[pref] = r.ledger || {};
+    try{
+      const pend = (JSON.parse(localStorage.getItem(TS_LEDGER_PENDING) || "{}") || {})[pref] || {};
+      Object.keys(pend).forEach(function(fy){
+        m[pref][fy] = m[pref][fy] || {};
+        Object.keys(pend[fy]).forEach(function(id){ if(!m[pref][fy][id]) m[pref][fy][id] = pend[fy][id]; });
+      });
+    }catch(_){}
+    tsLedgerMirrorSave(m);
+    /* 詳細を開くための中身の控えも、台帳から作る（別の端末でも詳細が開けるように） */
+    try{
+      const cache = JSON.parse(localStorage.getItem("trisight_dig_web_items") || "{}") || {};
+      Object.keys(m[pref]).forEach(function(fy){
+        const recs = m[pref][fy] || {};
+        Object.keys(recs).forEach(function(id){ if(recs[id] && recs[id].item) cache[id] = Object.assign({ id: id }, recs[id].item); });
+      });
+      localStorage.setItem("trisight_dig_web_items", JSON.stringify(cache));
+    }catch(_){}
+    return { ok:true };
+  }
+  /* 台帳へ足す。年度ごとに分け、50件ずつ送る。保管庫側で1件ずつ足し合わせて書く */
+  async function tsLedgerSend(pref, byFy){
+    const fails = [];
+    for(const fy of Object.keys(byFy)){
+      const ids = Object.keys(byFy[fy]);
+      for(let i = 0; i < ids.length; i += 50){
+        const recs = {};
+        ids.slice(i, i + 50).forEach(function(id){ recs[id] = byFy[fy][id]; });
+        const r = await window.tsBoxCall({ op:"ledger_put", pref: pref, fy: fy, recs: recs });
+        if(!r.ok) fails.push(r.why);
+      }
+    }
+    return fails.length ? { ok:false, why: fails[0] } : { ok:true };
+  }
+  async function tsLedgerAdd(pref, city, items, shunushi){
+    if(!pref || !Array.isArray(items) || !items.length) return { ok:true };
+    const today = tsDayLocal();
+    const byFy = {};
+    window.__tsLedgerFresh = window.__tsLedgerFresh || {};   /* この回の検索で返ってきたもの */
+    window.__tsLedgerNew = window.__tsLedgerNew || {};       /* そのうち、台帳にまだ無かったもの＝新着 */
+    const had = {};
+    const mm = tsLedgerMirror()[pref] || {};
+    Object.keys(mm).forEach(function(fy){ Object.keys(mm[fy] || {}).forEach(function(id){ had[id] = true; }); });
+    items.forEach(function(x){
+      if(!x || !x.id) return;
+      const fy = String(tsItemFy(x));
+      byFy[fy] = byFy[fy] || {};
+      byFy[fy][x.id] = { item: tsLedgerSlim(x, city), first: today, last: today,
+                         marks: (shunushi || x.__shunushi) ? { shunushi: true } : {} };
+      window.__tsLedgerFresh[x.id] = true;
+      if(!had[x.id]) window.__tsLedgerNew[x.id] = true;
+    });
+    const r = await tsLedgerSend(pref, byFy);
+    if(!r.ok){
+      /* 保管庫へ送れなかった分は、端末の写しに入れて表示し、送り残しとして控える（次の発掘で送り直す） */
+      const m = tsLedgerMirror(); m[pref] = m[pref] || {};
+      let pend = {};
+      try{ pend = JSON.parse(localStorage.getItem(TS_LEDGER_PENDING) || "{}") || {}; }catch(_){}
+      pend[pref] = pend[pref] || {};
+      Object.keys(byFy).forEach(function(fy){
+        m[pref][fy] = m[pref][fy] || {};
+        pend[pref][fy] = pend[pref][fy] || {};
+        Object.keys(byFy[fy]).forEach(function(id){
+          const cur = m[pref][fy][id];
+          m[pref][fy][id] = cur ? Object.assign({}, cur, { last: today, marks: Object.assign({}, cur.marks || {}, byFy[fy][id].marks) })
+                                : byFy[fy][id];
+          pend[pref][fy][id] = byFy[fy][id];
+        });
+      });
+      tsLedgerMirrorSave(m);
+      try{ localStorage.setItem(TS_LEDGER_PENDING, JSON.stringify(pend)); }catch(_){}
+    }
+    return r;
+  }
+  /* 送り残しを送る（掘る前に呼ぶ） */
+  async function tsLedgerFlush(){
+    let pend = {};
+    try{ pend = JSON.parse(localStorage.getItem(TS_LEDGER_PENDING) || "{}") || {}; }catch(_){ return { ok:true }; }
+    const prefs = Object.keys(pend);
+    if(!prefs.length) return { ok:true };
+    for(const pref of prefs){
+      const r = await tsLedgerSend(pref, pend[pref]);
+      if(!r.ok) return r;
+      delete pend[pref];
+      try{ localStorage.setItem(TS_LEDGER_PENDING, JSON.stringify(pend)); }catch(_){}
+    }
+    return { ok:true };
+  }
+  /* 旧台帳（端末の中だけにあったもの）を、一度だけ新しい台帳へ移す。元のデータは消さない */
+  async function tsLedgerMoveOld(){
+    try{ if(localStorage.getItem(TS_LEDGER_MOVED) === "1") return { ok:true, n:0 }; }catch(_){ return { ok:true, n:0 }; }
+    let old = {};
+    try{ old = JSON.parse(localStorage.getItem(WEB_LEDGER_KEY) || "{}") || {}; }catch(_){ old = {}; }
+    let n = 0; const fails = [];
+    for(const area of Object.keys(old)){
+      const m = String(area).match(/^(.{2,3}?[都道府県])(.*)$/);
+      if(!m) continue;
+      const pref = m[1], city = m[2] || "";
+      const byFy = {};
+      const rec = old[area] || {};
       Object.keys(rec).forEach(function(id){
         const r = rec[id];
-        if(r && r.closed && r.closed.v !== WEB_RULE_V){ r.closed = null; r.checked = ""; n++; }
+        if(!r || !r.item) return;
+        const fy = String(tsItemFy(r.item));
+        byFy[fy] = byFy[fy] || {};
+        byFy[fy][id] = { item: tsLedgerSlim(r.item, city), first: r.last || "", last: r.last || "",
+                         checked: r.checked || "", closed: r.closed || null,
+                         marks: r.item.__shunushi ? { shunushi: true } : {} };
+        n++;
+      });
+      const r2 = await tsLedgerSend(pref, byFy);
+      if(!r2.ok) fails.push(r2.why);
+    }
+    if(!fails.length){ try{ localStorage.setItem(TS_LEDGER_MOVED, "1"); }catch(_){} return { ok:true, n:n }; }
+    return { ok:false, why: fails[0], n:n };
+  }
+  /* 市区町村の絞り込み。県の制度と、選んだ市区町村の制度を両方出す（2026-09-16・宏史さんの決定） */
+  function tsCityOk(c, pref, city){
+    const area = String((c && (c.target_area_search || c.target_area_detail)) || "");
+    const ic = String((c && c.ts_city) || "");
+    const wide = /全域|全国/.test(area) || area.replace(/[（(].*$/, "").trim() === pref || !area;
+    if(!city) return !ic || wide;
+    if(ic === city || !ic) return true;
+    if(area.indexOf(city) >= 0) return true;
+    return wide;
+  }
+  /* 台帳から、この回に一覧へ出す分を組む */
+  function tsLedgerList(pref, city){
+    const out = [];
+    if(!pref) return out;
+    const m = tsLedgerMirror()[pref] || {};
+    const today = tsDayLocal();
+    const seen = {};
+    Object.keys(m).sort().reverse().forEach(function(fy){
+      const recs = m[fy] || {};
+      Object.keys(recs).forEach(function(id){
+        if(seen[id]) return;
+        const r = recs[id];
+        if(!r || !r.item) return;
+        if(typeof tsIsHidden === "function" && tsIsHidden(id)) return;
+        let c = null;
+        try{ c = JSON.parse(JSON.stringify(r.item)); }catch(_){ return; }
+        c.id = id;
+        if(!tsCityOk(c, pref, city)) return;
+        seen[id] = true;
+        c.__fy = Number(fy);
+        c.__shunushi = !!(r.marks && r.marks.shunushi);
+        c.ts_new = !!(window.__tsLedgerNew && window.__tsLedgerNew[id]);
+        if(!(window.__tsLedgerFresh && window.__tsLedgerFresh[id])){
+          c.ts_source = (c.ts_source || "") + "／当社の台帳（最後に拾った日 " + (r.last || "—") + "）";
+        }
+        tsLedgerMark(c, r.closed);
+        out.push(c);
       });
     });
-    if(n) tsWebLedgerStore(all);
-    return n;
+    /* 同じ名前で別のページの制度には、区分を確かめる必要があることを添える */
+    const nm = function(x){ return String(x.title || x.name || "").replace(/[\s　]/g, ""); };
+    const cnt = {};
+    out.forEach(function(x){ const k = nm(x); cnt[k] = (cnt[k] || 0) + 1; });
+    out.forEach(function(x){ if(cnt[nm(x)] > 1) x.ts_same_name = true; });
+    return out;
+  }
+  /* 旧来の呼び出し口（台帳を見るボタン）向けに、写しを「年度 都道府県」ごとの形で返す */
+  function tsWebLedgerAll(){
+    const m = tsLedgerMirror();
+    const out = {};
+    Object.keys(m).forEach(function(pref){
+      Object.keys(m[pref] || {}).forEach(function(fy){
+        const recs = m[pref][fy] || {};
+        if(Object.keys(recs).length) out[tsFyLabel(fy) + "　" + pref] = recs;
+      });
+    });
+    return out;
   }
   /* 当社の読み取りを利用者が取り消せる口。誤って終了と読んだときの逃げ道（2026-09-05）。
      「事業外の可能性」の印と同じ考え方で、取り消した案件には次から印を付けない。 */
@@ -2160,36 +2570,6 @@ body.presenMode table{font-size:1.02em}
       if(cell) cell.outerHTML = '<div style="font-size:11px;color:var(--muted)">この判定は取り消しました。次の発掘から一覧に戻ります</div>';
     }
   };
-  /* 今回拾った分を台帳へ足す。同じ制度は上書きし、最終確認日だけ新しくする */
-  function tsWebLedgerPut(area, fresh){
-    const key = String(area || "");
-    if(!key || !Array.isArray(fresh) || !fresh.length) return;
-    const today = new Date().toISOString().slice(0, 10);
-    const all = tsWebLedgerAll();
-    const rec = (all[key] && typeof all[key] === "object") ? all[key] : {};
-    fresh.forEach(function(x){
-      if(!x || !x.id) return;
-      const old = rec[x.id] || {};
-      /* 2026-09-06：同じ制度でも、掘る回によって受付終了日や補助率が空で返ってくる。
-         掲載元が消したのではなく、AIがその回に読まなかっただけ。
-         一度拾えた項目を、空の回で上書きして失わない。名前も最初に拾ったものを保つ
-         （回ごとに名前が変わると、利用者には別の制度に見えるため）。 */
-      const prev = old.item || null;
-      if(prev){
-        ["acceptance_end_datetime", "acceptance_start_datetime", "subsidy_rate",
-         "ts_guidelines", "title", "name"].forEach(function(k){
-          const v = x[k];
-          const empty = (v == null || v === "" || (Array.isArray(v) && !v.length));
-          if(empty && prev[k] != null && prev[k] !== "") x[k] = prev[k];
-        });
-        /* 名前は最初に拾ったものを正とする */
-        if(prev.title){ x.title = prev.title; x.name = prev.title; }
-      }
-      rec[x.id] = { item: x, last: today, closed: old.closed || null, checked: old.checked || "" };
-    });
-    all[key] = rec;
-    tsWebLedgerStore(all);
-  }
   /* 掲載元のページを取り寄せて本文を返す（PDFの取り寄せと同じリレーを使う） */
   async function tsFetchPageText(url){
     const code = (typeof tsCode === "function") ? tsCode() : "";
@@ -2275,51 +2655,65 @@ body.presenMode table{font-size:1.02em}
     return "";
   }
   /* 台帳の見直し。掲載元は後から終了日を書き足すので、掘るたびに当たりに行く。
-     発掘のなかで待ってから一覧を組むため、結果はその回の表示に出る（2026-09-05）。 */
-  async function tsWebLedgerRecheck(area){
-    const key = String(area || "");
-    if(!key) return;
-    const all = tsWebLedgerAll();
-    const rec = all[key];
-    if(!rec) return;
-    const today = new Date().toISOString().slice(0, 10);
+     発掘のなかで待ってから一覧を組むため、結果はその回の表示に出る（2026-09-05）。
+     2026-09-16：新しい台帳（年度×都道府県）に対して行い、結果は保管庫へ足し合わせて書く。 */
+  async function tsLedgerRecheck(pref, city){
+    if(!pref) return { ok:true };
+    const m = tsLedgerMirror()[pref] || {};
+    const today = tsDayLocal();
     const stale = function(on){
       if(!on) return true;
       const d = (Date.now() - new Date(String(on) + "T00:00:00").getTime()) / 86400000;
       return !(d >= 0 && d < WEB_RECHECK_DAYS);
     };
-    const ids = Object.keys(rec).filter(function(id){
-      const r = rec[id];
-      if(!r || !r.item) return false;
-      if(r.closed && r.closed.verdict === "closed") return false;  /* 一度終了と読めたものは追わない */
-      return stale(r.checked);
-    }).slice(0, WEB_RECHECK_MAX);
-    if(!ids.length) return;
+    const cand = [];
+    Object.keys(m).forEach(function(fy){
+      const recs = m[fy] || {};
+      Object.keys(recs).forEach(function(id){
+        const r = recs[id];
+        if(!r || !r.item) return;
+        if(typeof tsIsHidden === "function" && tsIsHidden(id)) return;
+        const c = Object.assign({ id: id }, r.item);
+        if(!tsCityOk(c, pref, city)) return;
+        if(r.closed && r.closed.verdict === "closed" && r.closed.v === WEB_RULE_V) return;
+        if(r.closed && r.closed.v !== WEB_RULE_V){ r.closed = null; r.checked = ""; }
+        if(!stale(r.checked)) return;
+        cand.push({ fy: fy, id: id, r: r });
+      });
+    });
+    const pick = cand.slice(0, WEB_RECHECK_MAX);
+    if(!pick.length) return { ok:true };
     let closed = 0, ng = 0, ok = 0;
-    for(let i = 0; i < ids.length; i++){
-      const r = rec[ids[i]];
+    const byFy = {};
+    for(const x of pick){
+      const r = x.r;
       const url = (r.item && (r.item.ts_source_url || r.item.front_subsidy_detail_page_url)) || "";
-      if(!url){ r.checked = today; continue; }
-      try{
-        const t = await tsFetchPageText(url);
-        const hit = tsFindClosingWord(t, r.item);
-        r.checked = today;
-        if(hit){ r.closed = { verdict: "closed", on: today, quote: hit, v: WEB_RULE_V }; closed++; }
-        else { r.closed = { verdict: "open", on: today, end: tsFindEndDate(t, r.item), v: WEB_RULE_V }; ok++; }
-      }catch(e){
-        r.checked = today;
-        r.closed = { verdict: "ng", on: today, why: String(e && e.message ? e.message : e).slice(0, 40), v: WEB_RULE_V };
-        ng++;
+      let ck = null;
+      if(!url){ ck = { verdict: "ng", on: today, why: "掲載元のURLがありません", v: WEB_RULE_V }; ng++; }
+      else{
+        try{
+          const t = await tsFetchPageText(url);
+          const hit = tsFindClosingWord(t, r.item);
+          if(hit){ ck = { verdict: "closed", on: today, quote: hit, v: WEB_RULE_V }; closed++; }
+          else { ck = { verdict: "open", on: today, end: tsFindEndDate(t, r.item), v: WEB_RULE_V }; ok++; }
+        }catch(e){
+          ck = { verdict: "ng", on: today, why: String(e && e.message ? e.message : e).slice(0, 40), v: WEB_RULE_V };
+          ng++;
+        }
       }
+      r.checked = today; r.closed = ck;
+      byFy[x.fy] = byFy[x.fy] || {};
+      byFy[x.fy][x.id] = { item: {}, checked: today, closed: ck };
     }
-    all[key] = rec;
-    tsWebLedgerStore(all);
+    const mm = tsLedgerMirror(); mm[pref] = m; tsLedgerMirrorSave(mm);
+    const sent = await tsLedgerSend(pref, byFy);
     const el = document.getElementById("digStatus");
     if(el){
-      el.textContent = "台帳の見直し：" + key + "の" + (ok + closed + ng) + "件を掲載元で確認しました"
+      el.textContent = "台帳の見直し：" + pref + "の" + (ok + closed + ng) + "件を掲載元で確認しました"
         + (closed ? "（受付終了と読める記載 " + closed + "件）" : "（受付終了と読める記載はありません）")
         + (ng ? "／取り寄せられなかったもの " + ng + "件" : "") + "。";
     }
+    return sent;
   }
   /* 見直しの結果を、案件の出所欄と詳細へ印として書き入れる */
   function tsLedgerMark(c, ck){
@@ -2341,33 +2735,6 @@ body.presenMode table{font-size:1.02em}
       c.ts_source = (c.ts_source || "") + "／掲載元の受付終了日 " + ck.end + "（" + ck.on + "確認）";
     }
   }
-  /* 台帳の中身を、今回の検索結果と合わせて一覧用にそろえる */
-  function tsWebLedgerMerge(area, fresh){
-    const key = String(area || "");
-    const out = Array.isArray(fresh) ? fresh.slice() : [];
-    const all = tsWebLedgerAll();
-    const rec = all[key];
-    if(!rec) return out;
-    const byId = {};
-    out.forEach(function(x){ if(x && x.id) byId[x.id] = x; });
-    Object.keys(rec).forEach(function(id){
-      const r = rec[id];
-      if(!r || !r.item) return;
-      if(byId[id]){ tsLedgerMark(byId[id], r.closed); return; }
-      let c = null;
-      try{ c = JSON.parse(JSON.stringify(r.item)); }catch(_){ return; }
-      if(!c) return;
-      c.ts_carried = true;
-      c.ts_source = (c.ts_source || "") + "／前回までの検索分・最終確認 " + r.last;
-      c.detail = String(c.detail || "")
-        + "\n\n※この案件は、前回までの検索で拾ったものです（最終確認 " + r.last
-        + "）。今回の検索では返ってきませんでした。受付状況は掲載元でお確かめください。";
-      tsLedgerMark(c, r.closed);
-      out.push(c);
-    });
-    return out;
-  }
-
   /* ===== 公募要領の自動取り寄せ 2026-08-22 =====
      ブラウザからは他ドメインのPDFを直接読めないため、リレーに取りに行かせる。
      取れたPDFは、STEP2の読み取り欄へ人が落としたのと同じ経路へ流し込む。 */
@@ -2782,7 +3149,8 @@ body.presenMode table{font-size:1.02em}
         ? window.tsSteadyBadgeHtml(row.dataset.steady || "") : "";
       const work = (typeof window.tsWorkBadgeHtml === "function")
         ? window.tsWorkBadgeHtml(row.dataset.work || "") : "";
-      cell.innerHTML = e(row.dataset.title || "") + (typeof window.tsSrcBadgeSafe === "function" ? window.tsSrcBadgeSafe(id) : "") + steady + work + badgeHtml + hurry;
+      /* 2026-09-16：頭の組み立てを一本化（新着・年度などの印も落とさない） */
+      cell.innerHTML = window.tsRowCellHead(row) + badgeHtml + hurry;
     }
     /* 判定が付いた行を、見出し（この業界向け／業種を問わない）の区切りを保ったまま並べ替える。
        順序は ①急ぎ（締切21日以内で間に合うもの）②優先度の高い順 ③締切の近い順 ④未判定。
@@ -2949,8 +3317,17 @@ body.presenMode table{font-size:1.02em}
     /* 足切りが届かなかったことを黙って通さない（2026-08-29）。
        今日、届かないまま全件が通り、半日それに気づけなかった。
        通信の失敗は必ず画面に出す。 */
-    let mechAsked = 0, mechFailed = 0;
-    function mechResetAlert(){ mechAsked = 0; mechFailed = 0; }
+    let mechAsked = 0, mechFailed = 0, mechWhy = "";
+    function mechResetAlert(){ mechAsked = 0; mechFailed = 0; mechWhy = ""; }
+    /* 2026-09-16：届かなかった分を「通したこと」にして一覧を出すのをやめる。
+       答えていないのに答えたかのような一覧ができ、結果が回ごとに変わる元になるため。 */
+    function mechStopMsg(){
+      if(!mechFailed) return "";
+      return "足切りの判定が " + mechFailed + "/" + mechAsked + " 回届きませんでした。"
+        + "届かなかった分を通したことにはせず、この回の一覧は出さずに止めました。"
+        + (mechWhy ? "　理由：" + mechWhy : "")
+        + "　もう一度「新着探索」を押してください（届いた分は記憶しているので、残りだけを問い合わせます）。";
+    }
     function mechAlert(){
       if(!mechAsked || !mechFailed) return "";
       return (mechFailed >= mechAsked)
@@ -3123,12 +3500,23 @@ body.presenMode table{font-size:1.02em}
           };
           if(ac) opt.signal = ac.signal;
           const res = await fetch(GATE_RELAY, opt);
-          if(res.ok){ const j = await res.json(); if(j && Array.isArray(j.sift)) out=j.sift; }
-        }catch(_){}
+          if(res.ok){
+            const j = await res.json();
+            try{ tsCheckRelay(j); }catch(ve){ mechWhy = String(ve.message || ve); }
+            if(!mechWhy && j && Array.isArray(j.sift)) out=j.sift;
+            else if(!mechWhy) mechWhy = "足切りの答えの形が読めませんでした。";
+          }else{
+            mechWhy = await window.tsNetWhy("判定エンジン", res.status);
+          }
+        }catch(err){
+          mechWhy = (err && err.name === "AbortError")
+            ? "判定エンジンの答えが30秒以内に届きませんでした。"
+            : await window.tsNetWhy("判定エンジン", 0);
+        }
         finally{ if(timer) clearTimeout(timer); }
         mechAsked++;
         if(out) pk.forEach((k,n)=>{ mechCache[k] = out[n] || null; });
-        else mechFailed++;
+        else { mechFailed++; pk.forEach(k=>{ delete mechCache[k]; }); }
       }
     }
     function mechCheck(d){
@@ -3276,49 +3664,61 @@ body.presenMode table{font-size:1.02em}
         });
         html += "</tbody></table>";
       });
+      /* 2026-09-16：一覧から外した案件と、戻す口 */
+      let hid = {};
+      try{ hid = JSON.parse(localStorage.getItem("trigate_hidden_ids") || "{}") || {}; }catch(_){}
+      const hidIds = [];
+      areas.forEach(function(area){ Object.keys(all[area] || {}).forEach(function(id){ if(hid[id] && hidIds.indexOf(id) < 0) hidIds.push(id); }); });
+      let hidHtml = "";
+      if(hidIds.length){
+        hidHtml = '<div style="font-weight:700;font-size:13px;margin:14px 0 4px">一覧から外している案件　' + hidIds.length + '件</div>'
+          + '<table class="digtbl"><tbody>'
+          + hidIds.map(function(id){
+              let nm = id;
+              areas.forEach(function(area){ const r = (all[area] || {})[id]; if(r && r.item) nm = r.item.title || r.item.name || id; });
+              return '<tr><td>' + esc(nm) + '</td><td style="width:90px"><button type="button" class="rbtn" data-unhide="' + esc(id) + '">戻す</button></td></tr>';
+            }).join("")
+          + '</tbody></table>';
+      }
       box.innerHTML = '<div style="font-size:12.5px;color:var(--muted);margin-bottom:6px">'
-        + '台帳にあるもの　合計 ' + total + '件（地域 ' + areas.length + '）。'
-        + '掘った回の検索で返ってこなかった案件も、ここに残っています。</div>' + html;
+        + '台帳にあるもの　合計 ' + total + '件（年度・都道府県 ' + areas.length + '）。'
+        + '当社の台帳です。掘った回の検索で返ってこなかった案件も、ここに残っています。</div>' + html + hidHtml;
       box.style.display = "block";
+      box.querySelectorAll("button[data-unhide]").forEach(function(ub){
+        ub.addEventListener("click", async function(){
+          ub.disabled = true;
+          const r = await window.tsUnhideRows([ub.getAttribute("data-unhide")]);
+          ub.textContent = r.ok ? "戻しました（次の発掘から一覧に出ます）" : ("戻せませんでした：" + r.why);
+        });
+      });
     });
   })();
   (function(){
     const b = document.getElementById("digLedgerClearBtn");
     if(!b) return;
-    const label = "拾った案件の台帳を消す";
+    const label = "拾った案件を一覧から外す";
+    /* 2026-09-16：台帳は当社が保持する倉庫になったため、利用者の操作で倉庫からは消さない。
+       選んでいる地域の分を、この認証コードの一覧から外す。台帳を見るボタンから戻せる。 */
     b.addEventListener("click", async function(){
-      /* 2026-09-08：台帳も保管庫に載るため、消去コードの照合を先に通す。 */
-      if(!(await window.tsEraseBox("ledger"))) return;
-      const all = tsWebLedgerAll();
-      const areas = Object.keys(all);
-      if(!areas.length){
-        b.textContent = "拾った案件の台帳はまだ空です";
-        setTimeout(function(){ b.textContent = label; }, 10000);
-        return;
-      }
-      const lines = areas.map(function(a){
-        return "・" + a + "　" + Object.keys(all[a] || {}).length + "件";
-      }).join("\n");
       const ps = document.getElementById("digPref");
       const cs = document.getElementById("digCity");
-      const sel = (ps ? ps.value : "") + ((cs && !cs.disabled) ? cs.value : "");
-      let msg, target = "";
-      if(sel && all[sel]){
-        target = sel;
-        msg = "いま台帳に入っているもの\n\n" + lines
-            + "\n\nこのうち「" + sel + "」の分だけを消します。他の地域は残ります。"
-            + "\n判定の記憶・見込み額・獲得実績には触れません。\n\n消してよろしいですか。";
-      }else{
-        msg = "いま台帳に入っているもの\n\n" + lines
-            + "\n\n選んでいる地域の台帳がありません。全部消しますか。"
-            + "\n判定の記憶・見込み額・獲得実績には触れません。";
-      }
-      if(!confirm(msg)){ return; }
-      let n = 0;
-      if(target){ n = Object.keys(all[target] || {}).length; delete all[target]; }
-      else { areas.forEach(function(a){ n += Object.keys(all[a] || {}).length; delete all[a]; }); }
-      tsWebLedgerStore(all);
-      b.textContent = "台帳を消しました（" + (target || "全地域") + "・" + n + "件）";
+      const pref = ps ? ps.value : "";
+      const city = (cs && !cs.disabled) ? cs.value : "";
+      if(!pref){ b.textContent = "地域（都道府県）を選んでから押してください"; setTimeout(function(){ b.textContent = label; }, 10000); return; }
+      const rows = tsLedgerList(pref, city);
+      if(!rows.length){ b.textContent = "この地域の一覧に外せる案件はありません"; setTimeout(function(){ b.textContent = label; }, 10000); return; }
+      if(!confirm(pref + city + "の、ウェブ検索で拾った案件 " + rows.length + "件を、この認証コードの一覧から外します。"
+        + "\n当社の台帳からは消えません。「拾った案件の台帳を見る」から戻せます。"
+        + "\n判定の記憶・見込み額・獲得実績には触れません。\n\n外してよろしいですか。")) return;
+      const ids = rows.map(function(x){ return x.id; });
+      try{
+        const m = JSON.parse(localStorage.getItem("trigate_hidden_ids") || "{}");
+        ids.forEach(function(id){ m[id] = true; });
+        localStorage.setItem("trigate_hidden_ids", JSON.stringify(m));
+      }catch(_){}
+      const r = await window.tsBoxCall({ op:"hide", ids: ids });
+      b.textContent = r.ok ? ("一覧から外しました（" + pref + city + "・" + ids.length + "件）")
+                           : ("この端末では外しましたが、保管庫へ送れませんでした：" + r.why);
       setTimeout(function(){ b.textContent = label; }, 15000);
     });
   })();
@@ -3335,6 +3735,21 @@ body.presenMode table{font-size:1.02em}
     try{ var m=JSON.parse(localStorage.getItem(TG_HIDDEN_IDS)||"{}"); m[String(id)]=true; localStorage.setItem(TG_HIDDEN_IDS,JSON.stringify(m)); }catch(_){}
     var row=document.querySelector('[data-id="'+String(id).replace(/"/g,"")+'"]');
     if(row) row.style.display="none";
+    /* 2026-09-16：外した印を保管庫にも送り、別の端末から戻ってこないようにする */
+    if(window.tsBoxCall){
+      window.tsBoxCall({ op:"hide", ids:[String(id)] }).then(function(r){
+        if(!r.ok && window.tsSyncBanner) window.tsSyncBanner("「一覧から外す」を保管庫へ送れませんでした（この端末では外れています）。理由：" + r.why);
+      });
+    }
+  };
+  window.tsUnhideRows = async function(ids){
+    try{
+      var m=JSON.parse(localStorage.getItem(TG_HIDDEN_IDS)||"{}");
+      ids.forEach(function(id){ delete m[String(id)]; if(window.__tsHidden) delete window.__tsHidden[String(id)]; });
+      localStorage.setItem(TG_HIDDEN_IDS,JSON.stringify(m));
+    }catch(_){}
+    if(!window.tsBoxCall) return { ok:true };
+    return await window.tsBoxCall({ op:"unhide", ids: ids.map(String) });
   };
   function tsHiddenClear(){
     try{ localStorage.removeItem(TG_HIDDEN_IDS); }catch(_){}
@@ -3396,8 +3811,9 @@ body.presenMode table{font-size:1.02em}
       let html = '<table class="digtbl"><thead><tr><th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th></tr></thead><tbody>';
       for(const it of rows){
         html += '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'"'
-              + ' data-steady="'+e(it.__steady||"")+'" data-work="'+e(it.__work||"")+'">'
+              + ' data-steady="'+e(it.__steady||"")+'" data-work="'+e(it.__work||"")+'"' + tsRowDataAttrs(it) + '>'
               + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)
+              + tsRowMarksHtml({ tsnew: it.ts_new ? 1 : 0, fy: it.__fy, same: it.ts_same_name ? 1 : 0, dng: it.__detailNg ? 1 : 0 })
                 + tsSteadyBadgeHtml(it.__steady || "") + tsWorkBadgeHtml(it.__work || "")
                 + (it.__offBiz ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__offBiz)+'</span>' : "")
           + (it.__amtOut ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__amtOut)+'</span>' : "")
@@ -3409,6 +3825,150 @@ body.presenMode table{font-size:1.02em}
       }
       return html + "</tbody></table>" + "<div class='digNote'>国土交通省・厚生労働省・自治体の制度は、検索する語では絞っていません。業種・規模・地域で当てています（語で絞ると、業種から当たる制度を取りこぼすため）。／受付期間の終わりは掲載元（Jグランツ等）の表記をそのまま表示しています。申請の締切と異なる場合があります。</div>";
     }
+
+    /* ===== 検査（2026-09-16） ==========================================
+       前回掘ったときの「入力」と「結果」を控え、検査のときに同じ条件で組み直して比べる。
+       違いがあれば、変わった入力を理由として出す。入力が同じなのに結果が違えば、
+       それは当社の仕組みの欠陥なので、どの段で違ったかを出して止める。
+       保管庫から最新を取れていない場合も、原因の解明が要るものとして止める。 */
+    function tsHash(v){
+      const t = (typeof v === "string") ? v : JSON.stringify(v == null ? "" : v);
+      let h1 = 0x811c9dc5, h2 = 5381;
+      for(let i = 0; i < t.length; i++){
+        const c = t.charCodeAt(i);
+        h1 = Math.imul(h1 ^ c, 16777619) >>> 0;
+        h2 = ((h2 * 33) ^ c) >>> 0;
+      }
+      return t.length + "-" + h1.toString(36) + h2.toString(36);
+    }
+    function tsLs(k){ try{ return localStorage.getItem(k) || ""; }catch(_){ return ""; } }
+    async function tsSnapMake(kw, pref, city, show, extIds){
+      const mir = pref ? (tsLedgerMirror()[pref] || {}) : {};
+      const ledgerSig = {};
+      Object.keys(mir).forEach(function(fy){
+        Object.keys(mir[fy] || {}).sort().forEach(function(id){
+          const r = mir[fy][id] || {};
+          ledgerSig[fy + ":" + id] = [(r.closed && r.closed.verdict) || "", r.marks && r.marks.shunushi ? 1 : 0,
+                                      (r.item && r.item.ts_city) || ""].join("|");
+        });
+      });
+      let hidden = {};
+      try{ hidden = JSON.parse(tsLs("trigate_hidden_ids") || "{}") || {}; }catch(_){}
+
+      const meta = window.__tsRelayMeta || {};
+      return {
+        at: new Date().toISOString(),
+        inputs: {
+          company: tsHash(digCompanyForJudge ? digCompanyForJudge() : company),
+          threshold: tsHash(tsLs("trigate_pj_threshold")),
+          date: tsDayLocal(),
+          screen: (typeof TRIGATE_VERSION !== "undefined" ? TRIGATE_VERSION : ""),
+          relay: [meta.relay || "", meta.readV || "", meta.model || ""].join("/"),
+          share: window.__tsBoxShare || "",
+          ledger: tsHash(ledgerSig),
+          hidden: tsHash(Object.keys(hidden).sort()),
+          judgeMemo: tsHash(tsLs("trisight_judge_memo")),
+          overrides: tsHash(tsLs("trigate_offbiz_override") + "|" + tsLs("trigate_closed_override")),
+          sources: tsHash(extIds || []),
+          params: tsHash([kw, pref, city, digPurpose, digShinchiOn() ? 1 : 0])
+        },
+        boxOk: !window.__tsBoxWhy,
+        boxWhy: window.__tsBoxWhy || "",
+        stages: window.__tsStages || null,
+        rows: (show || []).map(function(it){
+          return { id: String(it.id || ""), t: String(it.title || it.name || ""),
+                   g: it.__shunushi ? "S" : (tsIsIndustrySpecific(it) ? "A" : "B"), fy: Number(it.__fy) || 0,
+                   m: [it.__offBiz ? 1 : 0, it.__amtOut ? 1 : 0, it.__closedWord ? 1 : 0].join("") };
+        })
+      };
+    }
+    const TS_INPUT_LABEL = {
+      company: "企業基礎情報（または選んでいる会社）が変わった",
+      threshold: "上限・下限の目安の金額が変わった",
+      date: "掘った日が違う（受付終了・締切までの日数が変わる）",
+      screen: "画面（TriGate.html）の版が変わった",
+      relay: "判定エンジン（gate.js）の版またはモデルが変わった",
+      share: "台帳の共有の範囲の設定が変わった",
+      ledger: "台帳の中身が変わった（新着の追加・受付終了の読み取り・施主向けの印）",
+      hidden: "「一覧から外す」で外した案件が変わった",
+      judgeMemo: "判定の記憶が変わった（記憶を消した・新しく判定した）",
+      overrides: "「事業外」「受付終了」の取り消しが変わった",
+      sources: "Jグランツ・国・自治体の受付中の制度が変わった",
+      params: "検索する語・地域・発掘の目的が変わった"
+    };
+    function tsCheckReport(now){
+      const box = document.getElementById("tsCheckBox");
+      if(!box) return;
+      let prev = null;
+      try{ prev = JSON.parse(tsLs("trisight_check_snap") || "null"); }catch(_){}
+      const card = function(color, title, body){
+        return '<div style="border:2px solid ' + color + ';border-radius:8px;padding:12px 14px;background:#fff">'
+          + '<div style="font-weight:700;color:' + color + ';margin-bottom:6px">' + title + '</div>' + body + '</div>';
+      };
+      box.style.display = "block";
+      if(!prev || !Array.isArray(prev.rows)){
+        box.innerHTML = card("#5a6070", "比べる前回の控えがありません", "一度「新着探索」で掘ってから、検査を押してください。");
+        return;
+      }
+      if(!now.boxOk){
+        box.innerHTML = card("#b0203a", "検査を止めました：保管庫から最新を取れていません",
+          "端末の間で中身がそろっているか確かめられないため、比べても意味のある結果になりません。原因の解明が要ります。<br>理由："
+          + e(now.boxWhy));
+        return;
+      }
+      const key = function(r){ return r.id + "|" + r.g + "|" + r.fy + "|" + r.m; };
+      const pa = prev.rows.map(key), na = now.rows.map(key);
+      const pset = {}, nset = {};
+      prev.rows.forEach(function(r){ pset[r.id] = r; });
+      now.rows.forEach(function(r){ nset[r.id] = r; });
+      const added = now.rows.filter(function(r){ return !pset[r.id]; });
+      const removed = prev.rows.filter(function(r){ return !nset[r.id]; });
+      const changed = now.rows.filter(function(r){ return pset[r.id] && key(pset[r.id]) !== key(r); });
+      const sameOrder = pa.join("\n") === na.join("\n");
+      const when = String(prev.at || "").replace("T", " ").slice(0, 16);
+      if(!added.length && !removed.length && !changed.length && sameOrder){
+        box.innerHTML = card("#1a7f37", "前回（" + e(when) + "）と同じ結果です",
+          "表示 " + now.rows.length + " 件。並び・印も同じです。");
+        return;
+      }
+      const diffs = [];
+      Object.keys(TS_INPUT_LABEL).forEach(function(k){
+        if(String((prev.inputs || {})[k]) !== String(now.inputs[k])) diffs.push(TS_INPUT_LABEL[k]);
+      });
+      const list = function(title, arr){
+        if(!arr.length) return "";
+        return '<div style="margin-top:6px"><b>' + title + '（' + arr.length + '件）</b><ul style="margin:4px 0 0 18px">'
+          + arr.slice(0, 30).map(function(r){ return "<li>" + e(r.t || r.id) + "</li>"; }).join("") + "</ul></div>";
+      };
+      const detail = list("増えた制度", added) + list("減った制度", removed) + list("見出し・年度・印が変わった制度", changed)
+        + ((!added.length && !removed.length && !changed.length && !sameOrder) ? '<div style="margin-top:6px">並び順だけが変わりました。</div>' : "");
+      if(diffs.length){
+        box.innerHTML = card("#9a3412", "前回（" + e(when) + "）と違います。変わった入力で説明がつきます",
+          '<div>変わった入力：</div><ul style="margin:4px 0 0 18px">' + diffs.map(function(d){ return "<li>" + e(d) + "</li>"; }).join("") + "</ul>"
+          + detail + '<div style="margin-top:8px;font-size:12px;color:var(--muted)">この結果を次の検査の基準にするには、「新着探索」で掘り直してください。</div>');
+        return;
+      }
+      const st0 = prev.stages || {}, st1 = now.stages || {};
+      const stage = function(lab, k){ return "<li>" + lab + "：前回 " + e(st0[k] == null ? "—" : st0[k]) + " 件／今回 " + e(st1[k] == null ? "—" : st1[k]) + " 件</li>"; };
+      box.innerHTML = card("#b0203a", "欠陥：入力がすべて同じなのに、結果が前回と違います。先へ進まないでください",
+        "当社の仕組みの欠陥です。なぎさが原因を解明して直します。この画面の内容をそのままお伝えください。"
+        + '<ul style="margin:6px 0 0 18px">' + stage("受付中", "total") + stage("事業に照らした仕分け後", "ai")
+        + stage("表示", "show") + stage("掲載内容を取れなかった", "detailNg") + "</ul>" + detail);
+    }
+    (function(){
+      const cb = document.getElementById("digCheckBtn");
+      if(!cb) return;
+      cb.addEventListener("click", function(){
+        if(btn.disabled) return;
+        const box = document.getElementById("tsCheckBox");
+        if(box){ box.style.display = "block"; box.textContent = "検査しています…（前回と同じ条件で一覧を組み直しています。ウェブ検索は行いません）"; }
+        window.__tsCheckMode = true;
+        btn.click();
+        const wait = setInterval(function(){
+          if(!btn.disabled){ clearInterval(wait); window.__tsCheckMode = false; }
+        }, 500);
+      });
+    })();
 
     function saveDigResult(kw, statusText, rows){
       try{
@@ -3431,7 +3991,13 @@ body.presenMode table{font-size:1.02em}
              詳細を開くと公式ページへ行く道が消えていた。要領を人が拾う運びを
              正規の手順にする以上、その入口が消えるのは致命的なので必ず残す。 */
           front_subsidy_detail_page_url: it.front_subsidy_detail_page_url || "",
-          ts_guidelines: Array.isArray(it.ts_guidelines) ? it.ts_guidelines : []
+          ts_guidelines: Array.isArray(it.ts_guidelines) ? it.ts_guidelines : [],
+          /* 2026-09-16：年度・新着・同名・施主向けの印も控える（開き直したときに消えないように） */
+          __fy: it.__fy || null,
+          ts_new: !!it.ts_new,
+          ts_same_name: !!it.ts_same_name,
+          __shunushi: !!it.__shunushi,
+          __detailNg: !!it.__detailNg
         }));
         localStorage.setItem(DIG_SAVE_KEY, JSON.stringify({
           company: (typeof tsCompanyKey === "function" ? tsCompanyKey() : ""),
@@ -3552,6 +4118,19 @@ body.presenMode table{font-size:1.02em}
         return;
       }
       btn.disabled = true;
+      const checkMode = !!window.__tsCheckMode;   /* 検査のときは、ウェブ検索・台帳への書き込み・掲載元の見直しをしない */
+      window.__tsLedgerFresh = {};
+      window.__tsLedgerNew = {};
+      /* 2026-09-16：掘る前に、保管庫から最新（判定の記憶・消した印など）を取りに行く。
+         取れなければ理由を赤い帯に出し、端末の中身で進める。 */
+      st.textContent = "保管庫から最新を取りに行っています…";
+      try{ await window.tsBoxSync(); }catch(_){}
+      if(!checkMode){
+        const mv = await tsLedgerMoveOld();
+        if(!mv.ok) window.tsSyncBanner("この端末に残っていた旧台帳を、新しい台帳へ移せませんでした（次の発掘で再び試みます）。理由：" + mv.why);
+        const fl = await tsLedgerFlush();
+        if(!fl.ok) window.tsSyncBanner("前回保管庫へ送れなかった台帳の分を、まだ送れていません（次の発掘で再び試みます）。理由：" + fl.why);
+      }
       /* 2026-09-09：待つ人には工程の区切りが見えない。押してから結果が出るまでが待ち時間。
          従来は都道府県の検索の段階だけに「1分半」と出していたが、実測は全体で2分半前後で、
          予告より長くかかると止まったと思わせていた。全体の長さを、押した直後に出す。
@@ -3611,6 +4190,8 @@ body.presenMode table{font-size:1.02em}
           }
         }
         if(mlNote) st.textContent = mlNote;
+        /* 検査の入力（2026-09-16）：Jグランツ・国・自治体の受付中の制度。ウェブ検索や外した案件を混ぜる前に控える */
+        const extIds = list.map(function(it){ return String((it && it.id) || ""); }).filter(Boolean).sort();
         /* 選ばれた県を、その場で掘りに行く（2026-08-22）。
            47都道府県ぶんのカタログを持たずに全県へ対応するための本体。
            失敗しても他の出所の結果は残す。 */
@@ -3621,68 +4202,89 @@ body.presenMode table{font-size:1.02em}
         const selArea = selPref + selCity;
         let webNote = "";
         let webEntries = [];
+        let ledgerNote = "";
         if(selPref){
-          st.textContent = selArea + "の独自制度を検索しています…（もう少しかかります）";
-          try{
-            const shu = document.getElementById("digShunushi");
-            const wantShunushi = !!(shu && shu.checked);
-            /* 施主（個人）向けを探すときは、業種の代わりに受給者の別を伝える。
-               会社の業種で探すと、事業者向けの制度しか返ってこないため（2026-09-01）。 */
-            const ind = wantShunushi
-              ? "受給者が個人（住宅の所有者・居住者）である住宅用の制度。太陽光発電・蓄電池・V2H・省エネ改修など。事業者向けは不要"
-              : (function(){
-                  /* 2026-09-05：機械足切りの業種と、事業側で選ばれた業種の両方を渡す。
-                     どちらか片方しか書かれていない基礎情報でも取りこぼさない。 */
-                  const a = (company && company["機械足切り条件"] && company["機械足切り条件"]["業種"]) || "";
-                  const b = tsIndustryWords(company);
-                  const w = (a + "，" + b).split(/[，,、\s]+/).filter(Boolean);
-                  return w.filter(function(x, i){ return w.indexOf(x) === i; }).join("，");
-                })();
-            let webItems = await tsDigWebPref(selPref, ind, selCity, selArea);
-            if(wantShunushi) webItems.forEach(it => { if(it) it.__shunushi = true; });
-            webEntries = tsWebEntries.slice();
-            /* 拾えた入口ページを台帳へ足す（次回の掘りで渡す材料になる。道案内のあるものだけ） */
-            try{ tsEntrySave(selArea, webEntries); }catch(e){}
-            const webFresh = webItems.length;
-            /* 入口ページの台帳の掃除（端末ごとに一度だけ）と、終了の読み取り規則の版直し */
+          /* 台帳（年度×都道府県）を保管庫から取る。取れなければ端末の写しで進める */
+          const ld = await tsLedgerLoad(selPref);
+          if(!ld.ok){
+            ledgerNote = "／台帳を保管庫から取れず、この端末の写しで表示しています（" + ld.why + "）";
+            window.tsSyncBanner("最新の台帳を取れていません。この端末の写しで表示しています。　理由：" + ld.why);
+          }
+          const shu = document.getElementById("digShunushi");
+          const wantShunushi = !!(shu && shu.checked);
+          let webFresh = 0, webFailed = false;
+          if(!checkMode){
+            st.textContent = selArea + "の独自制度を検索しています…（もう少しかかります）";
             try{
-              const tidied = tsEntryTidy();
-              if(tidied) st.textContent = "入口ページの台帳を一度きれいにしました（" + tidied
-                + "件）。この回から貯め直します。";
-            }catch(e){}
-            try{ tsWebLedgerMigrate(); }catch(e){}
-            /* 今回の分を台帳へ足す（この時点では一覧を組まない） */
-            try{ tsWebLedgerPut(selArea, webItems); }catch(e){}
-            /* 情報の新旧を見るのが発掘の仕事なので、終了日の確認もこの場で済ませる。
-               確認を待ってから一覧を組み立て、その回の表示に反映する（2026-09-05）。 */
+              /* 施主（個人）向けを探すときは、業種の代わりに受給者の別を伝える。
+                 会社の業種で探すと、事業者向けの制度しか返ってこないため（2026-09-01）。 */
+              const ind = wantShunushi
+                ? "受給者が個人（住宅の所有者・居住者）である住宅用の制度。太陽光発電・蓄電池・V2H・省エネ改修など。事業者向けは不要"
+                : (function(){
+                    /* 2026-09-05：機械足切りの業種と、事業側で選ばれた業種の両方を渡す。
+                       どちらか片方しか書かれていない基礎情報でも取りこぼさない。 */
+                    const a = (company && company["機械足切り条件"] && company["機械足切り条件"]["業種"]) || "";
+                    const b = tsIndustryWords(company);
+                    const w = (a + "，" + b).split(/[，,、\s]+/).filter(Boolean);
+                    return w.filter(function(x, i){ return w.indexOf(x) === i; }).join("，");
+                  })();
+              const webItems = await tsDigWebPref(selPref, ind, selCity, selArea);
+              webEntries = tsWebEntries.slice();
+              /* 拾えた入口ページを台帳へ足す（次回の掘りで渡す材料になる。道案内のあるものだけ） */
+              try{ tsEntrySave(selArea, webEntries); }catch(e){}
+              try{
+                const tidied = tsEntryTidy();
+                if(tidied) st.textContent = "入口ページの台帳を一度きれいにしました（" + tidied + "件）。この回から貯め直します。";
+              }catch(e){}
+              webFresh = webItems.length;
+              /* 今回拾った分を台帳へ足す（新着の印はこの回だけ付く） */
+              const put = await tsLedgerAdd(selPref, selCity, webItems, wantShunushi);
+              if(!put.ok){
+                ledgerNote += "／今回拾った分を台帳へ入れられませんでした（" + put.why + "）";
+                window.tsSyncBanner("今回拾った制度を台帳へ入れられませんでした。　理由：" + put.why);
+              }
+            }catch(err){
+              webFailed = true;
+              srcTally.push({ label: selArea + "（ウェブ検索）", n: null, ok: false, why: "検索失敗" });
+              webNote = "／" + selArea + "の検索に失敗（" + String(err && err.message ? err.message : err).slice(0,60) + "）。台帳にある分は表示しています";
+            }
+            /* 台帳の見直し（掲載元で受付終了の記載を確かめる） */
             try{
               st.textContent = selArea + "の台帳にある案件を掲載元で確認しています…";
-              await tsWebLedgerRecheck(selArea);
-            }catch(e){}
-            try{ webItems = tsWebLedgerMerge(selArea, webItems); }catch(e){}
-            srcTally.push({ label: selArea + "（ウェブ検索）", n: webFresh, ok: true, entries: webEntries.length });
-            if(webItems.length){
-              const seen = {};
-              list.forEach(it => { if(it && it.id) seen[it.id] = true; });
-              list = list.concat(webItems.filter(it => !seen[it.id]));
-              /* 印は list に入ったものへ付け直す。保存や複製で落ちることがあるため（2026-09-01） */
-              if(wantShunushi){
-                const wid = {}; webItems.forEach(w => { if(w && w.id) wid[w.id] = true; });
-                list.forEach(it => { if(it && wid[it.id]) it.__shunushi = true; });
-              }
-              tsWebCacheSave(webItems);
-              webNote = "／" + selArea + "の検索で " + webFresh + "件"
-                     + (webItems.length > webFresh ? "（前回までに拾った分と合わせて " + webItems.length + "件）" : "")
-                     + (webEntries.length ? "（ほかに探す手がかり" + webEntries.length + "件）" : "");
-            }else{
-              webNote = "／" + selArea + "の検索では制度個別のページに行き着けませんでした"
-                     + (webEntries.length ? "（探す手がかりを" + webEntries.length + "件、下に出しています）" : "");
+              const rc = await tsLedgerRecheck(selPref, selCity);
+              if(!rc.ok) ledgerNote += "／掲載元の見直しの結果を台帳へ入れられませんでした（" + rc.why + "）";
+              /* 足した分・見直した分を反映した台帳を取り直す */
+              const ld2 = await tsLedgerLoad(selPref);
+              if(!ld2.ok) ledgerNote += "／台帳を取り直せませんでした（" + ld2.why + "）";
+            }catch(e){
+              ledgerNote += "／台帳の見直しに失敗（" + String(e && e.message ? e.message : e).slice(0,40) + "）";
             }
-          }catch(err){
-            srcTally.push({ label: selArea + "（ウェブ検索）", n: null, ok: false, why: "検索失敗" });
-            webNote = "／" + selArea + "の検索に失敗（" + String(err && err.message ? err.message : err).slice(0,30) + "）";
           }
+          const webItems2 = tsLedgerList(selPref, selCity);
+          if(!webFailed){
+            srcTally.push({ label: selArea + (checkMode ? "（台帳・検査のため検索せず）" : "（ウェブ検索）"),
+                            n: checkMode ? webItems2.length : webFresh, ok: true, entries: webEntries.length });
+          }
+          if(webItems2.length){
+            const seen = {};
+            list.forEach(it => { if(it && it.id) seen[it.id] = true; });
+            list = list.concat(webItems2.filter(it => !seen[it.id]));
+            try{ tsWebCacheSave(webItems2); }catch(_){}
+            const newN = webItems2.filter(it => it.ts_new).length;
+            webNote += "／" + selArea + (checkMode ? "の台帳から " : "の検索で " + webFresh + "件・台帳から ")
+                     + webItems2.length + "件を表示" + (newN ? "（うち新着 " + newN + "件）" : "")
+                     + (webEntries.length ? "（ほかに探す手がかり" + webEntries.length + "件）" : "");
+          }else if(!webFailed){
+            webNote += "／" + selArea + "の台帳に制度はまだありません"
+                     + (webEntries.length ? "（探す手がかりを" + webEntries.length + "件、下に出しています）" : "");
+          }
+          webNote += ledgerNote;
         }
+        /* 2026-09-16：利用者が「一覧から外す」を押した案件は、一覧を組む前に除く。
+           これまでは表を組んだ後に除いていたため、外した案件が表に出ていた。 */
+        list = list.filter(it => !(it && it.id && tsIsHidden(it.id)));
+        /* 年度を付ける（新年度を上、前年度で有効なものをその下に並べるため） */
+        list.forEach(it => { if(it && it.__fy == null) it.__fy = tsItemFy(it); });
         let cutByArea = 0;
         if(selPref){
           const before = list.length;
@@ -3709,6 +4311,7 @@ body.presenMode table{font-size:1.02em}
         if(company){
           /* 第1段：粗足切り（一覧項目・無料・瞬時） */
           await mechFill(list);
+          if(mechFailed){ st.textContent = mechStopMsg(); return; }
           /* 施主（個人）向けは、会社を基準にした足切りを通さない（2026-09-01）。
              受け取るのが会社ではないので、地域・業種・規模で判定すると必ず落ちる。 */
           show = list.filter(it => { if(it.__shunushi) return true; const m = mechCheck(it); return m ? m.pass : true; });
@@ -3738,6 +4341,10 @@ body.presenMode table{font-size:1.02em}
               let keptSet = null;
               if(askList.length){
                 const keptIdx = await aiTitleSort(askList);
+                if(!Array.isArray(keptIdx)){
+                  st.textContent = "事業に照らした仕分けの答えを読めませんでした。仕分けを当てないまま一覧を出すことはせず、止めました。もう一度「新着探索」を押してください。";
+                  return;
+                }
                 if(Array.isArray(keptIdx)){
                   askList.forEach((it, i) => { tsJudgeSet("sieve", it.id, keptIdx.includes(i + 1)); });
                   keptSet = true;
@@ -3763,7 +4370,10 @@ body.presenMode table{font-size:1.02em}
                 sortNote = "（事業に照らした仕分けは結果を読めず未適用）";
               }
             }catch(err){
-              sortNote = "（事業に照らした仕分けに失敗したため未適用："+String(err && err.message ? err.message : err).slice(0,60)+"）";
+              /* 2026-09-16：仕分けを当てないまま一覧を出すと、回ごとに一覧が変わる。止めて理由を出す */
+              st.textContent = "事業に照らした仕分けが届かなかったため、一覧を出さずに止めました。理由："
+                + String(err && err.message ? err.message : err).slice(0,160) + "　もう一度「新着探索」を押してください。";
+              return;
             }
           }
           const aiCount = show.length;
@@ -3772,6 +4382,7 @@ body.presenMode table{font-size:1.02em}
           st.textContent = "受付中 "+list.length+" 件 → 事業に照らして仕分け "+aiCount+" 件 → 掲載内容と突き合わせ中…（0/"+aiCount+"）";
           const passIds = {};
           const fetched = [];
+          let detailNg = 0;
           const queue = show.slice();
           async function worker(){
             while(queue.length){
@@ -3784,6 +4395,8 @@ body.presenMode table{font-size:1.02em}
                 fetched.push({ it: it, d: d });
               }catch(_){
                 passIds[it.id] = true; /* 取得失敗は見落とし防止のため残す */
+                it.__detailNg = true;   /* 2026-09-16：残したことを行に出す（黙って通さない） */
+                detailNg++;
               }
               done++;
               st.textContent = "受付中 "+list.length+" 件 → 事業に照らして仕分け "+aiCount+" 件 → 掲載内容と突き合わせ中…（"+done+"/"+aiCount+"）";
@@ -3791,6 +4404,7 @@ body.presenMode table{font-size:1.02em}
           }
           await Promise.all([worker(), worker(), worker(), worker()]);
           await mechFill(fetched.map(x => x.d));
+          if(mechFailed){ st.textContent = mechStopMsg(); return; }
           for(const x of fetched){
             const m = mechCheck(x.d);
             if(!m || m.pass) passIds[x.it.id] = true;
@@ -3803,7 +4417,9 @@ body.presenMode table{font-size:1.02em}
           /* 2026-09-08：内訳（AIに送った件数・対象・除外・前回の判定）は選定条件であって
              利用者には意味がないため画面から落とす。仕事量が見える前段だけを残す。 */
           st.textContent = "受付中 "+list.length+" 件 → 事業に照らして仕分け "+aiCount+" 件"
-              + " → 掲載内容と突き合わせて "+show.length+" 件を表示"+sortNote+"（キーワード："+kw+"）"+mechAlert();
+              + " → 掲載内容と突き合わせて "+show.length+" 件を表示"+sortNote+"（キーワード："+kw+"）"+mechAlert()
+              + (detailNg ? "　※掲載内容を取れなかった " + detailNg + " 件は、突き合わせずに残しています（行に印があります）。" : "");
+          window.__tsStages = { total: list.length, ai: aiCount, show: show.length, detailNg: detailNg };
         }else{
           st.textContent = "受付中 "+list.length+" 件（キーワード："+kw+"）※基礎情報が未読み込みのため全件表示";
         }
@@ -3856,16 +4472,23 @@ body.presenMode table{font-size:1.02em}
            表は並べ替え前のまま組まれていた（印の付いた案件が、印の無い案件より上に出る）。
            計算はしていたが、表に届いていなかった。組み立てに使う側にも入れ直す。 */
         grpS = byRange(grpS); grpA = byRange(grpA); grpB = byRange(grpB); rest = byRange(rest);
+        /* 2026-09-16：新年度を上に、前年度で受付中のものをその下へ（宏史さんの決定）。
+           同じ年度の中では、これまでの並び（事業外・規模の目安外を下へ）を保つ。 */
+        const byFy = function(arr){
+          const top = Math.max.apply(null, arr.map(function(x){ return Number(x.__fy) || 0; }).concat([0]));
+          return arr.filter(function(x){ return (Number(x.__fy) || 0) >= top; })
+                    .concat(arr.filter(function(x){ return (Number(x.__fy) || 0) < top; }));
+        };
+        grpS = byFy(grpS); grpA = byFy(grpA); grpB = byFy(grpB); rest = byFy(rest);
         show = grpS.concat(grpA, grpB);
         /* 表に出すのは今回の検索で見つかったものだけにする（2026-09-05）。
-           台帳から持ち越した分と、受付が終わった分は下の畳んだ置き場へ回す。
-           掘るたびに人が見る量が増えるのでは、当社が売っているものの逆になる。 */
+           2026-09-16：台帳を一覧の元にしたため、持ち越し分は畳まない（新着の印で新しい分を見分ける）。
+           畳むのは、受付が終わった分だけ。 */
         const closedList = [], carriedList = [];
         const pickOut = function(arr){
           return (arr || []).filter(function(it){
             if(!it) return false;
             if(it.__closedWord){ if(closedList.indexOf(it) < 0) closedList.push(it); return false; }
-            if(it.ts_carried){ if(carriedList.indexOf(it) < 0) carriedList.push(it); return false; }
             return true;
           });
         };
@@ -3873,8 +4496,9 @@ body.presenMode table{font-size:1.02em}
         try{ if(st && __amtNote) st.textContent = st.textContent + __amtNote; }catch(e){}
         const headCells = '<th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th>';
         const rowOf = (it) => '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'" data-end="'+e(it.acceptance_end_datetime||"")+'"'
-                + ' data-steady="'+e(tsSteadyOf(it))+'" data-work="'+e(tsWorkOf(it))+'">'
+                + ' data-steady="'+e(tsSteadyOf(it))+'" data-work="'+e(tsWorkOf(it))+'"' + tsRowDataAttrs(it) + '>'
                 + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)
+                + tsRowMarksHtml({ tsnew: it.ts_new ? 1 : 0, fy: it.__fy, same: it.ts_same_name ? 1 : 0, dng: it.__detailNg ? 1 : 0 })
                 + tsSteadyBadgeHtml(tsSteadyOf(it)) + tsWorkBadgeHtml(tsWorkOf(it))
                 + (it.__offBiz ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__offBiz)+'</span>' : "")
           + (it.__amtOut ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__amtOut)+'</span>' : "")
@@ -3995,9 +4619,11 @@ body.presenMode table{font-size:1.02em}
           });
           html += "</div>";
         }
-        /* 2026-09-09：利用者が「一覧から外す」を押した案件を除いて描く */
+        /* 2026-09-09：利用者が「一覧から外す」を押した案件を除いて描く。
+           2026-09-16：除く処理は一覧を組む前へ移した。ここは念のための二重の関所。 */
         show = show.filter(function(it){ return !tsIsHidden(it.id); });
         out.innerHTML = html;
+
         lastShow = show;
         saveDigResult(kw, st.textContent, show);
         if(fullGateBtn) fullGateBtn.style.display = show.length ? "" : "none";
@@ -4015,6 +4641,13 @@ body.presenMode table{font-size:1.02em}
             st.textContent = baseMsg + "　／　見込み額の一括判定に失敗しました（個別の「AIゲート判定」は引き続き使えます）。";
           }
         }
+        /* 検査のための控え（2026-09-16）。判定の記憶の書き込みが済んでから取る。
+           検査のときは控えを上書きせず、比べる */
+        try{
+          const snap = await tsSnapMake(kw, selPref, selCity, show, extIds);
+          if(checkMode){ tsCheckReport(snap); }
+          else { localStorage.setItem("trisight_check_snap", JSON.stringify(snap)); }
+        }catch(_){}
       }catch(err){
         st.textContent = String(err && err.message ? err.message : err);
       }finally{
@@ -5190,6 +5823,49 @@ body.presenMode table{font-size:1.02em}
   // ---- タスク化（リレー経由でClaude） --------------------------
 
   goBtn.addEventListener("click", run);
+  /* 読み取りの検査（2026-09-16）。AIは呼ばない。
+     いま入れている文書について、保管庫の記憶と端末の記憶がそろっているかを確かめる。 */
+  (function(){
+    const cb = $("readCheckBtn");
+    if(!cb) return;
+    cb.addEventListener("click", async function(){
+      /* 結果は状況表示とは別の行に出す（状況表示にある「AIで読み直す」等のボタンを消さないため） */
+      const outEl2 = $("readCheckOut");
+      const say = function(t, col){ outEl2.style.display = "block"; outEl2.style.borderColor = col || "#ccd"; outEl2.style.color = col || ""; outEl2.textContent = t; };
+      if(!(extracted || pdfBase64)){ say("先にPDFを入れてください（検査は、入れた文書について行います）。"); return; }
+      cb.disabled = true;
+      say("検査しています…");
+      try{
+        const sync = await window.tsBoxSync();
+        const k = await tsReadKey();
+        const br = await window.tsBoxCall({ op:"read_get", h: k });
+        const lh = tsReadMemoAll()[k];
+        let msg;
+        if(!sync || !br.ok){
+          msg = "【止める】保管庫の記憶を確かめられません。原因の解明が要ります。理由：" + (br.ok ? (window.__tsBoxWhy || "") : br.why);
+        }else if(!br.hit && !lh){
+          msg = "この文書・前提・観点は、まだ読み取った記録がありません（検査の対象外です）。";
+        }else if(br.hit && !lh){
+          msg = "保管庫に記憶があります（" + tsReadWhen(br.rec.at) + "）。この端末で読み取ると、保管庫の結果がそのまま出ます。";
+        }else if(!br.hit && lh){
+          msg = "【止める】この端末にだけ記憶があり、保管庫にありません。保管庫へ置けなかった原因の解明が要ります。";
+        }else if(String(br.rec.t) === String(lh.t)){
+          msg = "保管庫と端末の記憶が一致しています（" + tsReadWhen(br.rec.at) + "）。どの端末でも同じ結果が出ます。";
+        }else if(String(br.rec.at || "") > String(lh.at || "")){
+          msg = "保管庫の記憶のほうが新しくなっています（別の端末で読み直した、または「この結果は誤り」が押された：保管庫 "
+            + tsReadWhen(br.rec.at) + "／この端末 " + tsReadWhen(lh.at) + "）。この端末で読み取ると、保管庫の新しい結果が出ます。";
+        }else{
+          msg = "【欠陥・止める】同じ文書の記憶が、保管庫と端末で違います。先へ進まず、この文言をなぎさへお伝えください。"
+            + "（保管庫 " + tsReadWhen(br.rec.at) + "／端末 " + tsReadWhen(lh.at) + "）";
+        }
+        say("検査（読み取りの記憶）：" + msg, /^【/.test(msg) ? "#b0203a" : "#1a5f2f");
+      }catch(err){
+        say("検査できませんでした：" + String(err && err.message ? err.message : err), "#b0203a");
+      }finally{
+        cb.disabled = false;
+      }
+    });
+  })();
 
   // ---- 印刷・次の案件へ ---------------------------------------
   $("printBtn").addEventListener("click", ()=>window.print());
@@ -5959,7 +6635,8 @@ body.presenMode table{font-size:1.02em}
       if(!c || !c.gate) return;
       const cell = row.querySelector("td:first-child");
       if(!cell) return;
-      cell.innerHTML = esc(row.dataset.title || "") + (typeof window.tsSrcBadgeSafe === "function" ? window.tsSrcBadgeSafe(row.dataset.id) : "") + pjBadgeHtml(c.gate, c.amount_max, c.gate_lite === false);
+      /* 2026-09-16：頭の組み立てを一本化（定点・作業・新着・年度の印を落とさない） */
+      cell.innerHTML = window.tsRowCellHead(row) + pjBadgeHtml(c.gate, c.amount_max, c.gate_lite === false);
     });
   }
   function pjRenderThreshButtons(){
@@ -6173,7 +6850,11 @@ body.presenMode table{font-size:1.02em}
      完全には揃わないため、同じ文書・同じ前提・同じ観点なら前回の結果をそのまま使う。
      鍵＝文書の中身の指紋＋前提＋観点。会社には依らない（読み取りは会社情報を使わないため）。
      この端末の中だけに控える。別の端末では、その端末で最初に読んだ結果が控えられる。
-     控えは新しい順に20件まで。AIに読み直させたいときは「AIで読み直す」を押す。 */
+     控えは新しい順に20件まで。AIに読み直させたいときは「AIで読み直す」を押す。
+     2026-09-16 改訂：保管庫（当社が保持する、発出元×制度の記録）にも置き、どの端末でも同じ結果を返す。
+     鍵は、文書の空白・改行をすべて落としてから作る（端末によって抜き出した文字の空白が違うため）。
+     鍵には読み取りの指示文の版とモデル名を含める（画面の見た目の直しでは記憶は無効にならない）。
+     端末の控えは、保管庫に届かないときの代わりとして残す。 */
   const TS_READ_MEMO = "trisight_read_memo";
   const TS_READ_MEMO_MAX = 20;
   async function tsReadFingerprint(str){
@@ -6221,22 +6902,40 @@ body.presenMode table{font-size:1.02em}
       + ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2);
   }
 
+  async function tsReadKey(){
+    const premise = $("premise").value.trim();
+    const docPart = (isImagePdf && pdfBase64) ? ("pdf:" + pdfBase64) : ("txt:" + String(extracted || "").replace(/\s+/g, ""));
+    const ex = window.TS_EXPECT || {};
+    return await tsReadFingerprint(docPart + "\u0001" + premise.replace(/\s+/g, "") + "\u0001" + (focusChoice || "")
+      + "\u0001" + (ex.readV || "") + "\u0001" + (ex.model || ""));
+  }
+  let tsReadLastKey = "";
   async function run(force){
     const fresh = (force === true);   /* ボタンから呼ばれたときは事象が入るため、true だけを読み直しとみなす */
     hideErr();
     goBtn.disabled=true;
-    statusEl.innerHTML='<span class="spin"></span>なぎさが締切と逆算タスクに整理しています…';
+    statusEl.innerHTML='<span class="spin"></span>保管庫から最新を取りに行っています…';
     const premise = $("premise").value.trim();
 
     try{
-      const docPart = (isImagePdf && pdfBase64) ? ("pdf:" + pdfBase64) : ("txt:" + extracted);
-      const memoKey = await tsReadFingerprint(docPart + "\u0001" + premise + "\u0001" + (focusChoice || ""));
-      const hit = fresh ? null : tsReadMemoAll()[memoKey];
-      let text = "", fromMemo = false;
-      if(hit && hit.t){
+      try{ await window.tsBoxSync(); }catch(_){}
+      const memoKey = await tsReadKey();
+      tsReadLastKey = memoKey;
+      let text = "", from = "";   /* from＝ "box"（保管庫の記憶）／"local"（端末の記憶）／""（AI） */
+      let hit = null, boxNote = "";
+      if(!fresh){
+        const br = await window.tsBoxCall({ op:"read_get", h: memoKey });
+        if(br.ok && br.hit && br.rec && br.rec.t){ hit = br.rec; from = "box"; }
+        else{
+          if(!br.ok) boxNote = "（保管庫の記憶を確かめられませんでした：" + br.why + "）";
+          const lh = tsReadMemoAll()[memoKey];
+          if(lh && lh.t){ hit = lh; from = "local"; }
+        }
+      }
+      if(hit){
         text = String(hit.t);
-        fromMemo = true;
       }else{
+        statusEl.innerHTML='<span class="spin"></span>なぎさが締切と逆算タスクに整理しています…';
         text = await tsAsk("read", {
           text: (isImagePdf && pdfBase64) ? "" : extracted,
           pdfBase64: (isImagePdf && pdfBase64) ? pdfBase64 : null,
@@ -6246,18 +6945,45 @@ body.presenMode table{font-size:1.02em}
       }
       if(!text) throw new Error("空の応答が返りました。");
       const parsed = parseJSON(text);
-      if(!fromMemo) tsReadMemoPut(memoKey, text);   /* 読み取れた結果だけを控える */
+      if(from !== "local") tsReadMemoPut(memoKey, text);   /* 端末にも控える */
+      if(!from){
+        /* AIで読んだ結果を保管庫へ。読み直しのときは、前の記憶を履歴に残してから置き換える */
+        if(fresh) await window.tsBoxCall({ op:"read_bad", h: memoKey, reason: "AIで読み直した" });
+        const pr = await window.tsBoxCall({ op:"read_put", h: memoKey, t: text,
+          issuer: String(parsed.issuer || ""), program: String(parsed.program_name || ""),
+          rv: (window.TS_EXPECT || {}).readV, model: (window.TS_EXPECT || {}).model });
+        if(!pr.ok){
+          boxNote = "（読み取り結果を保管庫へ置けませんでした：" + pr.why + "。この端末には控えています）";
+          window.tsSyncBanner("読み取り結果を保管庫へ置けませんでした。別の端末では同じ結果になりません。　理由：" + pr.why);
+        }
+      }else if(from === "local"){
+        /* 端末にだけある記憶は、保管庫へも置いて端末の間をそろえる */
+        const pr = await window.tsBoxCall({ op:"read_put", h: memoKey, t: text,
+          issuer: String(parsed.issuer || ""), program: String(parsed.program_name || ""),
+          rv: (window.TS_EXPECT || {}).readV, model: (window.TS_EXPECT || {}).model });
+        if(!pr.ok) boxNote = "（端末の記憶を保管庫へ置けませんでした：" + pr.why + "）";
+      }
       render(parsed);
-      if(fromMemo){
+      const btns = ' <button type="button" id="readAgainBtn" class="rbtn ghost" style="margin-left:6px">AIで読み直す</button>'
+        + ' <button type="button" id="readBadBtn" class="rbtn ghost" style="margin-left:6px;color:#b0203a;border-color:#b0203a" title="この読み取り結果に誤りがあるとき押してください。記憶を使わず、AIで読み直します">この結果は誤り</button>';
+      if(from){
         statusEl.innerHTML = "整理しました。同じ文書・同じ前提で"
           + (tsReadWhen(hit.at) ? tsReadWhen(hit.at) + "に" : "前回")
-          + "読み取った結果を表示しています（AIは呼んでいません）。"
-          + ' <button type="button" id="readAgainBtn" class="rbtn ghost" style="margin-left:6px">AIで読み直す</button>';
-        const again = document.getElementById("readAgainBtn");
-        if(again) again.addEventListener("click", function(){ run(true); });
+          + "読み取った結果を" + (from === "box" ? "保管庫から" : "この端末から") + "表示しています（AIは呼んでいません）。"
+          + esc(boxNote) + btns;
       }else{
-        statusEl.textContent="整理しました。下に結果を表示しています。";
+        statusEl.innerHTML = "整理しました。下に結果を表示しています。" + esc(boxNote) + btns;
       }
+      const again = document.getElementById("readAgainBtn");
+      if(again) again.addEventListener("click", function(){ run(true); });
+      const bad = document.getElementById("readBadBtn");
+      if(bad) bad.addEventListener("click", async function(){
+        const why = window.prompt("どこが誤っていたかを一行で入れてください（記録に残ります）。", "");
+        if(why === null) return;
+        await window.tsBoxCall({ op:"read_bad", h: memoKey, reason: String(why).slice(0, 200) });
+        try{ const m = tsReadMemoAll(); delete m[memoKey]; localStorage.setItem(TS_READ_MEMO, JSON.stringify(m)); }catch(_){}
+        run(true);
+      });
     }catch(err){
       showErr("整理に失敗しました：" + err.message + "　／　リレーが起きているか、ネットワーク（ウイルスバスター等のブロック）をご確認ください。");
       statusEl.textContent="もう一度試せます。";
@@ -6432,6 +7158,40 @@ body.presenMode table{font-size:1.02em}
   }
   function esc(s){return (s==null?"":String(s)).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
 
+  /* 要領の提出書類の表の行数を、抜き出した文字から数える（2026-09-16）。
+     「提出書類」「必要書類」「添付書類」の見出しの後ろで、①② や (1)(2)、1. 2. のように
+     番号で始まる行を数える。番号が続いて3つ以上見つからなければ、数えられなかったとして null を返す。 */
+  function tsDocTableCount(text){
+    const t = String(text || "");
+    if(!t) return null;
+    const heads = [];
+    const re = /(提出書類|必要書類|添付書類)/g;
+    let m;
+    while((m = re.exec(t)) !== null){ heads.push(m.index); if(heads.length > 20) break; }
+    if(!heads.length) return null;
+    let circ = ""; for(let i = 0; i < 20; i++) circ += String.fromCharCode(0x2460 + i);   /* ①〜⑳ */
+    let best = null;
+    heads.forEach(function(h){
+      const seg = t.slice(h, h + 4000).split(/\n/);
+      const nums = [];
+      seg.forEach(function(line){
+        const l = line.trim();
+        let n = null;
+        const c = circ.indexOf(l.charAt(0));
+        if(c >= 0) n = c + 1;
+        else{
+          const mm = l.match(/^[（(]\s*([0-9０-９]{1,2})\s*[）)]/) || l.match(/^([0-9０-９]{1,2})\s*[.．、]\s*\S/);
+          if(mm) n = Number(String(mm[1]).replace(/[０-９]/g, function(x){ return String.fromCharCode(x.charCodeAt(0) - 0xFEE0); }));
+        }
+        if(n != null) nums.push(n);
+      });
+      /* 1から連番で続いた最長の数 */
+      let run = 0, bestRun = 0;
+      nums.forEach(function(n){ if(n === run + 1){ run = n; bestRun = Math.max(bestRun, run); } else if(n === 1){ run = 1; bestRun = Math.max(bestRun, 1); } });
+      if(bestRun >= 3 && (best === null || bestRun > best)) best = bestRun;
+    });
+    return best;
+  }
   function render(d){
     TG_LAST = d;
     if($("hoBox")) $("hoBox").style.display="none";
@@ -6515,19 +7275,38 @@ body.presenMode table{font-size:1.02em}
         +`</p>`);
     }
 
-    // 逆算タスク
+    // 逆算タスク（2026-09-16：根拠の場所を添える）
+    const __bs = x => String((x && x.basis) || "").trim();
+    const __bTag = x => __bs(x) ? `<span class="nt" style="color:#2c4a8a">根拠：${esc(__bs(x))}</span>` : "";
     if((d.reverse_tasks||[]).length){
       parts.push(`<h3 class="sec">逆算タスク</h3>`);
-      parts.push(`<table><thead><tr><th>期日</th><th>やること</th></tr></thead><tbody>`+
-        d.reverse_tasks.map(t=>`<tr><td class="due">${esc(t.due_text||"")}</td><td>${esc(t.action||"")}${t.must_verify?' <span class="vbadge">要確認</span>':""}</td></tr>`).join("")+
+      parts.push(`<table><thead><tr><th>期日</th><th>やること</th><th>根拠</th></tr></thead><tbody>`+
+        d.reverse_tasks.map(t=>`<tr><td class="due">${esc(t.due_text||"")}</td><td>${esc(t.action||"")}${t.must_verify?' <span class="vbadge">要確認</span>':""}</td><td>${__bs(t)?esc(__bs(t)):'<span style="color:#b0203a">示せず</span>'}</td></tr>`).join("")+
         `</tbody></table>`);
     }
 
     // 必要書類
     if((d.required_documents||[]).length){
       parts.push(`<h3 class="sec">必要書類</h3><ul class="docs">`+
-        d.required_documents.map(x=>`<li><span><span class="nm">${esc(x.name)}</span>${x.note?`<span class="nt">${esc(x.note)}</span>`:""}</span>${x.must_verify?'<span class="vbadge">要確認</span>':""}</li>`).join("")+
+        d.required_documents.map(x=>`<li><span><span class="nm">${esc(x.name)}</span>${x.note?`<span class="nt">${esc(x.note)}</span>`:""}${__bTag(x)}</span>${x.must_verify?'<span class="vbadge">要確認</span>':""}</li>`).join("")+
         `</ul>`);
+      /* 書類の表の件数と突き合わせる。表の件数はAIに数えさせず、抜き出した文字から数える */
+      const __tc = tsDocTableCount(extracted);
+      const __n = d.required_documents.length;
+      if(__tc === null){
+        parts.push(`<p class="alldeadlines" style="margin-top:4px;color:#5a6070">要領の提出書類の表の行数は、抜き出した文字からは確かめられませんでした（画像のPDF、または表が崩れて抜けたため）。必要書類は要領の表でお確かめください。</p>`);
+      }else if(__tc !== __n){
+        parts.push(`<p class="alldeadlines" style="margin-top:4px;color:#b0203a;font-weight:600">要領の提出書類の表には ${__tc} 行あるように見えますが、拾えた書類は ${__n} 件です。漏れや数え違いの可能性があります。要領の表と見比べてください。</p>`);
+      }else{
+        parts.push(`<p class="alldeadlines" style="margin-top:4px;color:#1a7f37">要領の提出書類の表の行数（${__tc}）と、拾えた書類の件数が一致しています。</p>`);
+      }
+    }
+    // 根拠が示せなかったもの（2026-09-16）
+    const __nob = [].concat((d.reverse_tasks||[]).filter(t=>!__bs(t)).map(t=>"工程："+(t.action||"")),
+                            (d.required_documents||[]).filter(x=>!__bs(x)).map(x=>"書類："+(x.name||"")));
+    if(__nob.length){
+      parts.push(`<div class="verify-box"><p class="vt">根拠が示せなかったもの（要領のどこに書いてあるかをAIが示せませんでした。要領でお確かめください）</p><ol>`+
+        __nob.map(v=>`<li>${esc(v)}</li>`).join("")+`</ol></div>`);
     }
 
     // 要確認（判断は人に残す）
@@ -6709,7 +7488,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-16-02';
+  const TRIGATE_VERSION = '2026-09-16-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

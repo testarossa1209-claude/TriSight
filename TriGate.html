@@ -582,6 +582,9 @@ body.presenMode table{font-size:1.02em}
     .combo-v{font-weight:700;margin-right:6px}
     .combo-r{margin-top:4px;line-height:1.7}
     .combo-b{margin-top:4px;color:var(--muted,#868e96);font-size:12px;line-height:1.6}
+    .combo-go{margin-top:6px;font-size:12px;line-height:1.6}
+    .combo-go a{color:#2c4a8a}
+    .combo-gomsg{margin-left:6px;color:var(--muted,#868e96)}
   </style>
 
   <footer>
@@ -1347,7 +1350,9 @@ body.presenMode table{font-size:1.02em}
       const res = await fetch(ANTHROPIC_RELAY, {
         method: "POST",
         headers: {"Content-Type":"application/json", "x-trisight-code": tsCode()},
-        body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:12000,
+        /* 2026-09-16：揺れ止め（temperature 0）。8/29に判定をリレーへ移した際に抜け、
+           gate.js側も同日に直した。併給はここから直接呼ぶため、ここにも付ける。 */
+        body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:12000, temperature:0,
                                system: sys, messages:[{role:"user", content:user}] })
       });
       if(!res.ok) throw new Error("リレー応答 " + res.status + (res.status===401 ? "（認証コードをご確認ください）" : ""));
@@ -1375,15 +1380,62 @@ body.presenMode table{font-size:1.02em}
         pairs.__cut = true;
       }
       if(!pairs.length) throw new Error("結果が返りませんでした。");
+      /* 2026-09-16：併給の結果から、その制度へ直接進めるようにする（リンク化）。
+         9/15の実演時点では、結果は文字で並ぶだけで「可と出た制度から進む道は無い」状態だった。
+         AIが返す制度名は表記が揺れるため、括弧書き・年度・空白を落として一覧の案件名と突き合わせる。
+         一致したものだけに「一覧でこの制度の詳細を開く」を付け、一致しないものは推測で結び付けない。 */
+      const tsComboNorm = function(t){
+        return String(t || "")
+          .replace(/（[^）]*）|\([^)]*\)/g, "")
+          .replace(/^令和[0-9０-９元]+年度/, "")
+          .replace(/[\s　・･「」『』]/g, "");
+      };
+      const tsComboFind = function(name){
+        const k = tsComboNorm(name);
+        if(!k) return null;
+        const cand = digRows.filter(function(it){
+          return it && it.id && String(it.title || it.name || "") !== mine;
+        });
+        /* 括弧書きを落とすと同じ名前になる制度が複数ある場合（本体と事業者向け等）、
+           括弧書きまで含めて一致するものだけを採る。それでも決まらなければ結び付けない。 */
+        const same = cand.filter(function(it){ return tsComboNorm(it.title || it.name) === k; });
+        if(same.length === 1) return same[0];
+        if(same.length > 1){
+          const raw = function(t){ return String(t || "").replace(/[\s　]/g, ""); };
+          const exact = same.filter(function(it){ return raw(it.title || it.name) === raw(name); });
+          return exact.length === 1 ? exact[0] : null;
+        }
+        /* 片方がもう片方を含む場合。短い側が6文字未満なら、別の制度を拾う恐れがあるので結び付けない */
+        const hits = cand.filter(function(it){
+          const t = tsComboNorm(it.title || it.name);
+          if(!t) return false;
+          const shortLen = Math.min(t.length, k.length);
+          return shortLen >= 6 && (t.indexOf(k) >= 0 || k.indexOf(t) >= 0);
+        });
+        return hits.length === 1 ? hits[0] : null;   /* 候補が2件以上なら決め打ちしない */
+      };
       const rank = { "不可":0, "要確認":1, "可":2 };
       pairs.sort(function(a,b){ return (rank[a.verdict]||1) - (rank[b.verdict]||1); });
       const color = { "不可":"#b0203a", "可":"#1a7f37", "要確認":"#9a3412" };
+      const tsComboGoHtml = function(name){
+        const nm = String(name || "");
+        if(!nm) return "";
+        const hit = tsComboFind(nm);
+        if(hit){
+          return '<div class="combo-go">'
+            + '<button type="button" class="dbtn" data-combo-id="' + ce(hit.id) + '">一覧でこの制度の詳細を開く</button>'
+            + '<span class="combo-gomsg"></span></div>';
+        }
+        return '<div class="combo-go"><span class="combo-gomsg">掘った一覧には無い制度です。</span>'
+          + '<a href="https://www.google.com/search?q=' + encodeURIComponent(nm) + '" target="_blank" rel="noopener">制度名でウェブ検索する（別の画面で開きます）</a></div>';
+      };
       let h = '<div class="combo-note"><b>併給の突き合わせ（' + pairs.length + '件）</b>'
         + (pairs.__cut ? '<span style="color:#b0203a">　※ 返答が途中で切れたため、'
                          + '読み取れた分だけを表示しています。もう一度押すと全件を試します。</span>' : "")
         + '<br>'
         + '判定は<b>この制度の要領に書かれていることだけ</b>を根拠にしています。'
-        + '相手側の要領にも別の定めがある場合がありますので、<b>両方を確かめてから客先へお伝えください</b>。</div>';
+        + '相手側の要領にも別の定めがある場合がありますので、<b>両方を確かめてから客先へお伝えください</b>。'
+        + '<br>掘った一覧にある制度には「一覧でこの制度の詳細を開く」が付きます。そこから相手側の要領も読み取れます。</div>';
       h += pairs.map(function(pr){
         const v = String(pr.verdict || "要確認");
         return '<div class="combo-row">'
@@ -1393,6 +1445,7 @@ body.presenMode table{font-size:1.02em}
           + (pr.order ? '<div class="combo-r"><b>順序：</b>' + ce(String(pr.order)) + '</div>' : "")
           + '<div class="combo-b">根拠：' + ce(String(pr.basis || "要領に記載なし"))
           + (pr.contact ? '　／　確認先：' + ce(String(pr.contact)) : "") + '</div>'
+          + tsComboGoHtml(pr.name)
           + '</div>';
       }).join("");
       try{ tm.stop(); }catch(_){}
@@ -1418,6 +1471,34 @@ body.presenMode table{font-size:1.02em}
   (function(){
     const b = document.getElementById("comboBtn");
     if(b) b.addEventListener("click", tsComboCheck);
+    /* 2026-09-16：併給の結果から一覧の該当行へ進む。
+       行の並びや絞り込みで行が画面に無いこともあるため、見つからなければそう伝えて止める。 */
+    const box = document.getElementById("comboBox");
+    if(box) box.addEventListener("click", function(ev){
+      const gb = ev.target.closest("button[data-combo-id]");
+      if(!gb) return;
+      const id = gb.dataset.comboId || "";
+      const msg = gb.parentElement ? gb.parentElement.querySelector(".combo-gomsg") : null;
+      const say = function(t){ if(msg) msg.textContent = t; };
+      const out = document.getElementById("digOut");
+      let tr = null;
+      if(out){
+        tr = Array.prototype.slice.call(out.querySelectorAll("tr[data-id]"))
+               .find(function(r){ return r.dataset.id === id; }) || null;
+      }
+      if(!tr){
+        say("一覧にこの制度の行が表示されていません。画面上部の発掘結果の一覧を表示してから、もう一度押してください。");
+        return;
+      }
+      tr.scrollIntoView({ behavior: "smooth", block: "center" });
+      const next = tr.nextElementSibling;
+      const opened = !!(next && next.classList.contains("digdetail"));
+      if(!opened){
+        const db = tr.querySelector('button[data-act="detail"]');
+        if(db) db.click();
+      }
+      say("一覧の該当行へ移動し、詳細を開きました。こちらの公募要領を読み取ると、いま出ている読み取り結果は入れ替わります（先の結果は、必要なら先に印刷してください）。");
+    });
   })();
 
   /* ===== 発掘（新着探索・Jグランツ）2026-07-13 ===== */
@@ -2909,7 +2990,10 @@ body.presenMode table{font-size:1.02em}
     }
     function digUsageDetail(purpose, isShunushi){
       /* 二段目：展開する手順。クォートの混在を避けるため、リンクはhref形式に統一 */
-      var lnk = "<li style=\"margin-top:4px\"><a href=\"#tsStep2\" style=\"font-size:12px;padding:2px 10px;text-decoration:none;background:#e8eef8;border:1px solid #aab;border-radius:3px\">詳しく分解する → トライフォームへ</a></li>";
+      /* 2026-09-16：飛び先 #tsStep2 がページ内に存在せず、押しても先頭へ跳ぶだけだった（9/15に発見）。
+         分解は「要領を読み取る → 結果の行の『TriFormで分解する』」の順でしか進めないため、
+         読み取り欄（#drop・実在確認済み）へ飛ばし、道順を一行添える。 */
+      var lnk = "<li style=\"margin-top:4px\"><a href=\"#drop\" style=\"font-size:12px;padding:2px 10px;text-decoration:none;background:#e8eef8;border:1px solid #aab;border-radius:3px\">詳しく分解する → まず下の読み取り欄へ</a><div style=\"font-size:11.5px;color:#666;margin-top:3px\">公募要領を読み取ると、結果の行に「TriFormで分解する」が出ます。そこからトライフォームへ進みます。</div></li>";
       /* 2026-09-14：一行ラベルと同じ理由で、案件の性質を目的より優先する。
          施主向けの手順（施主への説明文を作る等）は、施主が受給する制度にだけ出す。 */
       if(isShunushi){
@@ -6082,23 +6166,98 @@ body.presenMode table{font-size:1.02em}
   pjRenderThreshButtons();
   pjRenderFigs();
 
-  async function run(){
+  /* ===== 読み取りの記憶（2026-09-16）=====
+     判定には2026-08-13から記憶があり、同じ会社・同じ案件なら同じ結果が返る。
+     読み取りには記憶が無く、同じ要領を読み直すたびにAIを呼び、必要書類の件数が
+     回ごとに増減していた（9/15の通しで11件→10件）。揺れ止め（temperature 0）だけでは
+     完全には揃わないため、同じ文書・同じ前提・同じ観点なら前回の結果をそのまま使う。
+     鍵＝文書の中身の指紋＋前提＋観点。会社には依らない（読み取りは会社情報を使わないため）。
+     この端末の中だけに控える。別の端末では、その端末で最初に読んだ結果が控えられる。
+     控えは新しい順に20件まで。AIに読み直させたいときは「AIで読み直す」を押す。 */
+  const TS_READ_MEMO = "trisight_read_memo";
+  const TS_READ_MEMO_MAX = 20;
+  async function tsReadFingerprint(str){
+    const src = String(str || "");
+    try{
+      if(window.crypto && crypto.subtle && window.TextEncoder){
+        const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(src));
+        return Array.prototype.map.call(new Uint8Array(buf), function(b){
+          return ("0" + b.toString(16)).slice(-2);
+        }).join("");
+      }
+    }catch(_){}
+    /* 暗号の仕組みが使えない環境の代わり（FNV-1a を2本）。長さも鍵に含める。 */
+    let h1 = 0x811c9dc5, h2 = 0x01000193 ^ src.length;
+    for(let i = 0; i < src.length; i++){
+      const c = src.charCodeAt(i);
+      h1 = Math.imul(h1 ^ c, 16777619) >>> 0;
+      h2 = Math.imul(h2 ^ c, 2246822519) >>> 0;
+    }
+    return "f" + src.length + "-" + h1.toString(16) + h2.toString(16);
+  }
+  function tsReadMemoAll(){
+    try{
+      const m = JSON.parse(localStorage.getItem(TS_READ_MEMO) || "{}");
+      return (m && typeof m === "object" && !Array.isArray(m)) ? m : {};
+    }catch(_){ return {}; }
+  }
+  function tsReadMemoPut(key, text){
+    const m = tsReadMemoAll();
+    m[key] = { t: text, at: new Date().toISOString() };
+    let keys = Object.keys(m).sort(function(a, b){
+      return String(m[b].at || "").localeCompare(String(m[a].at || ""));
+    });
+    /* 端末の保存枠を超えたら、古いものから減らして入れ直す */
+    for(let limit = TS_READ_MEMO_MAX; limit >= 1; limit = Math.floor(limit / 2)){
+      const out = {};
+      keys.slice(0, limit).forEach(function(k){ out[k] = m[k]; });
+      try{ localStorage.setItem(TS_READ_MEMO, JSON.stringify(out)); return; }catch(_){}
+    }
+  }
+  function tsReadWhen(iso){
+    const d = new Date(iso);
+    if(isNaN(d.getTime())) return "";
+    return (d.getMonth() + 1) + "月" + d.getDate() + "日 "
+      + ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2);
+  }
+
+  async function run(force){
+    const fresh = (force === true);   /* ボタンから呼ばれたときは事象が入るため、true だけを読み直しとみなす */
     hideErr();
     goBtn.disabled=true;
     statusEl.innerHTML='<span class="spin"></span>なぎさが締切と逆算タスクに整理しています…';
     const premise = $("premise").value.trim();
 
     try{
-      const text = await tsAsk("read", {
-        text: (isImagePdf && pdfBase64) ? "" : extracted,
-        pdfBase64: (isImagePdf && pdfBase64) ? pdfBase64 : null,
-        premise: premise,
-        focus: focusChoice || ""
-      });
+      const docPart = (isImagePdf && pdfBase64) ? ("pdf:" + pdfBase64) : ("txt:" + extracted);
+      const memoKey = await tsReadFingerprint(docPart + "\u0001" + premise + "\u0001" + (focusChoice || ""));
+      const hit = fresh ? null : tsReadMemoAll()[memoKey];
+      let text = "", fromMemo = false;
+      if(hit && hit.t){
+        text = String(hit.t);
+        fromMemo = true;
+      }else{
+        text = await tsAsk("read", {
+          text: (isImagePdf && pdfBase64) ? "" : extracted,
+          pdfBase64: (isImagePdf && pdfBase64) ? pdfBase64 : null,
+          premise: premise,
+          focus: focusChoice || ""
+        });
+      }
       if(!text) throw new Error("空の応答が返りました。");
       const parsed = parseJSON(text);
+      if(!fromMemo) tsReadMemoPut(memoKey, text);   /* 読み取れた結果だけを控える */
       render(parsed);
-      statusEl.textContent="整理しました。下に結果を表示しています。";
+      if(fromMemo){
+        statusEl.innerHTML = "整理しました。同じ文書・同じ前提で"
+          + (tsReadWhen(hit.at) ? tsReadWhen(hit.at) + "に" : "前回")
+          + "読み取った結果を表示しています（AIは呼んでいません）。"
+          + ' <button type="button" id="readAgainBtn" class="rbtn ghost" style="margin-left:6px">AIで読み直す</button>';
+        const again = document.getElementById("readAgainBtn");
+        if(again) again.addEventListener("click", function(){ run(true); });
+      }else{
+        statusEl.textContent="整理しました。下に結果を表示しています。";
+      }
     }catch(err){
       showErr("整理に失敗しました：" + err.message + "　／　リレーが起きているか、ネットワーク（ウイルスバスター等のブロック）をご確認ください。");
       statusEl.textContent="もう一度試せます。";
@@ -6550,7 +6709,7 @@ body.presenMode table{font-size:1.02em}
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-14-06';
+  const TRIGATE_VERSION = '2026-09-16-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

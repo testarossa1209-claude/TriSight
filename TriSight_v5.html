@@ -499,6 +499,13 @@ textarea {
 .kb-map { margin-top:6px; border-left:3px solid var(--border-gold); padding:6px 10px; font-size:0.76rem; line-height:1.7; color:#ccc; }
 .kb-map a { color:var(--gold-light); word-break:break-all; }
 .kb-map b { color:var(--gold); }
+.kb-star { color:#e8b04a; margin-left:4px; }
+#kbStatus { white-space:pre-line; line-height:1.7; }
+.rev-box { margin-top:12px; border:1px solid var(--border); border-radius:6px; padding:10px 12px; background:var(--bg2); }
+.rev-box .kb-item select { width:100%; }
+.rev-view { display:none; margin-top:8px; max-height:320px; overflow:auto; white-space:pre-wrap; font-size:0.74rem; line-height:1.6; color:#ccc; border-left:3px solid var(--border-gold); padding:6px 10px; }
+.rev-view.visible { display:block; }
+.blast-btn { background:#5a1a1a !important; color:#ffb4b4 !important; border:1px solid #c0392b !important; }
 
 .reference-toggle-btn {
   background: var(--bg3);
@@ -674,22 +681,46 @@ textarea {
 
     <div class="input-section">
       <div class="input-title">▌達成したい目的</div>
-      <textarea id="purpose" placeholder="この起案で達成したい目的を明記してください。"></textarea>
+      <div class="kb-note" style="margin-bottom:4px">クライアント（問題の当事者）が、何がどうなれば終わりか（出口）を書きます。起案者のやること（「提案する」など）ではありません。自社の起案なら自社の出口を書きます。起案基礎情報を使う場合は、Q23と同じ内容にしてください。</div>
+      <textarea id="purpose" placeholder="例：〇〇で、職員の離職が年〇人以下に戻り、経営陣と現場職員が同じ課題認識を持っている状態にする。"></textarea>
     </div>
 
     <div class="input-section">
       <div class="input-title">▌起案者の立ち位置</div>
+      <div class="kb-note" style="margin-bottom:4px">起案者（このシステムを使う会社・人）が、クライアントの問題に対してどこに立っているか、何を知っていて何ができるかを書きます。クライアントのことは、ここではなく起案基礎情報とベース資料に入れます。</div>
       <textarea id="situation" placeholder="自分の能力・経験・知識・思考パターンを踏まえ、この起案を発する自分は何者かを記述してください。"></textarea>
     </div>
 
     <div class="input-section">
       <div class="input-title">▌起案者インプット</div>
-      <textarea id="input" placeholder="起案内容を入力してください。"></textarea>
+      <div class="kb-note" style="margin-bottom:4px">起案者が、このシステムに何を考えさせたいかを書きます。クライアントから聞いた言葉は起案基礎情報に、受け取った資料はベース資料に入れれば、ここに長く書く必要はありません。</div>
+      <textarea id="input" placeholder="例：経営陣と現場職員の問題提起の食い違いを正し、出口に着くための施策を提案してほしい。"></textarea>
       <button class="reference-toggle-btn" id="referenceToggleBtn" onclick="toggleReference()">📎 ベース資料を追加</button>
       <div class="reference-section" id="referenceSection">
         <div class="reference-title">▌ベース資料</div>
         <div class="reference-note">既存の運営規定・契約書・会員情報など、起案に関連するベース資料をコピペで貼付してください。三身処理時に起案文と統合してAIに送信されます。</div>
         <textarea id="referenceInput" placeholder="ベース資料をここに貼り付けてください。"></textarea>
+      </div>
+      <div class="rev-box" id="revSection">
+        <div class="input-title" style="margin-bottom:4px">▌修正（前回の提案をもとに作り直す）</div>
+        <div class="kb-note">提案をクライアントに出したあと、クライアントやコンサルから修正案が出たときに使います。「修正のもと」を選び、修正案を書いて実行すると、指定した部分だけを作り直し、変更点の一覧を出します。「修正のもと」を「使わない」にすると、新しい起案として実行します。</div>
+        <div class="kb-item"><span class="kb-lab">修正のもと（このクライアントで保存された提案。新しい順）</span>
+          <select id="revBase" onchange="revChanged()"></select>
+          <div class="kb-note" id="revBaseInfo"></div></div>
+        <div class="kb-bar" style="margin-top:4px">
+          <button type="button" onclick="revLoadInputs()">修正のもとの入力欄を呼び戻す</button>
+          <button type="button" onclick="revToggleView()" id="revViewBtn">修正のもとの出力を見る</button>
+        </div>
+        <div class="rev-view" id="revView"></div>
+        <div class="kb-item"><span class="kb-lab">修正案の出所</span>
+          <label><input type="radio" name="revWho" value="クライアント"> クライアント</label><label><input type="radio" name="revWho" value="コンサル（起案者）"> コンサル（起案者）</label><label><input type="radio" name="revWho" value="クライアントとコンサルの両方"> 両方</label></div>
+        <div class="kb-item"><span class="kb-lab">直したい部分</span><input type="text" id="revPart" placeholder="例：あずさの■4の施策2、■5の質問"></div>
+        <div class="kb-item"><span class="kb-lab">修正案の内容</span><textarea id="revText" placeholder="出された修正案を、出した人の言葉のまま書いてください。"></textarea></div>
+        <div class="kb-bar">
+          <button type="button" class="blast-btn" onclick="revBlast()">💥 この起案を白紙に戻す（爆破）</button>
+          <button type="button" onclick="revBlastLog()">爆破の記録を見る</button>
+        </div>
+        <div class="kb-note">爆破は、起案が的外れだったときに使います。このクライアントの保存済みの提案と、入力欄・出力をすべて消して白紙に戻します。起案基礎情報は残ります。元には戻せません。</div>
       </div>
       <button class="run-btn" id="btn" onclick="run()">ワークフロー実行</button>
     </div>
@@ -742,7 +773,7 @@ textarea {
           <div onclick="openBusiness()" style="padding:12px 20px; cursor:pointer; color:#f5f0e8; font-size:0.85rem; border-bottom:1px solid rgba(201,168,76,0.2);">📋 ビジネスレポート</div>
     </div>      
      </div>  
-  <div class="wf-footer">© 2026 合同会社トライサイト　TriSight™ is a registered trademark.<div class="verline" style="margin-top:4px;font-size:11px;opacity:.75">版 <span id="verLabel">2026-09-16-04</span></div></div>
+  <div class="wf-footer">© 2026 合同会社トライサイト　TriSight™ is a registered trademark.<div class="verline" style="margin-top:4px;font-size:11px;opacity:.75">版 <span id="verLabel">2026-09-16-05</span></div></div>
 </div>
 
 <script>
@@ -940,9 +971,9 @@ function gateText(g){
 }
 
 /* ===== 起案基礎情報（2026-09-16追加）=====
-   紙の「起案基礎情報シート（様式版1.0）」と同じ設問定義（KB_SECS）から画面を作る。
+   紙の「起案基礎情報シート（様式版1.1）」と同じ設問定義（KB_SECS）から画面を作る。
    保存先はこの端末の localStorage のみ（キー：trisight_kian_sheets）。 */
-const KB_SECS = [["Ⅰ　起案者", [{"q": "Q1", "key": "q1_name", "label": "会社名", "type": "text"}, {"q": "Q1", "key": "q1_role", "label": "記入者の役職", "type": "text"}, {"q": "Q2", "key": "q2", "label": "起案者の業種（一つ）", "type": "radio", "opts": ["経営コンサルティング", "IT・BPO", "士業（税理士・社労士・行政書士等）", "金融機関", "業界団体", "当事者本人（自社の問題）", "その他"]}]], ["Ⅱ　クライアント（問題の当事者）", [{"q": "Q3", "key": "q3", "label": "当事者の名称", "type": "text", "note": "クライアントごとに記入します"}, {"q": "Q4", "key": "q4", "label": "起案者との関係（一つ）", "type": "radio", "opts": ["自社", "顧問契約先", "個別の相談（単発）", "紹介を受けた見込み先", "まだ接触していない", "その他"]}, {"q": "Q5", "key": "q5", "label": "相談を受けた経緯（一つ）", "type": "radio", "opts": ["当事者から相談があった", "起案者から持ちかけた", "第三者の紹介"]}, {"q": "Q6", "key": "q6", "label": "当事者の業種（日本標準産業分類の大分類・一つ）", "type": "select", "opts": ["A 農業、林業", "B 漁業", "C 鉱業、採石業、砂利採取業", "D 建設業", "E 製造業", "F 電気・ガス・熱供給・水道業", "G 情報通信業", "H 運輸業、郵便業", "I 卸売業、小売業", "J 金融業、保険業", "K 不動産業、物品賃貸業", "L 学術研究、専門・技術サービス業", "M 宿泊業、飲食サービス業", "N 生活関連サービス業、娯楽業", "O 教育、学習支援業", "P 医療、福祉", "Q 複合サービス事業", "R サービス業（他に分類されないもの）", "S 公務（他に分類されるものを除く）", "T 分類不能の産業"], "note": "令和5年7月告示（令和6年4月1日施行）の大分類"}, {"q": "Q6", "key": "q6_map", "label": "業界マップ", "type": "mapselect", "note": "大分類を選ぶと、当社が整備した業界マップを選べます"}, {"q": "Q7", "key": "q7_multi", "label": "事業の広がり", "type": "radio", "opts": ["多拠点展開している", "多拠点展開していない"]}, {"q": "Q7", "key": "q7_count", "label": "拠点数", "type": "number"}, {"q": "Q7", "key": "q7_pref", "label": "展開している都道府県", "type": "text"}, {"q": "Q8", "key": "q8", "label": "現場の中心となる職種", "type": "radio", "opts": ["有資格の専門職", "有資格ではない", "分からない"]}, {"q": "Q8", "key": "q8_job", "label": "職種名", "type": "text", "note": "例：看護師、介護福祉士"}]], ["Ⅲ　当事者の業界についての起案者の知識", [{"q": "Q9", "key": "q9", "label": "知識の段階（一つ）", "type": "radio", "opts": ["A 当事者本人として運営している", "B その業界で実務経験がある", "C その業界の顧客を支援した実績がある", "D 一般的な知識のみ", "E 知識なし"]}, {"q": "Q9", "key": "q9_years", "label": "Bの場合の年数", "type": "number"}, {"q": "Q9", "key": "q9_cases", "label": "Cの場合の件数", "type": "number"}, {"q": "Q10", "key": "q10", "label": "分かっている制度・規制（分かるものだけ）", "type": "check", "opts": ["報酬・料金の決まり方", "人員・資格の基準", "許認可・指定・届出", "補助金・助成金・加算", "地域による違い"], "note": "印の無いものは、分からないものとして扱います"}, {"q": "Q11", "key": "q11", "label": "当事者の現場を見たことがあるか（一つ）", "type": "radio", "opts": ["定期的に見ている", "見たことがある", "見たことがない"]}]], ["Ⅳ　当事者の問題の把握", [{"q": "Q12", "key": "q12", "label": "問題をどうやって把握したか（当てはまるものすべて）", "type": "check", "opts": ["経営陣から聞いた", "現場職員から聞いた", "当事者の資料を見た", "現場を見た", "把握していない"]}, {"q": "Q13", "key": "q13", "label": "受け取っている資料（当てはまるものすべて）", "type": "check", "opts": ["決算書", "試算表", "事業計画", "人員配置表", "指定・届出の書類", "利用実績", "なし"], "note": "印を付けた資料の中身は、画面の「ベース資料」の欄に貼ってください"}, {"q": "Q14", "key": "q14", "label": "経営陣から聞いている内容", "type": "textarea", "note": "経営陣が話した言葉のまま書いてください"}, {"q": "Q14", "key": "q14_mark", "label": "Q14の性質", "type": "radio", "opts": ["当事者の言葉のまま", "起案者の推測を含む"]}, {"q": "Q15", "key": "q15", "label": "現場職員から聞いている内容", "type": "textarea", "note": "現場職員が話した言葉のまま書いてください"}, {"q": "Q15", "key": "q15_mark", "label": "Q15の性質", "type": "radio", "opts": ["当事者の言葉のまま", "起案者の推測を含む"]}, {"q": "Q16", "key": "q16", "label": "問題の明確さ（一つ）", "type": "radio", "opts": ["具体的に挙げている", "漠然としている"], "note": "何が・どこで・どの程度かを当事者が言えるなら「具体的」"}, {"q": "Q17", "key": "q17", "label": "いつから起きているか", "type": "text"}, {"q": "Q18", "key": "q18", "label": "どの程度か（数字で言えるもの）", "type": "text", "note": "例：離職者数、稼働率、赤字額"}, {"q": "Q19", "key": "q19", "label": "どこで起きているか（一つ）", "type": "radio", "opts": ["全拠点", "特定の拠点・地域", "特定のサービス", "分からない"]}, {"q": "Q20", "key": "q20", "label": "当事者が考えている原因", "type": "textarea", "note": "当事者の言葉のまま"}, {"q": "Q21", "key": "q21", "label": "これまでに試したことと、その結果", "type": "textarea"}, {"q": "Q22", "key": "q22_mgmt", "label": "売上や効率化の話の受け止め（経営陣）", "type": "text"}, {"q": "Q22", "key": "q22_field", "label": "売上や効率化の話の受け止め（現場職員）", "type": "text"}, {"q": "Q23", "key": "q23", "label": "当事者が「こうなれば終わり」と考えている地点（出口）", "type": "textarea", "note": "例：離職者が年〇人以下に戻る、〇〇の加算が受理される"}, {"q": "Q23", "key": "q23_mark", "label": "出口の確認", "type": "radio", "opts": ["当事者に確認済み", "未確認"]}]], ["Ⅴ　当事者の前提条件", [{"q": "Q24", "key": "q24", "label": "予算の目安", "type": "text"}, {"q": "Q25", "key": "q25", "label": "いつまでに決着させたいか", "type": "text"}, {"q": "Q26", "key": "q26", "label": "誰が決めるか（決裁者）", "type": "text"}, {"q": "Q27", "key": "q27", "label": "提案の実行に動かせる人手", "type": "text"}, {"q": "Q28", "key": "q28", "label": "変えられないこと", "type": "textarea", "note": "例：拠点は閉じない、人員は増やさない"}]], ["Ⅵ　起案者が担う範囲", [{"q": "Q29", "key": "q29", "label": "起案者が実行できること（当てはまるものすべて）", "type": "check", "opts": ["情報提供", "提案書の作成", "実行の伴走", "システムの導入", "人の派遣", "その他"]}, {"q": "Q30", "key": "q30", "label": "士業の業務に当たる作業（申請書類の作成代行等）を含むか（一つ）", "type": "radio", "opts": ["含まない", "含む（有資格者が担当）", "分からない"]}]]];
+const KB_SECS = [["Ⅰ　起案者", [{"q": "Q1", "key": "q1_name", "label": "会社名", "type": "text"}, {"q": "Q1", "key": "q1_role", "label": "記入者の役職", "type": "text"}, {"q": "Q2", "key": "q2", "label": "起案者の業種（一つ）", "type": "radio", "opts": ["経営コンサルティング", "IT・BPO", "士業（税理士・社労士・行政書士等）", "金融機関", "業界団体", "当事者本人（自社の問題）", "その他"]}]], ["Ⅱ　クライアント（問題の当事者）", [{"q": "Q3", "key": "q3", "label": "当事者の名称", "type": "text", "note": "クライアントごとに記入します"}, {"q": "Q4", "key": "q4", "label": "起案者との関係（一つ）", "type": "radio", "opts": ["自社", "顧問契約先", "個別の相談（単発）", "紹介を受けた見込み先", "まだ接触していない", "その他"], "mark": true}, {"q": "Q5", "key": "q5", "label": "相談を受けた経緯（一つ）", "type": "radio", "opts": ["当事者から相談があった", "起案者から持ちかけた", "第三者の紹介"]}, {"q": "Q6", "key": "q6", "label": "当事者の業種（日本標準産業分類の大分類・一つ）", "type": "select", "opts": ["A 農業、林業", "B 漁業", "C 鉱業、採石業、砂利採取業", "D 建設業", "E 製造業", "F 電気・ガス・熱供給・水道業", "G 情報通信業", "H 運輸業、郵便業", "I 卸売業、小売業", "J 金融業、保険業", "K 不動産業、物品賃貸業", "L 学術研究、専門・技術サービス業", "M 宿泊業、飲食サービス業", "N 生活関連サービス業、娯楽業", "O 教育、学習支援業", "P 医療、福祉", "Q 複合サービス事業", "R サービス業（他に分類されないもの）", "S 公務（他に分類されるものを除く）", "T 分類不能の産業"], "note": "令和5年7月告示（令和6年4月1日施行）の大分類", "mark": true}, {"q": "Q6", "key": "q6_map", "label": "業界マップ", "type": "mapselect", "note": "大分類を選ぶと、当社が整備した業界マップを選べます"}, {"q": "Q7", "key": "q7_multi", "label": "事業の広がり", "type": "radio", "opts": ["多拠点展開している", "多拠点展開していない"]}, {"q": "Q7", "key": "q7_count", "label": "拠点数", "type": "number"}, {"q": "Q7", "key": "q7_pref", "label": "展開している都道府県", "type": "text"}, {"q": "Q8", "key": "q8", "label": "現場の中心となる職種", "type": "radio", "opts": ["有資格の専門職", "有資格ではない", "分からない"]}, {"q": "Q8", "key": "q8_job", "label": "職種名", "type": "text", "note": "例：看護師、介護福祉士"}]], ["Ⅲ　当事者の業界についての起案者の知識", [{"q": "Q9", "key": "q9", "label": "知識の段階（一つ）", "type": "radio", "opts": ["A 当事者本人として運営している", "B その業界で実務経験がある", "C その業界の顧客を支援した実績がある", "D 一般的な知識のみ", "E 知識なし"], "mark": true}, {"q": "Q9", "key": "q9_years", "label": "Bの場合の年数", "type": "number"}, {"q": "Q9", "key": "q9_cases", "label": "Cの場合の件数", "type": "number"}, {"q": "Q10", "key": "q10", "label": "分かっている制度・規制（分かるものだけ）", "type": "check", "opts": ["報酬・料金の決まり方", "人員・資格の基準", "許認可・指定・届出", "補助金・助成金・加算", "地域による違い"], "note": "印の無いものは、分からないものとして扱います"}, {"q": "Q11", "key": "q11", "label": "当事者の現場を見たことがあるか（一つ）", "type": "radio", "opts": ["定期的に見ている", "見たことがある", "見たことがない"]}]], ["Ⅳ　当事者の問題の把握", [{"q": "Q12", "key": "q12", "label": "問題をどうやって把握したか（当てはまるものすべて）", "type": "check", "opts": ["経営陣から聞いた", "現場職員から聞いた", "当事者の資料を見た", "現場を見た", "把握していない"], "mark": true}, {"q": "Q13", "key": "q13", "label": "受け取っている資料（当てはまるものすべて）", "type": "check", "opts": ["決算書", "試算表", "事業計画", "人員配置表", "指定・届出の書類", "利用実績", "なし"], "note": "印を付けた資料の中身は、画面の「ベース資料」の欄に貼ってください"}, {"q": "Q14", "key": "q14", "label": "経営陣から聞いている内容", "type": "textarea", "note": "経営陣が話した言葉のまま書いてください", "mark": true}, {"q": "Q14", "key": "q14_mark", "label": "Q14の性質", "type": "radio", "opts": ["当事者の言葉のまま", "起案者の推測を含む"]}, {"q": "Q15", "key": "q15", "label": "現場職員から聞いている内容", "type": "textarea", "note": "現場職員が話した言葉のまま書いてください", "mark": true}, {"q": "Q15", "key": "q15_mark", "label": "Q15の性質", "type": "radio", "opts": ["当事者の言葉のまま", "起案者の推測を含む"]}, {"q": "Q16", "key": "q16_mgmt", "label": "問題の明確さ（経営陣の言葉・一つ）", "type": "radio", "opts": ["具体的に挙げている", "漠然としている"], "mark": true}, {"q": "Q16", "key": "q16_field", "label": "問題の明確さ（現場職員の言葉・一つ）", "type": "radio", "opts": ["具体的に挙げている", "漠然としている"], "note": "何が・どこで・どの程度かを言えるなら「具体的」", "mark": true}, {"q": "Q17", "key": "q17", "label": "いつから起きているか", "type": "text"}, {"q": "Q18", "key": "q18", "label": "どの程度か（数字で言えるもの）", "type": "text", "note": "例：離職者数、稼働率、赤字額"}, {"q": "Q19", "key": "q19", "label": "どこで起きているか（一つ）", "type": "radio", "opts": ["全拠点", "特定の拠点・地域", "特定のサービス", "分からない"]}, {"q": "Q20", "key": "q20", "label": "当事者が考えている原因", "type": "textarea", "note": "当事者の言葉のまま"}, {"q": "Q21", "key": "q21", "label": "これまでに試したことと、その結果", "type": "textarea"}, {"q": "Q22", "key": "q22_mgmt", "label": "売上や効率化の話の受け止め（経営陣）", "type": "text"}, {"q": "Q22", "key": "q22_field", "label": "売上や効率化の話の受け止め（現場職員）", "type": "text"}, {"q": "Q23", "key": "q23", "label": "当事者が「こうなれば終わり」と考えている地点（出口）", "type": "textarea", "note": "例：離職者が年〇人以下に戻る、〇〇の加算が受理される", "mark": true}, {"q": "Q23", "key": "q23_mark", "label": "出口の確認", "type": "radio", "opts": ["当事者に確認済み", "未確認"]}]], ["Ⅴ　当事者の前提条件", [{"q": "Q24", "key": "q24", "label": "予算の目安", "type": "text"}, {"q": "Q25", "key": "q25", "label": "いつまでに決着させたいか", "type": "text"}, {"q": "Q26", "key": "q26", "label": "誰が決めるか（決裁者）", "type": "text"}, {"q": "Q27", "key": "q27", "label": "提案の実行に動かせる人手", "type": "text"}, {"q": "Q28", "key": "q28", "label": "変えられないこと", "type": "textarea", "note": "例：拠点は閉じない、人員は増やさない"}]], ["Ⅵ　起案者が担う範囲", [{"q": "Q29", "key": "q29", "label": "起案者が実行できること（当てはまるものすべて）", "type": "check", "opts": ["情報提供", "提案書の作成", "実行の伴走", "システムの導入", "人の派遣", "その他"]}, {"q": "Q30", "key": "q30", "label": "士業の業務に当たる作業（申請書類の作成代行等）を含むか（一つ）", "type": "radio", "opts": ["含まない", "含む（有資格者が担当）", "分からない"]}]]];
 const KB_INDUSTRY = {"common": [{"name": "日本標準産業分類（令和5年7月告示・令和6年4月1日施行）", "org": "総務省", "url": "https://www.soumu.go.jp/toukei_toukatsu/index/seido/sangyo/", "what": "業種の分類の基準（大分類20項目）", "checked": "2026-09-16"}, {"name": "許認可等の統一的把握結果（許認可等現況表）", "org": "総務省", "url": "https://www.soumu.go.jp/main_sosiki/hyouka/hyouka_kansi_n/kyoninka.html", "what": "国の許認可等の事項・所管府省・根拠法令・処分権者・対象者。掲載の最新は平成30年6月公表分のため、現行の条文で確かめて使う", "checked": "2026-09-16"}, {"name": "ローカルベンチマーク（ロカベン）シート", "org": "経済産業省", "url": "https://www.meti.go.jp/policy/economy/keiei_innovation/sangyokinyu/locaben/sheet.html", "what": "財務面の6つの指標と、非財務面（商流・業務フロー、4つの視点）の聞き取りの型", "checked": "2026-09-16"}, {"name": "中小企業景況調査", "org": "中小企業庁・中小企業基盤整備機構", "url": "https://www.chusho.meti.go.jp/koukai/chousa/keikyo/index.html", "what": "四半期ごとの景況の調査。今期直面している経営上の問題点（重要度の高い順に3つ）も業種別に聞いている。対象は製造業・建設業・卸売業・小売業・サービス業の5業種", "checked": "2026-09-16"}], "maps": {"kaigo": {"dai": "P", "title": "介護事業（老人福祉・介護事業、障害者福祉事業）", "status": "整備済み", "sources": [{"name": "介護労働実態調査（事業所における介護労働実態調査／介護労働者の就業実態と就業意識調査）", "org": "公益財団法人介護労働安定センター", "url": "https://www.kaigo-center.or.jp/report/jittai/", "what": "厚生労働省が同センターに毎年度行わせている調査。事業所調査は事業運営上の課題など、労働者調査は仕事への満足度や悩みなどを聞いており、経営側と現場側の両方の実態が分かる", "checked": "2026-09-16"}, {"name": "令和7年度 介護事業経営概況調査", "org": "厚生労働省", "url": "https://www.mhlw.go.jp/toukei/list/153-6a.html", "what": "サービス別の収支の状況", "checked": "2026-09-16"}, {"name": "介護労働者の雇用管理の改善等に関する法律", "org": "厚生労働省（法令等データベース）", "url": "https://www.mhlw.go.jp/web/t_doc?dataId=75088300&dataType=0&pageNo=1", "what": "介護労働者の雇用管理の改善、および介護労働安定センターの指定の根拠", "checked": "2026-09-16"}], "rules": [{"kind": "構造（土壌）", "text": "介護サービスは法令上の指定を受けた法人が提供し、法人は収支が合わなければ存続できないため、経営陣は収益を前提に運営する。一方、売上を生む担い手である看護師・介護士の職務の目的は利用者の回復や社会復帰であり、売上や効率化は職務の外にある。この目的の違いが、経営陣と現場職員の問題提起の食い違いを生む", "source": "当社の介護事業運営の実務", "status": "当社実務の知見（指定の要件の条文は介護保険法で確かめる）"}, {"kind": "構造（土壌）", "text": "経営陣と現場職員の問題提起の食い違いに対し、是正の手立てを持っていない事業所が多い", "source": "当社および協業先の現場実務", "status": "当社実務の知見"}, {"kind": "法令", "text": "介護報酬は国が定めるため、事業所が価格を上げて原資を増やすことができない。経営陣は稼働と加算で収入を見て、現場職員は人手と賃金で見る", "source": "介護保険法および介護報酬の算定基準（厚生労働省告示）", "status": "条文未照合"}, {"kind": "法令", "text": "人員基準や加算の算定要件は、経営陣には満たすべき数として、現場職員には記録と体制の負担として現れる", "source": "各サービスの人員・設備・運営の基準（厚生労働省令）", "status": "条文未照合"}, {"kind": "法令", "text": "介護職員等処遇改善加算には配分の要件があり、経営陣は要件を満たせたかで見て、職員は自分の手取りで見る", "source": "厚生労働省の処遇改善加算に関する通知", "status": "条文未照合"}, {"kind": "法令", "text": "地域区分によって単価が異なるため、多拠点の法人では本部と拠点で収支の見え方が分かれる", "source": "地域区分に関する厚生労働省告示", "status": "条文未照合"}]}, "kensetsu": {"dai": "D", "title": "建設業（情報源のみ）", "status": "情報源のみ（ルールの要点は未整備）", "sources": [{"name": "建設業の経営分析", "org": "一般財団法人建設業情報管理センター", "url": "https://www.ciic.or.jp/course/bunseki/", "what": "経営状況分析の申請があった建設企業の財務比率の平均値など（令和6年度版まで刊行）", "checked": "2026-09-16"}], "rules": []}, "ringyo": {"dai": "A", "title": "林業（情報源のみ）", "status": "情報源のみ（ルールの要点は未整備）", "sources": [{"name": "林業労働力確保支援センター一覧", "org": "林野庁", "url": "https://www.rinya.maff.go.jp/j/routai/roukaku/ichiran.html", "what": "林業労働力の確保の促進に関する法律に基づき都道府県知事が指定する支援センター（雇用管理の改善・就業支援）", "checked": "2026-09-16"}], "rules": []}}};
 
 const KB_KEY = 'trisight_kian_sheets';
@@ -955,12 +986,12 @@ function kbEsc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function
 function kbBuild(){
   const root = document.getElementById('kbForm');
   if (!root || root.dataset.built) return;
-  let h = '';
+  let h = '<div class="kb-note" style="margin-bottom:6px">★の付いた設問は、提案の段階の判定に使います。まず★を埋め、その他は分かる範囲で構いません。空欄は「欠けている情報」として扱われ、提案の中で「確かめてから決める」と示されます。</div>';
   KB_SECS.forEach(function(sec){
     h += '<div class="kb-sec">' + kbEsc(sec[0]) + '</div>';
     let lastQ = '';
     sec[1].forEach(function(f){
-      if (f.q !== lastQ) { if (lastQ) h += '</div>'; h += '<div class="kb-block"><span class="kb-qn">' + f.q + '</span>'; lastQ = f.q; }
+      if (f.q !== lastQ) { if (lastQ) h += '</div>'; const star = sec[1].some(function(x){ return x.q === f.q && x.mark; }); h += '<div class="kb-block"><span class="kb-qn">' + f.q + (star ? '<span class="kb-star">★</span>' : '') + '</span>'; lastQ = f.q; }
       h += '<div class="kb-item"><span class="kb-lab">' + kbEsc(f.label) + '</span>';
       const id = 'kb_' + f.key;
       if (f.type === 'text') h += '<input type="text" id="' + id + '">';
@@ -1055,8 +1086,15 @@ function kbShowHistory(){
   if (!KB_META.saved) { el.textContent = 'まだ保存されていません。'; return; }
   el.textContent = '最終保存：' + KB_META.saved + '　／　これまでの保存：' + KB_META.history.slice(-10).join('、') + '（ヒアリングが進んだときや、クライアントの状況が変わったときは、書き直して保存し、もう一度実行してください）';
 }
+function kbCompat(a){
+  a = a || {};
+  if (a.q16 && !a.q16_mgmt && !a.q16_field) { if (a.q14) a.q16_mgmt = a.q16; if (a.q15) a.q16_field = a.q16; }
+  delete a.q16;
+  return a;
+}
 function kbLoadRecord(r){
   r = r || {};
+  if (r.answers) r.answers = kbCompat(r.answers);
   kbBuild(); kbWrite(r.answers || {});
   KB_COMPANY = r.company || null;
   KB_META = { saved: r.saved || '', history: r.history || [] };
@@ -1074,7 +1112,18 @@ function kbRefresh(){
 function kbStatusShow(){
   const st = document.getElementById('kbStatus'), sel = document.getElementById('kbSel');
   if (!st || !sel) return;
-  if (sel.value) { st.textContent = '使用中：' + sel.value + '（実行すると、この回答で立ち位置と提案の段階を決めます）'; st.className = 'kb-status ok'; }
+  if (sel.value) {
+    const rec = kbAllSheets()[sel.value] || {};
+    const a = kbCompat(Object.assign({}, rec.answers || {}));
+    const p = kbProfile(a);
+    const v = function(x){ return x ? x : '未回答'; };
+    st.textContent = '使用中：' + sel.value + (rec.saved ? '（最終保存 ' + rec.saved + '）' : '') + '\n'
+      + '判定に使う回答：関係 ' + v(a.q4) + '／業種 ' + v(a.q6) + '／知識 ' + v(a.q9) + '\n'
+      + '　経営陣の言葉 ' + (a.q14 ? 'あり（' + v(a.q16_mgmt) + '）' : 'なし') + '／現場職員の言葉 ' + (a.q15 ? 'あり（' + v(a.q16_field) + '）' : 'なし') + '／出口 ' + (a.q23 ? v(a.q23_mark) : 'なし') + '\n'
+      + 'この回答での提案の段階（見込み）：' + KB_MODE_SHORT[p.mode] + '\n'
+      + '前回から変わったことがあるときだけ「起案基礎情報を開く」で直して保存してください。変わりがなければ、開かずにそのまま実行できます。';
+    st.className = 'kb-status ok';
+  }
   else { st.textContent = '未使用（使わなくても実行できます。その場合は立ち位置の欄の文章から判定します）'; st.className = 'kb-status'; }
 }
 function kbToggle(){
@@ -1089,6 +1138,7 @@ function kbSelect(){
   try { localStorage.setItem(KB_SEL_KEY, sel.value); } catch(e){}
   kbLoadRecord(sel.value ? all[sel.value] : null);
   kbStatusShow();
+  if (typeof revRefresh === 'function') revRefresh();
 }
 function kbSave(){
   kbBuild();
@@ -1103,12 +1153,14 @@ function kbSave(){
   try { localStorage.setItem(KB_SEL_KEY, f.q3); } catch(e){}
   KB_META = { saved: now, history: hist };
   kbRefresh(); kbShowHistory();
+  if (typeof revRefresh === 'function') revRefresh();
   alert('この端末に保存しました：' + f.q3);
 }
 function kbNew(){
   kbBuild(); kbLoadRecord(null);
   try { localStorage.setItem(KB_SEL_KEY, ''); } catch(e){}
   kbRefresh();
+  if (typeof revRefresh === 'function') revRefresh();
   const p = document.getElementById('kbPanel'); if (!p.classList.contains('visible')) kbToggle();
 }
 function kbDelete(){
@@ -1118,21 +1170,23 @@ function kbDelete(){
   const all = kbAllSheets(); delete all[sel.value]; kbPutSheets(all);
   try { localStorage.setItem(KB_SEL_KEY, ''); } catch(e){}
   kbLoadRecord(null); kbRefresh();
+  if (typeof revRefresh === 'function') revRefresh();
 }
 function kbToJson(f){
   const ans = {};
   KB_FIELDS.forEach(function(d){ ans[d.q + ' ' + d.label] = f[d.key]; });
-  return { '様式': '起案基礎情報シート 様式版1.0', '最終保存': KB_META.saved, '保存の履歴': KB_META.history, '回答': ans, '企業基礎情報': KB_COMPANY };
+  return { '様式': '起案基礎情報シート 様式版1.1', '最終保存': KB_META.saved, '保存の履歴': KB_META.history, '回答': ans, '企業基礎情報': KB_COMPANY };
 }
 function kbFromJson(j){
   const ans = (j && j['回答']) || {}; const f = {};
+  if (ans['Q16 問題の明確さ（一つ）'] != null) f.q16 = String(ans['Q16 問題の明確さ（一つ）']);
   KB_FIELDS.forEach(function(d){
     let v = ans[d.q + ' ' + d.label];
     if (d.type === 'check') v = Array.isArray(v) ? v : (v ? [v] : []);
     else v = (v == null ? '' : String(v));
     f[d.key] = v;
   });
-  return f;
+  return kbCompat(f);
 }
 function kbExport(){
   kbBuild();
@@ -1184,8 +1238,8 @@ function kbActive(){
 }
 
 /* ===== 起案基礎情報から立ち位置と提案の段階を機械的に決める =====
-   明確　　　　　：問題が具体的で、経営陣・現場職員の両方の言葉があり、出口も確認済み（出口の書き方が決着地点であることをAIでも確認）
-   明確（不足あり）：問題は具体的だが、片側の言葉しか無い、または出口が未確認・行為になっている
+   明確　　　　　：経営陣・現場職員の両方の言葉があり、両方とも具体的で、出口も確認済み（出口の書き方が決着地点であることをAIでも確認）
+   明確（不足あり）：どちらか一方は具体的だが、もう一方が無い・漠然としている、または出口が未確認・行為になっている
    五里霧中　　　：問題が漠然としている、または起案者が外から見ている */
 const KB_MODE_NAME = {
   clear:   '明確　出口から逆算した解決提案',
@@ -1205,20 +1259,22 @@ function kbProfile(f){
   else if (understood.length && (mgmt || field)) pos = '事実を得ている';
   else pos = '外から見ている';
   const sides = mgmt && field ? '両方' : (mgmt ? '経営陣のみ' : (field ? '現場職員のみ' : 'なし'));
-  const clear = pos !== '外から見ている' && f.q16 === '具体的に挙げている' && !!(f.q14 || f.q15);
+  const clearM = !!(f.q14 && f.q16_mgmt === '具体的に挙げている');
+  const clearF = !!(f.q15 && f.q16_field === '具体的に挙げている');
+  const clear = pos !== '外から見ている' && (clearM || clearF);
   const exitOk = !!(f.q23 && f.q23_mark === '当事者に確認済み');
   const know = String(f.q9 || '').charAt(0) || '未回答';
   let mode;
   if (!clear) mode = 'fog';
-  else if (sides === '両方' && exitOk) mode = 'clear';
+  else if (clearM && clearF && sides === '両方' && exitOk) mode = 'clear';
   else mode = 'partial';
   const map = f.q6_map ? KB_INDUSTRY.maps[f.q6_map] : null;
-  return { pos: pos, sides: sides, clear: clear, exitOk: exitOk, know: know, mode: mode, map: map, mapKey: f.q6_map || '' };
+  return { pos: pos, sides: sides, clear: clear, clearM: clearM, clearF: clearF, exitOk: exitOk, know: know, mode: mode, map: map, mapKey: f.q6_map || '' };
 }
 
 function kbMissing(f, reference){
   const m = [];
-  const need = [['q6','当事者の業種（Q6）'],['q9','起案者の知識の段階（Q9）'],['q16','問題の明確さ（Q16）'],['q17','いつから起きているか（Q17）'],['q18','どの程度か（Q18）'],['q19','どこで起きているか（Q19）'],['q20','当事者が考えている原因（Q20）'],['q21','これまでに試したこと（Q21）'],['q23','出口（Q23）'],['q24','予算の目安（Q24）'],['q25','いつまでに決着させたいか（Q25）'],['q26','決裁者（Q26）'],['q27','動かせる人手（Q27）'],['q30','士業の業務の扱い（Q30）']];
+  const need = [['q6','当事者の業種（Q6）'],['q9','起案者の知識の段階（Q9）'],['q16_mgmt','経営陣の問題の明確さ（Q16）'],['q16_field','現場職員の問題の明確さ（Q16）'],['q17','いつから起きているか（Q17）'],['q18','どの程度か（Q18）'],['q19','どこで起きているか（Q19）'],['q20','当事者が考えている原因（Q20）'],['q21','これまでに試したこと（Q21）'],['q23','出口（Q23）'],['q24','予算の目安（Q24）'],['q25','いつまでに決着させたいか（Q25）'],['q26','決裁者（Q26）'],['q27','動かせる人手（Q27）'],['q30','士業の業務の扱い（Q30）']];
   need.forEach(function(p){ const v = f[p[0]]; if (!v || (Array.isArray(v) && !v.length)) m.push(p[1]); });
   if (!(f.q12 || []).length) m.push('問題の把握の方法（Q12）');
   if (!(f.q29 || []).length) m.push('起案者が実行できること（Q29）');
@@ -1247,7 +1303,7 @@ function kbSummary(f, p){
   lines.push('起案者が分かっていない制度・規制：' + (unknown.length ? unknown.join('、') : 'なし'));
   lines.push('');
   lines.push('【起案基礎情報から機械的に決めた立ち位置】');
-  lines.push('問題との位置関係：' + p.pos + '／聞けている言葉：' + p.sides + '／問題の明確さ：' + (p.clear ? '明確' : '五里霧中') + '／出口：' + (p.exitOk ? '当事者に確認済み' : '未確認') + '／知識の段階：' + p.know);
+  lines.push('問題との位置関係：' + p.pos + '／聞けている言葉：' + p.sides + '／問題の明確さ：経営陣 ' + (p.clearM ? '具体的' : '具体的でない') + '・現場職員 ' + (p.clearF ? '具体的' : '具体的でない') + '／出口：' + (p.exitOk ? '当事者に確認済み' : '未確認') + '／知識の段階：' + p.know);
   return lines.join('\n');
 }
 
@@ -1301,6 +1357,132 @@ const AZUSA_FOG_PROMPT = 'あなたはTriSight™のあずさです。起案基�
  + '■ 5. 経営陣と現場職員の両方に聞く項目\n（同じ事柄を両側に聞く形で、質問文・誰に聞くか・なぜ聞くかを書く。両側の答えの食い違いが問題の手がかりになる）\n\n'
  + '■ 6. そろったときの姿\n（何がそろえば「問題が明確」になり、解決提案へ進めるか）';
 
+
+/* ===== 修正の仕組みと爆破（2026-09-16-05追加）=====
+   実行結果をクライアントごとにこの端末へ保存し（キー：trisight_runs）、修正のもととして選べるようにする。 */
+const RUN_KEY = 'trisight_runs';
+const BLAST_KEY = 'trisight_blast_log';
+const RUN_NONE = '（起案基礎情報なし）';
+let TS_LAST_REV = '';
+function revClientKey(){ const sel = document.getElementById('kbSel'); return (sel && sel.value) ? sel.value : RUN_NONE; }
+function revAll(){ try { return JSON.parse(localStorage.getItem(RUN_KEY) || '{}') || {}; } catch(e){ return {}; } }
+function revPut(o){
+  for (let i = 0; i < 25; i++) {
+    try { localStorage.setItem(RUN_KEY, JSON.stringify(o)); return true; }
+    catch(e) {
+      let oldestK = null, oldestT = null;
+      Object.keys(o).forEach(function(k){ (o[k] || []).forEach(function(r){ if (oldestT === null || r.time < oldestT) { oldestT = r.time; oldestK = k; } }); });
+      if (!oldestK) break;
+      o[oldestK].sort(revOrder).shift();
+    }
+  }
+  alert('この端末の保存容量が足りず、今回の提案を修正のもととして保存できませんでした。TXT出力で残してください。');
+  return false;
+}
+function revOrder(a,b){ if (a.time !== b.time) return a.time < b.time ? -1 : 1; return a.id < b.id ? -1 : (a.id > b.id ? 1 : 0); }
+function revList(){ return (revAll()[revClientKey()] || []).slice().sort(revOrder).reverse(); }
+function revRefresh(){
+  const sel = document.getElementById('revBase'); if (!sel) return;
+  const cur = sel.value; const list = revList();
+  sel.innerHTML = '';
+  const o0 = document.createElement('option'); o0.value = ''; o0.textContent = list.length ? '使わない（新しく起案する）' : '使わない（このクライアントの保存済みの提案はまだありません）'; sel.appendChild(o0);
+  list.forEach(function(r){
+    const o = document.createElement('option'); o.value = r.id;
+    o.textContent = r.time + '　' + (r.seq > 0 ? '修正' + r.seq : '初回') + '　' + (KB_MODE_SHORT[r.mode] || '') + '　' + String(r.purpose || '').slice(0, 24);
+    sel.appendChild(o);
+  });
+  if (cur && list.some(function(r){ return r.id === cur; })) sel.value = cur;
+  revChanged();
+}
+function revFind(id){ return revList().filter(function(r){ return r.id === id; })[0] || null; }
+function revChanged(){
+  const sel = document.getElementById('revBase'), info = document.getElementById('revBaseInfo');
+  if (!sel || !info) return;
+  const r = sel.value ? revFind(sel.value) : null;
+  info.textContent = r ? ('選択中：' + r.time + '（' + (r.seq > 0 ? '修正' + r.seq : '初回') + '・' + (KB_MODE_NAME[r.mode] || '') + '）' + (r.revision ? '　直前の修正案：' + r.revision.part : '')) : '';
+  const v = document.getElementById('revView'); if (v) { v.classList.remove('visible'); v.textContent = ''; }
+  const b = document.getElementById('revViewBtn'); if (b) b.textContent = '修正のもとの出力を見る';
+}
+function revToggleView(){
+  const sel = document.getElementById('revBase'), v = document.getElementById('revView'), b = document.getElementById('revViewBtn');
+  const r = sel.value ? revFind(sel.value) : null;
+  if (!r) { alert('「修正のもと」で提案を選んでください。'); return; }
+  const open = !v.classList.contains('visible');
+  v.textContent = open ? ('【関所】\n' + r.outputs.G + '\n\n【あずさ】\n' + r.outputs.A + '\n\n【なぎさ】\n' + r.outputs.N + '\n\n【つかさ】\n' + r.outputs.T) : '';
+  v.classList.toggle('visible', open);
+  b.textContent = open ? '修正のもとの出力を閉じる' : '修正のもとの出力を見る';
+}
+function revLoadInputs(){
+  const sel = document.getElementById('revBase');
+  const r = sel.value ? revFind(sel.value) : null;
+  if (!r) { alert('「修正のもと」で提案を選んでください。'); return; }
+  if (!confirm('いま入力欄にある「達成したい目的」「起案者の立ち位置」「起案者インプット」「ベース資料」を、修正のもとの内容で置き換えます。よろしいですか。')) return;
+  document.getElementById('purpose').value = r.purpose || '';
+  document.getElementById('situation').value = r.situation || '';
+  document.getElementById('input').value = r.input || '';
+  document.getElementById('referenceInput').value = r.reference || '';
+  if (r.reference) { const sec = document.getElementById('referenceSection'); if (sec && !sec.classList.contains('visible')) toggleReference(); }
+}
+function revActive(){
+  const sel = document.getElementById('revBase');
+  if (!sel || !sel.value) return null;
+  const base = revFind(sel.value);
+  if (!base) return null;
+  const whoEl = Array.prototype.filter.call(document.getElementsByName('revWho'), function(i){ return i.checked; })[0];
+  return { base: base, who: whoEl ? whoEl.value : '（未回答）', part: String(document.getElementById('revPart').value || '').trim(), text: String(document.getElementById('revText').value || '').trim() };
+}
+function revSave(rec){
+  const all = revAll(); const k = rec.client;
+  all[k] = (all[k] || []).concat([rec]);
+  if (all[k].length > 20) all[k] = all[k].sort(revOrder).slice(-20);
+  revPut(all);
+  revRefresh();
+}
+function revClearScreen(){
+  ['purpose','situation','input','referenceInput','revPart','revText'].forEach(function(id){ const el = document.getElementById(id); if (el) el.value = ''; });
+  Array.prototype.forEach.call(document.getElementsByName('revWho'), function(i){ i.checked = false; });
+  ['G','A','N','T'].forEach(function(x){ setStage(x, 'waiting', ''); const o = document.getElementById('out' + x); if (o) { o.textContent = ''; o.className = 'stage-output'; } });
+  TS_LAST_REV = '';
+}
+function revBlast(){
+  const k = revClientKey(); const n = (revAll()[k] || []).length;
+  if (!confirm('【爆破】「' + k + '」の起案を白紙に戻します。\n\n・保存済みの提案 ' + n + ' 件を消します\n・入力欄と出力をすべて消します\n・起案基礎情報は残します\n\n元には戻せません。よろしいですか。')) return;
+  let reason = '';
+  try { reason = prompt('的外れだった理由を一言残してください（任意）。次の起案の踏み台として、この端末に記録します。', '') || ''; } catch(e) {}
+  const first = (revAll()[k] || []).slice().sort(revOrder)[0];
+  let log = []; try { log = JSON.parse(localStorage.getItem(BLAST_KEY) || '[]') || []; } catch(e) {}
+  log.push({ time: kbNow(), client: k, removed: n, firstPurpose: first ? String(first.purpose || '').slice(0, 80) : String(document.getElementById('purpose').value || '').slice(0, 80), reason: reason });
+  try { localStorage.setItem(BLAST_KEY, JSON.stringify(log.slice(-100))); } catch(e) {}
+  const all = revAll(); delete all[k]; revPut(all);
+  revClearScreen(); revRefresh();
+  alert('白紙に戻しました。新しい起案として入力してください。');
+}
+function revBlastLog(){
+  let log = []; try { log = JSON.parse(localStorage.getItem(BLAST_KEY) || '[]') || []; } catch(e) {}
+  if (!log.length) { alert('爆破の記録はまだありません。'); return; }
+  alert('爆破の記録（新しい順・最大20件）\n\n' + log.slice(-20).reverse().map(function(x){ return x.time + '　' + x.client + '　（消した提案 ' + x.removed + ' 件）\n　起案：' + (x.firstPurpose || '') + '\n　理由：' + (x.reason || '（記入なし）'); }).join('\n\n'));
+}
+function revOriginText(rev){
+  const b = rev.base;
+  return '【修正の実行】\n修正のもと：' + b.time + '（' + (b.seq > 0 ? '修正' + b.seq : '初回') + '・' + (KB_MODE_NAME[b.mode] || '') + '）\n'
+    + '修正案の出所：' + rev.who + '\n直したい部分：' + (rev.part || '（未記入）') + '\n修正案の内容：\n' + rev.text + '\n\n'
+    + '【前回の提案：あずさの出力】\n' + b.outputs.A + '\n\n【前回の提案：なぎさの出力】\n' + b.outputs.N + '\n\n【前回の提案：つかさの出力】\n' + b.outputs.T;
+}
+const AZUSA_REVISE_PROMPT = 'あなたはTriSight™のあずさです。今回は新しい起案ではなく、前回の提案の修正です。入力の【修正の実行】に、修正案（出所・直したい部分・内容）と、前回の提案（あずさ・なぎさ・つかさの出力）があります。次の決まりで出力してください。\n\n'
+ + '・修正案が指す部分だけを作り直す。それ以外の部分は、前回のあずさの出力の内容をそのまま残す（言い回しも変えない）。\n'
+ + '・前回のなぎさ・つかさの指摘のうち、修正案が指す部分に関わるものは、作り直しに反映してよい。\n'
+ + '・修正案が、出口・前提条件・業界ルールと食い違う場合は、作り直したうえで、その食い違いを明記する。\n'
+ + '・修正案が指す部分が前回の提案の中で見つからない場合や、修正案の意味が取れない場合は、その部分は作り直さずに、その旨を書く。\n'
+ + '・修正案に書かれていない発想を加えてもよい。加えた場合は、加えた箇所を明記する。\n\n'
+ + '出力の構成：\n'
+ + '■ 修正後の提案\n（前回のあずさの出力と同じ見出しで、全体を出す）\n\n'
+ + '■ 変更点の一覧\n（変えた箇所ごとに、どこを・どう変えたか・なぜか・修正案の出所を書く。変えていない見出しは「変更なし」と並べる）';
+const NAGISA_REVISE_ADD = '\n\n【今回は前回の提案の修正である】次の見出しを、出力の先頭に加えること。\n'
+ + '■ 修正の検証\n（①作り直した部分が、作り直していない部分・出口・前提条件・業界ルールと食い違っていないか ②修正案が指していない部分が、前回のあずさの出力から変わっていないか（見比べて示す） ③変更点の一覧に漏れや誤りがないか）\n'
+ + 'それ以降の見出しは、修正後の提案の全体を対象に行う。';
+const TSUKASA_REVISE_ADD = '\n\n【今回は前回の提案の修正である】次の見出しを、出力の先頭に加えること。\n'
+ + '■ 修正前後の比較\n（前回の提案と修正後の提案を並べ、何が良くなり、何が崩れたかを、修正案の出所ごとに観測した事実として示す。出口への近さが変わったかも示す）';
+
 function nagisaPromptFor(mode, hasKb){
   const provisional = (mode !== 'clear' && mode !== 'normal');
   const body = provisional
@@ -1352,6 +1534,13 @@ async function run() {
 
   const fullInput = '【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + combinedInput;
 
+  const rev = revActive();
+  if (rev && !rev.text) {
+    alert('「修正のもと」が選ばれています。修正案の内容を入れてください（新しく起案する場合は、修正のもとを「使わない」にしてください）。');
+    btn.disabled = false; btn.textContent = 'ワークフロー実行';
+    return;
+  }
+  TS_LAST_REV = '';
   try {
     const kb = kbActive();
     const prof = kb ? kbProfile(kb) : null;
@@ -1378,7 +1567,7 @@ async function run() {
         + '・業界マップ：' + (prof.map ? prof.map.title + '（' + prof.map.status + '）' : '未整備（業界ルールとの照合なし）') + '\n'
         + '・問題との位置関係：' + prof.pos + '\n'
         + '・聞けている言葉：' + prof.sides + '\n'
-        + '・問題の明確さ：' + (prof.clear ? '明確' : '五里霧中') + '\n'
+        + '・問題の明確さ：経営陣 ' + (prof.clearM ? '具体的' : '具体的でない') + '／現場職員 ' + (prof.clearF ? '具体的' : '具体的でない') + '\n'
         + '・出口：' + (prof.exitOk ? '当事者に確認済み' : '未確認')
         + (down ? '（ただし、出口の書き方が決着のつく地点になっていないため「明確（不足あり）」とします）' : '') + '\n'
         + '・知識の段階：' + prof.know + '\n'
@@ -1390,27 +1579,40 @@ async function run() {
       mode = (gate && gate['判定'] === '進行') ? 'normal' : 'hearing';
       gateOut = gateText(gate);
     }
+    if (rev) {
+      TS_LAST_REV = '修正のもと：' + rev.base.time + '（' + (rev.base.seq > 0 ? '修正' + rev.base.seq : '初回') + '・' + (KB_MODE_SHORT[rev.base.mode] || '') + '）\n修正案の出所：' + rev.who + '\n直したい部分：' + (rev.part || '（未記入）') + '\n修正案の内容：' + rev.text;
+      gateOut = '【修正の実行】\n' + TS_LAST_REV + '\n提案の段階：前回 ' + (KB_MODE_SHORT[rev.base.mode] || '') + ' → 今回 ' + KB_MODE_SHORT[mode] + '\n\n' + gateOut;
+    }
     showOutput('G', gateOut);
-    setStage('G', 'done', KB_MODE_SHORT[mode]);
+    setStage('G', 'done', (rev ? '修正・' : '') + KB_MODE_SHORT[mode]);
 
-    const origin = gateInput + '\n\n【関所の判定】\n' + gateOut;
+    const origin = gateInput + '\n\n【関所の判定】\n' + gateOut + (rev ? '\n\n' + revOriginText(rev) : '');
     const azusaBase = { clear: AZUSA_CLEAR_PROMPT, partial: AZUSA_PARTIAL_PROMPT, fog: AZUSA_FOG_PROMPT, normal: AZUSA_NORMAL_PROMPT, hearing: AZUSA_HEARING_PROMPT }[mode];
-    const azusaSys = azusaBase + (kb ? ('\n\n' + kbConditions(kb, prof)) : '');
+    const azusaSys = (rev ? AZUSA_REVISE_PROMPT : azusaBase) + (kb ? ('\n\n' + kbConditions(kb, prof)) : '');
 
-    setStage('A', 'running', (mode === 'clear' || mode === 'normal') ? '出口から逆算中...' : '提案の段階に合わせて作成中...');
+    setStage('A', 'running', rev ? '指定された部分を作り直し中...' : ((mode === 'clear' || mode === 'normal') ? '出口から逆算中...' : '提案の段階に合わせて作成中...'));
     const azusa = await callAzusa(origin, oKey, azusaSys);
     showOutput('A', azusa);
     setStage('A', 'done', '完了');
 
     setStage('N', 'running', '検証中...');
-    const nagisa = await callClaude(nagisaPromptFor(mode, !!kb), origin + '\n\n【あずさの出力】\n' + azusa, aKey);
+    const nagisa = await callClaude(nagisaPromptFor(mode, !!kb) + (rev ? NAGISA_REVISE_ADD : ''), origin + '\n\n【あずさの出力】\n' + azusa, aKey);
     showOutput('N', nagisa);
     setStage('N', 'done', '完了');
 
     setStage('T', 'running', '評価中...');
-    const tukasa = await callTsukasa(TSUKASA_PROMPT, origin + '\n\n【なぎさの出力】\n' + nagisa);
+    const tukasa = await callTsukasa(TSUKASA_PROMPT + (rev ? TSUKASA_REVISE_ADD : ''), origin + '\n\n【なぎさの出力】\n' + nagisa);
     showOutput('T', tukasa);
     setStage('T', 'done', '完了');
+
+    revSave({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      time: kbNow(), client: revClientKey(), mode: mode,
+      purpose: purpose, situation: situation, input: input, reference: String(reference || '').slice(0, 30000),
+      outputs: { G: gateOut, A: azusa, N: nagisa, T: tukasa },
+      parent: rev ? rev.base.id : null, seq: rev ? ((rev.base.seq || 0) + 1) : 0,
+      revision: rev ? { who: rev.who, part: rev.part, text: rev.text } : null
+    });
 
   } catch(e) {
     alert(e.message);
@@ -1428,7 +1630,7 @@ async function run() {
   var tsukasa = document.getElementById('outT') ? document.getElementById('outT').innerText : '';
   var now = new Date();
   var dateStr = now.getFullYear() + ('0'+(now.getMonth()+1)).slice(-2) + ('0'+now.getDate()).slice(-2) + '_' + ('0'+now.getHours()).slice(-2) + ('0'+now.getMinutes()).slice(-2);
-  var content = '■TriSight™ 出力レポート\n生成日時：' + now.toLocaleString('ja-JP') + '\n\n【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + input + '\n\n【関所（立ち位置の確認と提案の段階）】\n' + gateTxt + '\n\n【あずさ 出力】\n' + azusa + '\n\n【なぎさ 出力】\n' + nagisa + '\n\n【つかさ 出力】\n' + tsukasa;
+  var content = '■TriSight™ 出力レポート\n生成日時：' + now.toLocaleString('ja-JP') + '\n\n【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + input + '\n\n【関所（立ち位置の確認と提案の段階）】\n' + gateTxt + (TS_LAST_REV ? '\n\n【修正の実行】\n' + TS_LAST_REV : '') + '\n\n【あずさ 出力】\n' + azusa + '\n\n【なぎさ 出力】\n' + nagisa + '\n\n【つかさ 出力】\n' + tsukasa;
   var blob = new Blob([content], {type: 'text/plain;charset=utf-8'});
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1610,7 +1812,7 @@ window.addEventListener('DOMContentLoaded', function() {
 </script>
 <!-- ===== ② TriVoice 音声入力ここまで ===== -->
 <script>
-try { kbBuild(); kbRefresh(); if (document.getElementById('kbSel').value) { kbSelect(); } else { kbShowCompany(); } } catch(e) {}
+try { kbBuild(); kbRefresh(); if (document.getElementById('kbSel').value) { kbSelect(); } else { kbShowCompany(); } revRefresh(); } catch(e) {}
 
 /* 版の照合：version.json の trisight と画面の版が違えば知らせる */
 fetch('version.json', {cache:'no-store'}).then(function(r){ return r.ok ? r.json() : null; }).then(function(j){

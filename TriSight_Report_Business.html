@@ -598,7 +598,7 @@
     <div class="panel-section">
       <h2>2. クライアント情報</h2>
       <input type="text" id="clientName" value="ノア・コーポレーション合同会社" placeholder="提出先名">
-      <input type="text" id="clientPeriod" placeholder="対象期間（例：令和8年4月分）">
+      <input type="text" id="clientPeriod" placeholder="数値の対象月（例：5月20日提出分なら 令和8年4月分）">
       <input type="date" id="clientDate">
       <select id="clientPlan">
         <option value="エグゼクティブプラン（月次訪問コンサル付）">エグゼクティブプラン（月次訪問コンサル付）</option>
@@ -1068,13 +1068,13 @@ window.addEventListener('DOMContentLoaded', function(){
   window.tsCtx = function(){
     const raw = window.TS_BASE_RAW || '';
     if(!raw) return null;
-    const pv = (document.getElementById('clientPeriod')||{}).value || '';
+    const pv = ((document.getElementById('clientPeriod')||{}).value || '').replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)).trim();
     let ym = null;
     let mm = pv.match(/令和(\d+)年(\d+)月/);
     if(mm){ ym = (2018 + parseInt(mm[1],10)) + '-' + ('0'+mm[2]).slice(-2); }
     if(!ym){ mm = pv.match(/(20\d\d)[年\-\/](\d{1,2})月?/); if(mm){ ym = mm[1] + '-' + ('0'+mm[2]).slice(-2); } }
-    const mline = raw.match(/対象月[:：]\s*([0-9\-\/\s]+)/);
-    const months = mline ? mline[1].trim().split(/\s*\/\s*/) : [];
+    const mline = raw.match(/対象月[:：][ \t]*([^\r\n]+)/);
+    const months = mline ? mline[1].split('/').map(x => x.trim()).filter(x => /^\d{4}-\d{2}$/.test(x)) : [];
     if(!ym || months.indexOf(ym) < 0) return { raw, months, idx: -1, pv, ym };
     return { raw, months, idx: months.indexOf(ym), pv, ym };
   };
@@ -1129,7 +1129,7 @@ window.addEventListener('DOMContentLoaded', function(){
       html += '<tr><td><b>合計</b></td><td style="text-align:right"><b>' + total.toLocaleString() + '</b></td></tr></tbody></table>';
       const sales = window.tsRow(raw,'売上高計');
       if(sales){ const d = total - sales[idx];
-        if(d !== 0) html += '<div style="margin-top:4px;font-size:11px;color:var(--gray)">※試算表売上（' + sales[idx].toLocaleString() + '円）との差額' + (d>0?'+':'') + d.toLocaleString() + '円は返戻・再請求処理によるもの。</div>'; }
+        if(d !== 0) html += '<div style="margin-top:4px;font-size:11px;color:var(--gray)">※試算表売上（' + sales[idx].toLocaleString() + '円）との差額' + (d>0?'+':'▲') + Math.abs(d).toLocaleString() + '円。差額の内訳は本文の記載による。</div>'; }
     }
     html += '<div style="margin-top:6px;font-size:11px;color:var(--gray)">※ 本欄の数値は数値解析ロボの抽出データおよび起案内容の確定値からコードが機械的に転記・算出したものであり、AIによる生成は含まれない。</div>';
     el.innerHTML = html;

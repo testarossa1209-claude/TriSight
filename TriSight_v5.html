@@ -476,6 +476,30 @@ textarea {
   margin-top: 20px;
   font-family: 'Zen Kaku Gothic New', sans-serif;
 }/* ===== ベース資料機能（追加） ===== */
+/* ===== 起案基礎情報（2026-09-16追加） ===== */
+.kb-panel { display:none; margin-top:10px; border:1px solid var(--border-gold); border-radius:6px; padding:12px 14px; background:var(--bg2); }
+.kb-panel.visible { display:block; }
+.kb-sec { color:var(--gold); font-size:0.88rem; font-weight:bold; margin:16px 0 6px; border-bottom:1px solid var(--border); padding-bottom:3px; }
+.kb-sec:first-child { margin-top:0; }
+.kb-block { margin:8px 0 10px; padding-left:2px; }
+.kb-qn { color:var(--gold); font-weight:bold; font-size:0.8rem; margin-right:6px; }
+.kb-item { margin:4px 0; font-size:0.82rem; line-height:1.7; }
+.kb-lab { display:block; color:var(--text); margin-bottom:2px; }
+.kb-item label { display:inline-block; margin:1px 12px 1px 0; color:#ccc; cursor:pointer; }
+.kb-item input[type=text], .kb-item input[type=number], .kb-item select { background:#0a0a18; color:var(--text); border:1px solid var(--border); border-radius:3px; padding:4px 6px; font-size:0.82rem; font-family:inherit; }
+.kb-item input[type=text] { width:100%; box-sizing:border-box; }
+.kb-item input[type=number] { width:90px; }
+.kb-item select { max-width:100%; }
+.kb-item textarea { min-height:56px; }
+.kb-note { font-size:0.72rem; color:var(--text-dim); margin-top:2px; line-height:1.6; }
+.kb-bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:12px; }
+.kb-bar button, .kb-file { background:#1e3a52; color:var(--gold); border:1px solid var(--gold); padding:6px 14px; font-size:0.78rem; border-radius:4px; cursor:pointer; font-family:inherit; }
+.kb-status { font-size:0.75rem; color:var(--text-dim); margin-top:6px; }
+.kb-status.ok { color:var(--green); }
+.kb-map { margin-top:6px; border-left:3px solid var(--border-gold); padding:6px 10px; font-size:0.76rem; line-height:1.7; color:#ccc; }
+.kb-map a { color:var(--gold-light); word-break:break-all; }
+.kb-map b { color:var(--gold); }
+
 .reference-toggle-btn {
   background: var(--bg3);
   border: 1px solid var(--border-gold);
@@ -571,6 +595,8 @@ textarea {
     <div class="flow-diagram">
       <div class="flow-node">起案者</div>
       <div class="flow-arrow">→</div>
+      <div class="flow-node">関所　立ち位置・出口</div>
+      <div class="flow-arrow">→</div>
       <div class="flow-node">あずさ　構想</div>
       <div class="flow-arrow">→</div>
       <div class="flow-node">なぎさ　検証</div>
@@ -618,6 +644,35 @@ textarea {
     </div>
 
     <div class="input-section">
+      <div class="input-title">▌起案基礎情報（起案者とクライアントの関係・業界の知識）</div>
+      <div class="kb-note">コンサル会社などがクライアントについて起案するときに入力します。回答から関所が起案者の立ち位置を決め、クライアントの問題が明確か五里霧中かに合わせて、提案の中身を変えます。入力内容はこの端末にだけ保存され、当社には送られません（実行時に、起案の本文と一緒にAIへ渡されます）。自社の問題を起案するときも、Q4で「自社」を選んで使えます。</div>
+      <div class="kb-bar" style="margin-top:6px">
+        <button type="button" class="reference-toggle-btn" id="kbToggleBtn" onclick="kbToggle()" style="margin:0">📋 起案基礎情報を開く</button>
+        <label style="font-size:0.78rem;color:#ccc">クライアント：<select id="kbSel" onchange="kbSelect()" style="background:#0a0a18;color:var(--text);border:1px solid var(--border);padding:3px 6px"></select></label>
+      </div>
+      <div class="kb-status" id="kbStatus"></div>
+      <div class="kb-panel" id="kbPanel">
+        <div id="kbForm"></div>
+        <div class="kb-sec">当事者の企業基礎情報（任意）</div>
+        <div class="kb-note">トライゲイトシステムで使っている企業基礎情報のファイル（.json）があれば、このクライアントに添えられます。拠点・サービス・職員数などを二重に入力しないためのものです。</div>
+        <div class="kb-bar" style="margin-top:4px">
+          <label class="kb-file">企業基礎情報を添える<input type="file" id="kbCompanyFile" accept=".json,application/json" style="display:none" onchange="kbCompanyImport(this)"></label>
+          <button type="button" onclick="kbCompanyClear()">添えた企業基礎情報を外す</button>
+          <span class="kb-status" id="kbCompanyStatus" style="margin:0"></span>
+        </div>
+        <div class="kb-sec">保存と履歴</div>
+        <div class="kb-note" id="kbHistory">まだ保存されていません。</div>
+        <div class="kb-bar">
+          <button type="button" onclick="kbSave()">この端末に保存</button>
+          <button type="button" onclick="kbNew()">新しいクライアント</button>
+          <button type="button" onclick="kbExport()">ファイルに書き出す</button>
+          <label class="kb-file">ファイルから読み込む<input type="file" id="kbFile" accept=".json,application/json" style="display:none" onchange="kbImport(this)"></label>
+          <button type="button" onclick="kbDelete()">このクライアントを消す</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-section">
       <div class="input-title">▌達成したい目的</div>
       <textarea id="purpose" placeholder="この起案で達成したい目的を明記してください。"></textarea>
     </div>
@@ -640,6 +695,16 @@ textarea {
     </div>
 
     <div class="workflow">
+      <div class="stage" id="stageG">
+        <div class="stage-header">
+          <div class="stage-dot waiting" id="dotG"></div>
+          <span class="stage-name">関所</span>
+          <span class="stage-role">立ち位置の確認と提案の段階</span>
+          <span class="stage-status" id="stG"></span>
+        </div>
+        <div class="stage-output" id="outG"></div>
+      </div>
+      <div class="arrow">↓</div>
       <div class="stage" id="stageA">
         <div class="stage-header">
           <div class="stage-dot waiting" id="dotA"></div>
@@ -677,7 +742,7 @@ textarea {
           <div onclick="openBusiness()" style="padding:12px 20px; cursor:pointer; color:#f5f0e8; font-size:0.85rem; border-bottom:1px solid rgba(201,168,76,0.2);">📋 ビジネスレポート</div>
     </div>      
      </div>  
-  <div class="wf-footer">© 2026 合同会社トライサイト　TriSight™ is a registered trademark.</div>
+  <div class="wf-footer">© 2026 合同会社トライサイト　TriSight™ is a registered trademark.<div class="verline" style="margin-top:4px;font-size:11px;opacity:.75">版 <span id="verLabel">2026-09-16-04</span></div></div>
 </div>
 
 <script>
@@ -734,7 +799,7 @@ function tsAuthFail(status){
   return false;
 }
 
-async function callAzusa(input, key) {
+async function callAzusa(input, key, sysOverride) {
   const r = await fetch('https://trisight-relay.vercel.app/api/openai', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-trisight-code': tsCode() },
@@ -742,7 +807,7 @@ async function callAzusa(input, key) {
       model: 'gpt-4o',
       max_tokens: 4000,
       messages: [
-        { role: 'system', content: 'あなたはTriSight™のあずさです。起案者から提供される「達成したい目的」「起案者の立ち位置」「起案内容」「ベース資料（任意）」を踏まえ、起案者の立ち位置から見て目的達成に資する構想を、自由な発想で論理的に理論化・展開してください。\n\nベース資料に試算表・損益計算書・実績数値等が含まれる場合は、必ず以下を実行すること：\n1. 指定期間の数値を試算表から正確に抽出し、売上・費用構造（人件費・経費・固定費）・営業利益等を具体的な金額で明示する\n2. 抽出した数値に基づき、前月比・前年同月比・予算対比等の比較分析を行う\n3. その上で、目的達成に資する構想・施策を展開する\n\nベース資料が施策関連文書または資料がない場合は、従来通り自由な発想で構想を理論化・展開してください。\n\nいずれの場合も、具体的かつ実行可能な提案を生成してください。' },  { role: 'user', content: input }
+        { role: 'system', content: sysOverride || 'あなたはTriSight™のあずさです。起案者から提供される「達成したい目的」「起案者の立ち位置」「起案内容」「ベース資料（任意）」を踏まえ、起案者の立ち位置から見て目的達成に資する構想を、自由な発想で論理的に理論化・展開してください。\n\nベース資料に試算表・損益計算書・実績数値等が含まれる場合は、必ず以下を実行すること：\n1. 指定期間の数値を試算表から正確に抽出し、売上・費用構造（人件費・経費・固定費）・営業利益等を具体的な金額で明示する\n2. 抽出した数値に基づき、前月比・前年同月比・予算対比等の比較分析を行う\n3. その上で、目的達成に資する構想・施策を展開する\n\nベース資料が施策関連文書または資料がない場合は、従来通り自由な発想で構想を理論化・展開してください。\n\nいずれの場合も、具体的かつ実行可能な提案を生成してください。' },  { role: 'user', content: input }
       ]
     })
   });
@@ -767,7 +832,7 @@ async function callTsukasa(systemPrompt, userInput) {
   return (await r.json()).choices[0].message.content;
 }
 
-async function callClaude(system, user, key) {
+async function callClaude(system, user, key, temperature) {
   const r = await fetch('https://trisight-relay.vercel.app/api/anthropic', {
     method: 'POST',
     headers: {
@@ -777,6 +842,7 @@ async function callClaude(system, user, key) {
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
       max_tokens: 4000,
+      ...(typeof temperature === 'number' ? { temperature: temperature } : {}),
       system: system,
       messages: [{ role: 'user', content: user }]
     })
@@ -784,6 +850,481 @@ async function callClaude(system, user, key) {
   if (!r.ok) { tsAuthFail(r.status); const e = await r.json(); throw new Error(e.error?.message || r.status); }
   return (await r.json()).content[0].text;
 }
+
+/* ===== 関所：立ち位置と出口の確認（2026-09-16追加・03で出口と逆算を加えて全面改修）=====
+   トライゲイトの精度は「出口（受給）が決着のつく地点として最初に決まっており、
+   そこから制度・ルール・書類を逆算で取りに行った」ことから来ている。これを本体にも当てはめる。
+   ① 起案者は問題を抱える当事者に対してどこに立っているか（問題が見える位置か）
+   ② 出口が、起案者の「やること」ではなく「決着のつく地点」として置けているか
+   両方そろったときだけ構想（出口からの逆算）へ進み、欠けていれば施策は作らず、
+   立ち位置→出口→逆算で取りに行くもの→そろったときの姿、の順で出力する。 */
+const GATE_PROMPT = 'あなたはTriSight™の関所です。起案者の入力を読み、起案者の立ち位置と出口だけを確認してください。提案や助言は一切書かないこと。\n\n'
+ + '【確認1：立ち位置】\n'
+ + '1. 起案者は誰か。\n'
+ + '2. この起案で問題を抱えている当事者は誰か（起案者自身か、顧客など第三者か）。\n'
+ + '3. 起案者は、その当事者の問題に対してどこに立っているか。次のいずれかで答える。\n'
+ + '   「当事者本人」＝自分の問題を自分で見ている\n'
+ + '   「事実を得ている」＝当事者から聞き取った具体的な事実が、起案内容またはベース資料に書かれている\n'
+ + '   「外から見ている」＝当事者の具体的な問題を知らないまま、外側から関わろうとしている\n'
+ + '   「判断できない」\n'
+ + '4. 問題の見え方：起案者にその問題が見えているか。見えていると言えるのは、何が・どこで・どの程度起きているかという具体的な事実が入力に書かれている場合だけとする。「〜したい」「〜を提案したい」という希望だけでは見えているとしない。業界の一般論を補って判断してはならない。\n'
+ + '5. 立ち位置の自覚：起案者の立ち位置の記述が、上の位置関係（特に、問題が見えていない位置にいること）を自覚した書き方になっているか。自社の業種や強みの説明は、この自覚に当たらない。\n\n'
+ + '【確認2：出口】\n'
+ + '6. 出口の書き方：「達成したい目的」が、何がどうなれば終わりかという決着のつく地点（例：〇〇が受理される、〇〇の人数が〇〇まで戻る、〇〇が支給される）として書かれているか。「提案する」「支援する」「検討する」のように起案者のやることだけが書かれている場合は「行為」とする。\n'
+ + '7. 出口：決着のつく地点として読める記述を短く書き出す。無ければ「置けていない」と書く。入力に無い出口を補ってはならない。\n\n'
+ + '【判定のきまり】\n'
+ + '問題の見え方が「見えている」、かつ出口の書き方が「決着地点」の場合のみ、判定を「進行」とする。それ以外はすべて「確認へ」とする。\n\n'
+ + '【出力形式】\n'
+ + '次のJSONだけを出力すること。前置き・説明・コードブロック記号は付けない。\n'
+ + '{"起案者":"","問題の当事者":"","問題との位置関係":"当事者本人|事実を得ている|外から見ている|判断できない","問題の見え方":"見えている|見えていない","立ち位置の根拠":"（入力中の該当箇所を短く。無ければ「なし」）","立ち位置の自覚":"あり|なし","出口の書き方":"決着地点|行為|記述なし","出口":"","判定":"進行|確認へ","理由":"（一文）"}';
+
+const AZUSA_NORMAL_PROMPT = 'あなたはTriSight™のあずさです。起案者から提供される「達成したい目的」「起案者の立ち位置」「起案内容」「ベース資料（任意）」と、関所の確認結果を受け取ります。関所により、起案者は当事者の問題が見える位置に立ち、出口が決着のつく地点として置けていることが確認されています。\n\n'
+ + '構想は、自由な発想で広げるのではなく、出口から逆算して組み立ててください。次の順で出力すること。\n\n'
+ + '■ 1. 出口\n（関所で確認した出口を、何がどうなれば決着かが分かる形で書く）\n\n'
+ + '■ 2. 出口から逆算した条件\n（出口に至るために満たす必要がある制度・ルール・基準・書類・期限・手続き・当事者側の事実を、出口に近い順に並べる。それぞれについて、入力（起案内容・ベース資料）に既にあるか、無いかを示す）\n\n'
+ + '■ 3. 不足しているものの取りに行き方\n（2で「無い」とした条件ごとに、どこから・誰から・何で取るかを書く）\n\n'
+ + '■ 4. 構想\n（入力にある事実だけを根拠に、2の条件を満たす順に施策を組み立てる。入力に無い課題を補って施策を立てない。業界の慣習や定石を越える発想も出してよい。根拠にした入力の箇所を各施策に添える）\n\n'
+ + 'ベース資料に試算表・損益計算書・実績数値等が含まれる場合は、必ず以下を実行すること：\n'
+ + '1. 指定期間の数値を試算表から正確に抽出し、売上・費用構造（人件費・経費・固定費）・営業利益等を具体的な金額で明示する\n'
+ + '2. 抽出した数値に基づき、前月比・前年同月比・予算対比等の比較分析を行う\n'
+ + '3. その結果を、2の条件と4の構想の根拠として使う';
+
+const AZUSA_HEARING_PROMPT = 'あなたはTriSight™のあずさです。今回は関所の確認により、起案者の立ち位置または出口に欠けがあることが分かっています（どちらが欠けているかは関所の確認結果を見ること）。\n'
+ + '問題が見えない位置から、あるいは出口が置けないまま施策・解決策を出すと、逆算の起点が無く、どの会社にも当てはまる予想の問題に対する一般論になり、当事者の役に立ちません。したがって施策・解決策・提案は一切書いてはいけません。\n\n'
+ + '次の4段の順で出力してください。\n\n'
+ + '■ 1. 立ち位置\n'
+ + '（起案者が当事者の問題に対してどこに立っているかを、関所の確認に基づいて平易に書く。問題が見えていない位置にいる場合は、そのことと、その位置から施策を出すと何が起きるかを明記する）\n\n'
+ + '■ 2. 出口\n'
+ + '（関所の確認で出口が置けていれば、それを書く。置けていなければ、起案者の目的は「やること」であって決着のつく地点ではないことを示し、当事者に何を確かめれば出口（何がどうなれば終わりか）が置けるかを書く。出口を自分で決めてはいけない）\n\n'
+ + '■ 3. 逆算で取りに行くもの\n'
+ + '（出口に向かうために取りに行くべきものを並べる。当事者の業種・事業形態に特有の論点（制度・規制・報酬の仕組み・地域による違い・人員の基準・必要な書類など）を踏まえて領域ごとに分け、各項目に、①何を聞く・何を取るか（具体的な質問文や資料名）②誰から・どこから取るか ③なぜ要るか ④答えによって進む方向がどう分かれるか、を書く。起案者に対象領域の知識が無い場合は、専門用語に平易な説明を添える。事実として確認されていない一般論を当事者の課題として書かない）\n\n'
+ + '■ 4. そろったときの姿\n'
+ + '（3を取り終えた時点で、起案者の手元に何がそろっていれば、問題が見える位置に立ち、出口が置けたと言えるか。施策の中身は書かない）';
+
+function gateParse(txt){
+  try {
+    const m = String(txt).match(/\{[\s\S]*\}/);
+    if (!m) return null;
+    const j = JSON.parse(m[0]);
+    if (!j['問題の見え方'] || !j['出口の書き方']) return null;
+    /* 判定はAIの「判定」欄に任せず、確認の中身から機械的に決める */
+    j['判定'] = (j['問題の見え方'] === '見えている' && j['出口の書き方'] === '決着地点') ? '進行' : '確認へ';
+    return j;
+  } catch(e) { return null; }
+}
+
+function gateText(g){
+  if (!g) {
+    return '関所の確認結果を読み取れませんでした。安全のため、施策は作らず、立ち位置と出口の確認から進めます。';
+  }
+  let head;
+  if (g['判定'] === '進行') {
+    head = '起案者は当事者の問題が見える位置に立ち、出口も決着のつく地点として置けています。出口から逆算して構想します。';
+  } else {
+    const lacks = [];
+    if (g['問題の見え方'] !== '見えている') lacks.push('起案者は、当事者の問題が見えていない位置に立っています。');
+    if (g['出口の書き方'] !== '決着地点') lacks.push('目的が、決着のつく地点（何がどうなれば終わりか）として置けていません。');
+    if (!lacks.length) lacks.push('立ち位置または出口の確認がそろっていません。');
+    head = lacks.join('\n') + '\nこのため今回は、施策ではなく、立ち位置→出口→逆算で取りに行くもの→そろったときの姿、の順で出力します。\n取りに行った結果をベース資料に貼り付け、目的を決着のつく地点に書き直して、もう一度実行してください。';
+  }
+  return head + '\n\n'
+    + '・起案者：' + (g['起案者'] || '') + '\n'
+    + '・問題の当事者：' + (g['問題の当事者'] || '') + '\n'
+    + '・問題との位置関係：' + (g['問題との位置関係'] || '') + '\n'
+    + '・問題の見え方：' + (g['問題の見え方'] || '') + '\n'
+    + '・立ち位置の根拠：' + (g['立ち位置の根拠'] || '') + '\n'
+    + '・立ち位置の自覚：' + (g['立ち位置の自覚'] || '') + '\n'
+    + '・出口の書き方：' + (g['出口の書き方'] || '') + '\n'
+    + '・出口：' + (g['出口'] || '') + '\n'
+    + '・理由：' + (g['理由'] || '');
+}
+
+/* ===== 起案基礎情報（2026-09-16追加）=====
+   紙の「起案基礎情報シート（様式版1.0）」と同じ設問定義（KB_SECS）から画面を作る。
+   保存先はこの端末の localStorage のみ（キー：trisight_kian_sheets）。 */
+const KB_SECS = [["Ⅰ　起案者", [{"q": "Q1", "key": "q1_name", "label": "会社名", "type": "text"}, {"q": "Q1", "key": "q1_role", "label": "記入者の役職", "type": "text"}, {"q": "Q2", "key": "q2", "label": "起案者の業種（一つ）", "type": "radio", "opts": ["経営コンサルティング", "IT・BPO", "士業（税理士・社労士・行政書士等）", "金融機関", "業界団体", "当事者本人（自社の問題）", "その他"]}]], ["Ⅱ　クライアント（問題の当事者）", [{"q": "Q3", "key": "q3", "label": "当事者の名称", "type": "text", "note": "クライアントごとに記入します"}, {"q": "Q4", "key": "q4", "label": "起案者との関係（一つ）", "type": "radio", "opts": ["自社", "顧問契約先", "個別の相談（単発）", "紹介を受けた見込み先", "まだ接触していない", "その他"]}, {"q": "Q5", "key": "q5", "label": "相談を受けた経緯（一つ）", "type": "radio", "opts": ["当事者から相談があった", "起案者から持ちかけた", "第三者の紹介"]}, {"q": "Q6", "key": "q6", "label": "当事者の業種（日本標準産業分類の大分類・一つ）", "type": "select", "opts": ["A 農業、林業", "B 漁業", "C 鉱業、採石業、砂利採取業", "D 建設業", "E 製造業", "F 電気・ガス・熱供給・水道業", "G 情報通信業", "H 運輸業、郵便業", "I 卸売業、小売業", "J 金融業、保険業", "K 不動産業、物品賃貸業", "L 学術研究、専門・技術サービス業", "M 宿泊業、飲食サービス業", "N 生活関連サービス業、娯楽業", "O 教育、学習支援業", "P 医療、福祉", "Q 複合サービス事業", "R サービス業（他に分類されないもの）", "S 公務（他に分類されるものを除く）", "T 分類不能の産業"], "note": "令和5年7月告示（令和6年4月1日施行）の大分類"}, {"q": "Q6", "key": "q6_map", "label": "業界マップ", "type": "mapselect", "note": "大分類を選ぶと、当社が整備した業界マップを選べます"}, {"q": "Q7", "key": "q7_multi", "label": "事業の広がり", "type": "radio", "opts": ["多拠点展開している", "多拠点展開していない"]}, {"q": "Q7", "key": "q7_count", "label": "拠点数", "type": "number"}, {"q": "Q7", "key": "q7_pref", "label": "展開している都道府県", "type": "text"}, {"q": "Q8", "key": "q8", "label": "現場の中心となる職種", "type": "radio", "opts": ["有資格の専門職", "有資格ではない", "分からない"]}, {"q": "Q8", "key": "q8_job", "label": "職種名", "type": "text", "note": "例：看護師、介護福祉士"}]], ["Ⅲ　当事者の業界についての起案者の知識", [{"q": "Q9", "key": "q9", "label": "知識の段階（一つ）", "type": "radio", "opts": ["A 当事者本人として運営している", "B その業界で実務経験がある", "C その業界の顧客を支援した実績がある", "D 一般的な知識のみ", "E 知識なし"]}, {"q": "Q9", "key": "q9_years", "label": "Bの場合の年数", "type": "number"}, {"q": "Q9", "key": "q9_cases", "label": "Cの場合の件数", "type": "number"}, {"q": "Q10", "key": "q10", "label": "分かっている制度・規制（分かるものだけ）", "type": "check", "opts": ["報酬・料金の決まり方", "人員・資格の基準", "許認可・指定・届出", "補助金・助成金・加算", "地域による違い"], "note": "印の無いものは、分からないものとして扱います"}, {"q": "Q11", "key": "q11", "label": "当事者の現場を見たことがあるか（一つ）", "type": "radio", "opts": ["定期的に見ている", "見たことがある", "見たことがない"]}]], ["Ⅳ　当事者の問題の把握", [{"q": "Q12", "key": "q12", "label": "問題をどうやって把握したか（当てはまるものすべて）", "type": "check", "opts": ["経営陣から聞いた", "現場職員から聞いた", "当事者の資料を見た", "現場を見た", "把握していない"]}, {"q": "Q13", "key": "q13", "label": "受け取っている資料（当てはまるものすべて）", "type": "check", "opts": ["決算書", "試算表", "事業計画", "人員配置表", "指定・届出の書類", "利用実績", "なし"], "note": "印を付けた資料の中身は、画面の「ベース資料」の欄に貼ってください"}, {"q": "Q14", "key": "q14", "label": "経営陣から聞いている内容", "type": "textarea", "note": "経営陣が話した言葉のまま書いてください"}, {"q": "Q14", "key": "q14_mark", "label": "Q14の性質", "type": "radio", "opts": ["当事者の言葉のまま", "起案者の推測を含む"]}, {"q": "Q15", "key": "q15", "label": "現場職員から聞いている内容", "type": "textarea", "note": "現場職員が話した言葉のまま書いてください"}, {"q": "Q15", "key": "q15_mark", "label": "Q15の性質", "type": "radio", "opts": ["当事者の言葉のまま", "起案者の推測を含む"]}, {"q": "Q16", "key": "q16", "label": "問題の明確さ（一つ）", "type": "radio", "opts": ["具体的に挙げている", "漠然としている"], "note": "何が・どこで・どの程度かを当事者が言えるなら「具体的」"}, {"q": "Q17", "key": "q17", "label": "いつから起きているか", "type": "text"}, {"q": "Q18", "key": "q18", "label": "どの程度か（数字で言えるもの）", "type": "text", "note": "例：離職者数、稼働率、赤字額"}, {"q": "Q19", "key": "q19", "label": "どこで起きているか（一つ）", "type": "radio", "opts": ["全拠点", "特定の拠点・地域", "特定のサービス", "分からない"]}, {"q": "Q20", "key": "q20", "label": "当事者が考えている原因", "type": "textarea", "note": "当事者の言葉のまま"}, {"q": "Q21", "key": "q21", "label": "これまでに試したことと、その結果", "type": "textarea"}, {"q": "Q22", "key": "q22_mgmt", "label": "売上や効率化の話の受け止め（経営陣）", "type": "text"}, {"q": "Q22", "key": "q22_field", "label": "売上や効率化の話の受け止め（現場職員）", "type": "text"}, {"q": "Q23", "key": "q23", "label": "当事者が「こうなれば終わり」と考えている地点（出口）", "type": "textarea", "note": "例：離職者が年〇人以下に戻る、〇〇の加算が受理される"}, {"q": "Q23", "key": "q23_mark", "label": "出口の確認", "type": "radio", "opts": ["当事者に確認済み", "未確認"]}]], ["Ⅴ　当事者の前提条件", [{"q": "Q24", "key": "q24", "label": "予算の目安", "type": "text"}, {"q": "Q25", "key": "q25", "label": "いつまでに決着させたいか", "type": "text"}, {"q": "Q26", "key": "q26", "label": "誰が決めるか（決裁者）", "type": "text"}, {"q": "Q27", "key": "q27", "label": "提案の実行に動かせる人手", "type": "text"}, {"q": "Q28", "key": "q28", "label": "変えられないこと", "type": "textarea", "note": "例：拠点は閉じない、人員は増やさない"}]], ["Ⅵ　起案者が担う範囲", [{"q": "Q29", "key": "q29", "label": "起案者が実行できること（当てはまるものすべて）", "type": "check", "opts": ["情報提供", "提案書の作成", "実行の伴走", "システムの導入", "人の派遣", "その他"]}, {"q": "Q30", "key": "q30", "label": "士業の業務に当たる作業（申請書類の作成代行等）を含むか（一つ）", "type": "radio", "opts": ["含まない", "含む（有資格者が担当）", "分からない"]}]]];
+const KB_INDUSTRY = {"common": [{"name": "日本標準産業分類（令和5年7月告示・令和6年4月1日施行）", "org": "総務省", "url": "https://www.soumu.go.jp/toukei_toukatsu/index/seido/sangyo/", "what": "業種の分類の基準（大分類20項目）", "checked": "2026-09-16"}, {"name": "許認可等の統一的把握結果（許認可等現況表）", "org": "総務省", "url": "https://www.soumu.go.jp/main_sosiki/hyouka/hyouka_kansi_n/kyoninka.html", "what": "国の許認可等の事項・所管府省・根拠法令・処分権者・対象者。掲載の最新は平成30年6月公表分のため、現行の条文で確かめて使う", "checked": "2026-09-16"}, {"name": "ローカルベンチマーク（ロカベン）シート", "org": "経済産業省", "url": "https://www.meti.go.jp/policy/economy/keiei_innovation/sangyokinyu/locaben/sheet.html", "what": "財務面の6つの指標と、非財務面（商流・業務フロー、4つの視点）の聞き取りの型", "checked": "2026-09-16"}, {"name": "中小企業景況調査", "org": "中小企業庁・中小企業基盤整備機構", "url": "https://www.chusho.meti.go.jp/koukai/chousa/keikyo/index.html", "what": "四半期ごとの景況の調査。今期直面している経営上の問題点（重要度の高い順に3つ）も業種別に聞いている。対象は製造業・建設業・卸売業・小売業・サービス業の5業種", "checked": "2026-09-16"}], "maps": {"kaigo": {"dai": "P", "title": "介護事業（老人福祉・介護事業、障害者福祉事業）", "status": "整備済み", "sources": [{"name": "介護労働実態調査（事業所における介護労働実態調査／介護労働者の就業実態と就業意識調査）", "org": "公益財団法人介護労働安定センター", "url": "https://www.kaigo-center.or.jp/report/jittai/", "what": "厚生労働省が同センターに毎年度行わせている調査。事業所調査は事業運営上の課題など、労働者調査は仕事への満足度や悩みなどを聞いており、経営側と現場側の両方の実態が分かる", "checked": "2026-09-16"}, {"name": "令和7年度 介護事業経営概況調査", "org": "厚生労働省", "url": "https://www.mhlw.go.jp/toukei/list/153-6a.html", "what": "サービス別の収支の状況", "checked": "2026-09-16"}, {"name": "介護労働者の雇用管理の改善等に関する法律", "org": "厚生労働省（法令等データベース）", "url": "https://www.mhlw.go.jp/web/t_doc?dataId=75088300&dataType=0&pageNo=1", "what": "介護労働者の雇用管理の改善、および介護労働安定センターの指定の根拠", "checked": "2026-09-16"}], "rules": [{"kind": "構造（土壌）", "text": "介護サービスは法令上の指定を受けた法人が提供し、法人は収支が合わなければ存続できないため、経営陣は収益を前提に運営する。一方、売上を生む担い手である看護師・介護士の職務の目的は利用者の回復や社会復帰であり、売上や効率化は職務の外にある。この目的の違いが、経営陣と現場職員の問題提起の食い違いを生む", "source": "当社の介護事業運営の実務", "status": "当社実務の知見（指定の要件の条文は介護保険法で確かめる）"}, {"kind": "構造（土壌）", "text": "経営陣と現場職員の問題提起の食い違いに対し、是正の手立てを持っていない事業所が多い", "source": "当社および協業先の現場実務", "status": "当社実務の知見"}, {"kind": "法令", "text": "介護報酬は国が定めるため、事業所が価格を上げて原資を増やすことができない。経営陣は稼働と加算で収入を見て、現場職員は人手と賃金で見る", "source": "介護保険法および介護報酬の算定基準（厚生労働省告示）", "status": "条文未照合"}, {"kind": "法令", "text": "人員基準や加算の算定要件は、経営陣には満たすべき数として、現場職員には記録と体制の負担として現れる", "source": "各サービスの人員・設備・運営の基準（厚生労働省令）", "status": "条文未照合"}, {"kind": "法令", "text": "介護職員等処遇改善加算には配分の要件があり、経営陣は要件を満たせたかで見て、職員は自分の手取りで見る", "source": "厚生労働省の処遇改善加算に関する通知", "status": "条文未照合"}, {"kind": "法令", "text": "地域区分によって単価が異なるため、多拠点の法人では本部と拠点で収支の見え方が分かれる", "source": "地域区分に関する厚生労働省告示", "status": "条文未照合"}]}, "kensetsu": {"dai": "D", "title": "建設業（情報源のみ）", "status": "情報源のみ（ルールの要点は未整備）", "sources": [{"name": "建設業の経営分析", "org": "一般財団法人建設業情報管理センター", "url": "https://www.ciic.or.jp/course/bunseki/", "what": "経営状況分析の申請があった建設企業の財務比率の平均値など（令和6年度版まで刊行）", "checked": "2026-09-16"}], "rules": []}, "ringyo": {"dai": "A", "title": "林業（情報源のみ）", "status": "情報源のみ（ルールの要点は未整備）", "sources": [{"name": "林業労働力確保支援センター一覧", "org": "林野庁", "url": "https://www.rinya.maff.go.jp/j/routai/roukaku/ichiran.html", "what": "林業労働力の確保の促進に関する法律に基づき都道府県知事が指定する支援センター（雇用管理の改善・就業支援）", "checked": "2026-09-16"}], "rules": []}}};
+
+const KB_KEY = 'trisight_kian_sheets';
+const KB_SEL_KEY = 'trisight_kian_current';
+const KB_FIELDS = [].concat.apply([], KB_SECS.map(function(s){ return s[1]; }));
+let KB_COMPANY = null;
+let KB_META = { saved:'', history:[] };
+
+function kbEsc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function kbBuild(){
+  const root = document.getElementById('kbForm');
+  if (!root || root.dataset.built) return;
+  let h = '';
+  KB_SECS.forEach(function(sec){
+    h += '<div class="kb-sec">' + kbEsc(sec[0]) + '</div>';
+    let lastQ = '';
+    sec[1].forEach(function(f){
+      if (f.q !== lastQ) { if (lastQ) h += '</div>'; h += '<div class="kb-block"><span class="kb-qn">' + f.q + '</span>'; lastQ = f.q; }
+      h += '<div class="kb-item"><span class="kb-lab">' + kbEsc(f.label) + '</span>';
+      const id = 'kb_' + f.key;
+      if (f.type === 'text') h += '<input type="text" id="' + id + '">';
+      else if (f.type === 'number') h += '<input type="number" min="0" id="' + id + '">';
+      else if (f.type === 'textarea') h += '<textarea id="' + id + '"></textarea>';
+      else if (f.type === 'select') h += '<select id="' + id + '" onchange="kbMapOptions()"><option value="">（選んでください）</option>' + f.opts.map(function(o){ return '<option value="' + kbEsc(o) + '">' + kbEsc(o) + '</option>'; }).join('') + '</select>';
+      else if (f.type === 'mapselect') h += '<select id="' + id + '" onchange="kbMapShow()"></select><div class="kb-map" id="kbMap"></div>';
+      else f.opts.forEach(function(o){ h += '<label><input type="' + (f.type === 'check' ? 'checkbox' : 'radio') + '" name="' + id + '" value="' + kbEsc(o) + '"> ' + kbEsc(o) + '</label>'; });
+      if (f.note) h += '<div class="kb-note">' + kbEsc(f.note) + '</div>';
+      h += '</div>';
+    });
+    if (lastQ) h += '</div>';
+  });
+  root.innerHTML = h;
+  root.dataset.built = '1';
+  kbMapOptions();
+}
+
+/* 業界マップ */
+function kbMapList(daiValue){
+  const dai = String(daiValue || '').charAt(0);
+  const out = [];
+  Object.keys(KB_INDUSTRY.maps).forEach(function(k){ if (KB_INDUSTRY.maps[k].dai === dai) out.push(k); });
+  return out;
+}
+function kbMapOptions(){
+  const dai = document.getElementById('kb_q6'), sel = document.getElementById('kb_q6_map');
+  if (!dai || !sel) return;
+  const cur = sel.value;
+  const list = kbMapList(dai.value);
+  sel.innerHTML = '';
+  list.forEach(function(k){ const o = document.createElement('option'); o.value = k; o.textContent = KB_INDUSTRY.maps[k].title; sel.appendChild(o); });
+  const o0 = document.createElement('option'); o0.value = ''; o0.textContent = list.length ? 'この中に当てはまるものが無い（業界マップ未整備）' : '業界マップ未整備'; sel.appendChild(o0);
+  if (cur && list.indexOf(cur) !== -1) sel.value = cur;
+  kbMapShow();
+}
+function kbSourceHtml(x){ return '・' + kbEsc(x.name) + '（' + kbEsc(x.org) + '）：' + kbEsc(x.what) + '<br>　<a href="' + kbEsc(x.url) + '" target="_blank" rel="noopener">' + kbEsc(x.url) + '</a>（当社確認日 ' + kbEsc(x.checked) + '）'; }
+function kbMapShow(){
+  const box = document.getElementById('kbMap'), sel = document.getElementById('kb_q6_map');
+  if (!box || !sel) return;
+  const m = sel.value ? KB_INDUSTRY.maps[sel.value] : null;
+  let h = '';
+  if (m) {
+    h += '<b>' + kbEsc(m.title) + '</b>（' + kbEsc(m.status) + '）<br>';
+    if (m.rules.length) { h += '<b>業界のルールと構造</b><br>' + m.rules.map(function(r){ return '・［' + kbEsc(r.kind) + '］' + kbEsc(r.text) + '<br>　出所：' + kbEsc(r.source) + '／' + kbEsc(r.status); }).join('<br>') + '<br>'; }
+    h += '<b>この業界の情報源</b><br>' + m.sources.map(kbSourceHtml).join('<br>') + '<br>';
+  } else {
+    h += '<b>この業種の業界マップは未整備です。</b>提案は、業界ルールとの照合なしで行われます。<br>';
+  }
+  h += '<b>全業種に共通の情報源</b><br>' + KB_INDUSTRY.common.map(kbSourceHtml).join('<br>');
+  box.innerHTML = h;
+}
+
+/* 読み書き */
+function kbRead(){
+  const f = {};
+  KB_FIELDS.forEach(function(d){
+    const id = 'kb_' + d.key;
+    if (d.type === 'radio' || d.type === 'check') {
+      const on = Array.prototype.filter.call(document.getElementsByName(id), function(i){ return i.checked; }).map(function(i){ return i.value; });
+      f[d.key] = (d.type === 'check') ? on : (on[0] || '');
+    } else { const el = document.getElementById(id); f[d.key] = el ? String(el.value || '').trim() : ''; }
+  });
+  return f;
+}
+function kbWrite(f){
+  f = f || {};
+  KB_FIELDS.forEach(function(d){
+    const id = 'kb_' + d.key, v = f[d.key];
+    if (d.type === 'radio' || d.type === 'check') {
+      Array.prototype.forEach.call(document.getElementsByName(id), function(i){ i.checked = Array.isArray(v) ? v.indexOf(i.value) !== -1 : (v === i.value); });
+    } else if (d.type === 'select') { const el = document.getElementById(id); if (el) { el.value = v || ''; kbMapOptions(); } }
+  });
+  KB_FIELDS.forEach(function(d){
+    if (d.type === 'radio' || d.type === 'check' || d.type === 'select') return;
+    const el = document.getElementById('kb_' + d.key); if (el) el.value = (f[d.key] == null ? '' : f[d.key]);
+  });
+  kbMapShow();
+}
+function kbIsEmpty(f){ return !Object.keys(f).some(function(k){ return Array.isArray(f[k]) ? f[k].length > 0 : String(f[k] || '') !== ''; }); }
+function kbAllSheets(){ try { return JSON.parse(localStorage.getItem(KB_KEY) || '{}') || {}; } catch(e){ return {}; } }
+function kbPutSheets(o){ try { localStorage.setItem(KB_KEY, JSON.stringify(o)); return true; } catch(e){ alert('この端末に保存できませんでした。'); return false; } }
+function kbNow(){ const d = new Date(); return d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2) + '-' + ('0'+d.getDate()).slice(-2) + ' ' + ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2); }
+
+function kbShowCompany(){
+  const st = document.getElementById('kbCompanyStatus'); if (!st) return;
+  if (KB_COMPANY) { const c = KB_COMPANY['会社'] || {}; st.textContent = '添付中：' + (c['名称'] || c['法人名'] || c['会社名'] || '（名称なし）'); st.className = 'kb-status ok'; }
+  else { st.textContent = '添付なし'; st.className = 'kb-status'; }
+}
+function kbShowHistory(){
+  const el = document.getElementById('kbHistory'); if (!el) return;
+  if (!KB_META.saved) { el.textContent = 'まだ保存されていません。'; return; }
+  el.textContent = '最終保存：' + KB_META.saved + '　／　これまでの保存：' + KB_META.history.slice(-10).join('、') + '（ヒアリングが進んだときや、クライアントの状況が変わったときは、書き直して保存し、もう一度実行してください）';
+}
+function kbLoadRecord(r){
+  r = r || {};
+  kbBuild(); kbWrite(r.answers || {});
+  KB_COMPANY = r.company || null;
+  KB_META = { saved: r.saved || '', history: r.history || [] };
+  kbShowCompany(); kbShowHistory();
+}
+function kbRefresh(){
+  const all = kbAllSheets(); const sel = document.getElementById('kbSel'); if (!sel) return;
+  let cur = ''; try { cur = localStorage.getItem(KB_SEL_KEY) || ''; } catch(e){}
+  sel.innerHTML = '';
+  const o0 = document.createElement('option'); o0.value = ''; o0.textContent = '（使わない）'; sel.appendChild(o0);
+  Object.keys(all).sort().forEach(function(n){ const o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); });
+  sel.value = (cur && all[cur]) ? cur : '';
+  kbStatusShow();
+}
+function kbStatusShow(){
+  const st = document.getElementById('kbStatus'), sel = document.getElementById('kbSel');
+  if (!st || !sel) return;
+  if (sel.value) { st.textContent = '使用中：' + sel.value + '（実行すると、この回答で立ち位置と提案の段階を決めます）'; st.className = 'kb-status ok'; }
+  else { st.textContent = '未使用（使わなくても実行できます。その場合は立ち位置の欄の文章から判定します）'; st.className = 'kb-status'; }
+}
+function kbToggle(){
+  kbBuild();
+  const p = document.getElementById('kbPanel'), b = document.getElementById('kbToggleBtn');
+  const open = !p.classList.contains('visible');
+  p.classList.toggle('visible', open); b.classList.toggle('active', open);
+  b.textContent = open ? '📋 起案基礎情報を閉じる' : '📋 起案基礎情報を開く';
+}
+function kbSelect(){
+  const sel = document.getElementById('kbSel'); const all = kbAllSheets();
+  try { localStorage.setItem(KB_SEL_KEY, sel.value); } catch(e){}
+  kbLoadRecord(sel.value ? all[sel.value] : null);
+  kbStatusShow();
+}
+function kbSave(){
+  kbBuild();
+  const f = kbRead();
+  if (!f.q3) { alert('Q3（当事者の名称）を入力してください。クライアントごとに保存するための名前になります。'); return; }
+  const all = kbAllSheets();
+  const prev = all[f.q3] || {};
+  const now = kbNow();
+  const hist = (prev.history || []).concat([now]).slice(-30);
+  all[f.q3] = { answers: f, company: KB_COMPANY, saved: now, history: hist };
+  if (!kbPutSheets(all)) return;
+  try { localStorage.setItem(KB_SEL_KEY, f.q3); } catch(e){}
+  KB_META = { saved: now, history: hist };
+  kbRefresh(); kbShowHistory();
+  alert('この端末に保存しました：' + f.q3);
+}
+function kbNew(){
+  kbBuild(); kbLoadRecord(null);
+  try { localStorage.setItem(KB_SEL_KEY, ''); } catch(e){}
+  kbRefresh();
+  const p = document.getElementById('kbPanel'); if (!p.classList.contains('visible')) kbToggle();
+}
+function kbDelete(){
+  const sel = document.getElementById('kbSel');
+  if (!sel.value) { alert('消すクライアントを、上の「クライアント：」の選択欄で選んでください。'); return; }
+  if (!confirm('「' + sel.value + '」の起案基礎情報を、この端末から消します。よろしいですか。')) return;
+  const all = kbAllSheets(); delete all[sel.value]; kbPutSheets(all);
+  try { localStorage.setItem(KB_SEL_KEY, ''); } catch(e){}
+  kbLoadRecord(null); kbRefresh();
+}
+function kbToJson(f){
+  const ans = {};
+  KB_FIELDS.forEach(function(d){ ans[d.q + ' ' + d.label] = f[d.key]; });
+  return { '様式': '起案基礎情報シート 様式版1.0', '最終保存': KB_META.saved, '保存の履歴': KB_META.history, '回答': ans, '企業基礎情報': KB_COMPANY };
+}
+function kbFromJson(j){
+  const ans = (j && j['回答']) || {}; const f = {};
+  KB_FIELDS.forEach(function(d){
+    let v = ans[d.q + ' ' + d.label];
+    if (d.type === 'check') v = Array.isArray(v) ? v : (v ? [v] : []);
+    else v = (v == null ? '' : String(v));
+    f[d.key] = v;
+  });
+  return f;
+}
+function kbExport(){
+  kbBuild();
+  const f = kbRead();
+  if (!f.q3) { alert('Q3（当事者の名称）を入力してから書き出してください。'); return; }
+  const blob = new Blob([JSON.stringify(kbToJson(f), null, 2)], {type:'application/json;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'kian_kiso.json'; a.click();
+}
+function kbImport(inp){
+  const file = inp.files && inp.files[0]; if (!file) return;
+  const rd = new FileReader();
+  rd.onload = function(){
+    try {
+      const j = JSON.parse(rd.result);
+      if (!j || String(j['様式'] || '').indexOf('起案基礎情報シート') !== 0) { alert('起案基礎情報シートのファイルではありません。'); inp.value = ''; return; }
+      const f = kbFromJson(j);
+      const rec = { answers: f, company: j['企業基礎情報'] || null, saved: j['最終保存'] || '', history: j['保存の履歴'] || [] };
+      kbLoadRecord(rec);
+      if (f.q3) { const all = kbAllSheets(); all[f.q3] = rec; kbPutSheets(all); try { localStorage.setItem(KB_SEL_KEY, f.q3); } catch(e){} }
+      kbRefresh();
+      const p = document.getElementById('kbPanel'); if (!p.classList.contains('visible')) kbToggle();
+    } catch(e) { alert('ファイルを読み取れませんでした。'); }
+    inp.value = '';
+  };
+  rd.readAsText(file, 'utf-8');
+}
+function kbCompanyImport(inp){
+  const file = inp.files && inp.files[0]; if (!file) return;
+  const rd = new FileReader();
+  rd.onload = function(){
+    try {
+      const j = JSON.parse(rd.result);
+      if (!j || typeof j !== 'object' || !j['会社']) { alert('企業基礎情報のファイルではありません（「会社」の項目がありません）。'); inp.value=''; return; }
+      KB_COMPANY = j; kbShowCompany();
+      alert('企業基礎情報を添えました。「この端末に保存」を押すと、このクライアントに保存されます。');
+    } catch(e) { alert('ファイルを読み取れませんでした。'); }
+    inp.value = '';
+  };
+  rd.readAsText(file, 'utf-8');
+}
+function kbCompanyClear(){ KB_COMPANY = null; kbShowCompany(); }
+function kbActive(){
+  const sel = document.getElementById('kbSel');
+  if (!sel || !sel.value) return null;
+  kbBuild();
+  const f = kbRead();
+  return kbIsEmpty(f) ? null : f;
+}
+
+/* ===== 起案基礎情報から立ち位置と提案の段階を機械的に決める =====
+   明確　　　　　：問題が具体的で、経営陣・現場職員の両方の言葉があり、出口も確認済み（出口の書き方が決着地点であることをAIでも確認）
+   明確（不足あり）：問題は具体的だが、片側の言葉しか無い、または出口が未確認・行為になっている
+   五里霧中　　　：問題が漠然としている、または起案者が外から見ている */
+const KB_MODE_NAME = {
+  clear:   '明確　出口から逆算した解決提案',
+  partial: '明確（不足あり）　問題の整理と、不足の確認、仮の方向',
+  fog:     '五里霧中　立ち位置を起点にした提案と、問題の浮かび上がらせ方',
+  normal:  '進行（起案基礎情報なし）　出口から逆算した構想',
+  hearing: '確認へ（起案基礎情報なし）　立ち位置と出口の確認'
+};
+const KB_MODE_SHORT = { clear:'明確', partial:'明確（不足あり）', fog:'五里霧中', normal:'進行', hearing:'確認へ切替' };
+
+function kbProfile(f){
+  const understood = (f.q12 || []).filter(function(x){ return x !== '把握していない'; });
+  const mgmt = !!(f.q14 && f.q14_mark === '当事者の言葉のまま');
+  const field = !!(f.q15 && f.q15_mark === '当事者の言葉のまま');
+  let pos;
+  if (f.q4 === '自社' || String(f.q9 || '').charAt(0) === 'A') pos = '当事者本人';
+  else if (understood.length && (mgmt || field)) pos = '事実を得ている';
+  else pos = '外から見ている';
+  const sides = mgmt && field ? '両方' : (mgmt ? '経営陣のみ' : (field ? '現場職員のみ' : 'なし'));
+  const clear = pos !== '外から見ている' && f.q16 === '具体的に挙げている' && !!(f.q14 || f.q15);
+  const exitOk = !!(f.q23 && f.q23_mark === '当事者に確認済み');
+  const know = String(f.q9 || '').charAt(0) || '未回答';
+  let mode;
+  if (!clear) mode = 'fog';
+  else if (sides === '両方' && exitOk) mode = 'clear';
+  else mode = 'partial';
+  const map = f.q6_map ? KB_INDUSTRY.maps[f.q6_map] : null;
+  return { pos: pos, sides: sides, clear: clear, exitOk: exitOk, know: know, mode: mode, map: map, mapKey: f.q6_map || '' };
+}
+
+function kbMissing(f, reference){
+  const m = [];
+  const need = [['q6','当事者の業種（Q6）'],['q9','起案者の知識の段階（Q9）'],['q16','問題の明確さ（Q16）'],['q17','いつから起きているか（Q17）'],['q18','どの程度か（Q18）'],['q19','どこで起きているか（Q19）'],['q20','当事者が考えている原因（Q20）'],['q21','これまでに試したこと（Q21）'],['q23','出口（Q23）'],['q24','予算の目安（Q24）'],['q25','いつまでに決着させたいか（Q25）'],['q26','決裁者（Q26）'],['q27','動かせる人手（Q27）'],['q30','士業の業務の扱い（Q30）']];
+  need.forEach(function(p){ const v = f[p[0]]; if (!v || (Array.isArray(v) && !v.length)) m.push(p[1]); });
+  if (!(f.q12 || []).length) m.push('問題の把握の方法（Q12）');
+  if (!(f.q29 || []).length) m.push('起案者が実行できること（Q29）');
+  if (!f.q14) m.push('経営陣の言葉（Q14）');
+  if (!f.q15) m.push('現場職員の言葉（Q15）');
+  if (f.q23 && f.q23_mark !== '当事者に確認済み') m.push('出口の当事者への確認（Q23）');
+  const docs = (f.q13 || []).filter(function(x){ return x !== 'なし'; });
+  if (docs.length && !reference) m.push('受け取っている資料（' + docs.join('、') + '）の中身（ベース資料の欄が空）');
+  return m;
+}
+
+function kbSummary(f, p){
+  const lst = function(a){ return (a && a.length) ? a.join('、') : '（印なし）'; };
+  const lines = ['【起案基礎情報（起案者の回答）】'];
+  KB_SECS.forEach(function(sec){
+    lines.push('〔' + sec[0].replace('　',' ') + '〕');
+    sec[1].forEach(function(d){
+      if (d.type === 'mapselect') return;
+      let v = f[d.key];
+      v = Array.isArray(v) ? lst(v) : (v || '（未回答）');
+      lines.push(d.q + ' ' + d.label + '：' + v);
+    });
+  });
+  const all10 = ['報酬・料金の決まり方','人員・資格の基準','許認可・指定・届出','補助金・助成金・加算','地域による違い'];
+  const unknown = all10.filter(function(x){ return (f.q10 || []).indexOf(x) === -1; });
+  lines.push('起案者が分かっていない制度・規制：' + (unknown.length ? unknown.join('、') : 'なし'));
+  lines.push('');
+  lines.push('【起案基礎情報から機械的に決めた立ち位置】');
+  lines.push('問題との位置関係：' + p.pos + '／聞けている言葉：' + p.sides + '／問題の明確さ：' + (p.clear ? '明確' : '五里霧中') + '／出口：' + (p.exitOk ? '当事者に確認済み' : '未確認') + '／知識の段階：' + p.know);
+  return lines.join('\n');
+}
+
+function kbMapText(p){
+  const L = ['【業界マップ】'];
+  const src = function(x){ return '・' + x.name + '（' + x.org + '）：' + x.what + '　URL：' + x.url + '（当社確認日 ' + x.checked + '）'; };
+  if (p.map) {
+    L.push('分類：' + p.map.title + '（' + p.map.status + '）');
+    if (p.map.rules.length) {
+      L.push('業界のルールと構造：');
+      p.map.rules.forEach(function(r){ L.push('・［' + r.kind + '］' + r.text + '（出所：' + r.source + '／確認状態：' + r.status + '）'); });
+    } else { L.push('業界のルールと構造：未整備'); }
+    L.push('この業界の情報源：'); p.map.sources.forEach(function(x){ L.push(src(x)); });
+  } else {
+    L.push('分類：この業種の業界マップは未整備（業界ルールとの照合はできない）');
+  }
+  L.push('全業種に共通の情報源：'); KB_INDUSTRY.common.forEach(function(x){ L.push(src(x)); });
+  L.push('注意：AIには上のURLの中身は渡っていない。情報源は「確かめる先」として名前で示し、中身を知っているように書かないこと。確認状態が「条文未照合」「当社実務の知見」のものは、確かめる先とともに示すこと。');
+  return L.join('\n');
+}
+
+function kbConditions(f, p){
+  const L = ['【起案者の条件】'];
+  if (p.know === 'A' || p.know === 'B') L.push('・起案者はこの業界の実務を知っている。専門用語の説明は最小限でよい。');
+  else L.push('・起案者はこの業界の実務を知らない。専門用語には平易な説明を添え、起案者が分かっていない制度・規制に触れるときは、その仕組みを先に説明する。');
+  if (p.mode === 'fog' && (p.know === 'D' || p.know === 'E' || p.know === '未回答')) L.push('・起案者の業界知識は乏しい。業界の実務経験者や有資格者と組む必要がある部分を、どこかで必ず示す。');
+  L.push('・発想の縛り：業界マップのルールは前提知識として理解したうえで、発想はその内側に閉じず、業界の慣習や定石を越える案も出してよい。起案者の業種や強みを手段として使う発想も妨げない。実行できる範囲や法令の線の仕分けは、次の検証の段で行う。ただし、各案がどの事実（起案基礎情報・ベース資料）に基づくかを添えること。');
+  L.push('・入力の【欠けている情報】に挙げた情報に依存する部分は、一般論で埋めず「この情報が無いため、確かめてから決める」と書くこと。');
+  return L.join('\n');
+}
+
+const AZUSA_CLEAR_PROMPT = 'あなたはTriSight™のあずさです。起案基礎情報により、クライアントの問題は具体的で、経営陣と現場職員の両方の言葉があり、出口も当事者に確認済みであることが分かっています。提案の範囲は、クライアントが挙げた問題の解決に限り、挙げられていない課題へは広げないこと。次の順で出力してください。\n\n'
+ + '■ 1. 出口\n（当事者に確認済みの出口を、何がどうなれば決着かが分かる形で書く）\n\n'
+ + '■ 2. 経営陣と現場職員の言葉の食い違い\n（両方の言葉を並べ、どこが食い違っているかを示す。業界マップに土壌となる構造があれば、それと結びつけて説明する）\n\n'
+ + '■ 3. 出口から逆算した条件\n（出口に至るために満たす必要がある制度・ルール・書類・期限・当事者側の事実を、出口に近い順に並べ、入力にあるか無いかを示す）\n\n'
+ + '■ 4. 施策\n（食い違いの是正を中心に組む。両側の目的を互いの言葉に通訳する形を含めてよい。業界の慣習や定石を越える発想も出してよい。各施策に、根拠にした入力の箇所を添える）\n\n'
+ + '■ 5. 欠けている情報の扱い\n（欠けている情報があれば、どの施策のどこを、何を確かめてから決めるか）';
+
+const AZUSA_PARTIAL_PROMPT = 'あなたはTriSight™のあずさです。起案基礎情報により、クライアントの問題は具体的だが、経営陣・現場職員の片方の言葉しか無いか、出口が確認できていないことが分かっています。施策を確定させず、次の順で出力してください。\n\n'
+ + '■ 1. 現状の把握\n（どちらの言葉が無いか、出口がどういう状態かを平易に書く）\n\n'
+ + '■ 2. 当事者の言葉にある問題の整理\n（起案基礎情報とベース資料に書かれた事実だけを使って、問題を分解して並べる）\n\n'
+ + '■ 3. 足りないものの確認\n（聞けていない側に聞く質問文、出口を置くための質問文。それぞれ、答えによって進む方向がどう分かれるかを添える）\n\n'
+ + '■ 4. 仮の方向\n（施策の骨組みのみ。確認前の仮であることを冒頭に明記する。業界の慣習や定石を越える発想も出してよい）\n\n'
+ + '■ 5. そろったときの姿\n（何がそろえば、出口から逆算した解決提案へ進めるか）';
+
+const AZUSA_FOG_PROMPT = 'あなたはTriSight™のあずさです。起案基礎情報により、クライアントの問題は漠然としているか、起案者が外から見ていて問題をつかめていないことが分かっています。クライアント自身も問題を把握していないことが多い状態です。起案者の立ち位置を起点に、次の順で出力してください。\n\n'
+ + '■ 1. 立ち位置\n（起案者がクライアントの問題に対してどこに立っているかを、責めずに平易に書く）\n\n'
+ + '■ 2. 業界の土壌から見た呼び水\n（業界マップにある構造と情報源に基づき、「この業界ではこういうことが起きやすい。御社ではどうか」という問いの形で並べる。統計の数値は書かず、確かめる先として情報源の名前を示す。業界マップが未整備なら、その旨を書いたうえで、一般的な傾向として問う）\n\n'
+ + '■ 3. 問題を浮かび上がらせる進め方\n（起案者の立ち位置・業種・強みを、問題を見える化する手段として使ってよい）\n\n'
+ + '■ 4. 仮の提案\n（サンプルとしての提案。冒頭に「業界の傾向からの仮の提案であり、御社の診断ではありません」と明記する。業界の慣習や定石を越える発想も出してよい）\n\n'
+ + '■ 5. 経営陣と現場職員の両方に聞く項目\n（同じ事柄を両側に聞く形で、質問文・誰に聞くか・なぜ聞くかを書く。両側の答えの食い違いが問題の手がかりになる）\n\n'
+ + '■ 6. そろったときの姿\n（何がそろえば「問題が明確」になり、解決提案へ進めるか）';
+
+function nagisaPromptFor(mode, hasKb){
+  const provisional = (mode !== 'clear' && mode !== 'normal');
+  const body = provisional
+    ? '■ 理論熟成結果\n（あずさの出力が、関所で決めた提案の段階に合っているかを見たうえで、内容を整理し、当事者の業種・事業形態から見て抜けている領域があれば補う。この段階の施策は仮のものとして扱い、確定した施策として書き換えない。出口を自分で決めない）\n\n'
+    : '■ 理論熟成結果\n（あずさの構想が、関所で確認した出口から逆算されているかを見たうえで、条件の並びと施策を深め、論理的に整理する）\n\n';
+  const rules = '■ 業界ルールとの照合\n（あずさの各案を、業界マップのルールと照らして「ルールの内側」「慣習・定石を越えるが、正当に実行できる」「法令上越えられない」に分ける。法令上越えられないものは、特例や規制改革の提案など、正当な手続きで線を動かす道があれば添える。確認状態が「条文未照合」「当社実務の知見」のルールは断定せず、確かめる先とともに示す。業界マップに無いルールについて、自分の知識で断定しない。業界マップが未整備、または渡されていない場合は「業界ルールとの照合なし」と明記する）\n\n';
+  const carry = hasKb
+    ? '■ 担い手の仕分け\n（あずさの各案を、起案者が実行できること（起案基礎情報）で担える部分と、誰かに頼む部分に分ける。申請書類の作成代行・提出代行など士業の業務に当たる作業は、起案者が「含む（有資格者が担当）」と回答していない限り、有資格者に頼む部分に入れる）\n\n'
+    : '';
+  return 'あなたはTriSight™のなぎさです。起案者の入力（目的・立ち位置・起案内容・ベース資料・起案基礎情報）と、業界マップと、関所の判定と、あずさの出力を受け取り、以下を出力してください。\n\n'
+    + body + rules + carry
+    + '■ 前提の検証\n'
+    + '（①あずさの出力に書かれた課題や状況のうち、入力に根拠があるものと、根拠が無い推測とを分けて示し、推測を事実のように書いている箇所を指摘する。②経営陣・現場職員の片方の言葉にしか基づいていない箇所を示す。③出口から逆算したときに落ちている条件があれば挙げる。④制度・法令・数値など、確かめないと正しいと言えない記述を挙げ、確かめる先を添える。⑤欠けている情報に依存している箇所を示す。自分の知識で正誤を断定しない）\n\n'
+    + '■ 懸念点\n'
+    + '（倫理的・法的・社会的な懸念点を抽出。なければ「懸念点なし」と記載）';
+}
+
+const TSUKASA_PROMPT = 'あなたはTriSight™のつかさです。起案者の入力（目的・立ち位置・起案内容・ベース資料）と、関所の判定と、なぎさの出力を受け取り、以下の3つを評価してください。\n\n'
+ + '■ 出口との照合\n'
+ + '（なぎさの出力が、関所で確認した出口（置けていない場合は起案者の目的）と、関所で決めた提案の段階に照らしてどこまで応えているかを、観測した事実として示す。次の5点を必ず見ること。①起案者の立ち位置（関所の確認結果）を正しく踏まえているか ②出口から逆算して組み立てられているか ③当事者に固有の内容か、どの会社・業界にも当てはまる一般論か ④入力に根拠の無い前提に立っていないか ⑤業界マップのルールに照らして評価できているか（業界マップが未整備ならその旨）。ずれがあれば、その方向と大きさを書く。良い・悪いの断定はしない）\n\n'
+ + '■ 理論の評価\n'
+ + '（妥当性・実現可能性・改善点を客観的に評価）\n\n'
+ + '■ 懸念点の評価\n'
+ + '（深刻度：高／中／低／懸念なし で判定し、理由を記載）';
 
 async function run() {
   const aKey = '';  // Anthropicキーはリレー(Vercel)が保持するため入力不要
@@ -804,7 +1345,7 @@ async function run() {
   btn.disabled = true;
   btn.textContent = '処理中...';
 
-  ['A','N','T'].forEach(x => {
+  ['G','A','N','T'].forEach(x => {
     setStage(x, 'waiting', '');
     document.getElementById('out'+x).className = 'stage-output';
   });
@@ -812,20 +1353,62 @@ async function run() {
   const fullInput = '【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + combinedInput;
 
   try {
-    setStage('A', 'running', '理論化中...');
-    const azusa = await callAzusa(fullInput, oKey);
+    const kb = kbActive();
+    const prof = kb ? kbProfile(kb) : null;
+    let ctxText = '';
+    if (kb) {
+      const miss = kbMissing(kb, reference);
+      ctxText = kbSummary(kb, prof) + '\n\n' + kbMapText(prof)
+        + '\n\n【欠けている情報】\n' + (miss.length ? miss.map(function(x){ return '・' + x; }).join('\n') : 'なし')
+        + (KB_COMPANY ? '\n\n【当事者の企業基礎情報（トライゲイト様式）】\n' + JSON.stringify(KB_COMPANY) : '');
+    }
+    const gateInput = kb ? (fullInput + '\n\n' + ctxText) : fullInput;
+
+    setStage('G', 'running', '立ち位置と出口を確認中...');
+    const gateRaw = await callClaude(GATE_PROMPT, gateInput, aKey, 0);
+    const gate = gateParse(gateRaw);
+
+    let mode, gateOut;
+    if (prof) {
+      mode = prof.mode;
+      let down = false;
+      if (mode === 'clear' && !(gate && gate['出口の書き方'] === '決着地点')) { mode = 'partial'; down = true; }
+      gateOut = '起案基礎情報の回答から、立ち位置と提案の段階を機械的に決めました。\n'
+        + '・当事者：' + (kb.q3 || '') + '\n'
+        + '・業界マップ：' + (prof.map ? prof.map.title + '（' + prof.map.status + '）' : '未整備（業界ルールとの照合なし）') + '\n'
+        + '・問題との位置関係：' + prof.pos + '\n'
+        + '・聞けている言葉：' + prof.sides + '\n'
+        + '・問題の明確さ：' + (prof.clear ? '明確' : '五里霧中') + '\n'
+        + '・出口：' + (prof.exitOk ? '当事者に確認済み' : '未確認')
+        + (down ? '（ただし、出口の書き方が決着のつく地点になっていないため「明確（不足あり）」とします）' : '') + '\n'
+        + '・知識の段階：' + prof.know + '\n'
+        + '・提案の段階：' + KB_MODE_NAME[mode] + '\n\n'
+        + (mode === 'clear' ? '出口から逆算して、クライアントが挙げた問題の解決提案を作ります。'
+           : '解決提案へ進むには、出力の最後の「そろったときの姿」にある内容を当事者から取り、起案基礎情報とベース資料に反映して保存し、もう一度実行してください。')
+        + (gate ? '\n\n（参考：AIによる確認）\n' + gateText(gate) : '');
+    } else {
+      mode = (gate && gate['判定'] === '進行') ? 'normal' : 'hearing';
+      gateOut = gateText(gate);
+    }
+    showOutput('G', gateOut);
+    setStage('G', 'done', KB_MODE_SHORT[mode]);
+
+    const origin = gateInput + '\n\n【関所の判定】\n' + gateOut;
+    const azusaBase = { clear: AZUSA_CLEAR_PROMPT, partial: AZUSA_PARTIAL_PROMPT, fog: AZUSA_FOG_PROMPT, normal: AZUSA_NORMAL_PROMPT, hearing: AZUSA_HEARING_PROMPT }[mode];
+    const azusaSys = azusaBase + (kb ? ('\n\n' + kbConditions(kb, prof)) : '');
+
+    setStage('A', 'running', (mode === 'clear' || mode === 'normal') ? '出口から逆算中...' : '提案の段階に合わせて作成中...');
+    const azusa = await callAzusa(origin, oKey, azusaSys);
     showOutput('A', azusa);
     setStage('A', 'done', '完了');
 
-    setStage('N', 'running', '理論熟成中...');
-    const nagisaPrompt = 'あなたはTriSight™のなぎさです。あずさの理論化情報を受け取り、以下の2つを同時に出力してください。\n\n■ 理論熟成結果\n（あずさの理論をさらに深め、論理的に整理した内容）\n\n■ 懸念点\n（倫理的・法的・社会的な懸念点を抽出。なければ「懸念点なし」と記載）';
-    const nagisa = await callClaude(nagisaPrompt, '【あずさの理論化情報】\n' + azusa, aKey);
+    setStage('N', 'running', '検証中...');
+    const nagisa = await callClaude(nagisaPromptFor(mode, !!kb), origin + '\n\n【あずさの出力】\n' + azusa, aKey);
     showOutput('N', nagisa);
     setStage('N', 'done', '完了');
 
     setStage('T', 'running', '評価中...');
-    const tukasaPrompt = 'あなたはTriSight™のつかさです。なぎさの出力を受け取り、以下の2つを評価してください。\n\n■ 理論の評価\n（妥当性・実現可能性・改善点を客観的に評価）\n\n■ 懸念点の評価\n（深刻度：高／中／低／懸念なし で判定し、理由を記載）';
-    const tukasa = await callTsukasa(tukasaPrompt, '【なぎさの出力】\n' + nagisa);
+    const tukasa = await callTsukasa(TSUKASA_PROMPT, origin + '\n\n【なぎさの出力】\n' + nagisa);
     showOutput('T', tukasa);
     setStage('T', 'done', '完了');
 
@@ -839,12 +1422,13 @@ async function run() {
   var purpose = document.getElementById('purpose') ? document.getElementById('purpose').value : '';
   var situation = document.getElementById('situation') ? document.getElementById('situation').value : '';
   var input = document.getElementById('input') ? document.getElementById('input').value : '';
+  var gateTxt = document.getElementById('outG') ? document.getElementById('outG').innerText : '';
   var azusa = document.getElementById('outA') ? document.getElementById('outA').innerText : '';
   var nagisa = document.getElementById('outN') ? document.getElementById('outN').innerText : '';
   var tsukasa = document.getElementById('outT') ? document.getElementById('outT').innerText : '';
   var now = new Date();
   var dateStr = now.getFullYear() + ('0'+(now.getMonth()+1)).slice(-2) + ('0'+now.getDate()).slice(-2) + '_' + ('0'+now.getHours()).slice(-2) + ('0'+now.getMinutes()).slice(-2);
-  var content = '■TriSight™ 出力レポート\n生成日時：' + now.toLocaleString('ja-JP') + '\n\n【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + input + '\n\n【あずさ 出力】\n' + azusa + '\n\n【なぎさ 出力】\n' + nagisa + '\n\n【つかさ 出力】\n' + tsukasa;
+  var content = '■TriSight™ 出力レポート\n生成日時：' + now.toLocaleString('ja-JP') + '\n\n【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + input + '\n\n【関所（立ち位置の確認と提案の段階）】\n' + gateTxt + '\n\n【あずさ 出力】\n' + azusa + '\n\n【なぎさ 出力】\n' + nagisa + '\n\n【つかさ 出力】\n' + tsukasa;
   var blob = new Blob([content], {type: 'text/plain;charset=utf-8'});
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1025,5 +1609,20 @@ window.addEventListener('DOMContentLoaded', function() {
 })();
 </script>
 <!-- ===== ② TriVoice 音声入力ここまで ===== -->
+<script>
+try { kbBuild(); kbRefresh(); if (document.getElementById('kbSel').value) { kbSelect(); } else { kbShowCompany(); } } catch(e) {}
+
+/* 版の照合：version.json の trisight と画面の版が違えば知らせる */
+fetch('version.json', {cache:'no-store'}).then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
+  var lab = document.getElementById('verLabel');
+  if (j && j.trisight && lab && j.trisight !== lab.textContent) {
+    var d = document.createElement('div');
+    d.style.cssText = 'background:#1e3a52;border:1px solid #c9a84c;color:#f5f0e8;border-radius:6px;padding:10px 14px;margin:10px 0;font-size:13px;text-align:center';
+    d.textContent = '新しい版が公開されています（' + j.trisight + '）。画面を開き直すと切り替わります。';
+    var btn = document.getElementById('btn');
+    if (btn && btn.parentNode) { btn.parentNode.insertBefore(d, btn); }
+  }
+}).catch(function(){});
+</script>
 </body>
 </html>

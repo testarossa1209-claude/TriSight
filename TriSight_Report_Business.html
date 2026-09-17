@@ -599,6 +599,7 @@
       <h2>2. クライアント情報</h2>
       <input type="text" id="clientName" value="ノア・コーポレーション合同会社" placeholder="提出先名">
       <input type="text" id="clientPeriod" placeholder="数値の対象月（例：5月20日提出分なら 令和8年4月分）">
+      <input type="text" id="clientNo" placeholder="報告書番号（例：No.010）※保存するファイル名に使います">
       <input type="date" id="clientDate">
       <select id="clientPlan">
         <option value="エグゼクティブプラン（月次訪問コンサル付）">エグゼクティブプラン（月次訪問コンサル付）</option>
@@ -689,7 +690,7 @@
     <div class="section">
       <h2>3. 月次実績データ（部門別損益）</h2>
       <div class="content" contenteditable="true" id="sec3figures">
-（v5からデータ受信後、基本情報の「対象期間」を入力すると、その月の確定数値がここに自動表示されます。本欄は手動で編集可能です。）
+（v5からデータ受信後、「2. クライアント情報」の対象期間に数値の対象月（例：5月20日提出分なら 令和8年4月分）を入力すると、その月の確定数値がここに自動表示されます。本欄は手動で編集可能です。）
       </div>
       
     </div>
@@ -815,7 +816,9 @@
 
 <!-- ─────── エクスポートバー ─────── -->
 <div class="export-bar">
-  <button class="btn btn-primary" onclick="window.print()">🖨 印刷 / PDF保存</button>
+  <span style="font-size:11px;opacity:.75;margin-right:8px">版 <span id="verLabel">2026-09-17-01</span></span>
+  <button class="btn btn-primary" onclick="saveToMaster()">📁 正本フォルダへ保存</button>
+  <button class="btn btn-secondary" onclick="printReport()">🖨 印刷 / PDF保存</button>
   <button class="btn btn-secondary" onclick="downloadHTML()">💾 HTML保存</button>
   <button class="btn btn-secondary" onclick="downloadTXT()">📄 TXT再出力</button>
 </div>
@@ -972,6 +975,7 @@ async function generateReport(){
     document.getElementById('sec5').textContent = parsed.ai_findings || '（生成失敗）';
     document.getElementById('sec6').textContent = parsed.risk_assessment || '（生成失敗）';
     document.getElementById('sec7').textContent = parsed.next_action || '（生成失敗）';
+    tsMarkDirty();
 
     showStatus('✓ つかさAPIによる結論抽出が完了しました。各セクションは編集可能です。', false);
     setTimeout(hideStatus, 5000);
@@ -1005,22 +1009,130 @@ function clearAll(){
 }
 
 // ─────── HTML保存 ───────
-function downloadHTML(){
+function buildReportHTML(){
   syncCoverInfo();
-  const html = '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>TriSight Business Report</title><style>'
+  return '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>' + reportFileBase() + '</title><style>'
     + document.querySelector('style').innerHTML
     + '</style></head><body><div class="report">'
     + document.getElementById('report').innerHTML
     + '</div></body></html>';
+}
+function downloadHTML(){
+  const html = buildReportHTML();
+  tsMarkSaved();
   const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'TriSight_Business_Report_' + new Date().toISOString().slice(0,10) + '.html';
+  a.download = reportFileBase() + '.html';
   a.click();
+}
+
+// ─────── 保存名・正本フォルダ保存・閉じる前の警告（2026-09-17-01追加）───────
+// 保存名：提出日_提出先の略称月次報告書_報告書番号_提出月分（例：20260520_ノア月次報告書_No006_5月分）
+function reportFileBase(){
+  const dRaw = (document.getElementById('clientDate')||{}).value || '';
+  const ymd = dRaw ? dRaw.replace(/-/g,'') : new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const mon = dRaw ? (parseInt(dRaw.slice(5,7),10) + '月分') : '';
+  const cl = ((document.getElementById('clientName')||{}).value || '').replace(/合同会社|株式会社|有限会社|・?コーポレーション/g,'').trim() || '報告先';
+  const no = (((document.getElementById('clientNo')||{}).value || '').replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)).replace(/[.\s．]/g,'').replace(/^no/i,'No'));
+  return [ymd, cl + '月次報告書', no, mon].filter(Boolean).join('_').replace(/[\\/:*?"<>|]/g,'');
+}
+
+// 閉じる前の警告：生成・編集したあと保存していなければ、ブラウザの確認を出す
+window.TS_DIRTY = false;
+function tsMarkDirty(){ window.TS_DIRTY = true; }
+function tsMarkSaved(){ window.TS_DIRTY = false; }
+window.addEventListener('beforeunload', function(e){
+  if(!window.TS_DIRTY) return;
+  e.preventDefault();
+  e.returnValue = '';
+  return '';
+});
+document.addEventListener('input', function(e){
+  if(e.target && e.target.closest && e.target.closest('#report')) tsMarkDirty();
+});
+
+// 印刷／PDF保存：保存名をPDFのファイル名の初期値にする
+function printReport(){
+  syncCoverInfo();
+  const keep = document.title;
+  document.title = reportFileBase();
+  window.addEventListener('afterprint', function once(){
+    document.title = keep;
+    window.removeEventListener('afterprint', once);
+  });
+  window.print();
+}
+
+// 正本フォルダの記憶（この端末のブラウザ内にだけ保存）
+function tsDirDB(){
+  return new Promise(function(res, rej){
+    const rq = indexedDB.open('trisight_report_dir', 1);
+    rq.onupgradeneeded = function(){ rq.result.createObjectStore('h'); };
+    rq.onsuccess = function(){ res(rq.result); };
+    rq.onerror = function(){ rej(rq.error); };
+  });
+}
+async function tsDirGet(){
+  try {
+    const db = await tsDirDB();
+    return await new Promise(function(res){ const g = db.transaction('h').objectStore('h').get('master'); g.onsuccess = function(){ res(g.result || null); }; g.onerror = function(){ res(null); }; });
+  } catch(e){ return null; }
+}
+async function tsDirSet(h){
+  try {
+    const db = await tsDirDB();
+    await new Promise(function(res){ const tx = db.transaction('h','readwrite'); tx.objectStore('h').put(h,'master'); tx.oncomplete = res; tx.onerror = res; });
+  } catch(e){}
+}
+async function tsWrite(dir, name, text){
+  const fh = await dir.getFileHandle(name, { create: true });
+  const w = await fh.createWritable();
+  await w.write(new Blob([text], {type: 'text/plain;charset=utf-8'}));
+  await w.close();
+}
+async function saveToMaster(){
+  if(!window.showDirectoryPicker){
+    showStatus('⚠ このブラウザはフォルダへの直接保存に対応していません。Microsoft Edge または Google Chrome で開いてください。代わりに「💾 HTML保存」で保存し、正本フォルダへ移してください。', true);
+    return;
+  }
+  const base = reportFileBase();
+  if(!(document.getElementById('clientDate')||{}).value){ showStatus('⚠ 「2. クライアント情報」の日付（提出日）を入れてから保存してください。', true); return; }
+  try {
+    let dir = await tsDirGet();
+    if(dir){
+      let p = await dir.queryPermission({ mode: 'readwrite' });
+      if(p !== 'granted') p = await dir.requestPermission({ mode: 'readwrite' });
+      if(p !== 'granted') dir = null;
+    }
+    if(!dir){
+      showStatus('📁 保存先を選びます。開いた窓で正本フォルダ（SSDの TriSight_正本）を選び、「フォルダーの選択」を押してください。次回からは選び直さずに保存されます。');
+      dir = await window.showDirectoryPicker({ id: 'trisight-master', mode: 'readwrite' });
+      await tsDirSet(dir);
+    }
+    let exists = false;
+    try { await dir.getFileHandle(base + '.html'); exists = true; } catch(e){}
+    if(exists && !confirm('正本フォルダに同じ名前のファイルがあります。上書きしますか？\n' + base + '.html')) return;
+    await tsWrite(dir, base + '.html', buildReportHTML());
+    await tsWrite(dir, base + '.txt', buildReportTXT());
+    tsMarkSaved();
+    showStatus('✓ 正本フォルダ「' + dir.name + '」に保存しました：' + base + '.html ／ .txt　PDFが必要な場合は「🖨 印刷 / PDF保存」から同じ名前で保存してください。', false);
+  } catch(e){
+    if(e && e.name === 'AbortError'){ showStatus('保存先の選択が取り消されたため、保存していません。', true); return; }
+    showStatus('⚠ 正本フォルダへの保存に失敗しました（' + (e && e.message ? e.message : e) + '）。「💾 HTML保存」で保存し、正本フォルダへ移してください。', true);
+  }
 }
 
 // ─────── TXT再出力 ───────
 function downloadTXT(){
+  const content = buildReportTXT();
+  const blob = new Blob([content], {type: 'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = reportFileBase() + '.txt';
+  a.click();
+}
+function buildReportTXT(){
   const period = document.getElementById('clientPeriod').value || '令和8年4月分';
   const client = document.getElementById('clientName').value || 'ノア・コーポレーション合同会社';
 
@@ -1036,15 +1148,11 @@ function downloadTXT(){
   content += '【6. リスク評価】\n' + document.getElementById('sec6').textContent + '\n\n';
   content += '【7. 次月アクションプラン】\n' + document.getElementById('sec7').textContent + '\n\n';
   content += '【結論（起案者最終判断）】\n' + document.getElementById('conclusion').textContent + '\n';
-
-  const blob = new Blob([content], {type: 'text/plain;charset=utf-8'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'TriSight_Business_Report_' + new Date().toISOString().slice(0,10) + '.txt';
-  a.click();
+  return content;
 }
 
 // ─────── 初期化 ───────
+window.addEventListener('afterprint', function(){ tsMarkSaved(); });
 window.addEventListener('DOMContentLoaded', function(){
   // v5.htmlからの自動受信
   try {
@@ -1095,8 +1203,8 @@ window.addEventListener('DOMContentLoaded', function(){
     if(!c) return;
     if(c.idx < 0){
       el.textContent = c.ym
-        ? '（対象期間 ' + c.pv + ' の数値がベース資料に見つかりません。データ期間：' + c.months.join(' / ') + '）'
-        : '（基本情報の「対象期間」を「令和8年2月分」の形式で入力すると、その月の確定数値が表で自動表示されます）';
+        ? '（対象期間 ' + c.pv + ' の数値がベース資料に見つかりません。対象期間には提出月ではなく数値の対象月を入れます。データ期間：' + c.months.join(' / ') + '）'
+        : '（「2. クライアント情報」の対象期間に数値の対象月を入力すると、その月の確定数値が表で自動表示されます。例：5月20日提出分なら 令和8年4月分）';
       return;
     }
     const idx = c.idx, raw = c.raw;
@@ -1116,9 +1224,18 @@ window.addEventListener('DOMContentLoaded', function(){
     const pay = window.TS_PAYLOAD || '';
     const seen = {};
     const depts = [];
-    for(const d of pay.matchAll(/・(介護部|看護部|居宅介護支援|相談支援)[：:]\s*([\d,]+)円/g)){
-      if(seen[d[1]]) continue; seen[d[1]] = true;
-      depts.push([d[1], parseInt(d[2].replace(/,/g,''),10)]);
+    for(const d of pay.matchAll(/・(介護部|看護部|居宅介護支援|相談支援|事務局（他科受診）|事務局\(他科受診\)|他科受診)[：:]\s*([\d,]+)円/g)){
+      const nm = /他科受診/.test(d[1]) ? '事務局（他科受診）' : d[1];
+      if(seen[nm]) continue; seen[nm] = true;
+      depts.push([nm, parseInt(d[2].replace(/,/g,''),10)]);
+    }
+    // 事務局（他科受診）：起案内容に行が無ければ、試算表の「他科受診」を含む行から取り、出所を明記する
+    if(depts.length && !seen['事務局（他科受診）']){
+      const tr = raw.match(/^[^\n\d\-]*他科受診[^\n\d\-]*?[\s　]+([\-0-9,\s]+)$/m);
+      if(tr){
+        const vals = tr[1].trim().split(/\s+/).map(x => parseInt(x.replace(/,/g,''),10));
+        if(!isNaN(vals[idx])) depts.push(['事務局（他科受診・試算表計上額）', vals[idx]]);
+      }
     }
     if(depts.length){
       let total = 0;
@@ -1178,6 +1295,13 @@ window.addEventListener('DOMContentLoaded', function(){
   });
 });
 
+/* 版の照合：version.json の report_business と画面の版が違えば知らせる */
+fetch('version.json', {cache:'no-store'}).then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
+  var lab = document.getElementById('verLabel');
+  if (j && j.report_business && lab && j.report_business !== lab.textContent) {
+    showStatus('⚠ この画面は古い版（' + lab.textContent + '）です。Ctrl＋Shift＋R を押して読み直してください（最新：' + j.report_business + '）。', true);
+  }
+}).catch(function(){});
 </script>
 
 

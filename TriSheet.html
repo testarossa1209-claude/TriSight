@@ -64,7 +64,7 @@ pre.out{white-space:pre-wrap;font-size:12px;font-family:var(--font-mono);backgro
     <div style="font-size:20px;font-weight:500">基本情報シート</div>
   </div>
   <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">発行：合同会社トライサイト</div>
-  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-09-17-01</span> <span id="verMsg"></span></div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-09-17-02</span> <span id="verMsg"></span></div>
   <div style="border-top:1px solid var(--border-strong);margin:8px 0 12px"></div>
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <label for="plan" style="font-size:14px">ご利用の契約</label>
@@ -207,6 +207,132 @@ const LAYOUT={
   {g:'申請事務'},[['手続代行者の法人名',4],['手続代行者の住所',8]],[['振込口座：金融機関名',4],['振込口座：支店名',4],['振込口座：預金種別',4]],[['振込口座：口座番号',4],['振込口座：名義人（カナ）',8]]]
 };
 const KB_MAP=SITE.filter(f=>f.k&&/^q/.test(f.k)).map(f=>[f.k,f.k]);
+const ADL='自立|見守り|一部介助|全介助';
+const IADL='できる|一部できる|できない';
+const A=(l,t2,o,n)=>({k:'asm_'+l,l:l,t:t2,o:o,n:n,x:'opt'});
+/* トライケア アセスメント／モニタリング（居宅介護支援の様式に基づく）
+   出所：ノア・コーポレーション合同会社が使用している「アセスメントシート.xls」（全5シート）、
+        「モニタリングシート_縦書用_.xls」、「モニタリング表_纏め半年分_.xls」（2026-09-18 提供） */
+const ASM=[
+ {g:'基本情報'},
+ A('作成年月日','date'),
+ A('実施場所','rad','自宅|病院|その他'),
+ A('記入者','text'),
+ A('アセスメント理由','rad','初回|更新|区変|変化（悪化）|変化（改善）|退院・退所|その他'),
+ A('利用者氏名','text'),
+ A('ふりがな','text'),
+ A('生年月日','wdate'),
+ A('性別','rad','男|女'),
+ A('住所','text'),
+ A('電話番号','text'),
+ A('世帯区分','rad','単身|高齢者のみ|その他'),
+ A('家族構成','area',null,'氏名・続柄・年齢・健康状態を1行に1人ずつ'),
+ A('家族構成図・同居別居','area',null,'続柄と同居・別居の別'),
+ A('緊急連絡先','area',null,'氏名・続柄・住所・電話番号'),
+ A('主治医','text',null,'医師名・電話'),
+ A('初回相談内容','area'),
+ A('初回相談受付月日','date'),
+ A('受付方法','rad','訪問|来所|電話|その他'),
+ A('依頼者・相談経路','text'),
+ A('生活歴','area',null,'これまでの職業・家庭生活・趣味・習慣など'),
+ A('現在の生活状況','area',null,'生活・介護の状況など'),
+ {g:'認定・保険'},
+ A('障害高齢者の日常生活自立度','sel','自立|J1|J2|A1|A2|B1|B2|C1|C2'),
+ A('認知症高齢者の日常生活自立度','sel','自立|Ⅰ|Ⅱa|Ⅱb|Ⅲa|Ⅲb|Ⅳ|Ｍ'),
+ A('要介護度','sel','申請中|区分変更|要支援1|要支援2|要介護1|要介護2|要介護3|要介護4|要介護5'),
+ A('認定年月日','date'),
+ A('認定期間（開始）','date'),
+ A('認定期間（終了）','date'),
+ A('介護保険 被保険者番号','text'),
+ A('医療保険','text',null,'保険の種類・記号番号'),
+ A('身体障害者手帳','text',null,'種別・等級'),
+ {g:'望む生活・介護力'},
+ A('利用者の望む生活','area',null,'なるべく本人の言葉で'),
+ A('家族の望む生活','area',null,'複数の家族がいる場合は、それぞれの希望を'),
+ A('介護力','rad','有|無'),
+ A('主な介護者','text',null,'氏名・続柄'),
+ A('その他の介護者','text',null,'氏名・続柄'),
+ A('介護に対する考え','area',null,'就労状況・関係性・健康状態・介護の負担・困りごとなど'),
+ A('一月に使える介護費用','text'),
+ A('1日の生活','area',null,'起床・食事・日中の過ごし方・入浴・就寝など'),
+ A('日中の過ごし方','rad','よく動いている|座っていることが多い|横になっていることが多い|一日中ベッドで過ごす'),
+ A('外出の頻度','rad','1日1回以上|週1回以上|月1回以上|月1回未満'),
+ {g:'健康状態'},
+ A('受診病院','area',null,'病院名・医師名・診療科目・電話番号・受診状況'),
+ A('傷病名・症状・既往歴・治療・処置','area'),
+ A('麻痺・関節の拘縮','rad','ない|ある'),
+ A('身長（cm）','num'),
+ A('体重（kg）','num'),
+ A('皮膚疾患','rad','ない|ある'),
+ A('じょく瘡','rad','ない|ある'),
+ A('痛み','rad','ない|ある'),
+ {g:'ADL（本人の身体能力）'},
+ A('寝返り','rad',ADL),
+ A('起き上がり','rad',ADL),
+ A('移乗','rad',ADL),
+ A('屋内歩行','rad',ADL),
+ A('屋外歩行','rad',ADL),
+ A('座位','rad',ADL),
+ A('更衣','rad',ADL,'上半身更衣・下半身更衣・靴下などの状況'),
+ A('身だしなみ','rad',ADL,'洗面・歯磨き・整髪・髭剃り・爪切り等の状況'),
+ A('入浴','rad',ADL,'入浴場所・浴槽の出入り・洗身・洗髪などの状況'),
+ A('食事','rad',ADL),
+ A('嚥下','rad','問題なし|むせることがある|とろみが必要|経管栄養'),
+ A('食事形態','rad','常食|きざみ|軟菜|ミキサー|その他'),
+ A('食事の制限','chk','糖尿食|減塩食|カロリー制限|制限なし'),
+ A('栄養状態','rad','良好|やや不良|不良'),
+ A('水分摂取','rad','問題なし|不足しがち|制限あり'),
+ A('口腔状態','chk','自歯|義歯あり|総義歯|不潔|炎症|痛み'),
+ A('排尿・排便','rad',ADL),
+ A('排泄行為','rad',ADL),
+ A('尿意','rad','あり|時々あり|なし'),
+ A('便意','rad','あり|時々あり|なし'),
+ A('尿失禁','rad','なし|時々|常時'),
+ A('便失禁','rad','なし|時々|常時'),
+ A('使用している用具','chk','介護用ベッド（保険）|介護用ベッド（自費）|パイプベッド|布団|車イス|杖|歩行器|シルバーカー|補装具|紙おむつ（リハパン）|紙おむつ（テープ式）|尿取りパッド|人工肛門|バルーンカテーテル|箸|スプーン|経管|ＩＶＨ'),
+ A('ADLの状況・課題','area',null,'本人の状況・意欲・介護の状況・日常生活への影響・困りごと'),
+ {g:'IADL'},
+ A('調理','rad',IADL),
+ A('掃除','rad',IADL,'ごみの後始末の状況も'),
+ A('洗濯','rad',IADL),
+ A('買い物','rad',IADL),
+ A('金銭管理','rad',IADL),
+ A('薬の管理','rad',IADL),
+ A('電話の利用','rad',IADL),
+ A('交通機関の利用','text',null,'利用している移動手段（自家用車・自転車・電動車いす等）'),
+ A('IADLの状況・課題','area'),
+ {g:'コミュニケーション・社会との関わり'},
+ A('視力','rad','問題なし|眼鏡使用|見えにくい|ほとんど見えない'),
+ A('聴力','rad','問題なし|補聴器使用|聞こえにくい|ほとんど聞こえない'),
+ A('意思の疎通','rad','問題なし|言語障害あり|困難'),
+ A('社会活動への参加意欲','area'),
+ {g:'認知'},
+ A('物忘れ','rad','ない|時々ある|よくある'),
+ A('日常の意思決定','rad','できる|一部できる|できない'),
+ A('問題行動','chk','被害的|作話|感情が不安定|昼夜が逆転|同じ話をする|大声を出す|介護に抵抗|落ち着きなし|一人で出たがる|収集癖|物や衣類を壊す|独り言・一人笑い|自分勝手に行動する|話がまとまらない'),
+ A('認知の状況・課題','area',null,'日常生活への影響・介護の状況・課題等'),
+ A('特別な状況','area',null,'虐待・ターミナル等の具体的な状況')
+];
+const MONI=[
+ A('記入日','date'),
+ A('担当者名','text'),
+ A('サービス内容','text'),
+ A('計画の目的の達成状況','area'),
+ A('現在の生活で困っていること','area'),
+ A('計画に沿って行われているか','area'),
+ A('事業所に対する要望','area'),
+ A('病気について新たに注目すること','area'),
+ A('介護者の状況の変化','area'),
+ A('状況変化','chk','生活状況の変化|身体状況の変化|気持ちの変化|ADL・IADLの変化'),
+ A('状況変化の程度','rad','やや良い変化|変化なし|やや悪化|悪化'),
+ A('本人・家族の満足度','rad','満足|不満|苦情あり|わからない'),
+ A('短期目標の達成度','rad','ほぼ達成|未達成|わからない'),
+ A('新しい課題の有無','rad','なし|あり'),
+ A('プラン変更の必要性','rad','なし|修正|中止・終結'),
+ A('苦情・要望','area'),
+ A('備考','area')
+];
+
 const KINDS={kaigo:'介護保険の事業所番号',shogai:'障害福祉サービスの事業所番号（障害者）',jido:'障害児通所支援の事業所番号（障害児）',soudan:'特定相談支援の事業所番号（障害者）',soudanji:'障害児相談支援の事業所番号（障害児）'};
 const SVC={
  kaigo:'訪問看護|訪問介護|通所介護|通所リハビリテーション|短期入所生活介護|居宅介護支援|介護予防支援|訪問型サービス（独自）|訪問型サービス（独自／定率）|訪問型サービス（独自／定額）|通所型サービス（独自）|通所型サービス（独自／定率）|通所型サービス（独自／定額）|その他',
@@ -217,6 +343,7 @@ const SVC={
  iryo:'訪問看護ステーション|病院・診療所|その他'};
 let val={},plan='',shown=[],BASE=null,useCare=false,useRew=false;
 const openSec={};
+let openUser=null,userTab='asm';
 const SKEY='trisight_kihon_sheet';
 let prevSnap=null;
 function snap(){return JSON.stringify({val,plan,offices,users,rewYears,useCare,useRew,BASE});}
@@ -334,13 +461,49 @@ function rewHTML(){
   h+='<div class="nt">加算区分の選択肢は、期間によって変わります（令和8年6月以降はⅠイ・Ⅰロ・Ⅱイ・Ⅱロ・Ⅲ・Ⅳ）。</div>';
   return secWrap('トライリワード','処遇改善加算に使います',h,[]);
 }
+function userField(f,uid,store){
+  const id='u'+uid+'_'+f.k;
+  const v=store[f.k];
+  const cur=Array.isArray(v)?v:(v==null?'':v);
+  if(f.t==='area')return '<textarea data-uk="'+esc(f.k)+'" rows="2" style="width:100%">'+esc(cur)+'</textarea>';
+  if(f.t==='date')return '<input type="date" data-uk="'+esc(f.k)+'" value="'+esc(cur)+'" style="max-width:180px">';
+  if(f.t==='num')return '<input type="number" min="0" data-uk="'+esc(f.k)+'" value="'+esc(cur)+'" style="max-width:140px">';
+  if(f.t==='sel')return '<select data-uk="'+esc(f.k)+'">'+opts(f.o,'|',cur)+'</select>';
+  if(f.t==='wdate')return '<input type="text" data-uk="'+esc(f.k)+'" value="'+esc(cur)+'" placeholder="例：昭和10年3月5日" style="width:100%">';
+  if(f.t==='rad'||f.t==='chk'){
+    const ty=f.t==='chk'?'checkbox':'radio';const sel=[].concat(cur||[]);
+    return '<div class="ops" data-ug="'+esc(f.k)+'" data-uty="'+ty+'">'+f.o.split('|').map(x=>'<label><input type="'+ty+'" name="'+id+'" value="'+esc(x)+'"'+(sel.includes(x)?' checked':'')+'>'+esc(x)+'</label>').join('')+'</div>';
+  }
+  return '<input type="text" data-uk="'+esc(f.k)+'" value="'+esc(cur)+'" style="width:100%">';
+}
+function userSheetHTML(u,i){
+  let h='<div class="ofc" data-us="'+i+'" style="background:var(--bg)">';
+  h+='<div class="grp">'+(userTab==='asm'?'アセスメントシート':'モニタリング')+'：'+esc(u.name||'（氏名未入力）')+'</div>';
+  if(userTab==='asm'){
+    u.asm=u.asm||{};
+    ASM.forEach(f=>{
+      if(f.g){h+='<div class="grp" style="margin-top:10px">'+esc(f.g)+'</div>';return;}
+      h+=row(esc(f.l),userField(f,i,u.asm),f.n?esc(f.n):'');
+    });
+  }else{
+    u.moni=u.moni||[];
+    u.moni.forEach((m,mi)=>{
+      h+='<div class="grp" style="margin-top:10px">'+(mi+1)+'回目 <button type="button" data-mdel="'+mi+'" style="margin-left:8px">この回を外す</button></div>';
+      MONI.forEach(f=>{h+='<div data-mi="'+mi+'">'+row(esc(f.l),userField(f,i+'_'+mi,m),f.n?esc(f.n):'')+'</div>';});
+    });
+    h+='<button type="button" data-madd="1">回を追加</button>';
+  }
+  h+='<div style="margin-top:8px"><button type="button" data-uclose="1">閉じる</button></div></div>';
+  return h;
+}
 function careHTML(){
   let h='';
   h+='<div class="nt">このシートは会社の情報です。アセスメントは利用者ごとに別のシートとして開きます。</div>';
   users.forEach((u,i)=>{
     h+='<div class="usr" data-u="'+i+'"><input class="nm" type="text" placeholder="利用者の氏名または契約書番号" value="'+esc(u.name)+'" data-uf="name">'
      +'<select data-uf="office"><option value="">事業所を選ぶ</option>'+offices.filter(o=>o.name||o.num).map(o=>'<option'+(u.office===(o.name||o.num)?' selected':'')+'>'+esc(o.name||o.num)+'</option>').join('')+'</select>'
-     +'<button type="button" data-uopen="1">この利用者のシートを開く</button><button type="button" data-udel="1">外す</button></div>';
+     +'<button type="button" data-uasm="1">アセスメント</button><button type="button" data-umoni="1">モニタリング</button><button type="button" data-udel="1">外す</button></div>';
+    if(openUser===i)h+=userSheetHTML(u,i);
   });
   h+='<button type="button" id="addUser">利用者を追加</button>';
   return secWrap('アセスメントシート','利用者ごとに1枚',h,[]);
@@ -546,11 +709,29 @@ function draw(){
   form.querySelectorAll('.usr').forEach(box=>{
     const u=users[+box.dataset.u];
     box.querySelectorAll('[data-uf]').forEach(e=>{e.onchange=e.oninput=()=>{u[e.dataset.uf]=e.value;};});
-    box.querySelector('[data-uopen]').onclick=()=>{alert((u.name||'この利用者')+'のアセスメントシートを別の画面で開きます。項目は、トライケアのシートの現物を確かめてから入れます。');};
+    box.querySelector('[data-uasm]').onclick=()=>{const i=+box.dataset.u;openUser=(openUser===i&&userTab==='asm')?null:i;userTab='asm';draw();};
+    box.querySelector('[data-umoni]').onclick=()=>{const i=+box.dataset.u;openUser=(openUser===i&&userTab==='moni')?null:i;userTab='moni';draw();};
     box.querySelector('[data-udel]').onclick=()=>{users.splice(+box.dataset.u,1);draw();};
   });
   const au=document.getElementById('addUser');
-  if(au)au.onclick=()=>{users.push({name:'',office:''});draw();};
+  if(au)au.onclick=()=>{users.push({name:'',office:'',asm:{},moni:[]});draw();};
+  form.querySelectorAll('[data-us]').forEach(box=>{
+    const u=users[+box.dataset.us];
+    const store=(mi)=>userTab==='asm'?u.asm:(u.moni[mi]||{});
+    box.querySelectorAll('[data-uk]').forEach(e=>{
+      const mi=e.closest('[data-mi]')?+e.closest('[data-mi]').dataset.mi:null;
+      e.oninput=e.onchange=()=>{store(mi)[e.dataset.uk]=e.value;save();};
+    });
+    box.querySelectorAll('[data-ug]').forEach(g=>{
+      const mi=g.closest('[data-mi]')?+g.closest('[data-mi]').dataset.mi:null;
+      g.querySelectorAll('input').forEach(x=>{x.onchange=()=>{
+        const list=[...g.querySelectorAll('input:checked')].map(y=>y.value);
+        store(mi)[g.dataset.ug]=g.dataset.uty==='radio'?(list[0]||''):list;save();};});
+    });
+    box.querySelectorAll('[data-mdel]').forEach(b=>{b.onclick=()=>{u.moni.splice(+b.dataset.mdel,1);draw();};});
+    const ma=box.querySelector('[data-madd]');if(ma)ma.onclick=()=>{u.moni.push({});draw();};
+    const uc=box.querySelector('[data-uclose]');if(uc)uc.onclick=()=>{openUser=null;draw();};
+  });
   form.addEventListener('input',save);form.addEventListener('change',save);
   form.querySelectorAll('[data-sec]').forEach(s=>{s.onclick=()=>{const k=s.dataset.sec;const now=openSec[k]===undefined?k==='会社カード':openSec[k];openSec[k]=!now;draw();};});
   const add=document.getElementById('addOfc');if(add)add.onclick=()=>{offices.push(newOffice());draw();};
@@ -566,7 +747,7 @@ document.getElementById('undo').onclick=()=>{
   const msg=document.getElementById('loadMsg');msg.style.color='var(--text-success)';msg.textContent='読み込み前の内容に戻しました（もう一度押すと元に戻ります）';
 };
 try{const s=localStorage.getItem(SKEY);if(s){restore(s);const m=document.getElementById('loadMsg');m.style.color='var(--text-secondary)';m.textContent='前回の入力を復元しました';}}catch(e){}
-document.getElementById('useCare').onchange=e=>{useCare=e.target.checked;if(useCare&&!users.length)users.push({name:'',office:''});draw();};
+document.getElementById('useCare').onchange=e=>{useCare=e.target.checked;if(useCare&&!users.length)users.push({name:'',office:'',asm:{},moni:[]});draw();};
 document.getElementById('useRew').onchange=e=>{useRew=e.target.checked;if(useRew&&!rewYears.length)rewYears.push({period:'R8_06',kubun:'',mikomi:'',kaizen:''});draw();};
 function applyJSON(j,name){
   const msg=document.getElementById('loadMsg');
@@ -747,7 +928,7 @@ function buildJSON(v,plan,offices,today,base){
   }
   out['追加利用システム']=[useCare?'トライケア':null,useRew?'トライリワード':null].filter(Boolean);
   if(useRew)out['トライリワード']={'年度ごとの数値':rewYears.filter(y=>y.kubun||y.mikomi||y.kaizen).map(y=>({'期間':(PERIODS.find(p=>p[0]===y.period)||[])[1]||y.period,'加算区分':y.kubun,'加算の見込額':toYen(y.mikomi),'賃金改善の総額':toYen(y.kaizen)}))};
-  if(useCare)out['アセスメント対象の利用者']=users.filter(u=>u.name).map(u=>({'氏名または契約書番号':u.name,'事業所':u.office}));
+  if(useCare)out['アセスメント対象の利用者']=users.filter(u=>u.name).map(u=>({'氏名または契約書番号':u.name,'事業所':u.office,'アセスメント':u.asm||{},'モニタリング':u.moni||[]}));
   return mergeKeep(base||{},out);
 }
 function mergeKeep(base,out){
@@ -804,7 +985,7 @@ function readJSON(j){
   const oldCode=(j['会社']||{})['医療機関等コード']||'';
   const add=[].concat(j['追加利用システム']||[]);
   const useCare=add.includes('トライケア'),useRew=add.includes('トライリワード');
-  const users=(j['アセスメント対象の利用者']||[]).map(u=>({name:u['氏名または契約書番号']||'',office:u['事業所']||''}));
+  const users=(j['アセスメント対象の利用者']||[]).map(u=>({name:u['氏名または契約書番号']||'',office:u['事業所']||'',asm:u['アセスメント']||{},moni:[].concat(u['モニタリング']||[])}));
   const rewYears=((j['トライリワード']||{})['年度ごとの数値']||[]).map(y=>({period:(PERIODS.find(p=>p[1]===y['期間'])||['R8_06'])[0],kubun:y['加算区分']||'',mikomi:y['加算の見込額']!=null?String(y['加算の見込額']):'',kaizen:y['賃金改善の総額']!=null?String(y['賃金改善の総額']):''}));
   const offices=(j['事業所']||[]).map(o=>({kind:{'介護保険の事業所番号':'kaigo','障害福祉サービスの事業所番号':'shogai','障害福祉サービスの事業所番号（障害者）':'shogai','障害児通所支援の事業所番号（障害児）':'jido','特定相談支援の事業所番号（障害者）':'soudan','計画相談支援の事業所番号（障害者）':'soudan','障害児相談支援の事業所番号（障害児）':'soudanji','医療機関等コード':'kaigo','医療機関等コード（訪問看護ステーション等）':'kaigo'}[o['番号の種類']]||'',num:o['番号']||'',svc:[].concat(o['サービス種別']||[]).filter(Boolean),name:o['事業所名']||'',kasan:o['加算区分_適用期間']||'',kyuchi:o['地域区分']||'',tokutei:o['特定事業所加算']||'',n440:o['年額440万円以上の職員数']!=null?String(o['年額440万円以上の職員数']):'',iryoNo:o['訪問看護ステーションコード']||o['医療機関等コード']||'',sogoCity:[].concat(o['総合事業_登録先市町村']||[]).join('、'),minashi:o['総合事業_みなし指定']||'',asm:false}));
   if(oldCode){const k=offices.find(o=>o.kind==='kaigo'&&/訪問看護/.test(o.svc||''));if(k&&!k.iryoNo)k.iryoNo=oldCode;}

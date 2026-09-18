@@ -3,7 +3,7 @@
   "short_name": "TriSight",
   "description": "TriSight製品ファミリーの玄関。三身一体（あずさ・なぎさ・つかさ）による出力品質保証システム。",
   "lang": "ja",
-  "start_url": "https://testarossa1209-claude.github.io/TriSight/",
+  "start_url": "https://testarossa1209-claude.github.io/TriSight/TriSight_v5_auto.html",
   "scope": "https://testarossa1209-claude.github.io/TriSight/",
   "display": "standalone",
   "background_color": "#f3f2ef",

@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TriReward® 按分・配分</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700;800&family=Zen+Kaku+Gothic+Antique:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0f1d3a; --navy2:#1a2f54; --navy3:#26416e;
+    --gold:#c8a24a; --gold-soft:#e6cd8f;
+    --paper:#faf8f2; --card:#ffffff; --ink:#172033; --soft:#5c6781; --line:#e6e0d0;
+    --ok:#1f6d3a; --ok-bg:#e9f4ec; --ng:#b3261e; --ng-bg:#fbeceb; --warn:#9a6b00; --warn-bg:#fdf4e0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Zen Kaku Gothic Antique",sans-serif;background:var(--paper);color:var(--ink);
+    font-size:16px;font-weight:500;line-height:1.7;letter-spacing:.01em}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px 90px}
+  header{background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);color:#fff;
+    border-bottom:3px solid var(--gold);padding:26px 0 22px;margin-bottom:8px}
+  .hd{max-width:1180px;margin:0 auto;padding:0 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  .brand{font-family:"Shippori Mincho",serif;font-weight:800;font-size:27px;letter-spacing:.02em}
+  .brand .reg{font-size:14px;vertical-align:super;color:var(--gold-soft);margin-left:2px}
+  .brand .ed{font-size:18px;color:var(--gold-soft)}
+  .sub{font-size:13.5px;color:#cdd6e6;font-weight:500;margin-top:3px}
+  .hd-tag{font-size:13px;background:rgba(255,255,255,.10);border:1px solid rgba(230,205,143,.4);
+    color:var(--gold-soft);padding:7px 14px;border-radius:999px;font-weight:700}
+  .toplinks{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 4px}
+  .toplinks a,.toplinks button{font-family:inherit;font-size:13.5px;font-weight:700;color:var(--navy3);background:#fff;
+    border:1px solid var(--line);border-radius:8px;padding:7px 13px;text-decoration:none;cursor:pointer}
+  .toplinks a:hover,.toplinks button:hover{border-color:var(--gold)}
+  .banner{background:var(--warn-bg);border:1px solid #ecd9a8;border-left:5px solid var(--gold);
+    border-radius:10px;padding:13px 16px;margin:14px 0;font-size:14px;color:#6e5414;font-weight:700}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:20px 0;
+    box-shadow:0 2px 10px rgba(15,29,58,.05);overflow:hidden}
+  .step>h2{font-family:"Shippori Mincho",serif;font-size:19px;font-weight:700;color:var(--navy);
+    padding:16px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;
+    background:linear-gradient(90deg,rgba(26,47,84,.04),transparent)}
+  .stepnum{flex:none;width:30px;height:30px;border-radius:8px;background:var(--navy);color:var(--gold-soft);
+    font-family:"Shippori Mincho",serif;font-weight:800;font-size:16px;display:grid;place-items:center}
+  .who{font-size:12.5px;font-weight:700;margin-left:auto;padding:4px 11px;border-radius:999px}
+  .who.input{background:#eef3fb;color:var(--navy3)}
+  .who.auto{background:var(--ok-bg);color:var(--ok)}
+  .body{padding:18px 22px 22px}
+  .note{font-size:13px;color:var(--soft);margin:2px 0 14px;font-weight:500}
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+  table.t{border-collapse:collapse;width:100%;font-size:13.5px;background:#fff}
+  table.t th,table.t td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:center;white-space:nowrap}
+  table.t th{background:rgba(26,47,84,.05);color:var(--navy);font-weight:700;font-size:12.5px;line-height:1.4}
+  table.t td.l,table.t th.l{text-align:left}
+  table.t td.r{text-align:right;font-variant-numeric:tabular-nums}
+  table.t tr.sum td{background:#f6f2e6;font-weight:800}
+  table.t input,table.t select{font-family:inherit;font-size:13.5px;font-weight:500;color:var(--ink);
+    padding:5px 7px;border:1px solid var(--line);border-radius:6px;background:#fffdf5}
+  table.t input:focus,table.t select:focus,.fld input:focus,.fld select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(200,162,74,.15)}
+  input.num{text-align:right}
+  input.w-nm{width:118px} input.w-s{width:62px} input.w-m{width:92px} input.w-l{width:130px}
+  .auto{color:var(--navy3);font-weight:700;font-variant-numeric:tabular-nums}
+  table.t td.ng{color:var(--ng);font-weight:800}
+  .muted{color:var(--soft);font-weight:500}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:11px 14px}
+  .fld label{display:block;font-size:12.5px;font-weight:700;color:var(--soft);margin-bottom:4px}
+  .fld input,.fld select{width:100%;font-family:inherit;font-size:15px;font-weight:500;color:var(--ink);
+    padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:#fff}
+  .fld .hint{font-size:12px;color:var(--soft);margin-top:3px}
+  .rm{border:none;background:#f3ede0;color:#8a7a55;border-radius:7px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer}
+  .rm:hover{background:#ecdfc6}
+  .addbtn{border:1.5px dashed var(--navy3);background:#fff;color:var(--navy3);border-radius:9px;
+    padding:9px 16px;font-size:14px;font-weight:700;cursor:pointer;margin-top:12px;font-family:inherit}
+  .addbtn:hover{background:#f3f6fc}
+  .chk{width:17px;height:17px;accent-color:var(--navy3)}
+  .flags{list-style:none;display:grid;gap:8px;margin-top:4px}
+  .flags li{background:var(--ng-bg);border:1px solid #ecbcb8;border-left:5px solid var(--ng);border-radius:9px;
+    padding:10px 14px;font-size:14px;font-weight:600;color:#7a1f19}
+  .flags li.w{background:var(--warn-bg);border-color:#ecd9a8;border-left-color:var(--gold);color:#6e5414}
+  .okline{background:var(--ok-bg);border:1px solid #b9dcc4;border-left:5px solid var(--ok);border-radius:9px;
+    padding:10px 14px;font-size:14px;font-weight:700;color:var(--ok)}
+  .srcbox{border:1px solid var(--line);border-radius:11px;padding:14px 16px;background:#fcfbf7}
+  .srcbox h3{font-family:"Shippori Mincho",serif;font-size:16px;color:var(--navy);margin-bottom:10px}
+  .yen{font-size:12px;color:var(--soft);margin-top:3px;min-height:18px}
+  textarea{width:100%;min-height:110px;font-family:inherit;font-size:13.5px;padding:9px 11px;border:1px solid var(--line);border-radius:8px}
+  details.paste{margin-top:12px}
+  details.paste summary{cursor:pointer;font-size:13.5px;font-weight:700;color:var(--navy3)}
+  footer{text-align:center;color:var(--soft);font-size:12px;margin-top:30px}
+  footer .r{color:var(--gold)}
+  @media print{
+    header,.toplinks,.noprint,.addbtn,.rm,details.paste{display:none!important}
+    body{background:#fff;font-size:12px}
+    .step{box-shadow:none;break-inside:avoid-page}
+    .scroll{overflow:visible;border:none}
+    table.t{font-size:10.5px}
+    table.t input,table.t select{border:none;background:transparent;padding:0}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="hd">
+    <div>
+      <div class="brand">TriReward<span class="reg">®</span> <span class="ed">按分・配分</span></div>
+      <div class="sub">処遇改善加算・訪問看護ベースアップ評価料　財源ごとの部門按分と職員別配分</div>
+    </div>
+    <div class="hd-tag" id="corpTag">基本情報：未登録</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="toplinks noprint">
+    <a href="TriReward.html">TriRewardの入口へ戻る</a>
+    <a href="TriBase.html">基本情報（TriBase）</a>
+    <button type="button" id="btnExport">この画面の内容を書き出す（JSON）</button>
+    <button type="button" id="btnImport">書き出したファイルを読み込む</button>
+    <button type="button" id="btnPrint">印刷する</button>
+    <input type="file" id="fileImport" accept=".json,application/json" style="display:none">
+  </div>
+  <div class="banner" id="noMaster" style="display:none">基本情報（TriBase）に法人が登録されていません。この画面は単独でも使えますが、法人名を表示・保存の区分に使うため、先に基本情報の登録をおすすめします。</div>
+
+  <!-- 1 -->
+  <section class="step">
+    <h2><span class="stepnum">1</span>部門と、部門内の財源比率<span class="who input">入力</span></h2>
+    <div class="body">
+      <p class="note">財源比率は、直近の確定した1年間の収入実績（看護部なら医療保険と介護保険の収入比など）で年1回決め、年度中は動かしません。事務局のように直接サービスをしない部門は「間接部門」にすると、比率が自動で出ます。</p>
+      <div class="scroll"><table class="t" id="deptTbl"></table></div>
+      <button type="button" class="addbtn" id="addDept">部門を追加する</button>
+      <div class="grid" style="margin-top:16px">
+        <div class="fld"><label for="basis">按分の基準</label>
+          <select id="basis">
+            <option value="fte_pt">常勤換算×職種ポイント</option>
+            <option value="fte">常勤換算</option>
+            <option value="head">人数</option>
+          </select>
+          <div class="hint">部門の間の按分と、部門内の配分の両方に使います。</div>
+        </div>
+        <div class="fld"><label for="fy">対象年度</label><input id="fy" type="text" placeholder="例：令和8年度"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="step">
+    <h2><span class="stepnum">2</span>常勤換算と職種ポイントの決め方<span class="who input">入力</span></h2>
+    <div class="body">
+      <div class="grid">
+        <div class="fld"><label for="fullHours">常勤の月の所定時間</label><input id="fullHours" class="num" type="text" inputmode="decimal" placeholder="160"><div class="hint">正社員はこの時間で常勤換算1。</div></div>
+        <div class="fld"><label for="shortHours">短時間社員の月の所定時間</label><input id="shortHours" class="num" type="text" inputmode="decimal" placeholder="128"><div class="hint">常勤換算＝この時間÷常勤の時間。</div></div>
+      </div>
+      <p class="note" style="margin-top:14px">パートは、4〜6月の3か月の平均勤務時間÷常勤の時間を1年間使います（1を超える場合は1）。年度の途中で入職した人は入職後の最初の3か月の平均を使い、それまでは契約時間で仮置きします。契約時間が大きく変わった人は、その時点で出し直します。</p>
+      <h3 style="font-family:'Shippori Mincho',serif;font-size:16px;color:var(--navy);margin:6px 0 8px">職種ポイント</h3>
+      <div class="scroll" style="max-width:520px"><table class="t" id="jobTbl"></table></div>
+      <button type="button" class="addbtn" id="addJob">職種を追加する</button>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="step">
+    <h2><span class="stepnum">3</span>職員名簿<span class="who input">入力</span></h2>
+    <div class="body">
+      <p class="note">役員・開設者は載せません。配分係数は部門内で差を付ける重み（人材評価シートの点数など）で、全員1なら部門内は重みどおりに均等です。社会保険・40〜64歳・雇用保険の欄で、その人の法定福利費の事業主負担率が決まります。</p>
+      <div class="scroll"><table class="t" id="staffTbl"></table></div>
+      <button type="button" class="addbtn" id="addStaff">職員を追加する</button>
+      <details class="paste">
+        <summary>Excelから名簿を貼り付ける</summary>
+        <p class="note" style="margin-top:8px">Excelで「氏名・部門・雇用形態・職種」の順に4列を選んでコピーし、下の欄に貼り付けてください。部門と職種は、この画面に登録した名前と同じ表記にします。雇用形態は「正社員」「短時間社員」「パート」のいずれかです。職種が空の行は、部門名から推定して入れます。</p>
+        <textarea id="pasteArea" placeholder="山田 花子	看護部	パート	看護職員"></textarea>
+        <button type="button" class="addbtn" id="pasteGo">貼り付けた名簿を追加する</button>
+        <div class="note" id="pasteMsg" style="margin-top:8px"></div>
+      </details>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="step">
+    <h2><span class="stepnum">4</span>財源ごとの原資と支給月数<span class="who input">入力</span></h2>
+    <div class="body">
+      <p class="note">原資は年額で入れます。正社員への上乗せ割合は、その財源の原資のうち正社員（短時間社員を含む）だけで分ける割合です。0％なら全員を同じ基準で配ります。</p>
+      <div class="grid" id="fundBox"></div>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="step">
+    <h2><span class="stepnum">5</span>財源ごとの部門別配分額<span class="who auto">自動計算</span></h2>
+    <div class="body">
+      <div id="checks" style="margin-bottom:14px"></div>
+      <div class="scroll"><table class="t" id="deptOut"></table></div>
+      <p class="note" style="margin-top:10px">対象規模＝部門の按分の基礎×部門内の財源比率。各財源の原資を、その財源の対象規模の比で部門に割ります。</p>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="step">
+    <h2><span class="stepnum">6</span>職員別の配分表<span class="who auto">自動計算</span></h2>
+    <div class="body">
+      <p class="note">月額支給＝年額÷支給月数÷（1＋その人の事業主負担率）で、1円未満は切り上げます。切り上げの分だけ会社の持ち出しが出ます（充当不足にならない向き）。</p>
+      <div class="scroll"><table class="t" id="staffOut"></table></div>
+      <div id="verify" style="margin-top:14px"></div>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section class="step">
+    <h2><span class="stepnum">7</span>法定福利費 事業主負担率の表<span class="who input">年度ごとに打ち替え</span></h2>
+    <div class="body">
+      <p class="note">料率が変わったら、この表だけ打ち替えれば全員の率が変わります。</p>
+      <div class="scroll"><table class="t" id="rateTbl"></table></div>
+    </div>
+  </section>
+
+  <footer>TriReward<span class="r">®</span> は合同会社トライサイトの登録商標です ／ © 2026 合同会社トライサイト ／ 按分・配分 v0.1</footer>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  /* ---------- 保存領域（file:// 等で localStorage が使えなくても止めない） ---------- */
+  var store;
+  try{ var tk='__trwan__'; window.localStorage.setItem(tk,'1'); window.localStorage.removeItem(tk); store=window.localStorage; }
+  catch(e){ var mem={}; store={getItem:function(k){return (k in mem)?mem[k]:null;},setItem:function(k,v){mem[k]=String(v);},removeItem:function(k){delete mem[k];}}; }
+  function readJSON(k,fb){ try{ var r=store.getItem(k); return r?JSON.parse(r):fb; }catch(e){ return fb; } }
+  function writeJSON(k,v){ try{ store.setItem(k,JSON.stringify(v)); }catch(e){} }
+
+  /* ---------- 基本情報（読み取りのみ） ---------- */
+  var DOC=readJSON('trisight_office_master_v1',null);
+  function pickOrg(d){ if(!d) return null; if(!d.orgs) return d; if(!d.orgs.length) return null;
+    for(var i=0;i<d.orgs.length;i++){ if(d.orgs[i].id===d.activeOrg) return d.orgs[i]; } return d.orgs[0]; }
+  var MASTER=pickOrg(DOC);
+  var ORGID=(MASTER&&MASTER.id)||'org1';
+  var CORP=(MASTER&&MASTER.corp&&MASTER.corp.name)||'';
+  var KEY='trireward_anbun_v1_'+ORGID;
+
+  /* ---------- 既定値 ---------- */
+  var SRC=[
+    {k:'iryo',  nm:'医療',  full:'医療（訪問看護ベースアップ評価料）', months:8,
+     mnote:'初期値8＝令和8年10月〜令和9年5月（厚生局への問い合わせメモ 2026年9月24日）'},
+    {k:'kaigo', nm:'介護',  full:'介護（処遇改善加算）', months:12, mnote:'算定期間に合わせて変更してください'},
+    {k:'shogai',nm:'障害',  full:'障害（処遇改善加算）', months:12, mnote:'算定期間に合わせて変更してください'}
+  ];
+  var DEF_RATES=[
+    {k:'kenpo',    nm:'健康保険',             rate:0.04925,tg:'shaho',  tgn:'社会保険加入者',          src:'協会けんぽ 東京都 令和8年度 保険料率9.85％の折半（2026年9月24日確認）'},
+    {k:'shien',    nm:'子ども・子育て支援金', rate:0.00115,tg:'shaho',  tgn:'社会保険加入者',          src:'協会けんぽ 令和8年度 支援金率0.23％の折半・令和8年4月新設（2026年9月24日確認）'},
+    {k:'kaigo',    nm:'介護保険',             rate:0.0081, tg:'age40',  tgn:'社会保険加入の40〜64歳',  src:'協会けんぽ 令和8年度 介護保険料率1.62％の折半（2026年9月24日確認）'},
+    {k:'nenkin',   nm:'厚生年金',             rate:0.0915, tg:'shaho',  tgn:'社会保険加入者',          src:'日本年金機構 厚生年金保険料率18.3％の折半（平成29年から固定）'},
+    {k:'kyoshutsu',nm:'子ども・子育て拠出金', rate:0.0036, tg:'shaho',  tgn:'社会保険加入者',          src:'日本年金機構 令和8年度 拠出金率0.36％・事業主のみ（2026年9月24日確認）'},
+    {k:'koyo',     nm:'雇用保険',             rate:0.0085, tg:'koyo',   tgn:'雇用保険加入者',          src:'厚生労働省 令和8年度 雇用保険料率 一般の事業の事業主負担8.5/1000（2026年9月24日確認）'},
+    {k:'rosai',    nm:'労災保険',             rate:0.003,  tg:'all',    tgn:'全員',                    src:'未確認の初期値。労働保険の年度更新申告書に書かれた率へ打ち替えてください'}
+  ];
+  var DEF_JOBS=[{id:'j1',nm:'看護職員',pt:20},{id:'j2',nm:'介護職員',pt:15},{id:'j3',nm:'障害福祉職員',pt:15},{id:'j4',nm:'事務職員',pt:10}];
+  var EMP=['正社員','短時間社員','パート'];
+  var HSRC=[['avg3','4〜6月の平均'],['join3','入職後3か月の平均'],['contract','契約時間で仮置き']];
+
+  function uid(p){ return p+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+  function blank(){
+    var f={}; SRC.forEach(function(s){ f[s.k]={amt:'',months:s.months,prem:0}; });
+    return {v:1,fy:'',basis:'fte_pt',fullHours:160,shortHours:128,
+      jobs:JSON.parse(JSON.stringify(DEF_JOBS)),depts:[],staff:[],fund:f,
+      rates:JSON.parse(JSON.stringify(DEF_RATES))};
+  }
+  function normalize(d){
+    var b=blank(); if(!d||typeof d!=='object') return b;
+    ['fy','basis','fullHours','shortHours'].forEach(function(k){ if(d[k]!==undefined) b[k]=d[k]; });
+    if(Array.isArray(d.jobs)&&d.jobs.length) b.jobs=d.jobs;
+    if(Array.isArray(d.depts)) b.depts=d.depts;
+    if(Array.isArray(d.staff)) b.staff=d.staff;
+    if(d.fund) SRC.forEach(function(s){ if(d.fund[s.k]) b.fund[s.k]=Object.assign(b.fund[s.k],d.fund[s.k]); });
+    if(Array.isArray(d.rates)) b.rates.forEach(function(r){ d.rates.forEach(function(x){ if(x.k===r.k){ r.rate=x.rate; if(x.src) r.src=x.src; } }); });
+    b.depts.forEach(function(x){ x.r=x.r||{}; });
+    b.staff.forEach(function(x){ x.h=x.h||['','','']; });
+    return b;
+  }
+  var S=normalize(readJSON(KEY,null));
+  function save(){ writeJSON(KEY,S); }
+
+  /* ---------- 数の扱い ---------- */
+  function num(v){ if(v===null||v===undefined) return NaN; var s=String(v).replace(/[,，\s円%％]/g,''); if(s==='') return NaN; return Number(s); }
+  function n0(v){ var x=num(v); return isFinite(x)?x:0; }
+  function yen(x){ return Math.round(x).toLocaleString('ja-JP'); }
+  function pct(x,d){ return (x*100).toFixed(d===undefined?1:d)+'％'; }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  function fullH(){ var x=num(S.fullHours); return x>0?x:160; }
+  function jobOf(id){ for(var i=0;i<S.jobs.length;i++) if(S.jobs[i].id===id) return S.jobs[i]; return null; }
+  function deptOf(id){ for(var i=0;i<S.depts.length;i++) if(S.depts[i].id===id) return S.depts[i]; return null; }
+  function isRegular(p){ return p.emp==='正社員'||p.emp==='短時間社員'; }
+
+  function fteOf(p){
+    if(p.emp==='正社員') return 1;
+    if(p.emp==='短時間社員'){ var sh=num(S.shortHours); return Math.min(1,(sh>0?sh:128)/fullH()); }
+    var hs=p.h||[];
+    if(p.hsrc==='contract'){ var c=num(hs[0]); return c>0?Math.min(1,c/fullH()):0; }
+    var vals=[]; for(var i=0;i<3;i++){ var v=num(hs[i]); if(isFinite(v)&&v>=0&&String(hs[i]).trim()!=='') vals.push(v); }
+    if(!vals.length) return 0;
+    var avg=vals.reduce(function(a,b){return a+b;},0)/vals.length;
+    return Math.min(1,avg/fullH());
+  }
+  function unitOf(p){
+    if(S.basis==='head') return 1;
+    var f=fteOf(p); if(S.basis==='fte') return f;
+    var j=jobOf(p.job); return f*(j?n0(j.pt):0);
+  }
+  function coefOf(p){ var raw=(p.coef==null?'':String(p.coef)).trim(); var x=num(raw); return (raw!==''&&isFinite(x)&&x>=0)?x:1; }
+  function rateOf(p){
+    var t=0;
+    S.rates.forEach(function(r){
+      var x=n0(r.rate);
+      if(r.tg==='all') t+=x;
+      else if(r.tg==='shaho'&&p.shaho) t+=x;
+      else if(r.tg==='age40'&&p.shaho&&p.age40) t+=x;
+      else if(r.tg==='koyo'&&p.koyo) t+=x;
+    });
+    return t;
+  }
+
+  /* ---------- 計算の本体 ---------- */
+  function compute(){
+    var R={flags:[],warns:[],dept:{},staff:{},src:{}};
+    var direct=S.depts.filter(function(d){return d.kind!=='indirect';});
+    var indirect=S.depts.filter(function(d){return d.kind==='indirect';});
+    S.depts.forEach(function(d){ R.dept[d.id]={K:0,n:0,ratio:{},scale:{},amt:{}}; });
+    S.staff.forEach(function(p){
+      var u=unitOf(p), dr=R.dept[p.dept];
+      R.staff[p.id]={fte:fteOf(p),unit:u,w:u*coefOf(p),rate:rateOf(p),ann:{},mon:{}};
+      if(dr){ dr.K+=u; dr.n++; }
+    });
+    /* 直接部門の比率 */
+    direct.forEach(function(d){
+      var sum=0; SRC.forEach(function(s){ var v=n0(d.r[s.k])/100; R.dept[d.id].ratio[s.k]=v; sum+=v; });
+      if(Math.abs(sum-1)>0.0001) R.flags.push('「'+(d.nm||'名称未入力')+'」の財源比率の合計が'+pct(sum)+'です。100％になるように入れてください。');
+    });
+    /* 間接部門の比率＝直接部門の持ち分×各部門の比率 */
+    var KD=direct.reduce(function(a,d){return a+R.dept[d.id].K;},0);
+    indirect.forEach(function(d){
+      SRC.forEach(function(s){
+        var v=0; if(KD>0) direct.forEach(function(x){ v+=(R.dept[x.id].K/KD)*R.dept[x.id].ratio[s.k]; });
+        R.dept[d.id].ratio[s.k]=v;
+      });
+      if(!(KD>0)) R.flags.push('間接部門「'+(d.nm||'名称未入力')+'」の比率が出せません。直接部門に職員を登録してください。');
+    });
+    /* 対象規模と部門別配分額 */
+    SRC.forEach(function(s){
+      var tot=0; S.depts.forEach(function(d){ var dr=R.dept[d.id]; dr.scale[s.k]=dr.K*dr.ratio[s.k]; tot+=dr.scale[s.k]; });
+      var amt=n0(S.fund[s.k].amt);
+      R.src[s.k]={scale:tot,amt:amt,alloc:0};
+      S.depts.forEach(function(d){ var dr=R.dept[d.id]; dr.amt[s.k]=(tot>0)?amt*dr.scale[s.k]/tot:0; R.src[s.k].alloc+=dr.amt[s.k]; });
+      if(amt>0&&!(tot>0)) R.flags.push(s.full+'の原資がありますが、配る相手（対象規模）がありません。部門の財源比率と職員の登録を確かめてください。');
+    });
+    /* 部門内の配分（上乗せ割合つき） */
+    S.depts.forEach(function(d){
+      var mem=S.staff.filter(function(p){return p.dept===d.id;});
+      var Wall=0,Wreg=0; mem.forEach(function(p){ Wall+=R.staff[p.id].w; if(isRegular(p)) Wreg+=R.staff[p.id].w; });
+      SRC.forEach(function(s){
+        var A=R.dept[d.id].amt[s.k]; var prem=Math.min(1,Math.max(0,n0(S.fund[s.k].prem)/100));
+        if(!(Wreg>0)) prem=0;
+        mem.forEach(function(p){
+          var w=R.staff[p.id].w, a=0;
+          if(Wall>0) a+=A*(1-prem)*w/Wall;
+          if(prem>0&&isRegular(p)) a+=A*prem*w/Wreg;
+          R.staff[p.id].ann[s.k]=a;
+        });
+        if(A>0&&!(Wall>0)) R.flags.push('「'+(d.nm||'名称未入力')+'」に'+s.nm+'の配分額がありますが、受け取る職員の重みが0です。');
+      });
+    });
+    /* 月額支給と検算 */
+    SRC.forEach(function(s){
+      var m=num(S.fund[s.k].months); var paid=0;
+      S.staff.forEach(function(p){
+        var r=R.staff[p.id], a=r.ann[s.k]||0;
+        var v=(m>0&&a>0)?Math.ceil(a/m/(1+r.rate)-1e-9):0;
+        r.mon[s.k]=v; if(m>0) paid+=v*m*(1+r.rate);
+      });
+      R.src[s.k].paid=paid;
+      if(R.src[s.k].amt>0&&!(m>0)) R.flags.push(s.full+'の支給月数を入れてください。');
+    });
+    /* 名簿のもれ */
+    var noDept=S.staff.filter(function(p){return !deptOf(p.dept);}).length;
+    if(noDept) R.flags.push('部門が未選択の職員が'+noDept+'人います。この人たちには配分されません。');
+    var zeroF=S.staff.filter(function(p){return deptOf(p.dept)&&p.emp==='パート'&&fteOf(p)===0;}).length;
+    if(zeroF&&S.basis!=='head') R.warns.push('勤務時間が未入力のパートが'+zeroF+'人います。常勤換算が0のため配分されません。');
+    if(S.basis==='fte_pt'){ var noJob=S.staff.filter(function(p){return deptOf(p.dept)&&!jobOf(p.job);}).length;
+      if(noJob) R.flags.push('職種が未選択の職員が'+noJob+'人います。職種ポイントが0のため配分されません。'); }
+    if(!direct.length) R.flags.push('直接部門がありません。部門を追加し、財源比率を入れてください。');
+    return R;
+  }
+
+  /* ---------- 入力欄の作り ---------- */
+  function numInput(val,cls,attrs){ return '<input type="text" inputmode="decimal" class="num '+(cls||'')+'" value="'+esc(val)+'" '+attrs+'>'; }
+  function opt(v,l,cur){ return '<option value="'+esc(v)+'"'+(String(v)===String(cur)?' selected':'')+'>'+esc(l)+'</option>'; }
+
+  function renderDepts(){
+    var h='<tr><th class="l">部門</th><th>区分</th>';
+    SRC.forEach(function(s){ h+='<th>'+esc(s.full.replace('（','<br>（'))+'</th>'; });
+    h+='<th>比率の合計</th><th>職員数</th><th class="noprint"></th></tr>';
+    if(!S.depts.length) h+='<tr><td colspan="'+(SRC.length+5)+'" class="muted">部門がまだありません。「部門を追加する」から登録してください。</td></tr>';
+    S.depts.forEach(function(d,i){
+      h+='<tr data-d="'+i+'"><td class="l"><input class="w-l" data-f="nm" value="'+esc(d.nm)+'" placeholder="例：看護部"></td>';
+      h+='<td><select data-f="kind">'+opt('direct','直接部門',d.kind||'direct')+opt('indirect','間接部門（事務局など）',d.kind)+'</select></td>';
+      SRC.forEach(function(s){
+        if(d.kind==='indirect') h+='<td class="auto" id="dr_'+d.id+'_'+s.k+'"></td>';
+        else h+='<td>'+numInput(d.r[s.k],'w-s','data-r="'+s.k+'" placeholder="0"')+' ％</td>';
+      });
+      h+='<td class="auto" id="dsum_'+d.id+'"></td><td class="auto" id="dn_'+d.id+'"></td>';
+      h+='<td class="noprint"><button type="button" class="rm" data-rmdept="'+i+'">削除</button></td></tr>';
+    });
+    document.getElementById('deptTbl').innerHTML=h;
+  }
+  function renderJobs(){
+    var h='<tr><th class="l">職種</th><th>ポイント</th><th class="noprint"></th></tr>';
+    S.jobs.forEach(function(j,i){
+      h+='<tr data-j="'+i+'"><td class="l"><input class="w-l" data-f="nm" value="'+esc(j.nm)+'"></td>';
+      h+='<td>'+numInput(j.pt,'w-s','data-f="pt"')+'</td>';
+      h+='<td class="noprint"><button type="button" class="rm" data-rmjob="'+i+'">削除</button></td></tr>';
+    });
+    document.getElementById('jobTbl').innerHTML=h;
+  }
+  function renderStaff(){
+    var h='<tr><th>No</th><th class="l">氏名</th><th>部門</th><th>職種</th><th>雇用形態</th><th>パートの時間の根拠</th>'+
+      '<th>月の勤務時間<br>（1か月目）</th><th>（2か月目）</th><th>（3か月目）</th><th>常勤換算</th><th>配分係数</th>'+
+      '<th>社会保険<br>加入</th><th>40〜64歳</th><th>雇用保険<br>加入</th><th>事業主<br>負担率</th><th class="noprint"></th></tr>';
+    if(!S.staff.length) h+='<tr><td colspan="16" class="muted">職員がまだいません。「職員を追加する」か、Excelからの貼り付けで登録してください。</td></tr>';
+    S.staff.forEach(function(p,i){
+      var part=p.emp==='パート';
+      h+='<tr data-s="'+i+'"><td>'+(i+1)+'</td><td class="l"><input class="w-nm" data-f="nm" value="'+esc(p.nm)+'"></td>';
+      h+='<td><select data-f="dept">'+opt('','（選択）',p.dept);
+      S.depts.forEach(function(d){ h+=opt(d.id,d.nm||'名称未入力',p.dept); }); h+='</select></td>';
+      h+='<td><select data-f="job">'+opt('','（選択）',p.job);
+      S.jobs.forEach(function(j){ h+=opt(j.id,j.nm,p.job); }); h+='</select></td>';
+      h+='<td><select data-f="emp">'; EMP.forEach(function(e){ h+=opt(e,e,p.emp); }); h+='</select></td>';
+      if(part){
+        h+='<td><select data-f="hsrc">'; HSRC.forEach(function(x){ h+=opt(x[0],x[1],p.hsrc||'avg3'); }); h+='</select></td>';
+        for(var k=0;k<3;k++){
+          var dis=(p.hsrc==='contract'&&k>0);
+          h+='<td>'+(dis?'<span class="muted">―</span>':numInput(p.h[k],'w-s','data-h="'+k+'" placeholder="時間"'))+'</td>';
+        }
+      } else {
+        h+='<td class="muted">―</td><td class="muted">―</td><td class="muted">―</td><td class="muted">―</td>';
+      }
+      h+='<td class="auto" id="sf_'+p.id+'"></td>';
+      h+='<td>'+numInput(p.coef,'w-s','data-f="coef" placeholder="1"')+'</td>';
+      ['shaho','age40','koyo'].forEach(function(f){ h+='<td><input type="checkbox" class="chk" data-c="'+f+'"'+(p[f]?' checked':'')+'></td>'; });
+      h+='<td class="auto" id="sr_'+p.id+'"></td>';
+      h+='<td class="noprint"><button type="button" class="rm" data-rmstaff="'+i+'">削除</button></td></tr>';
+    });
+    document.getElementById('staffTbl').innerHTML=h;
+  }
+  function renderFund(){
+    var h='';
+    SRC.forEach(function(s){
+      var f=S.fund[s.k];
+      h+='<div class="srcbox" data-src="'+s.k+'"><h3>'+esc(s.full)+'</h3>';
+      h+='<div class="fld"><label>原資（年額・円）</label>'+numInput(f.amt,'','data-g="amt" placeholder="未定なら空欄"')+'<div class="yen" id="fy_'+s.k+'"></div></div>';
+      h+='<div class="fld" style="margin-top:8px"><label>支給月数</label>'+numInput(f.months,'','data-g="months"')+'<div class="hint">'+esc(s.mnote)+'</div></div>';
+      h+='<div class="fld" style="margin-top:8px"><label>正社員への上乗せ割合（％）</label>'+numInput(f.prem,'','data-g="prem" placeholder="0"')+'</div>';
+      h+='</div>';
+    });
+    document.getElementById('fundBox').innerHTML=h;
+  }
+  function renderRates(){
+    var h='<tr><th class="l">項目</th><th>事業主負担（％）</th><th class="l">対象</th><th class="l">出所</th></tr>';
+    S.rates.forEach(function(r,i){
+      h+='<tr data-rt="'+i+'"><td class="l">'+esc(r.nm)+'</td><td>'+numInput(+(n0(r.rate)*100).toFixed(4),'w-s','data-f="rate"')+'</td>';
+      h+='<td class="l">'+esc(r.tgn)+'</td><td class="l" style="white-space:normal;min-width:320px">'+esc(r.src)+'</td></tr>';
+    });
+    document.getElementById('rateTbl').innerHTML=h;
+  }
+  function renderSettings(){
+    document.getElementById('basis').value=S.basis;
+    document.getElementById('fy').value=S.fy||'';
+    document.getElementById('fullHours').value=S.fullHours;
+    document.getElementById('shortHours').value=S.shortHours;
+  }
+  function renderAllInputs(){ renderSettings(); renderDepts(); renderJobs(); renderStaff(); renderFund(); renderRates(); }
+
+  /* ---------- 結果の描画（入力欄は触らない＝打鍵中にフォーカスが飛ばない） ---------- */
+  function setText(id,t){ var e=document.getElementById(id); if(e) e.textContent=t; }
+  function renderOut(){
+    var R=compute();
+    S.depts.forEach(function(d){
+      var dr=R.dept[d.id], sum=0;
+      SRC.forEach(function(s){ sum+=dr.ratio[s.k]; if(d.kind==='indirect') setText('dr_'+d.id+'_'+s.k,pct(dr.ratio[s.k])); });
+      setText('dsum_'+d.id,pct(sum)); setText('dn_'+d.id,dr.n+'人');
+    });
+    S.staff.forEach(function(p){ var r=R.staff[p.id]; setText('sf_'+p.id,r.fte.toFixed(2)); setText('sr_'+p.id,pct(r.rate,2)); });
+    SRC.forEach(function(s){ var a=num(S.fund[s.k].amt); setText('fy_'+s.k,isFinite(a)&&a>0?yen(a)+' 円':''); });
+
+    /* チェック */
+    var c='';
+    if(R.flags.length||R.warns.length){ c='<ul class="flags">'; R.flags.forEach(function(f){ c+='<li>'+esc(f)+'</li>'; }); R.warns.forEach(function(f){ c+='<li class="w">'+esc(f)+'</li>'; }); c+='</ul>'; }
+    else c='<div class="okline">入力の食い違いはありません。</div>';
+    document.getElementById('checks').innerHTML=c;
+
+    /* 部門別 */
+    var bl={head:'人数',fte:'常勤換算',fte_pt:'常勤換算×職種ポイント'}[S.basis];
+    var h='<tr><th class="l">部門</th><th>職員数</th><th>按分の基礎<br>（'+bl+'）</th>';
+    SRC.forEach(function(s){ h+='<th>'+s.nm+'<br>比率</th><th>'+s.nm+'<br>対象規模</th><th>'+s.nm+'<br>配分額（年額）</th>'; });
+    h+='<th>部門合計</th></tr>';
+    var tot=0;
+    S.depts.forEach(function(d){
+      var dr=R.dept[d.id], row=0;
+      h+='<tr><td class="l">'+esc(d.nm||'名称未入力')+(d.kind==='indirect'?' <span class="muted">（間接）</span>':'')+'</td><td>'+dr.n+'</td><td class="r">'+dr.K.toFixed(2)+'</td>';
+      SRC.forEach(function(s){ row+=dr.amt[s.k]; h+='<td class="r">'+pct(dr.ratio[s.k])+'</td><td class="r">'+dr.scale[s.k].toFixed(2)+'</td><td class="r">'+yen(dr.amt[s.k])+'</td>'; });
+      tot+=row; h+='<td class="r">'+yen(row)+'</td></tr>';
+    });
+    h+='<tr class="sum"><td class="l">合計</td><td></td><td></td>';
+    SRC.forEach(function(s){ var x=R.src[s.k]; h+='<td></td><td class="r">'+x.scale.toFixed(2)+'</td><td class="r">'+yen(x.alloc)+'</td>'; });
+    h+='<td class="r">'+yen(tot)+'</td></tr>';
+    h+='<tr><td class="l muted">原資との一致</td><td></td><td></td>';
+    SRC.forEach(function(s){ var x=R.src[s.k]; var ok=Math.abs(x.alloc-x.amt)<0.5; h+='<td></td><td></td><td class="'+(x.amt>0?(ok?'':'ng'):'muted')+'">'+(x.amt>0?(ok?'一致':'不一致'):'原資未入力')+'</td>'; });
+    h+='<td></td></tr>';
+    document.getElementById('deptOut').innerHTML=h;
+
+    /* 職員別 */
+    var g='<tr><th>No</th><th class="l">氏名</th><th>部門</th><th>雇用形態</th><th>常勤換算</th><th>部門内の<br>分配率</th>';
+    SRC.forEach(function(s){ g+='<th>'+s.nm+'<br>年額</th>'; });
+    SRC.forEach(function(s){ g+='<th>'+s.nm+'<br>月額支給</th>'; });
+    g+='<th>月額支給<br>合計</th><th>事業主<br>負担率</th></tr>';
+    var colSum={}; SRC.forEach(function(s){ colSum['a'+s.k]=0; colSum['m'+s.k]=0; }); var mt=0;
+    var wByDept={}; S.staff.forEach(function(p){ if(deptOf(p.dept)) wByDept[p.dept]=(wByDept[p.dept]||0)+R.staff[p.id].w; });
+    S.staff.forEach(function(p,i){
+      var r=R.staff[p.id], d=deptOf(p.dept), msum=0;
+      var share=(d&&wByDept[p.dept]>0)?r.w/wByDept[p.dept]:0;
+      g+='<tr><td>'+(i+1)+'</td><td class="l">'+esc(p.nm)+'</td><td>'+esc(d?d.nm:'未選択')+'</td><td>'+esc(p.emp)+'</td><td class="r">'+r.fte.toFixed(2)+'</td><td class="r">'+pct(share)+'</td>';
+      SRC.forEach(function(s){ var a=r.ann[s.k]||0; colSum['a'+s.k]+=a; g+='<td class="r">'+(a?yen(a):'―')+'</td>'; });
+      SRC.forEach(function(s){ var m=r.mon[s.k]||0; colSum['m'+s.k]+=m; msum+=m; g+='<td class="r">'+(m?yen(m):'―')+'</td>'; });
+      mt+=msum; g+='<td class="r">'+(msum?yen(msum):'―')+'</td><td class="r">'+pct(r.rate,2)+'</td></tr>';
+    });
+    g+='<tr class="sum"><td></td><td class="l">合計</td><td></td><td></td><td></td><td></td>';
+    SRC.forEach(function(s){ g+='<td class="r">'+yen(colSum['a'+s.k])+'</td>'; });
+    SRC.forEach(function(s){ g+='<td class="r">'+yen(colSum['m'+s.k])+'</td>'; });
+    g+='<td class="r">'+yen(mt)+'</td><td></td></tr>';
+    document.getElementById('staffOut').innerHTML=g;
+
+    /* 検算 */
+    var v='<div class="scroll"><table class="t"><tr><th class="l">財源</th><th>原資（年額）</th><th>月額支給×月数×（1＋負担率）の合計</th><th>差（会社の持ち出し）</th><th>判定</th></tr>';
+    SRC.forEach(function(s){
+      var x=R.src[s.k]; if(!(x.amt>0)){ v+='<tr><td class="l">'+esc(s.full)+'</td><td class="muted" colspan="4">原資未入力</td></tr>'; return; }
+      var diff=x.paid-x.amt, ok=diff>=-0.5;
+      v+='<tr><td class="l">'+esc(s.full)+'</td><td class="r">'+yen(x.amt)+'</td><td class="r">'+yen(x.paid)+'</td><td class="r">'+yen(diff)+'</td><td style="font-weight:800;color:'+(ok?'var(--ok)':'var(--ng)')+'">'+(ok?'原資以上を充当':'充当不足')+'</td></tr>';
+    });
+    v+='</table></div>';
+    document.getElementById('verify').innerHTML=v;
+    save();
+  }
+
+  /* ---------- 入力の受け取り ---------- */
+  function rowIdx(el,attr){ var tr=el.closest('tr['+attr+']'); return tr?Number(tr.getAttribute(attr)):-1; }
+  function guessJob(deptNm){
+    var n=deptNm||''; var key=n.indexOf('看護')>=0?'看護':n.indexOf('事務')>=0?'事務':n.indexOf('障')>=0?'障害':n.indexOf('介護')>=0?'介護':'';
+    if(!key) return ''; for(var i=0;i<S.jobs.length;i++) if(S.jobs[i].nm.indexOf(key)>=0) return S.jobs[i].id; return '';
+  }
+
+  document.addEventListener('focusin',function(e){ var t=e.target; if(t.matches&&t.matches('input.num')) setTimeout(function(){ try{ t.select(); }catch(x){} },0); });
+
+  document.addEventListener('input',function(e){
+    var t=e.target, i;
+    if(t.matches('input.num')){ var c=t.value.replace(/[^0-9.\-]/g,''); if(c!==t.value) t.value=c; }
+    if((i=rowIdx(t,'data-d'))>=0){ var d=S.depts[i]; if(t.dataset.f==='nm'){ d.nm=t.value; } else if(t.dataset.r){ d.r[t.dataset.r]=t.value; } renderOut(); return; }
+    if((i=rowIdx(t,'data-j'))>=0){ var j=S.jobs[i]; j[t.dataset.f]=t.value; renderOut(); return; }
+    if((i=rowIdx(t,'data-s'))>=0){ var p=S.staff[i];
+      if(t.dataset.f==='nm'||t.dataset.f==='coef') p[t.dataset.f]=t.value;
+      else if(t.dataset.h!==undefined) p.h[Number(t.dataset.h)]=t.value;
+      renderOut(); return; }
+    if((i=rowIdx(t,'data-rt'))>=0){ var x=num(t.value); S.rates[i].rate=isFinite(x)?x/100:0; renderOut(); return; }
+    var box=t.closest('[data-src]'); if(box&&t.dataset.g){ S.fund[box.getAttribute('data-src')][t.dataset.g]=t.value; renderOut(); return; }
+    if(t.id==='fy'){ S.fy=t.value; save(); return; }
+    if(t.id==='fullHours'||t.id==='shortHours'){ S[t.id]=t.value; renderOut(); return; }
+  });
+
+  document.addEventListener('change',function(e){
+    var t=e.target, i;
+    if(t.id==='basis'){ S.basis=t.value; renderOut(); return; }
+    if((i=rowIdx(t,'data-d'))>=0&&t.dataset.f==='kind'){ S.depts[i].kind=t.value; renderDepts(); renderOut(); return; }
+    if((i=rowIdx(t,'data-d'))>=0&&t.dataset.f==='nm'){ renderStaff(); renderOut(); return; }
+    if((i=rowIdx(t,'data-j'))>=0&&t.dataset.f==='nm'){ renderStaff(); renderOut(); return; }
+    if((i=rowIdx(t,'data-s'))>=0){ var p=S.staff[i];
+      if(t.dataset.c){ p[t.dataset.c]=t.checked; renderOut(); return; }
+      if(t.dataset.f==='dept'){ p.dept=t.value; if(!p.job){ var d=deptOf(p.dept); p.job=guessJob(d&&d.nm); } renderStaff(); renderOut(); return; }
+      if(t.dataset.f==='job'){ p.job=t.value; renderOut(); return; }
+      if(t.dataset.f==='emp'){ var was=p.emp; p.emp=t.value;
+        if(was==='パート'&&t.value!=='パート'){ p.shaho=true; p.koyo=true; }
+        renderStaff(); renderOut(); return; }
+      if(t.dataset.f==='hsrc'){ p.hsrc=t.value; renderStaff(); renderOut(); return; }
+    }
+  });
+
+  document.addEventListener('click',function(e){
+    var t=e.target;
+    if(t.dataset.rmdept!==undefined){ var d=S.depts[Number(t.dataset.rmdept)];
+      var n=S.staff.filter(function(p){return p.dept===d.id;}).length;
+      if(!confirm('部門「'+(d.nm||'名称未入力')+'」を削除します。'+(n?'所属の職員'+n+'人は部門が未選択になります。':'')+'よろしいですか？')) return;
+      S.depts.splice(Number(t.dataset.rmdept),1); S.staff.forEach(function(p){ if(p.dept===d.id) p.dept=''; });
+      renderDepts(); renderStaff(); renderOut(); return; }
+    if(t.dataset.rmjob!==undefined){ var j=S.jobs[Number(t.dataset.rmjob)];
+      if(!confirm('職種「'+j.nm+'」を削除します。よろしいですか？')) return;
+      S.jobs.splice(Number(t.dataset.rmjob),1); S.staff.forEach(function(p){ if(p.job===j.id) p.job=''; });
+      renderJobs(); renderStaff(); renderOut(); return; }
+    if(t.dataset.rmstaff!==undefined){ var p=S.staff[Number(t.dataset.rmstaff)];
+      if(!confirm('職員「'+(p.nm||'氏名未入力')+'」を削除します。よろしいですか？')) return;
+      S.staff.splice(Number(t.dataset.rmstaff),1); renderStaff(); renderOut(); return; }
+  });
+
+  document.getElementById('addDept').onclick=function(){ S.depts.push({id:uid('d'),nm:'',kind:'direct',r:{}}); renderDepts(); renderStaff(); renderOut(); };
+  document.getElementById('addJob').onclick=function(){ S.jobs.push({id:uid('j'),nm:'',pt:''}); renderJobs(); renderStaff(); renderOut(); };
+  document.getElementById('addStaff').onclick=function(){ S.staff.push({id:uid('s'),nm:'',dept:'',job:'',emp:'正社員',hsrc:'avg3',h:['','',''],coef:'',shaho:true,age40:false,koyo:true}); renderStaff(); renderOut(); };
+
+  document.getElementById('pasteGo').onclick=function(){
+    var txt=document.getElementById('pasteArea').value, ok=0, ng=[];
+    txt.split(/\r?\n/).forEach(function(line,li){
+      if(!line.trim()) return;
+      var c=line.split('\t').map(function(x){return x.trim();});
+      var nm=c[0]||'', dn=c[1]||'', em=c[2]||'正社員', jn=c[3]||'';
+      var d=null; S.depts.forEach(function(x){ if(x.nm===dn) d=x; });
+      if(EMP.indexOf(em)<0){ ng.push((li+1)+'行目（雇用形態「'+em+'」）'); return; }
+      var job=''; S.jobs.forEach(function(x){ if(x.nm===jn) job=x.id; });
+      if(!job) job=guessJob(dn);
+      var part=em==='パート';
+      S.staff.push({id:uid('s'),nm:nm,dept:d?d.id:'',job:job,emp:em,hsrc:'avg3',h:['','',''],coef:'',shaho:!part,age40:false,koyo:!part});
+      ok++; if(!d) ng.push((li+1)+'行目（部門「'+dn+'」が未登録のため部門未選択で追加）');
+    });
+    document.getElementById('pasteMsg').textContent=ok+'人を追加しました。'+(ng.length?' 確認が必要な行：'+ng.join('、'):'');
+    if(ok){ document.getElementById('pasteArea').value=''; renderStaff(); renderOut(); }
+  };
+
+  document.getElementById('btnPrint').onclick=function(){ window.print(); };
+  document.getElementById('btnExport').onclick=function(){
+    var blob=new Blob([JSON.stringify({kind:'trireward_anbun',v:1,corp:CORP,saved:new Date().toISOString(),data:S},null,2)],{type:'application/json'});
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='TriReward_按分配分_'+(CORP||'法人')+'_'+(S.fy||'')+'.json'; document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500);
+  };
+  document.getElementById('btnImport').onclick=function(){ document.getElementById('fileImport').click(); };
+  document.getElementById('fileImport').onchange=function(e){
+    var f=e.target.files[0]; if(!f) return; var rd=new FileReader();
+    rd.onload=function(){ try{ var o=JSON.parse(rd.result); if(o.kind!=='trireward_anbun'||!o.data) throw 0;
+        if(!confirm('いま画面にある内容を、読み込んだファイルの内容で置き換えます。よろしいですか？')) return;
+        S=normalize(o.data); save(); renderAllInputs(); renderOut();
+      }catch(x){ alert('この画面で書き出したファイルではないため、読み込めませんでした。'); } };
+    rd.readAsText(f,'utf-8'); e.target.value='';
+  };
+
+  /* ---------- 起動 ---------- */
+  if(MASTER&&CORP){ document.getElementById('corpTag').textContent=CORP; }
+  else document.getElementById('noMaster').style.display='block';
+  renderAllInputs(); renderOut();
+  window.TRW_ANBUN={get:function(){return S;},compute:compute,set:function(d){ S=normalize(d); renderAllInputs(); renderOut(); }};
+})();
+</script>
+</body>
+</html>

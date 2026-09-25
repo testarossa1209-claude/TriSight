@@ -7488,7 +7488,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-16-03';
+  const TRIGATE_VERSION = '2026-09-25-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -8041,5 +8041,111 @@ window.TSB_HOST = "gate";
   setInterval(render, 60000);
 })();
 </script>
+<script>
+/* ===== 発掘の待ち時間の案内（2026-09-25・宏史さんの指示） =====================
+   発掘は、市区町村のページを掲載元で確かめるため数分かかることがある。
+   ボタンが薄くなるだけで何も出ないと、動いているのか止まったのか見分けがつかず、
+   待ちきれずに読み込み直してしまう（2026-09-25、東京都の区で実際に起きた）。
+   ・動いている印（砂時計）と経過時間を出す
+   ・いまの工程と、その工程に入ってからの時間を出す
+   ・声かけは実績から言う。これまでに同じ都道府県を掘ったときの所要時間を端末に記録し、
+     その中央値で「およそ〇分」と伝える。記録が無いときは時間を言わない
+   ・3分間、工程の表示が変わらなければ、止まったとは限らないことと、読み込み直しても
+     台帳に入った分は消えないことを正直に伝える
+   ・処理そのものには一切触れない（打ち切らない・急がせない）。表示だけの追加 */
+(function(){
+  var KEY = "trigate_dig_durations";
+  var btn = document.getElementById("digBtn");
+  var st  = document.getElementById("digStatus");
+  if(!btn || !st) return;
+  var css = document.createElement("style");
+  css.textContent =
+    "#digWaitPanel{margin:8px 0 4px;padding:10px 12px;border:1px solid #c9d6ea;border-radius:8px;background:#f5f8fd;font-size:13px;line-height:1.7}" +
+    "#digWaitPanel .hg{display:inline-block;font-size:18px;margin-right:6px;animation:tgHg 2s linear infinite}" +
+    "#digWaitPanel.warn{border-color:#d9a441;background:#fff8ea}" +
+    "#digWaitPanel .sub{color:#5f6b7a;font-size:12px}" +
+    "@keyframes tgHg{0%{transform:rotate(0)}45%{transform:rotate(0)}55%{transform:rotate(180deg)}100%{transform:rotate(180deg)}}";
+  document.head.appendChild(css);
+  var panel = document.createElement("div");
+  panel.id = "digWaitPanel"; panel.style.display = "none";
+  st.parentNode.insertBefore(panel, st.nextSibling);
+
+  function esc(t){ return String(t == null ? "" : t).replace(/[&<>"]/g, function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]; }); }
+  function fmt(sec){ var m = Math.floor(sec / 60), s = sec % 60; return (m ? m + "分" : "") + s + "秒"; }
+  function load(){ try{ return JSON.parse(localStorage.getItem(KEY) || "{}") || {}; }catch(_){ return {}; } }
+  function save(o){ try{ localStorage.setItem(KEY, JSON.stringify(o)); }catch(_){} }
+  function median(a){ if(!a || !a.length) return null; var b = a.slice().sort(function(x, y){ return x - y; }); var h = Math.floor(b.length / 2); return b.length % 2 ? b[h] : Math.round((b[h - 1] + b[h]) / 2); }
+  function selText(id){ var el = document.getElementById(id); if(!el || el.disabled || el.selectedIndex < 0) return ""; var o = el.options[el.selectedIndex]; return o ? String(o.value || o.text || "").trim() : ""; }
+
+  var run = null, iv = null;
+  function start(){
+    var pref = selText("digPref"), city = selText("digCity");
+    var vault = /保管庫/.test(btn.textContent || "");
+    run = { t0: Date.now(), pref: pref, city: city, vault: vault,
+            check: !!window.__tsCheckMode, lastText: st.textContent || "", lastAt: Date.now() };
+    panel.style.display = "block";
+    draw();
+    if(iv) clearInterval(iv);
+    iv = setInterval(draw, 1000);
+  }
+  function stop(){
+    if(!run) return;
+    if(iv){ clearInterval(iv); iv = null; }
+    var sec = Math.round((Date.now() - run.t0) / 1000);
+    if(!run.vault && !run.check && run.pref && sec >= 5){
+      var o = load(); var a = o[run.pref] || []; a.push(sec); o[run.pref] = a.slice(-10); save(o);
+    }
+    panel.className = "";
+    panel.innerHTML = run.vault
+      ? '<span class="sub">保管庫の読み込みが終わりました（' + fmt(sec) + '）。</span>'
+      : '<b>完了しました。</b>今回の所要時間は <b>' + fmt(sec) + '</b> でした。' +
+        '<span class="sub">（この時間は次回の目安として記録しました）</span>';
+    run = null;
+  }
+  function draw(){
+    if(!run) return;
+    var now = Date.now();
+    var txt = st.textContent || "";
+    if(txt !== run.lastText){ run.lastText = txt; run.lastAt = now; }
+    var sec = Math.floor((now - run.t0) / 1000);
+    var stepSec = Math.floor((now - run.lastAt) / 1000);
+    var where = run.pref ? (run.pref + (run.city || "")) : "";
+    var html = '<span class="hg">⏳</span><b>' +
+      (run.vault ? "保管庫から、これまでに拾った案件を取り込んでいます" : (esc(where) + (where ? "を" : "") + "掘っています")) +
+      '</b>　経過 <b>' + fmt(sec) + '</b>';
+    if(txt) html += '<br><span class="sub">いまの工程：</span>' + esc(txt) + ' <span class="sub">（この工程 ' + fmt(stepSec) + '）</span>';
+    if(!run.vault){
+      var m = median(load()[run.pref]);
+      if(m){
+        html += '<br>これまでの' + esc(run.pref) + 'の発掘は、およそ <b>' + fmt(m) + '</b> かかっています。';
+        if(m >= 120) html += 'お茶を一杯いれていただく程度のお時間です。';
+      }else{
+        html += '<br>市区町村の独自制度は、その場で掲載元のページを当たって確かめるため、お時間がかかることがあります。';
+      }
+      html += '<span class="sub">この画面はそのままにしてお待ちください。</span>';
+    }
+    var warn = stepSec >= 180;
+    if(warn){
+      html += '<br><b style="color:#9a5b00">この' + fmt(stepSec) + '、工程の表示が変わっていません。</b>' +
+        '掲載元や保管庫の応答を待っている状態で、止まったとは限りません。待てば完了した例もあります。' +
+        '<br><span class="sub">どうしても進まない場合は、F5で読み込み直しても、これまでに台帳へ入った分は消えません。</span>';
+    }
+    panel.className = warn ? "warn" : "";
+    panel.innerHTML = html;
+  }
+  /* 工程の表示が変わった瞬間に拾う（描き直しを待たない） */
+  new MutationObserver(function(){
+    if(!run) return;
+    var t = st.textContent || "";
+    if(t !== run.lastText){ run.lastText = t; run.lastAt = Date.now(); }
+  }).observe(st, { childList: true, characterData: true, subtree: true });
+  new MutationObserver(function(){
+    if(btn.disabled && !run) start();
+    else if(!btn.disabled && run) stop();
+  }).observe(btn, { attributes: true, attributeFilter: ["disabled"] });
+  if(btn.disabled) start();
+})();
+</script>
+
 </body>
 </html>

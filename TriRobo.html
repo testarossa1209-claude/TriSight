@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>トライサイトロボ ｜ 使い方の案内</title>
+<link rel="icon" href="favicon-32.png">
+<style>
+:root{
+  --navy:#16244a; --navy2:#1f3263; --gold:#c8a24a; --gold-soft:#e6cd8f;
+  --ink:#1a2433; --muted:#5d6678; --line:#d9dce4; --paper:#ffffff; --wash:#f3f5f9;
+  --ok:#1f7a45; --ng:#b3261e; --warn:#8a5a00;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--wash);color:var(--ink);
+  font-family:"Hiragino Sans","Yu Gothic UI","Meiryo",system-ui,sans-serif;font-size:15px;line-height:1.75}
+.wrap{max-width:920px;margin:0 auto;padding:22px 18px 60px}
+/* レターヘッド：ロゴを左上、その横に表題。下に社名、罫線 */
+.lh{display:flex;align-items:center;gap:14px}
+.lh img{height:44px;width:auto;display:block}
+.lh h1{margin:0;font-family:Georgia,"Yu Mincho","Hiragino Mincho ProN",serif;font-size:24px;font-weight:700;letter-spacing:.02em}
+.lh h1 small{font-family:inherit;font-size:14px;color:var(--muted);font-weight:400;margin-left:10px}
+.lh .ver{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+.co{font-size:12.5px;color:var(--muted);margin:4px 0 0 58px}
+.rule{border:0;border-top:2px solid var(--navy);margin:12px 0 18px}
+.pick{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.pick label{font-weight:700}
+.pick select{font-size:15px;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:#fff}
+#readSt{font-size:13px;color:var(--muted);flex-basis:100%}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 0}
+.tabs button{font:inherit;font-size:14px;padding:8px 16px;border:1px solid var(--line);border-bottom:none;border-radius:8px 8px 0 0;background:#e9ecf3;color:var(--ink);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--paper);font-weight:700;border-color:var(--navy);border-top:3px solid var(--gold)}
+.tabs button:focus-visible,button:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:0 10px 10px 10px;padding:18px 20px}
+.panel[hidden]{display:none}
+.lead{margin:0 0 12px;color:var(--muted);font-size:13.5px}
+/* 画面の案内 */
+.sec{margin:0 0 16px}
+.sec h3{margin:0 0 6px;font-size:15px;color:var(--navy);border-left:4px solid var(--gold);padding-left:8px}
+.it{margin:0 0 6px;padding:6px 10px;border-radius:6px;background:var(--wash)}
+.it .nm{font-weight:700}
+.it .how{font-size:13px;color:var(--muted)}
+.tag{display:inline-block;font-size:11.5px;padding:0 8px;border-radius:99px;margin-left:6px;vertical-align:1px}
+.tag.hid{background:#fff4dd;color:var(--warn);border:1px solid #e7c27a}
+/* 場面別 */
+.scene{margin:0 0 22px}
+.scene h3{margin:0 0 8px;font-size:16px;color:var(--navy)}
+ol.steps{margin:0;padding-left:1.6em}
+ol.steps li{margin:0 0 10px}
+.where{display:inline-block;font-size:12px;font-weight:700;color:#fff;background:var(--navy2);border-radius:4px;padding:0 8px;margin-right:6px}
+.chk{display:inline-block;font-size:12px;border-radius:4px;padding:0 7px;margin:2px 4px 0 0}
+.chk.ok{color:var(--ok);background:#e8f4ec;border:1px solid #b7dcc4}
+.chk.ng{color:var(--ng);background:#fbeaea;border:1px solid #e8b4b1}
+.alert{margin:0 0 10px;padding:8px 12px;border-radius:6px;background:#fbeaea;color:var(--ng);font-size:13.5px}
+/* 質問する */
+textarea{width:100%;min-height:84px;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px}
+.btn{font:inherit;font-size:14px;font-weight:700;padding:9px 20px;border:none;border-radius:8px;background:var(--navy);color:#fff;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:default}
+#ans{margin-top:14px;white-space:pre-wrap}
+#ansSt{font-size:13px;color:var(--muted);margin-left:10px}
+.note{font-size:12.5px;color:var(--muted);margin-top:10px}
+footer{margin-top:26px;font-size:12px;color:var(--muted);text-align:center}
+#probe{position:absolute;left:-12000px;top:0;width:1200px;height:900px;border:0;visibility:hidden}
+@media (max-width:560px){.co{margin-left:0}.lh .ver{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="lh">
+    <img src="TriSight_logo_registered_trimmed.png" alt="TriSight®">
+    <h1>トライサイトロボ<small>使い方の案内</small></h1>
+    <span class="ver">版 <span id="verLabel">2026-09-26-01</span></span>
+  </div>
+  <div class="co">合同会社トライサイト</div>
+  <hr class="rule">
+
+  <div class="pick">
+    <label for="scr">案内する画面</label>
+    <select id="scr"></select>
+    <div id="readSt">画面を読み取っています…</div>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-tab="map">画面の案内</button>
+    <button role="tab" aria-selected="false" data-tab="scene">場面別の使い方</button>
+    <button role="tab" aria-selected="false" data-tab="ask">質問する</button>
+    <button role="tab" aria-selected="false" data-tab="tip">便利な使い方</button>
+  </div>
+
+  <section class="panel" id="p_map" role="tabpanel">
+    <p class="lead">いま公開されている画面そのものから読み取った、見出しごとのボタン・リンク・入力欄の並びです。画面の版が上がると、ここも自動で変わります。</p>
+    <div id="mapOut"></div>
+  </section>
+
+  <section class="panel" id="p_scene" role="tabpanel" hidden>
+    <p class="lead">画面をまたぐ作業の流れです。手順に出てくる名前は、開くたびに今の画面と照合しています（✓は今の画面にある名前、✕は見当たらない名前です）。</p>
+    <div id="sceneOut"></div>
+  </section>
+
+  <section class="panel" id="p_ask" role="tabpanel" hidden>
+    <p class="lead">やりたいことを書いてください。今の画面から読み取った内容だけを使って、どの画面の、どの見出しの下の、どのボタンかを順に答えます。</p>
+    <textarea id="q" placeholder="例：掘った補助金を、トライフォームへ送るにはどうすればいいですか"></textarea>
+    <div style="margin-top:8px"><button class="btn" id="askBtn">質問する</button><span id="ansSt"></span></div>
+    <div id="ans"></div>
+    <p class="note">答えに出てくるボタンなどの名前は、出す前に今の画面と照合します。画面に無い名前が一つでも入っていた答えは出しません。</p>
+  </section>
+
+  <section class="panel" id="p_tip" role="tabpanel" hidden>
+    <p class="lead">知っていると手間が減る使い方です。ここに出てくる名前も、今の画面と照合しています。</p>
+    <div id="tipOut"></div>
+  </section>
+
+  <footer>TriSight® は合同会社トライサイトの登録商標です ／ © 2026 合同会社トライサイト</footer>
+</div>
+<iframe id="probe" sandbox="allow-same-origin" title="画面の読み取り用" aria-hidden="true" tabindex="-1"></iframe>
+
+<script>
+(function(){
+'use strict';
+var ROBO_VERSION = '2026-09-26-01';
+var RELAY = 'https://trisight-relay.vercel.app/api/anthropic';
+
+/* 案内の対象。ready の画面だけを選択窓に出す（まずトライゲイト）。
+   それ以外は、場面別の使い方で名前を照合するために読む */
+var SCREENS = {
+  trigate:  {name:'トライゲイト',   file:'TriGate.html',  ready:true,  verKey:'trigate',  verRe:/TRIGATE_VERSION\s*=\s*'([\d-]+)'/},
+  triform:  {name:'トライフォーム', file:'TriForm.html'},
+  tritask:  {name:'トライタスク',   file:'TriTask.html'},
+  trisheet: {name:'基本情報シート', file:'TriSheet.html', verKey:'trisheet'}
+};
+
+/* 場面別の使い方（2026-09-26 に現物のボタン名で書き起こし）。L は照合する名前 */
+var SCENES = [
+  {title:'補助金・助成金を見つけて、申請の手前まで進める', steps:[
+    {s:'trigate', t:'「新着補助金探索」の枠で、「診断する会社：」の選択窓から会社を選びます。まだ入っていなければ、同じ枠の「基本情報シート：」の並びにある「シートから読み込む」を押して取り込みます。', L:['新着補助金探索','診断する会社：','基本情報シート：','シートから読み込む']},
+    {s:'trigate', t:'「新着補助金探索」の枠の「新着探索」を押します。受け付けた件数から、条件に合うものまで絞られた一覧が出ます。', L:['新着探索']},
+    {s:'trigate', t:'一覧の各行の右端にある「詳細」を押すと、その案件の条件の突き合わせが開きます。「問題なし」のときは、その下に「この案件を深く読む（AI判定・API利用）」が出ます。', L:['詳細','この案件を深く読む（AI判定・API利用）']},
+    {s:'trigate', t:'判定の結果が「見送り」でなければ、判定の下に「TriFormへ送る」が出ます。押すと、案件がトライフォームへ届きます。', L:['TriFormへ送る']},
+    {s:'triform', t:'トライフォームを開くと、上に「各システムから届いた案件」の枠があります。案件を押すと「分解する案件」として開くので、内容を確かめて「この内容でトライタスクへ渡す」を押します。', L:['各システムから届いた案件','分解する案件','この内容でトライタスクへ渡す']},
+    {s:'tritask', t:'トライタスクを開き、「各システムから届いた案件」の枠から案件を開いて、申請まで進めます。', L:['各システムから届いた案件']}
+  ]},
+  {title:'持ち込まれた制度が取れるかを、公募要領で確かめる', steps:[
+    {s:'trigate', t:'「文書を入れる」の欄に、公募要領のPDFかZIPを入れます。ZIPのときは、中のPDFを一つ選びます。', L:['文書を入れる','ここにPDFまたはZIPを落とす']},
+    {s:'trigate', t:'「読み取る」を押します。必要書類と、締切から逆算した工程が出ます。', L:['読み取る']},
+    {s:'trigate', t:'読み取った後に出る並びの「要件を照合する」を押すと、診断している会社が要件を満たすかを確かめられます。', L:['要件を照合する']}
+  ]},
+  {title:'会社の基本情報を直してから掘る', steps:[
+    {s:'trigate', t:'「新着補助金探索」の枠の「基本情報シート：」の並びにある「更新登録」を押すと、基本情報シートが別のタブで開きます。', L:['基本情報シート：','更新登録']},
+    {s:'trisheet', t:'見直しが必要な項目だけが出ます。変わっていなければ「表示中の項目は確認済み（変更なし）」を押します。', L:['表示中の項目は確認済み（変更なし）']},
+    {s:'trigate', t:'トライゲイトに戻り、「シートから読み込む」を押すと、直した内容で掘れます。', L:['シートから読み込む']}
+  ]}
+];
+
+var TIPS = [
+  {s:'trigate', t:'公募要領がZIPで配られていても、解かずにそのまま「文書を入れる」の欄へ入れられます。', L:['ここにPDFまたはZIPを落とす']},
+  {s:'trigate', t:'同じ会社なら、前に掘った一覧は次に開いたときに呼び戻されて出ます。最新にしたいときだけ「新着探索」を押します。', L:['呼び戻して表示しています','新着探索']},
+  {s:'trigate', t:'「診断する会社：」の選択窓で会社を切り替えると、基礎情報も見込み額もその会社のものに入れ替わります。', L:['診断する会社：']}
+];
+
+var SRC = {};      /* 画面ごとの現物（HTMLの全文） */
+var MAP = {};      /* 画面ごとの読み取り結果 */
+var VJ = null;     /* version.json */
+var cur = null;
+
+function $(id){ return document.getElementById(id); }
+function esc(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function norm(t){ return String(t||'').replace(/\s+/g,' ').trim(); }
+function decode(t){ var d=document.createElement('textarea'); d.innerHTML=t; return d.value; }
+
+async function getText(url){
+  var r = await fetch(url + (url.indexOf('?')<0?'?':'&') + 't=' + Date.now(), {cache:'no-store'});
+  if(!r.ok) throw new Error(url + ' を取得できませんでした（' + r.status + '）');
+  return await r.text();
+}
+
+/* ---- 色の呼び方 ---- */
+function colorName(c){
+  var m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/.exec(c||''); if(!m) return '';
+  if(m[4]!=null && +m[4]<0.15) return '';
+  var r=+m[1]/255,g=+m[2]/255,b=+m[3]/255, mx=Math.max(r,g,b), mn=Math.min(r,g,b), l=(mx+mn)/2, d=mx-mn, h=0, s=0;
+  if(d>0){ s=d/(1-Math.abs(2*l-1)); if(mx===r)h=60*(((g-b)/d)%6); else if(mx===g)h=60*((b-r)/d+2); else h=60*((r-g)/d+4); if(h<0)h+=360; }
+  if(s<0.15){ if(l>0.93)return '白'; if(l>0.75)return '薄い灰色'; if(l>0.35)return '灰色'; return '黒'; }
+  if(l>0.88) return (h<70||h>330)?'薄い黄色':(h<170?'薄い緑':(h<260?'薄い青':'薄い紫'));
+  if(h<15||h>=345) return '赤'; if(h<40) return (l<0.45?'茶色':'オレンジ'); if(h<65) return (l<0.5?'金色':'黄色');
+  if(h<170) return '緑'; if(h<200) return '水色'; if(h<250) return (l<0.35?'紺':'青'); if(h<300) return '紫'; return 'ピンク';
+}
+function looks(el, win){
+  var cs = win.getComputedStyle(el), bg = colorName(cs.backgroundColor), fg = colorName(cs.color);
+  var bw = parseFloat(cs.borderTopWidth)||0, tag = el.tagName;
+  if(tag==='A'){
+    if(bg && bg!=='白') return 'ボタンの形のリンク（' + bg + '地' + (fg?'・'+fg+'の文字':'') + '）';
+    if(bw>0) return '枠付きのリンク' + (fg?'（'+fg+'の文字）':'');
+    return '文字リンク' + (fg?'（'+fg+'の文字）':'');
+  }
+  if(tag==='BUTTON'){
+    if(bg && bg!=='白' && bg!=='薄い灰色') return bg + '地のボタン' + (fg?'（'+fg+'の文字）':'');
+    return (bw>0?'枠付きの白いボタン':'文字だけのボタン') + (fg&&fg!=='黒'?'（'+fg+'の文字）':'');
+  }
+  if(tag==='SELECT') return '選択窓';
+  if(tag==='TEXTAREA') return '文章を書く欄';
+  if(tag==='INPUT'){ var t=(el.type||'').toLowerCase(); if(t==='file') return 'ファイルを選ぶ欄'; if(t==='checkbox') return 'チェック欄'; if(t==='radio') return '選ぶ欄'; return '入力欄'; }
+  return '';
+}
+function labelOf(el, doc){
+  var tag = el.tagName;
+  if(tag==='BUTTON'||tag==='A') return norm(el.textContent);
+  var lb = el.id ? doc.querySelector('label[for="'+el.id.replace(/"/g,'')+'"]') : null;
+  if(!lb) lb = el.closest('label');
+  if(lb){ var c=lb.cloneNode(true); c.querySelectorAll('select,input,textarea').forEach(function(x){x.remove();}); var t=norm(c.textContent); if(t) return t; }
+  return norm(el.getAttribute('placeholder')||el.getAttribute('title')||el.getAttribute('aria-label')||'');
+}
+function isHidden(el, win){
+  for(var e=el; e && e.nodeType===1; e=e.parentElement){ var cs=win.getComputedStyle(e); if(cs.display==='none'||cs.visibility==='hidden') return true; if(e.tagName==='DETAILS' && !e.open && el!==e && !e.querySelector('summary').contains(el)) return true; }
+  return false;
+}
+var HEAD_SEL = 'h1,h2,h3,h4,legend,summary,.card-label,.sec,.k';
+function isHead(el){ if(!el.matches || !el.matches(HEAD_SEL)) return false; var t=norm(el.textContent); return t.length>0 && t.length<=60 && !el.querySelector('button,a,input,select,textarea'); }
+
+/* ---- 現物を読み取る：静的な部品は描画して見た目まで、途中で組まれるボタンはスクリプトから ---- */
+function readScreen(key, html){
+  return new Promise(function(resolve){
+    var f = $('probe');
+    var base = location.href.replace(/[^\/]*$/,'');
+    var h = html.replace(/<script\b[\s\S]*?<\/script>/gi,'').replace(/<head>/i,'<head><base href="'+base+'">');
+    f.onload = function(){
+      var doc=f.contentDocument, win=f.contentWindow, secs=[], curSec={title:'画面の上部',items:[]};
+      secs.push(curSec);
+      var walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT, null);
+      var n, all=[];
+      while((n = walker.nextNode())){
+        if(isHead(n)){ curSec={title:norm(n.textContent),items:[]}; secs.push(curSec); continue; }
+        if(!n.matches('button,a[href],select,textarea,input:not([type=hidden])')) continue;
+        if(n.closest('summary')) continue;
+        var lb = labelOf(n, doc); if(!lb) continue;
+        var it = {label:lb, how:looks(n,win), hidden:isHidden(n,win), el:n};
+        curSec.items.push(it); all.push(it);
+      }
+      /* 同じ並びにあるもの（2段上までの親が他の部品も含むとき） */
+      /* 並びは、部品を8個以下しか含まない最も近い親（2段上まで）で数える。記録を消すのは全部数え終えてから */
+      all.forEach(function(it){
+        var p = it.el.parentElement, k=0, row=[];
+        while(p && k<2){
+          var inP = all.filter(function(o){ return p.contains(o.el); });
+          if(inP.length>8) break;
+          var sibs = inP.filter(function(o){ return o!==it; });
+          if(sibs.length){ row = sibs.map(function(o){ return o.label; }); break; }
+          p=p.parentElement; k++;
+        }
+        it.row = row;
+      });
+      all.forEach(function(it){ delete it.el; });
+      secs = secs.filter(function(s){ return s.items.length; });
+      /* スクリプトの中で組み立てられるボタン（最初の画面には無く、操作の途中で出る） */
+      var sc = (html.match(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)||[]).join('\n'), dyn=[], seen={};
+      var re = />([^<>'"+\\{}();=]{1,40})<\/button>/g, m;
+      while((m = re.exec(sc))){
+        var lb2 = norm(decode(m[1])); if(!lb2 || seen[lb2] || /^[\s↑↓×✕]*$/.test(lb2)) continue; seen[lb2]=1;
+        var before = sc.slice(Math.max(0,m.index-2500), m.index), cm = before.match(/\/\*([^*]|\*(?!\/))*\*\//g);
+        var hint = cm ? norm(cm[cm.length-1].replace(/^\/\*+|\*+\/$/g,'')).slice(0,110) : '';
+        dyn.push({label:lb2, hint:hint});
+      }
+      var staticNames = {}; all.forEach(function(it){ staticNames[it.label]=1; });
+      dyn = dyn.filter(function(d){ return !staticNames[d.label]; });
+      f.onload = null; f.srcdoc = '';
+      resolve({secs:secs, dyn:dyn});
+    };
+    f.srcdoc = h;
+  });
+}
+
+/* ---- 名前が今の画面にあるか ---- */
+function exists(key, name){
+  var s = SRC[key]; if(!s) return false;
+  var n = norm(name); if(!n) return false;
+  if(s.raw.indexOf(n)>=0 || s.text.indexOf(n)>=0) return true;
+  var mp = MAP[key]; if(mp){ var hit=false; mp.secs.forEach(function(sec){ if(sec.title.indexOf(n)>=0) hit=true; sec.items.forEach(function(it){ if(it.label.indexOf(n)>=0) hit=true; }); }); mp.dyn.forEach(function(d){ if(d.label.indexOf(n)>=0) hit=true; }); if(hit) return true; }
+  return false;
+}
+async function loadSrc(key){
+  if(SRC[key]) return SRC[key];
+  var raw = await getText(SCREENS[key].file);
+  SRC[key] = {raw:raw, text:norm(decode(raw.replace(/<[^>]+>/g,' ')))};
+  return SRC[key];
+}
+
+/* ---- 描く ---- */
+function drawMap(){
+  var mp = MAP[cur], h='';
+  if(!mp){ $('mapOut').innerHTML=''; return; }
+  mp.secs.forEach(function(sec){
+    h += '<div class="sec"><h3>'+esc(sec.title)+'</h3>';
+    sec.items.forEach(function(it){
+      h += '<div class="it"><span class="nm">「'+esc(it.label)+'」</span>'+(it.hidden?'<span class="tag hid">操作すると出ます</span>':'')
+        + '<div class="how">'+esc(it.how)+(it.row.length?'。同じ並びに '+it.row.map(function(x){return '「'+esc(x)+'」';}).join(' '):'')+'</div></div>';
+    });
+    h += '</div>';
+  });
+  if(mp.dyn.length){
+    h += '<div class="sec"><h3>操作の途中で出てくるボタン</h3>';
+    mp.dyn.forEach(function(d){ h += '<div class="it"><span class="nm">「'+esc(d.label)+'」</span></div>'; });
+    h += '</div>';
+  }
+  $('mapOut').innerHTML = h;
+}
+function chips(key, L){
+  return L.map(function(n){ var ok=exists(key,n); return '<span class="chk '+(ok?'ok':'ng')+'">'+(ok?'✓':'✕')+' '+esc(n)+'</span>'; }).join('');
+}
+function drawScenes(){
+  var h='';
+  SCENES.forEach(function(sc){
+    var bad = sc.steps.some(function(st){ return st.L.some(function(n){ return !exists(st.s,n); }); });
+    h += '<div class="scene"><h3>'+esc(sc.title)+'</h3>';
+    if(bad) h += '<div class="alert">この流れには、今の画面に見当たらない名前があります（✕の印）。画面が変わった可能性があるため、この流れは使わず「画面の案内」をご覧ください。</div>';
+    h += '<ol class="steps">';
+    sc.steps.forEach(function(st){ h += '<li><span class="where">'+esc(SCREENS[st.s].name)+'</span>'+esc(st.t)+'<div>'+chips(st.s,st.L)+'</div></li>'; });
+    h += '</ol></div>';
+  });
+  $('sceneOut').innerHTML = h;
+}
+function drawTips(){
+  var h='<ol class="steps">';
+  TIPS.forEach(function(tp){ h += '<li><span class="where">'+esc(SCREENS[tp.s].name)+'</span>'+esc(tp.t)+'<div>'+chips(tp.s,tp.L)+'</div></li>'; });
+  $('tipOut').innerHTML = h + '</ol>';
+}
+
+/* ---- 質問する ---- */
+function mapText(key){
+  var mp = MAP[key], lines=['# 画面：'+SCREENS[key].name];
+  mp.secs.forEach(function(sec){
+    lines.push('## 見出し：'+sec.title);
+    sec.items.forEach(function(it){ lines.push('- 「'+it.label+'」（'+it.how+'）'+(it.hidden?'［最初は隠れていて、操作すると出る］':'')+(it.row.length?' 同じ並び：'+it.row.map(function(x){return '「'+x+'」';}).join(''):'')); });
+  });
+  if(mp.dyn.length){ lines.push('## 操作の途中で出てくるボタン（出る場所・条件は下の手がかりのとおり。手がかりが無ければ「操作の途中で出ます」とだけ書く）'); mp.dyn.forEach(function(d){ lines.push('- 「'+d.label+'」'+(d.hint?' 手がかり：'+d.hint:'')); }); }
+  return lines.join('\n');
+}
+function sceneText(){
+  return SCENES.map(function(sc){ return '■ '+sc.title+'\n'+sc.steps.map(function(st,i){ return (i+1)+'. ['+SCREENS[st.s].name+'] '+st.t; }).join('\n'); }).join('\n\n');
+}
+var SYSTEM = [
+  'あなたはトライサイトロボです。トライサイトの画面の使い方を、利用者に案内します。',
+  '根拠にしてよいのは、下に渡す「画面の現物から読み取った地図」と「確かめ済みの場面別の手順」だけです。そこに無いボタン・欄・手順・機能は書かないこと。推測で補わないこと。',
+  '答え方：',
+  '1. 番号付きの手順で、短く答える。',
+  '2. 各手順は、①どの画面か ②どの見出しの下か ③その並びに何があるか ④見た目（ボタンか文字リンクか・色）の順で書く。',
+  '3. ボタン・リンク・見出し・欄の名前は、必ず「」で囲み、地図のとおり一字一句そのまま書く。「」は画面にある名前にだけ使い、それ以外には使わない。',
+  '4. 最初は隠れているもの・操作の途中で出るものは、出る条件が地図や手順に書かれていればそれを書き、無ければ、操作の途中で出ます、とだけ書く。',
+  '5. 地図と手順から答えられないときは、この画面の現物からは分かりません、とだけ書き、関係しそうな見出しの名前を挙げる。',
+  '6. 料金・所要時間・件数などの数字は書かない。'
+].join('\n');
+function quotedNames(t){ var out=[], re=/「([^「」]{1,80})」/g, m; while((m=re.exec(t))) out.push(m[1]); return out; }
+function tsCode(){
+  var c = null; try{ c = localStorage.getItem('trisight_access_code'); }catch(_){}
+  if(c && /[^\x21-\x7E]/.test(c)) c = null;
+  while(!c){
+    c = prompt('TriSight 認証コードを入力してください（この端末での初回のみ・半角英数字）');
+    if(c===null) return '';
+    c = c.trim();
+    if(!c || /[^\x21-\x7E]/.test(c)){ alert('認証コードは半角英数字で入力してください（全角文字・日本語・空白は使えません）。'); c=null; continue; }
+    try{ localStorage.setItem('trisight_access_code', c); }catch(_){}
+  }
+  return c;
+}
+async function ask(){
+  var q = norm($('q').value); if(!q){ $('ansSt').textContent='質問を書いてください。'; return; }
+  if(!MAP[cur]){ $('ansSt').textContent='画面の読み取りが終わってから質問してください。'; return; }
+  var code = tsCode(); if(!code){ $('ansSt').textContent='認証コードが入っていないため質問できません。'; return; }
+  $('askBtn').disabled = true; $('ans').textContent=''; $('ansSt').textContent='今の画面の地図を渡して、答えを作っています…';
+  try{
+    var user = '【画面の現物から読み取った地図】\n'+mapText(cur)+'\n\n【確かめ済みの場面別の手順】\n'+sceneText()+'\n\n【利用者の質問】\n'+q;
+    var r = await fetch(RELAY, {method:'POST', headers:{'Content-Type':'application/json','x-trisight-code':code},
+      body: JSON.stringify({model:'claude-sonnet-4-6', max_tokens:1500, temperature:0, system:SYSTEM, messages:[{role:'user', content:user}]})});
+    if(r.status===401){ try{ localStorage.removeItem('trisight_access_code'); }catch(_){} throw new Error('認証コードが合いません。もう一度「質問する」を押して、正しいコードを入れ直してください。'); }
+    if(!r.ok){ var ej=null; try{ ej=await r.json(); }catch(_){} throw new Error('答えを受け取れませんでした（' + ((ej&&ej.error&&(ej.error.message||ej.error))||r.status) + '）。時間をおいて、もう一度押してください。'); }
+    var j = await r.json(), a = (j.content||[]).map(function(x){return x.text||'';}).join('').trim();
+    var keys = Object.keys(SRC);
+    var missing = quotedNames(a).filter(function(n){ return !keys.some(function(k){ return exists(k,n); }); });
+    if(missing.length){
+      $('ansSt').textContent='';
+      $('ans').innerHTML = '<div class="alert">答えの中に、今の画面に無い名前（'+missing.map(function(n){return '「'+esc(n)+'」';}).join('')+'）が入っていたため、この答えは出しません。聞き方を変えてもう一度質問するか、「画面の案内」「場面別の使い方」をご覧ください。</div>';
+      return;
+    }
+    $('ansSt').textContent='答えに出てくる名前は、すべて今の画面にあることを確かめました。';
+    $('ans').textContent = a;
+  }catch(e){
+    $('ansSt').textContent=''; $('ans').innerHTML='<div class="alert">'+esc(e.message||e)+'</div>';
+  }finally{ $('askBtn').disabled = false; }
+}
+
+/* ---- 画面を選ぶ ---- */
+async function choose(key){
+  cur = key; var sc = SCREENS[key];
+  $('readSt').textContent = sc.name + ' の画面を読み取っています…';
+  try{
+    var s = await loadSrc(key);
+    MAP[key] = MAP[key] || await readScreen(key, s.raw);
+    var v = sc.verRe ? (sc.verRe.exec(s.raw)||[])[1] : '';
+    var pub = (VJ && sc.verKey) ? VJ[sc.verKey] : '';
+    var n = MAP[key].secs.reduce(function(a,x){return a+x.items.length;},0);
+    $('readSt').textContent = sc.name + (v?' 版 '+v:'') + ' を読み取りました（見出し ' + MAP[key].secs.length + '・部品 ' + n + '）。'
+      + (v && pub ? (v===pub ? '公開中の版と一致しています。' : '公開中の版は ' + pub + ' です。画面を開き直すと新しい版になります。') : '');
+  }catch(e){
+    $('readSt').textContent = sc.name + ' の画面を読み取れませんでした。この案内はトライサイトの画面と同じ場所から開いてください（' + (e.message||e) + '）。';
+  }
+  drawMap(); drawScenes(); drawTips();
+}
+
+async function boot(){
+  var sel = $('scr');
+  sel.innerHTML = Object.keys(SCREENS).filter(function(k){return SCREENS[k].ready;}).map(function(k){ return '<option value="'+k+'">'+esc(SCREENS[k].name)+'</option>'; }).join('');
+  var want = new URLSearchParams(location.search).get('s');
+  if(want && SCREENS[want] && SCREENS[want].ready) sel.value = want;
+  sel.onchange = function(){ choose(sel.value); };
+  try{ VJ = JSON.parse(await getText('version.json')); }catch(_){ VJ = null; }
+  /* 場面別の使い方で照合する画面も読んでおく */
+  await Promise.all(Object.keys(SCREENS).map(function(k){ return loadSrc(k).catch(function(){}); }));
+  await choose(sel.value);
+}
+document.querySelectorAll('.tabs button').forEach(function(b){
+  b.onclick = function(){
+    document.querySelectorAll('.tabs button').forEach(function(x){ x.setAttribute('aria-selected', x===b?'true':'false'); });
+    ['map','scene','ask','tip'].forEach(function(t){ $('p_'+t).hidden = (t!==b.dataset.tab); });
+  };
+});
+$('askBtn').onclick = ask;
+window.__robo = {exists:exists, MAP:MAP, SRC:SRC, mapText:mapText, quotedNames:quotedNames};
+boot();
+})();
+</script>
+</body>
+</html>

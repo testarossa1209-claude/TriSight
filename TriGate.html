@@ -353,6 +353,7 @@ body.presenMode table{font-size:1.02em}
     </div>
     <a class="famlink" href="TriTask.html" id="taskLink">TriTask で進捗を管理する &rsaquo;</a>
     <a class="famlink" href="index.html" id="famLink">TriSight ファミリーへ &rsaquo;</a>
+        <a class="famlink" href="TriRobo.html?s=trigate" id="roboLink" target="_blank" rel="noopener" style="margin-left:8px">使い方（トライサイトロボ） &rsaquo;</a>
     </div>
     <div class="codebar" style="margin-top:8px;font-size:13px;color:#666">
       認証コード：<span id="authCodeLabel">確認中…</span>
@@ -7510,7 +7511,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-26-01';
+  const TRIGATE_VERSION = '2026-09-26-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -216,6 +216,9 @@ body {
 .launch-area {
   text-align: center;
 }
+.sheet-links { margin-top: 18px; font-size: 0.9rem; color: var(--gold-light); }
+.sheet-links a { display: inline-block; margin-left: 10px; padding: 6px 16px; border: 1px solid var(--gold); border-radius: 6px; color: var(--gold-light); text-decoration: none; }
+.sheet-links a:hover, .sheet-links a:focus-visible { background: rgba(201,168,76,0.15); outline: none; }
 
 .launch-btn {
   background: linear-gradient(135deg, var(--gold), var(--gold-light));
@@ -615,7 +618,7 @@ textarea {
 
     <div class="launch-area">
       <button class="launch-btn" onclick="startWorkflow()">ワークフロー開始</button>
-      
+      <div class="sheet-links">基本情報シート：<a href="TriSheet.html?mode=new" target="_blank" rel="noopener">初回登録</a><a href="TriSheet.html?mode=update" target="_blank" rel="noopener">更新登録</a></div>
     </div>
   </div>
 
@@ -774,7 +777,7 @@ textarea {
           <div onclick="openBusiness()" style="padding:12px 20px; cursor:pointer; color:#f5f0e8; font-size:0.85rem; border-bottom:1px solid rgba(201,168,76,0.2);">📋 ビジネスレポート</div>
     </div>      
      </div>  
-  <div class="wf-footer">© 2026 合同会社トライサイト　TriSight™ is a registered trademark.<div class="verline" style="margin-top:6px;font-size:14px;color:#f5f0e8">版 <span id="verLabel">2026-09-18-03</span></div></div>
+  <div class="wf-footer">© 2026 合同会社トライサイト　TriSight™ is a registered trademark.<div class="verline" style="margin-top:6px;font-size:14px;color:#f5f0e8">版 <span id="verLabel">2026-09-26-01</span></div></div>
 </div>
 
 <script>

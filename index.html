@@ -55,6 +55,29 @@ footer{text-align:center;color:#7e8499;font-size:11px;margin-top:14px;line-heigh
 .fb-line{flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent)}
 .fb-label{font-family:Georgia,"Yu Mincho","Hiragino Mincho ProN",serif;font-weight:800;font-size:15px;color:#fff;letter-spacing:.08em;white-space:nowrap}
 .fb-label em{font-style:normal;font-size:11px;color:var(--gold-soft);letter-spacing:.16em;margin-left:8px}
+
+/* 2026-09-26：子のカードは名前と一行の見出しだけ。札は例外（実験機など）のときだけ */
+.mod{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px}
+.mod .fn{margin:6px 0 0}
+.mod .go{white-space:nowrap}
+.mod .badge{margin-left:8px;vertical-align:2px}
+/* コモンエンジン：本体と同じ横長の1枚。中で開くものを選ぶ */
+.eng{margin-top:30px;background:linear-gradient(135deg,var(--navy),var(--navy2));border:1px solid var(--gold);border-radius:16px;padding:20px 26px 18px;
+  box-shadow:0 30px 70px -34px rgba(0,0,0,.78);opacity:0;animation:rise .7s cubic-bezier(.2,.7,.2,1) .2s forwards}
+.e-nm{font-family:Georgia,"Yu Mincho","Hiragino Mincho ProN",serif;font-size:24px;font-weight:800;color:#fff;letter-spacing:.03em}
+.e-nm span{display:inline-block;white-space:nowrap;font-size:13px;color:var(--gold-soft);letter-spacing:.14em;margin-left:10px;font-weight:700}
+.e-jp{font-size:12.5px;color:#cdd6ea;margin-top:4px;line-height:1.7}
+.e-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:14px}
+.e-item{display:flex;flex-direction:column;gap:2px;text-decoration:none;padding:10px 14px;border:1px solid rgba(200,162,74,.45);border-radius:10px;background:rgba(10,20,40,.35);transition:background .15s,border-color .15s}
+.e-item:hover,.e-item:focus-visible{background:rgba(200,162,74,.14);border-color:var(--gold);outline:none}
+.e-item b{font-family:Georgia,"Yu Mincho",serif;font-size:16px;color:#fff;letter-spacing:.02em}
+.e-item span{font-size:12px;color:#aeb8d0}
+.e-item em{font-style:normal;font-size:10.5px;color:#f0c25a;margin-left:6px}
+.e-foot{margin-top:12px;text-align:right}
+.e-foot a{font-size:12.5px;color:var(--gold-soft);text-decoration:none;border-bottom:1px solid rgba(230,205,143,.5)}
+.e-foot a:hover,.e-foot a:focus-visible{color:#fff;border-color:#fff;outline:none}
+.mod:focus-visible,.parent:focus-visible{outline:2px solid var(--gold-soft);outline-offset:3px}
+@media (prefers-reduced-motion:reduce){.hd,.mod,.parent,.eng{animation:none;opacity:1}.mod,.parent{transition:none}}
 </style></head>
 <body><div class="wrap">
 
@@ -92,92 +115,58 @@ footer{text-align:center;color:#7e8499;font-size:11px;margin-top:14px;line-heigh
 <div class="grid">
 
   <a class="mod" href="TriOffice_redesign_v0.6.html">
-    <div class="nm"><b>TriRule</b><span class="sys">System</span></div>
-    <div class="fn">事務文書の更新支援（事務職サポート）</div>
-    <div class="ds">仕事を選ぶだけ：運営規定の改正／契約書・重要事項説明書の改修／社内規程。生成→検証→判定の3AI。</div>
-    <div class="foot"><span class="badge live">実装済</span><span class="go">OPEN &rsaquo;</span></div>
+    <div><div class="nm"><b>TriRule</b><span class="sys">System</span></div>
+    <div class="fn">事務文書の更新支援</div></div>
+    <span class="go">OPEN &rsaquo;</span>
   </a>
 
   <a class="mod" href="TriReward.html">
-    <div class="nm"><b>TriReward</b><span class="sys">System</span></div>
-    <div class="fn">処遇改善加算の計画書作成</div>
-    <div class="ds">障害版・高齢版の処遇改善加算 計画書／実績報告。計算は確定ロジック、AIは点検と赤旗。</div>
-    <div class="foot"><span class="badge live">実装済</span><span class="go">OPEN &rsaquo;</span></div>
+    <div><div class="nm"><b>TriReward</b><span class="sys">System</span></div>
+    <div class="fn">処遇改善加算の計画書・実績報告</div></div>
+    <span class="go">OPEN &rsaquo;</span>
   </a>
 
   <a class="mod" href="TriGrantSupport_sample_v7_public.html">
-    <div class="nm"><b>TriGrant</b><span class="sys">System</span></div>
-    <div class="fn">助成金・補助金ナビ</div>
-    <div class="ds">使える助成金・補助金を要所で提示し、申請の段取りまで導く。候補提示は人と専門家が最終判断。</div>
-    <div class="foot"><span class="badge live">実装済</span><span class="go">OPEN &rsaquo;</span></div>
+    <div><div class="nm"><b>TriGrant</b><span class="sys">System</span></div>
+    <div class="fn">助成金・補助金ナビ</div></div>
+    <span class="go">OPEN &rsaquo;</span>
   </a>
 
   <a class="mod" href="TriSight_Report_CarePlan.html">
-    <div class="nm"><b>TriCare</b><span class="sys">System</span></div>
-    <div class="fn">ケアマネ帳票の作成支援</div>
-    <div class="ds">ケアプラン等の帳票を、入力負担を抑えて作成。アセスメント・利用者情報を入れて起動。</div>
-    <div class="foot"><span class="badge live">実装済</span><span class="go">OPEN &rsaquo;</span></div>
+    <div><div class="nm"><b>TriCare</b><span class="sys">System</span></div>
+    <div class="fn">ケアマネ帳票の作成支援</div></div>
+    <span class="go">OPEN &rsaquo;</span>
   </a>
 
 </div>
 
-<div class="family-band">
-  <span class="fb-line"></span>
-  <span class="fb-label">Common Engines<em>共通基盤・横串</em></span>
-  <span class="fb-line"></span>
-</div>
+<!-- 2026-09-26：コモンエンジンは本体と同じ横長の1枚にまとめ、中で開くものを選ぶ。
+     中身は TriEngines.js の一覧から組み立てる（表札と台帳が同じ元を見る。部品を足したら一覧に1行足すだけで表札にも出る）。
+     基本情報シートは、使う子の画面（本体・トライゲイト・トライリワード）から開くので、ここには並べない。 -->
+<section class="eng" aria-labelledby="engTitle">
+  <div class="e-nm" id="engTitle">Common Engines<span>共通基盤・横串</span></div>
+  <div class="e-jp">各システムが中で呼び出す部品です。ここから単独で開くこともできます。</div>
+  <div class="e-list" id="engList"><span class="e-jp">部品の一覧を読み込めませんでした。下の台帳から開いてください。</span></div>
+  <div class="e-foot"><a href="TriEngines.html">コモンエンジン台帳を開く</a></div>
+</section>
 
-<div class="grid">
-
-  <a class="mod" href="TriBase.html">
-    <div class="nm"><b>TriBase</b><span class="sys">System</span></div>
-    <div class="fn">法人と事業所を、一度だけ登録する</div>
-    <div class="ds">法人情報・事業区分・事業所とサービス・加算区分・地域区分（級地）・特定事業所加算を1か所に持ち、ファミリー各システムが同じ内容を読む。ここを埋めるところから始まる。</div>
-    <div class="foot"><span class="badge live">実装済</span><span class="go">OPEN &rsaquo;</span></div>
-  </a>
-
-  <a class="mod" href="TriForm.html">
-    <div class="nm"><b>TriForm</b><span class="sys">System</span></div>
-    <div class="fn">制度の言葉を、手の動く工程へ</div>
-    <div class="ds">各システムから届いた案件を、添付書類の名前から「どう用意するのか」の工程に開く。材料・出来上がるもの・提出先・受け取るものまで示してTriTaskへ渡す。手続きの型は使うほど増える。</div>
-    <div class="foot"><span class="badge live">実装済</span><span class="go">OPEN &rsaquo;</span></div>
-  </a>
-
-  <a class="mod" href="TriTask.html">
-    <div class="nm"><b>TriTask</b><span class="sys">System</span></div>
-    <div class="fn">理論を、現場の行動へ</div>
-    <div class="ds">親システムの理論を、現場で動ける作業に分解し、完走まで伴走する家庭教師。進捗を示し次の一手を促す。判断は人間に委ねる。</div>
-    <div class="foot"><span class="badge live">実装済</span><span class="go">OPEN &rsaquo;</span></div>
-  </a>
-
-  <a class="mod" href="TriSight_NumericParser_v3.html">
-    <div class="nm"><b>NumericParser</b><span class="sys">Robot</span></div>
-    <div class="fn">数値解析ロボ</div>
-    <div class="ds">生の試算表から数値を正確に抜き出す専用ロボ。各システムが内部で呼び出す、決定論で動く裏方の道具。</div>
-    <div class="foot"><span class="badge live">実装済</span><span class="go">OPEN &rsaquo;</span></div>
-  </a>
-
-  <a class="mod" href="TriVoice.html">
-    <div class="nm"><b>TriVoice</b><span class="sys">Engine</span></div>
-    <div class="fn">声を、記録へ</div>
-    <div class="ds">話した内容をその場で文字に起こす、全業務共通の音声入力エンジン。まず訪問看護記録に対応し、各帳票へ枝を広げる。記録の確定は人間が行う。</div>
-    <div class="foot"><span class="badge live">実装済</span><span class="go">OPEN &rsaquo;</span></div>
-  </a>
-
-  <a class="mod" href="HN_Patriot.html">
-    <div class="nm"><b>H&amp;N Patriot</b><span class="sys">Engine</span></div>
-    <div class="fn">理論に、外から撃ち込む</div>
-    <div class="ds">理論が作られた運びの形を外側から照合し、逸脱の大きさに応じて効力を削る。判定規則は版で凍結し、現場では書き換えない。どのシステムからも自分の理論に撃ち込める。</div>
-    <div class="foot"><span class="badge dev">実験機</span><span class="go">OPEN &rsaquo;</span></div>
-  </a>
-
-</div>
-
-<div style="text-align:center;margin-top:18px">
-  <a href="TriEngines.html" style="display:inline-block;padding:7px 18px;border:1px solid var(--gold);border-radius:999px;color:var(--gold-soft);text-decoration:none;font-size:13px;letter-spacing:.06em">コモンエンジン台帳を開く（6エンジンの呼び出し口）</a>
-</div>
-
-<div class="note">※ 各システムの「実装済／開発中／構想中」の状態と、ボタンのリンク先ファイル名は仮置きです。実態に合わせて差し替えます。</div>
 <footer>TriSight&reg; は合同会社トライサイトの登録商標です ／ &copy; 2026 合同会社トライサイト</footer>
 
-</div></body></html>
+</div><script src="TriEngines.js"></script>
+<script>
+(function(){
+  var box=document.getElementById('engList');
+  if(!box||!window.TriEngines)return;
+  var SHORT={triform:'制度の言葉を、手の動く工程へ',tritask:'理論を、現場の行動へ',trivoice:'声を、記録へ',numeric:'試算表から数値を正確に抜き出す',patriot:'理論に、外から撃ち込む'};
+  var HIDE={trisheet:1};
+  function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  var items=TriEngines.list().filter(function(e){return !HIDE[e.id];}).map(function(e){
+    var href=e.page||((/([\w.-]+\.html)/.exec(e.usedIn||'')||[])[1]);
+    if(!href)return '';
+    var st=(e.status&&e.status!=='稼働')?'<em>'+esc(String(e.status).replace(/（.*?）/g,''))+'</em>':'';
+    return '<a class="e-item" href="'+esc(href)+'"><b>'+esc(e.name)+st+'</b><span>'+esc(SHORT[e.id]||e.role)+'</span></a>';
+  }).join('');
+  if(items)box.innerHTML=items;
+})();
+</script>
+</body></html>

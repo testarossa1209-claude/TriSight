@@ -449,6 +449,7 @@ body.presenMode table{font-size:1.02em}
     </div>
     <div class="digrow" style="margin-top:8px">
       <label class="digfile">企業基礎情報を追加：<input type="file" id="digCompanyFile" accept=".json,application/json"></label>
+        <span class="digfile" id="digSheetWrap">基本情報シート：<button type="button" class="rc-toggle" id="digFromSheet" title="基本情報シートに登録した会社を、この画面の会社の一覧へ取り込みます">シートから読み込む</button> <a class="rc-toggle" href="TriSheet.html?mode=new" target="_blank" rel="noopener" style="text-decoration:none">初回登録</a> <a class="rc-toggle" href="TriSheet.html?mode=update" target="_blank" rel="noopener" style="text-decoration:none">更新登録</a></span>
         <label class="digfile" id="digCompanySelWrap">診断する会社：<select id="digCompanySel"></select></label>
         <button type="button" class="rc-toggle" id="digCompanyDel" title="選んでいる会社の基礎情報を、この端末から消します">この会社を消す</button>
       <span class="digstatus" id="digCompanyStatus" style="margin-top:0">未読み込み（機械足切りに必要です）</span>
@@ -3272,6 +3273,27 @@ window.tsSyncBanner = function(msg){
         };
         r.readAsText(f, "utf-8");
         ev.target.value = "";
+      });
+    }
+    /* 2026-09-26：基本情報シート（元帳 trisight_office_master_v1）に登録した会社を取り込む。
+       シートが会社ごとに作っておいた書き出し（gateJSON）を、ファイルで読んだときと同じ道で登録する */
+    const sheetBtn = document.getElementById("digFromSheet");
+    if(sheetBtn){
+      sheetBtn.addEventListener("click", ()=>{
+        let doc = null;
+        try{ doc = JSON.parse(localStorage.getItem("trisight_office_master_v1") || "null"); }catch(_){ doc = null; }
+        const orgs = (doc && Array.isArray(doc.orgs)) ? doc.orgs.filter(o=>o && o.gateJSON && o.gateJSON["会社"] && String(o.gateJSON["会社"]["名称"]||"").trim()) : [];
+        if(!orgs.length){
+          compSt.textContent = "基本情報シートに、読み込める会社がまだありません。横の「初回登録」から会社を入れてください（ご利用の契約と法人名が入っていれば読み込めます）。";
+          return;
+        }
+        orgs.forEach(o=>{ tsLibSave(String(o.gateJSON["会社"]["名称"]).trim(), o.gateJSON); });
+        const pickId = doc.sheetOrg || doc.activeOrg;
+        const pick = orgs.find(o=>o.id===pickId) || orgs[0];
+        company = pick.gateJSON;
+        try{ localStorage.setItem("trisight_dig_company", JSON.stringify(company)); }catch(_){}
+        compLabel();
+        compSt.textContent = "基本情報シートから " + orgs.length + " 社を取り込みました。選択中：" + tsCompanyName();
       });
     }
     /* 会社の切替（2026-08-13追加）：登録済みの会社を選ぶと、基礎情報も見込み額もその会社のものに入れ替わる */
@@ -7488,7 +7510,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-25-04';
+  const TRIGATE_VERSION = '2026-09-26-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

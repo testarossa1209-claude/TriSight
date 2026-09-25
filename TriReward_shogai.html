@@ -300,7 +300,7 @@
 <script>
 /* ============================================================
    TriReward 共有レイヤ v0.3
-   ・基本情報シート（TriBase.html）の共通マスターを読む
+   ・基本情報シート（TriSheet.html）が書き込む元帳を読む（2026-09-26 一本化）
    ・計画書データ層を保持し、実績報告へ引き継ぐ
    ============================================================ */
 window.TRW = (function(){
@@ -1168,7 +1168,7 @@ function trwCompare(){
 }
 
 
-/* --- 様式3-1の要件欄（チェックボックス）をTriBaseの申告から組み立てる ---
+/* --- 様式3-1の要件欄（チェックボックス）を要件の申告（TriReward_youken.html）から組み立てる ---
    要件の中身は事業所属性なので、基本情報シート側（バックヤード）で持つ。
    ここは読むだけ。定義が無い分野（障害は現物未照合）では何も書かない。 */
 function trwChecks(){
@@ -1246,13 +1246,13 @@ function trwPreflight(){
   if(!unknown && half>0 && monthly < half)
     ng.push('要件Ⅰ：月額賃金改善額 '+monthly.toLocaleString('ja-JP')+'円 が、加算Ⅳ相当額の1/2 '+half.toLocaleString('ja-JP')+'円 に届いていません。');
 
-  /* 要件欄（TriBaseの申告） */
+  /* 要件欄（要件の申告の画面で入れたもの） */
   var rdef = (def && def.cellmap) ? def.cellmap.req : null;
   if(!rdef){
     ng.push('この版では様式3-1の要件欄（キャリアパス要件・職場環境等要件）を書き出せません。Excelを開いて手でチェックし、×が残っていないか必ず確かめてください。');
   }else{
     var m = TRW.masterRaw()||{}, r = (m.req && m.req[def.year]) || null;
-    if(!r){ ng.push('様式3-1の要件欄が未申告です。基本情報シートの「要件の申告」を先に入力してください。'); }
+    if(!r){ ng.push('様式3-1の要件欄が未申告です。トライリワードの入口にある「要件の申告」で先に入力してください。'); }
     else{
       var cp = r.cp||{}, env = r.env||{};
       if(!cp.cpI)  ng.push('(3) キャリアパス要件Ⅰ が未チェックです。');
@@ -1535,12 +1535,12 @@ render();
   var c = TRW.corp(), n = TRW.offices().length;
   var html;
   if(!TRW.hasMaster()){
-    html = '▼ <b>事業所基本情報シートに、この版の事業所がまだ登録されていません。</b><br>'+
-      '<a href="TriBase.html" style="color:var(--gold-soft);font-weight:700">事業所基本情報シートを開く</a> → 法人情報と事業所（サービス表が「'+
-      (TRW.table==='shogai'?'障害':'介護')+'」の事業区分）を登録すると、ここに自動で並びます。';
+    html = '▼ <b>基本情報シートに、この版の事業所がまだ登録されていません。</b><br>'+
+      '<a href="TriSheet.html?mode=update" style="color:var(--gold-soft);font-weight:700">基本情報シートを開く</a> → 法人情報と事業所（'+
+      (TRW.table==='shogai'?'障害福祉・障害児':'介護保険・総合事業')+'の事業所番号とサービス、加算区分）を登録すると、ここに自動で並びます。';
   }else{
-    html = '▼ 事業所基本情報シートから読み込みました：<b>'+(c.name||'（法人名未入力）')+'</b> ／ 対象事業所 <b>'+n+'</b>件。'+
-      '　事業所やサービスの追加・修正は <a href="TriBase.html" style="color:var(--gold-soft);font-weight:700">事業所基本情報シート</a> で行ってください。';
+    html = '▼ 基本情報シートから読み込みました：<b>'+(c.name||'（法人名未入力）')+'</b> ／ 対象事業所 <b>'+n+'</b>件。'+
+      '　事業所やサービスの追加・修正は <a href="TriSheet.html?mode=update" style="color:var(--gold-soft);font-weight:700">基本情報シート</a>、様式3-1の要件は <a href="TriReward_youken.html" style="color:var(--gold-soft);font-weight:700">要件の申告</a> で行ってください。';
   }
   for(var i=0;i<els.length;i++) els[i].innerHTML = html;
 })();

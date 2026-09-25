@@ -7488,7 +7488,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-25-03';
+  const TRIGATE_VERSION = '2026-09-25-04';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -8121,6 +8121,12 @@ window.TSB_HOST = "gate";
         if(m >= 120) html += 'お茶を一杯いれていただく程度のお時間です。';
       }else{
         html += '<br>市区町村の独自制度は、その場で掲載元のページを当たって確かめるため、お時間がかかることがあります。';
+      }
+      /* 2026-09-25：実績が無い最初の回でも声をかける。予測ではなく、実際の経過時間に基づく */
+      if(sec >= 180){
+        html += '<br><b>3分を超えました。</b>市区町村のページを一つずつ確かめているため、時間がかかっています。止まっているとは限りません。待てば完了した例もあります。';
+      }else if(sec >= 60 && !(m && m >= 120)){
+        html += '<br>お待たせしています。お茶を一杯いれていただく程度のお時間になることがあります。';
       }
       html += '<span class="sub">この画面はそのままにしてお待ちください。</span>';
     }

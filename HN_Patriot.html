@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>H&amp;Nパトリオット 実験機（版R1）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700;800&family=Zen+Kaku+Gothic+Antique:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{--navy:#0f1d3a;--navy2:#1a2f54;--navy3:#26416e;--gold:#c8a24a;--gold-soft:#e6cd8f;
+    --paper:#faf8f2;--card:#fff;--ink:#172033;--soft:#5c6781;--line:#e6e0d0;
+    --ok:#1f6d3a;--ok-bg:#e9f4ec;--ng:#b3261e;--ng-bg:#fbeceb;--warn:#9a6b00;--warn-bg:#fdf4e0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Zen Kaku Gothic Antique",sans-serif;background:var(--paper);color:var(--ink);font-size:16px;line-height:1.7}
+  header{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;border-bottom:3px solid var(--gold);padding:26px 0 22px}
+  .hd,.wrap{max-width:1020px;margin:0 auto;padding:0 20px}
+  .brand{font-family:"Shippori Mincho",serif;font-weight:800;font-size:27px}
+  .brand .ed{font-size:16px;color:var(--gold-soft);margin-left:6px}
+  .sub{font-size:13.5px;color:#cdd6e6;margin-top:3px}
+  .links{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+  .links a{font-size:13.5px;font-weight:700;color:var(--navy3);background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px 13px;text-decoration:none}
+  .links a:hover{border-color:var(--gold)}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:14px;margin:18px 0;box-shadow:0 2px 10px rgba(15,29,58,.05);overflow:hidden}
+  .step>h2{font-family:"Shippori Mincho",serif;font-size:19px;color:var(--navy);padding:15px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;background:linear-gradient(90deg,rgba(26,47,84,.04),transparent)}
+  .n{flex:none;width:30px;height:30px;border-radius:8px;background:var(--navy);color:var(--gold-soft);font-size:16px;display:grid;place-items:center}
+  .body{padding:18px 22px 22px}
+  .note{font-size:13px;color:var(--soft);margin-bottom:12px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-bottom:10px}
+  .seg button{border:none;background:#fff;padding:8px 15px;font-family:inherit;font-size:13.5px;font-weight:700;color:var(--soft);cursor:pointer}
+  .seg button+button{border-left:1px solid var(--line)}
+  .seg button.on{background:var(--navy);color:#fff}
+  textarea,input[type=text]{width:100%;font-family:inherit;font-size:14px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:#fff}
+  textarea{min-height:190px;line-height:1.6}
+  textarea:focus,input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(200,162,74,.15)}
+  .row{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
+  .fire{border:none;background:var(--ng);color:#fff;font-family:inherit;font-size:15px;font-weight:800;padding:11px 26px;border-radius:10px;cursor:pointer}
+  .fire:hover{background:#962019}
+  .btn{border:1px solid var(--line);background:#fff;color:var(--navy3);font-family:inherit;font-size:13.5px;font-weight:700;padding:8px 14px;border-radius:9px;cursor:pointer}
+  .btn:hover{border-color:var(--gold)}
+  .err{color:var(--ng);font-weight:700;font-size:14px;margin-top:8px}
+  .meter{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px}
+  .box{border:1px solid var(--line);border-radius:11px;padding:12px 16px;background:#fcfbf7}
+  .box .k{font-size:12.5px;font-weight:700;color:var(--soft)}
+  .box .v{font-family:"Shippori Mincho",serif;font-size:28px;font-weight:800;color:var(--navy)}
+  .box.hot .v{color:var(--ng)}
+  table{border-collapse:collapse;width:100%;font-size:13.5px}
+  th,td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:rgba(26,47,84,.05);color:var(--navy);font-size:12.5px}
+  .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chip{font-size:12px;padding:3px 9px;border-radius:999px;background:#eef3fb;color:var(--navy3);font-weight:700}
+  .chip.h{background:#f3ede0;color:#7a6a45}
+  .chip.bad{background:var(--ng-bg);color:var(--ng)}
+  .none{background:#eef0f4;border:1px dashed #c4ccd8;border-radius:9px;padding:12px 14px;font-size:14px;color:var(--soft);font-weight:700}
+  .judge{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .judge button{flex:1;min-width:180px;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;color:var(--navy)}
+  .judge button:hover{border-color:var(--gold)}
+  .judge button.sel{background:var(--navy);color:#fff}
+  .cnt{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+  .cmp textarea{min-height:130px}
+  footer{text-align:center;color:var(--soft);font-size:12px;margin:30px 0 60px}
+  footer .r{color:var(--gold)}
+</style>
+<script src="TriEngines.js"></script>
+</head>
+<body>
+<header><div class="hd">
+  <div class="brand">H&amp;N Patriot<span class="ed">H&amp;Nパトリオット 実験機（版R1）</span></div>
+  <div class="sub">理論が作られた運びの形を外から照合し、逸脱の大きさに応じて効力を削る</div>
+</div></header>
+<div class="wrap">
+  <div class="links"><a href="index.html">表札へ戻る</a><a href="TriEngines.html">コモンエンジン台帳</a></div>
+
+  <section class="step">
+    <h2><span class="n">1</span>撃ち込む材料</h2>
+    <div class="body">
+      <p class="note">AIとのやりとりをそのまま貼り付けてください。発話の頭に「H:」「A:」（または「宏史:」「なぎさ:」など）が付いていれば区切れます。照合するのは言葉の中身ではなく、何をした後に何をしたかという運びの形です。</p>
+      <div class="seg" id="mode"><button type="button" class="on" data-m="text">会話ログ</button><button type="button" data-m="lines">工程列（1行1工程）</button></div>
+      <textarea id="src" placeholder="H: 昨日の資料の続きをお願いします&#10;A: 資料をアップロードしてください。"></textarea>
+      <div class="row">
+        <input type="text" id="srcLabel" placeholder="出所のメモ（例：トライリワード・按分の相談）" style="flex:1;min-width:220px">
+        <button type="button" class="fire" id="fire">撃つ</button>
+      </div>
+      <div class="err" id="err"></div>
+    </div>
+  </section>
+
+  <section class="step" id="resultSec" style="display:none">
+    <h2><span class="n">2</span>照合の結果</h2>
+    <div class="body">
+      <div class="meter">
+        <div class="box" id="boxD"><div class="k">逸脱量 D</div><div class="v" id="vD"></div></div>
+        <div class="box" id="boxR"><div class="k">効力を削る割合</div><div class="v" id="vR"></div></div>
+        <div class="box"><div class="k">取り出した工程の数</div><div class="v" id="vN"></div></div>
+      </div>
+      <div id="hitArea"></div>
+      <p class="note" style="margin-top:14px">取り出した工程の形（内容語を除いたもの）</p>
+      <div class="chips" id="chips"></div>
+      <p class="note" style="margin-top:16px">この結果について、人の評価を付けてください。評価は三計数として記録しますが、判定規則の更新には使いません。</p>
+      <div class="judge" id="judge">
+        <button type="button" data-v="stopped">当たっていた（止めた）</button>
+        <button type="button" data-v="missed">見逃しがあった</button>
+        <button type="button" data-v="over">止めすぎた</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="step">
+    <h2><span class="n">3</span>三計数（止めた・見逃した・止めすぎた）</h2>
+    <div class="body">
+      <p class="note">出口は、暴走が起きないことではなく、この三つの数が見えている状態です。</p>
+      <div class="cnt" id="cnt"></div>
+      <div class="scroll" style="margin-top:12px"><table id="logTbl"></table></div>
+      <div class="row"><button type="button" class="btn" id="clearLog">記録をすべて消す</button></div>
+    </div>
+  </section>
+
+  <section class="step">
+    <h2><span class="n">4</span>複数の処理部の対比</h2>
+    <div class="body">
+      <p class="note">同じ案件について、複数のAIのやりとりを並べます。一つのAIにだけ出た型は、そのAIに固有の逸脱として扱います。全員に出た型は固有の逸脱とはせず、版の見直しの材料にします。</p>
+      <div class="cmp" id="cmp"></div>
+      <div class="row"><button type="button" class="fire" id="fireCmp">対比する</button></div>
+      <div class="err" id="errCmp"></div>
+      <div id="cmpOut" style="margin-top:14px"></div>
+    </div>
+  </section>
+
+  <section class="step">
+    <h2><span class="n">5</span>判定規則（版R1・閲覧のみ）</h2>
+    <div class="body">
+      <p class="note">判定規則はこの版で凍結しており、画面から書き換えることはできません。更新は版の差し替えでのみ入ります。出典：特願2026-210277 明細書【0032】〜【0041】・図2・図3。</p>
+      <div class="scroll"><table id="ruleTbl"></table></div>
+      <div class="scroll" style="margin-top:12px;max-width:460px"><table id="stageTbl"></table></div>
+    </div>
+  </section>
+
+  <footer>© 2026 合同会社トライサイト ／ TriSight<span class="r">®</span> コモンエンジン ／ <span id="ver"></span></footer>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var P=TriEngines.patriot, mode='text', lastId=null;
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+  var NAME={stopped:'当たっていた',missed:'見逃しがあった',over:'止めすぎた'};
+
+  document.querySelectorAll('#mode button').forEach(function(b){
+    b.onclick=function(){ mode=b.dataset.m; document.querySelectorAll('#mode button').forEach(function(x){ x.classList.toggle('on',x===b); });
+      $('src').placeholder = mode==='text' ? 'H: 昨日の資料の続きをお願いします\nA: 資料をアップロードしてください。' : '人への提供要求\n対象物に関する出力\n出力 420'; };
+  });
+
+  function stepsOf(text,m){ return m==='lines' ? P.fromLines(text) : P.fromText(text); }
+
+  $('fire').onclick=function(){
+    $('err').textContent='';
+    var steps;
+    try{ steps=stepsOf($('src').value,mode); }catch(e){ $('err').textContent=e.message; return; }
+    var r=P.check(steps);
+    lastId=P.record(r,{source:$('srcLabel').value.trim()});
+    $('vD').textContent=r.D; $('vR').textContent=r.rate+'％'; $('vN').textContent=r.steps;
+    $('boxD').classList.toggle('hot',r.D>=1); $('boxR').classList.toggle('hot',r.rate>0);
+    var hitSteps={}; r.hits.forEach(function(h){ h.at.forEach(function(i){ hitSteps[i]=h.type; }); });
+    if(r.hits.length){
+      var t='<div class="scroll"><table><tr><th>型</th><th>名称</th><th>重み</th><th>判定条件</th><th>該当した位置</th></tr>';
+      r.hits.forEach(function(h){
+        var where=h.at.map(function(i){ var s=steps[i]; return (s.turn!=null?(s.turn+1)+'番目の発話':(i+1)+'番目の工程'); });
+        t+='<tr><td><b>'+h.type+'</b></td><td>'+esc(h.name)+'</td><td>'+h.weight+'</td><td>'+esc(h.condition)+'</td><td>'+esc(where.join('、'))+'</td></tr>';
+      });
+      $('hitArea').innerHTML=t+'</table></div>';
+    } else {
+      $('hitArea').innerHTML='<div class="none">該当した型はありません。これは理論が正しいことを示すものではありません。</div>';
+    }
+    $('chips').innerHTML=steps.map(function(s,i){
+      var cls=hitSteps[i]?'chip bad':(s.by==='human'?'chip h':'chip');
+      return '<span class="'+cls+'">'+(s.by==='human'?'人：':'')+esc(s.k)+(hitSteps[i]?'（'+hitSteps[i]+'）':'')+'</span>';
+    }).join('');
+    document.querySelectorAll('#judge button').forEach(function(b){ b.classList.remove('sel'); });
+    $('resultSec').style.display='block';
+    renderLog();
+    $('resultSec').scrollIntoView({behavior:'smooth',block:'start'});
+  };
+
+  document.querySelectorAll('#judge button').forEach(function(b){
+    b.onclick=function(){ if(!lastId) return; P.judge(lastId,b.dataset.v);
+      document.querySelectorAll('#judge button').forEach(function(x){ x.classList.toggle('sel',x===b); }); renderLog(); };
+  });
+
+  function renderLog(){
+    var c=P.counts();
+    $('cnt').innerHTML=[['止めた',c.stopped],['見逃した',c.missed],['止めすぎた',c.over],['評価待ち',c.pending]].map(function(x){
+      return '<div class="box"><div class="k">'+x[0]+'</div><div class="v">'+x[1]+'</div></div>'; }).join('');
+    var rows=P.logs().slice().reverse();
+    var t='<tr><th>日時</th><th>出所</th><th>版</th><th>D</th><th>削る割合</th><th>型</th><th>評価</th></tr>';
+    if(!rows.length) t+='<tr><td colspan="7" style="color:var(--soft)">まだ記録はありません。</td></tr>';
+    rows.forEach(function(r){
+      var d=new Date(r.at);
+      t+='<tr><td>'+d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate()+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+'</td><td>'+esc(r.source||'―')+'</td><td>'+esc(r.version)+'</td><td>'+r.D+'</td><td>'+r.rate+'％</td><td>'+(r.types.join('・')||'―')+'</td><td>'+(NAME[r.verdict]||'評価待ち')+'</td></tr>';
+    });
+    $('logTbl').innerHTML=t;
+  }
+  $('clearLog').onclick=function(){ if(confirm('三計数の記録をすべて消します。元には戻せません。よろしいですか？')){ P.clearLogs(); renderLog(); } };
+
+  /* 対比 */
+  var CMP=['あずさ','なぎさ','つかさ'];
+  $('cmp').innerHTML=CMP.map(function(n,i){
+    return '<div><input type="text" class="cmpName" value="'+n+'" style="margin-bottom:6px"><textarea class="cmpSrc" placeholder="'+n+'とのやりとり（会話ログ）"></textarea></div>'; }).join('');
+  $('fireCmp').onclick=function(){
+    $('errCmp').textContent=''; $('cmpOut').innerHTML='';
+    var names=document.querySelectorAll('.cmpName'), srcs=document.querySelectorAll('.cmpSrc'), reps={};
+    try{
+      for(var i=0;i<srcs.length;i++){ if(!srcs[i].value.trim()) continue;
+        var nm=names[i].value.trim()||('処理部'+(i+1)); if(reps[nm]) throw new Error('名前「'+nm+'」が重なっています');
+        reps[nm]=P.fromText(srcs[i].value); }
+      var r=P.compare(reps);
+    }catch(e){ $('errCmp').textContent=e.message; return; }
+    var t='<div class="scroll"><table><tr><th>処理部</th><th>出た型</th><th>固有の逸脱</th><th>固有分の D</th><th>削る割合</th></tr>';
+    Object.keys(r.own).forEach(function(n){
+      t+='<tr><td><b>'+esc(n)+'</b></td><td>'+(r.each[n].types.join('・')||'―')+'</td><td>'+(r.own[n].types.join('・')||'―')+'</td><td>'+r.own[n].D+'</td><td>'+r.own[n].rate+'％</td></tr>';
+    });
+    t+='</table></div><p class="note" style="margin-top:10px">全員に共通して出た型：'+(r.common.join('・')||'なし')+'（固有の逸脱とはせず、版の見直しの材料）</p>';
+    $('cmpOut').innerHTML=t;
+  };
+
+  /* 規則の閲覧 */
+  var R=P.rulesView();
+  var t='<tr><th>型</th><th>名称</th><th>判定条件</th><th>重み</th></tr>';
+  'ABCDEFG'.split('').forEach(function(k){ t+='<tr><td><b>'+k+'</b></td><td>'+esc(R.names[k])+'</td><td>'+esc(R.conditions[k])+(k==='G'?'（所定倍＝'+R.gRatio+'倍：版R1の設定値。実験で見直す）':'')+'</td><td>'+R.weights[k]+'</td></tr>'; });
+  $('ruleTbl').innerHTML=t;
+  var lo=0, s='<tr><th>逸脱量 D</th><th>効力を削る割合</th></tr>';
+  R.stages.forEach(function(g){ var hi=g.upTo; s+='<tr><td>'+(hi==='∞'?'D≧'+lo:(lo===0?'D＜'+hi:lo+'≦D＜'+hi))+'</td><td>'+g.rate+'％</td></tr>'; lo=hi; });
+  $('stageTbl').innerHTML=s;
+  $('ver').textContent='H&Nパトリオット 実験機 v0.1 ／ 判定規則 版'+P.rulesVersion+' ／ 窓口 '+TriEngines.version;
+  renderLog();
+})();
+</script>
+</body>
+</html>

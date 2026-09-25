@@ -1,6 +1,6 @@
 /*! ===========================================================================
  *  TriEngines.js — TriSight® コモンエンジンの窓口（台帳と呼び出し口）
- *  版：2026-09-25-01
+ *  版：2026-09-25-02
  *  ---------------------------------------------------------------------------
  *  どの子システムからも、6つのコモンエンジンを同じ口で呼ぶための共通部品。
  *
@@ -23,7 +23,7 @@
 (function (global) {
   'use strict';
 
-  var VERSION = '2026-09-25-01';
+  var VERSION = '2026-09-25-02';
 
   /* ---- 保存領域（file:// 等で localStorage が使えなくても止めない） ---- */
   var store;
@@ -59,7 +59,7 @@
       calledBy: 'トライリワード・トライサイトシステム本体' }),
     Object.freeze({ id: 'patriot', name: 'H&Nパトリオット', kind: '画面＋部品', status: '実験機（版R1）',
       role: '理論が作られた運びの形を外側から照合し、逸脱の大きさに応じて効力を削る',
-      page: 'TriPatriot.html', script: 'TriEngines.js', outKey: 'trisight_patriot_log_v1', inKey: null,
+      page: 'HN_Patriot.html', script: 'TriEngines.js', outKey: 'trisight_patriot_log_v1', inKey: null,
       calledBy: 'すべてのシステム（自分の理論に撃ち込む）' })
   ]);
 

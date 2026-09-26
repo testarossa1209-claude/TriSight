@@ -42,6 +42,10 @@
     line-height:1.7;font-size:15px;
   }
   .wrap{max-width:880px;margin:0 auto;padding:28px 20px 80px}
+/* 2026-09-26：右上に固定の「いまの状況」の枠（幅268）の下に本文が入り込まないよう、
+   画面の幅が足りないときだけ本文を左へ寄せ、右に枠の分の余白を空ける。広い画面では中央のまま */
+@media (min-width:900px){ .wrap{margin-left:max(0px, min(calc((100vw - 880px) / 2), calc(100vw - 880px - 300px)));margin-right:0;max-width:min(880px, calc(100vw - 300px))} }
+.masthead{flex-wrap:wrap;row-gap:8px}
 
   /* ヘッダー */
   header{margin-bottom:22px}
@@ -7511,7 +7515,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-26-02';
+  const TRIGATE_VERSION = '2026-09-26-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

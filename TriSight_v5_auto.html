@@ -218,6 +218,7 @@ body {
 }
 .sheet-links { margin-top: 18px; font-size: 0.9rem; color: var(--gold-light); }
 .sheet-links a { display: inline-block; margin-left: 10px; padding: 6px 16px; border: 1px solid var(--gold); border-radius: 6px; color: var(--gold-light); text-decoration: none; }
+.model-line { margin-top: 12px; font-size: 0.78rem; color: var(--text-muted, #8a93a8); }
 .sheet-links a:hover, .sheet-links a:focus-visible { background: rgba(201,168,76,0.15); outline: none; }
 
 .launch-btn {
@@ -562,12 +563,12 @@ textarea {
 <!-- ===== ランチャー画面 ===== -->
 <div id="launcher">
   <div class="launcher-header">
-    <img class="launcher-logo" src="TriSight_icon_512.png" alt="TriSight™"
+    <img class="launcher-logo" src="TriSight_icon_512.png" alt="TriSight®"
          onerror="this.style.display='none';document.getElementById('logo-placeholder').style.display='flex'">
     <div class="launcher-logo-placeholder" id="logo-placeholder" style="display:none">T</div>
     <div class="launcher-title-block">
-      <div class="launcher-title">TriSight™</div>
-      <div class="launcher-subtitle">THREE-BODY INTEGRATED AI INTELLECTUAL SUPPORT SYSTEM</div>
+      <div class="launcher-title">TriSight®</div>
+      <div class="launcher-subtitle">EVOLVING INTELLIGENCE, CHALLENGING SITE</div>
     </div>
     <div class="launcher-badge">Ver 2.0　登録商標</div>
   </div>
@@ -619,21 +620,22 @@ textarea {
     <div class="launch-area">
       <button class="launch-btn" onclick="startWorkflow()">ワークフロー開始</button>
       <div class="sheet-links">基本情報シート：<a href="TriSheet.html?mode=new" target="_blank" rel="noopener">初回登録</a><a href="TriSheet.html?mode=update" target="_blank" rel="noopener">更新登録</a></div>
+      <div class="model-line" id="modelLine"></div>
     </div>
   </div>
 
-  <div class="launcher-footer">© 2026 合同会社トライサイト　TriSight™ is a registered trademark of TriSight LLC.</div>
+  <div class="launcher-footer">© 2026 合同会社トライサイト　TriSight® is a registered trademark of TriSight LLC.</div>
 </div>
 
 <!-- ===== ワークフロー画面 ===== -->
 <div id="workflow" style="display:none; flex-direction:column; min-height:100vh;">
   <div class="wf-header">
-    <img class="wf-logo" src="TriSight_icon_512.png" alt="TriSight™"
+    <img class="wf-logo" src="TriSight_icon_512.png" alt="TriSight®"
          onerror="this.style.display='none';document.getElementById('wf-logo-placeholder').style.display='flex'">
     <div class="wf-logo-placeholder" id="wf-logo-placeholder" style="display:none">T</div>
     <div class="wf-title-block">
-      <div class="wf-title">TriSight™</div>
-      <div class="wf-sub">THREE-BODY INTEGRATED AI WORKFLOW SYSTEM</div>
+      <div class="wf-title">TriSight®</div>
+      <div class="wf-sub">MULTI-AI WORKFLOW SYSTEM</div>
     </div>
     <div class="wf-badge">Ver 2.0</div>
     <button class="back-btn" onclick="backToLauncher()">← ランチャーへ戻る</button>
@@ -701,7 +703,7 @@ textarea {
       <button class="reference-toggle-btn" id="referenceToggleBtn" onclick="toggleReference()">📎 ベース資料を追加</button>
       <div class="reference-section" id="referenceSection">
         <div class="reference-title">▌ベース資料</div>
-        <div class="reference-note">既存の運営規定・契約書・会員情報など、起案に関連するベース資料をコピペで貼付してください。三身処理時に起案文と統合してAIに送信されます。</div>
+        <div class="reference-note">既存の運営規定・契約書・会員情報など、起案に関連するベース資料をコピペで貼付してください。AIの処理時に起案文と統合してAIに送信されます。</div>
         <textarea id="referenceInput" placeholder="ベース資料をここに貼り付けてください。"></textarea>
       </div>
       <div class="rev-box" id="revSection">
@@ -777,7 +779,7 @@ textarea {
           <div onclick="openBusiness()" style="padding:12px 20px; cursor:pointer; color:#f5f0e8; font-size:0.85rem; border-bottom:1px solid rgba(201,168,76,0.2);">📋 ビジネスレポート</div>
     </div>      
      </div>  
-  <div class="wf-footer">© 2026 合同会社トライサイト　TriSight™ is a registered trademark.<div class="verline" style="margin-top:6px;font-size:14px;color:#f5f0e8">版 <span id="verLabel">2026-09-26-02</span>（AI連携オプション）</div></div>
+  <div class="wf-footer">© 2026 合同会社トライサイト　TriSight® is a registered trademark.<div class="verline" style="margin-top:6px;font-size:14px;color:#f5f0e8">版 <span id="verLabel">2026-09-26-04</span>（AI連携オプション）</div></div>
 </div>
 
 <script>
@@ -834,56 +836,92 @@ function tsAuthFail(status){
   return false;
 }
 
+/* ===== 使うAIの表（2026-09-26）=====
+   定期更新はここだけを書き換える。primary＝標準で使うモデル、fallback＝primaryが呼べなかったときに使う前のモデル。
+   確認日：各社の公式のモデル一覧で名前を確かめた日。当社で動作を確かめてから切り替える（自動で最新版を追いかけない）。 */
+const TS_MODELS = {
+  checked: '2026-09-26',
+  azusa:   { vendor: 'openai',    primary: 'gpt-6-sol',       fallback: 'gpt-4o' },
+  nagisa:  { vendor: 'anthropic', primary: 'claude-sonnet-5', fallback: 'claude-sonnet-4-6' },
+  tsukasa: { vendor: 'openai',    primary: 'gpt-6-sol',       fallback: 'gpt-4o' }
+};
+const TS_ROLE_LABEL = { azusa: '理論', nagisa: '検証', tsukasa: '評価' };
+window.TS_AI_USED = window.TS_AI_USED || {};
+function tsModelLine(){
+  const el = document.getElementById('modelLine'); if(!el) return;
+  el.textContent = '使用中のAI：' + ['azusa','nagisa','tsukasa'].map(function(k){
+    const u = window.TS_AI_USED[k];
+    const m = u ? u.model : TS_MODELS[k].primary;
+    return TS_ROLE_LABEL[k] + ' ' + m + (u && u.fellBack ? '（新しいモデルが使えず前のモデルで実行）' : '');
+  }).join(' ／ ') + '（' + TS_MODELS.checked + ' 確認）';
+}
+/* OpenAIの口：新しいモデルは max_completion_tokens、前のモデルは max_tokens で呼ぶ。失敗・空の答えなら前のモデルで呼び直す */
+async function tsCallOpenAI(role, messages, errLabel){
+  const cfg = TS_MODELS[role];
+  const tries = [cfg.primary, cfg.fallback].filter(function(m, i, a){ return m && a.indexOf(m) === i; });
+  let lastErr = null;
+  for (let i = 0; i < tries.length; i++){
+    const model = tries[i];
+    const body = { model: model, messages: messages };
+    if (/^gpt-4/.test(model)) body.max_tokens = 4000; else body.max_completion_tokens = 16000;
+    const r = await fetch('https://trisight-relay.vercel.app/api/openai', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-trisight-code': tsCode() }, body: JSON.stringify(body)
+    });
+    if (r.status === 401){ tsAuthFail(401); throw new Error(errLabel + '認証コードが合いません'); }
+    if (r.ok){
+      let t = '';
+      try{ const j = await r.json(); t = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || ''; }catch(_){ t = ''; }
+      if (t && String(t).trim()){ window.TS_AI_USED[role] = { model: model, fellBack: i > 0 }; tsModelLine(); return t; }
+      lastErr = new Error(errLabel + '空の答えが返りました（' + model + '）');
+    } else {
+      let e = null; try{ e = await r.json(); }catch(_){}
+      lastErr = new Error(errLabel + ((e && e.error && (e.error.message || e.error)) || r.status) + '（' + model + '）');
+    }
+  }
+  throw lastErr;
+}
+/* Anthropicの口：失敗・空の答えなら前のモデルで呼び直す */
+async function tsCallAnthropic(role, system, user, temperature){
+  const cfg = TS_MODELS[role];
+  const tries = [cfg.primary, cfg.fallback].filter(function(m, i, a){ return m && a.indexOf(m) === i; });
+  let lastErr = null;
+  for (let i = 0; i < tries.length; i++){
+    const model = tries[i];
+    const body = { model: model, max_tokens: 4000, system: system, messages: [{ role: 'user', content: user }] };
+    if (typeof temperature === 'number') body.temperature = temperature;
+    const r = await fetch('https://trisight-relay.vercel.app/api/anthropic', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-trisight-code': tsCode() }, body: JSON.stringify(body)
+    });
+    if (r.status === 401){ tsAuthFail(401); throw new Error('認証コードが合いません'); }
+    if (r.ok){
+      let t = '';
+      try{ const j = await r.json(); t = (j.content || []).map(function(c){ return c && c.text || ''; }).join(''); }catch(_){ t = ''; }
+      if (t && t.trim()){ window.TS_AI_USED[role] = { model: model, fellBack: i > 0 }; tsModelLine(); return t; }
+      lastErr = new Error('空の答えが返りました（' + model + '）');
+    } else {
+      let e = null; try{ e = await r.json(); }catch(_){}
+      lastErr = new Error(((e && e.error && (e.error.message || e.error)) || r.status) + '（' + model + '）');
+    }
+  }
+  throw lastErr;
+}
+
 async function callAzusa(input, key, sysOverride) {
-  const r = await fetch('https://trisight-relay.vercel.app/api/openai', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-trisight-code': tsCode() },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      max_tokens: 4000,
-      messages: [
-        { role: 'system', content: sysOverride || 'あなたはTriSight™のあずさです。起案者から提供される「達成したい目的」「起案者の立ち位置」「起案内容」「ベース資料（任意）」を踏まえ、起案者の立ち位置から見て目的達成に資する構想を、自由な発想で論理的に理論化・展開してください。\n\nベース資料に試算表・損益計算書・実績数値等が含まれる場合は、必ず以下を実行すること：\n1. 指定期間の数値を試算表から正確に抽出し、売上・費用構造（人件費・経費・固定費）・営業利益等を具体的な金額で明示する\n2. 抽出した数値に基づき、前月比・前年同月比・予算対比等の比較分析を行う\n3. その上で、目的達成に資する構想・施策を展開する\n\nベース資料が施策関連文書または資料がない場合は、従来通り自由な発想で構想を理論化・展開してください。\n\nいずれの場合も、具体的かつ実行可能な提案を生成してください。' },  { role: 'user', content: input }
-      ]
-    })
-  });
-  if (!r.ok) { tsAuthFail(r.status); const e = await r.json(); throw new Error('あずさエラー: ' + (e.error?.message || r.status)); }
-  return (await r.json()).choices[0].message.content;
+  return tsCallOpenAI('azusa', [
+    { role: 'system', content: sysOverride || 'あなたはTriSight®のあずさです。起案者から提供される「達成したい目的」「起案者の立ち位置」「起案内容」「ベース資料（任意）」を踏まえ、起案者の立ち位置から見て目的達成に資する構想を、自由な発想で論理的に理論化・展開してください。\n\nベース資料に試算表・損益計算書・実績数値等が含まれる場合は、必ず以下を実行すること：\n1. 指定期間の数値を試算表から正確に抽出し、売上・費用構造（人件費・経費・固定費）・営業利益等を具体的な金額で明示する\n2. 抽出した数値に基づき、前月比・前年同月比・予算対比等の比較分析を行う\n3. その上で、目的達成に資する構想・施策を展開する\n\nベース資料が施策関連文書または資料がない場合は、従来通り自由な発想で構想を理論化・展開してください。\n\nいずれの場合も、具体的かつ実行可能な提案を生成してください。' },
+    { role: 'user', content: input }
+  ], 'あずさエラー: ');
 }
 
 async function callTsukasa(systemPrompt, userInput) {
-  const r = await fetch('https://trisight-relay.vercel.app/api/openai', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-trisight-code': tsCode() },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      max_tokens: 4000,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userInput }
-      ]
-    })
-  });
-  if (!r.ok) { tsAuthFail(r.status); const e = await r.json(); throw new Error('つかさエラー: ' + (e.error?.message || r.status)); }
-  return (await r.json()).choices[0].message.content;
+  return tsCallOpenAI('tsukasa', [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userInput }
+  ], 'つかさエラー: ');
 }
 
 async function callClaude(system, user, key, temperature) {
-  const r = await fetch('https://trisight-relay.vercel.app/api/anthropic', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-trisight-code': tsCode()
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4000,
-      ...(typeof temperature === 'number' ? { temperature: temperature } : {}),
-      system: system,
-      messages: [{ role: 'user', content: user }]
-    })
-  });
-  if (!r.ok) { tsAuthFail(r.status); const e = await r.json(); throw new Error(e.error?.message || r.status); }
-  return (await r.json()).content[0].text;
+  return tsCallAnthropic('nagisa', system, user, temperature);
 }
 
 /* ===== 関所：立ち位置と出口の確認（2026-09-16追加・03で出口と逆算を加えて全面改修）=====
@@ -896,7 +934,7 @@ async function callClaude(system, user, key, temperature) {
 /* 2026-09-17-01：報告書のように書く項目（記載事項）が決まっている「定型文書の作成」を、
    課題の見えていない起案として差し戻していた問題を直す。起案の種類を最初に判定し、
    定型文書は「記載事項を埋める事実が揃っているか」「記載事項を満たして揃うことが出口か」で見る。 */
-const GATE_PROMPT = 'あなたはTriSight™の関所です。起案者の入力を読み、起案者の立ち位置と出口だけを確認してください。提案や助言は一切書かないこと。\n\n'
+const GATE_PROMPT = 'あなたはTriSight®の関所です。起案者の入力を読み、起案者の立ち位置と出口だけを確認してください。提案や助言は一切書かないこと。\n\n'
  + '【確認0：起案の種類】\n'
  + '0. この起案が「定型文書の作成」か「課題の解決」かを判定する。定型文書の作成とは、報告書・届出・申請書などで、書く項目（記載事項）が目的または起案内容に示されており、起案者の仕事がその項目を入力の事実で埋めて文書にすることである場合をいう。それ以外はすべて「課題の解決」とする。\n\n'
  + '【確認1：立ち位置】\n'
@@ -918,7 +956,7 @@ const GATE_PROMPT = 'あなたはTriSight™の関所です。起案者の入力
  + '次のJSONだけを出力すること。前置き・説明・コードブロック記号は付けない。\n'
  + '{"起案の種類":"定型文書の作成|課題の解決","起案者":"","問題の当事者":"","問題との位置関係":"当事者本人|事実を得ている|外から見ている|判断できない","問題の見え方":"見えている|見えていない","立ち位置の根拠":"（入力中の該当箇所を短く。無ければ「なし」）","立ち位置の自覚":"あり|なし","出口の書き方":"決着地点|行為|記述なし","出口":"","判定":"進行|確認へ","理由":"（一文）"}';
 
-const AZUSA_NORMAL_PROMPT = 'あなたはTriSight™のあずさです。起案者から提供される「達成したい目的」「起案者の立ち位置」「起案内容」「ベース資料（任意）」と、関所の確認結果を受け取ります。関所により、起案者は当事者の問題が見える位置に立ち、出口が決着のつく地点として置けていることが確認されています。\n\n'
+const AZUSA_NORMAL_PROMPT = 'あなたはTriSight®のあずさです。起案者から提供される「達成したい目的」「起案者の立ち位置」「起案内容」「ベース資料（任意）」と、関所の確認結果を受け取ります。関所により、起案者は当事者の問題が見える位置に立ち、出口が決着のつく地点として置けていることが確認されています。\n\n'
  + '構想は、自由な発想で広げるのではなく、出口から逆算して組み立ててください。次の順で出力すること。\n\n'
  + '■ 1. 出口\n（関所で確認した出口を、何がどうなれば決着かが分かる形で書く）\n\n'
  + '■ 2. 出口から逆算した条件\n（出口に至るために満たす必要がある制度・ルール・基準・書類・期限・手続き・当事者側の事実を、出口に近い順に並べる。それぞれについて、入力（起案内容・ベース資料）に既にあるか、無いかを示す）\n\n'
@@ -929,7 +967,7 @@ const AZUSA_NORMAL_PROMPT = 'あなたはTriSight™のあずさです。起案�
  + '2. 抽出した数値に基づき、前月比・前年同月比・予算対比等の比較分析を行う\n'
  + '3. その結果を、2の条件と4の構想の根拠として使う';
 
-const AZUSA_HEARING_PROMPT = 'あなたはTriSight™のあずさです。今回は関所の確認により、起案者の立ち位置または出口に欠けがあることが分かっています（どちらが欠けているかは関所の確認結果を見ること）。\n'
+const AZUSA_HEARING_PROMPT = 'あなたはTriSight®のあずさです。今回は関所の確認により、起案者の立ち位置または出口に欠けがあることが分かっています（どちらが欠けているかは関所の確認結果を見ること）。\n'
  + '関所の確認結果で起案の種類が「定型文書の作成」の場合は、下の4段に代えて、次の2段だけを出力すること。文書の本文は書かない。\n'
  + '■ 1. 欠けているもの\n（記載事項ごとに、入力のどこが空欄または不足か、何を書けば埋まるかを具体的に書く）\n'
  + '■ 2. 埋まったときの姿\n（すべて埋まれば、どの記載事項が揃った文書になるか）\n'
@@ -1365,21 +1403,21 @@ function kbConditions(f, p){
   return L.join('\n');
 }
 
-const AZUSA_CLEAR_PROMPT = 'あなたはTriSight™のあずさです。起案基礎情報により、クライアントの問題は具体的で、経営陣と現場職員の両方の言葉があり、出口も当事者に確認済みであることが分かっています。提案の範囲は、クライアントが挙げた問題の解決に限り、挙げられていない課題へは広げないこと。次の順で出力してください。\n\n'
+const AZUSA_CLEAR_PROMPT = 'あなたはTriSight®のあずさです。起案基礎情報により、クライアントの問題は具体的で、経営陣と現場職員の両方の言葉があり、出口も当事者に確認済みであることが分かっています。提案の範囲は、クライアントが挙げた問題の解決に限り、挙げられていない課題へは広げないこと。次の順で出力してください。\n\n'
  + '■ 1. 出口\n（当事者に確認済みの出口を、何がどうなれば決着かが分かる形で書く）\n\n'
  + '■ 2. 経営陣と現場職員の言葉の食い違い\n（両方の言葉を並べ、どこが食い違っているかを示す。業界マップに土壌となる構造があれば、それと結びつけて説明する）\n\n'
  + '■ 3. 出口から逆算した条件\n（出口に至るために満たす必要がある制度・ルール・書類・期限・当事者側の事実を、出口に近い順に並べ、入力にあるか無いかを示す）\n\n'
  + '■ 4. 施策\n（食い違いの是正を中心に組む。両側の目的を互いの言葉に通訳する形を含めてよい。業界の慣習や定石を越える発想も出してよい。各施策に、根拠にした入力の箇所を添える）\n\n'
  + '■ 5. 欠けている情報の扱い\n（欠けている情報があれば、どの施策のどこを、何を確かめてから決めるか）';
 
-const AZUSA_PARTIAL_PROMPT = 'あなたはTriSight™のあずさです。起案基礎情報により、クライアントの問題は具体的だが、経営陣・現場職員の片方の言葉しか無いか、出口が確認できていないことが分かっています。施策を確定させず、次の順で出力してください。\n\n'
+const AZUSA_PARTIAL_PROMPT = 'あなたはTriSight®のあずさです。起案基礎情報により、クライアントの問題は具体的だが、経営陣・現場職員の片方の言葉しか無いか、出口が確認できていないことが分かっています。施策を確定させず、次の順で出力してください。\n\n'
  + '■ 1. 現状の把握\n（どちらの言葉が無いか、出口がどういう状態かを平易に書く）\n\n'
  + '■ 2. 当事者の言葉にある問題の整理\n（起案基礎情報とベース資料に書かれた事実だけを使って、問題を分解して並べる）\n\n'
  + '■ 3. 足りないものの確認\n（聞けていない側に聞く質問文、出口を置くための質問文。それぞれ、答えによって進む方向がどう分かれるかを添える）\n\n'
  + '■ 4. 仮の方向\n（施策の骨組みのみ。確認前の仮であることを冒頭に明記する。業界の慣習や定石を越える発想も出してよい）\n\n'
  + '■ 5. そろったときの姿\n（何がそろえば、出口から逆算した解決提案へ進めるか）';
 
-const AZUSA_FOG_PROMPT = 'あなたはTriSight™のあずさです。起案基礎情報により、クライアントの問題は漠然としているか、起案者が外から見ていて問題をつかめていないことが分かっています。クライアント自身も問題を把握していないことが多い状態です。起案者の立ち位置を起点に、次の順で出力してください。\n\n'
+const AZUSA_FOG_PROMPT = 'あなたはTriSight®のあずさです。起案基礎情報により、クライアントの問題は漠然としているか、起案者が外から見ていて問題をつかめていないことが分かっています。クライアント自身も問題を把握していないことが多い状態です。起案者の立ち位置を起点に、次の順で出力してください。\n\n'
  + '■ 1. 立ち位置\n（起案者がクライアントの問題に対してどこに立っているかを、責めずに平易に書く）\n\n'
  + '■ 2. 業界の土壌から見た呼び水\n（業界マップにある構造と情報源に基づき、「この業界ではこういうことが起きやすい。御社ではどうか」という問いの形で並べる。統計の数値は書かず、確かめる先として情報源の名前を示す。業界マップが未整備なら、その旨を書いたうえで、一般的な傾向として問う）\n\n'
  + '■ 3. 問題を浮かび上がらせる進め方\n（起案者の立ち位置・業種・強みを、問題を見える化する手段として使ってよい）\n\n'
@@ -1530,7 +1568,7 @@ function revOriginText(rev){
     + '修正案の出所：' + rev.who + '\n直したい部分：' + (rev.part || '（未記入）') + '\n修正案の内容：\n' + rev.text + '\n\n'
     + '【前回の提案：あずさの出力】\n' + b.outputs.A + '\n\n【前回の提案：なぎさの出力】\n' + b.outputs.N + '\n\n【前回の提案：つかさの出力】\n' + b.outputs.T;
 }
-const AZUSA_REVISE_PROMPT = 'あなたはTriSight™のあずさです。今回は新しい起案ではなく、前回の提案の修正です。入力の【修正の実行】に、修正案（出所・直したい部分・内容）と、前回の提案（あずさ・なぎさ・つかさの出力）があります。次の決まりで出力してください。\n\n'
+const AZUSA_REVISE_PROMPT = 'あなたはTriSight®のあずさです。今回は新しい起案ではなく、前回の提案の修正です。入力の【修正の実行】に、修正案（出所・直したい部分・内容）と、前回の提案（あずさ・なぎさ・つかさの出力）があります。次の決まりで出力してください。\n\n'
  + '・修正案が指す部分だけを作り直す。それ以外の部分は、前回のあずさの出力の内容をそのまま残す（言い回しも変えない）。\n'
  + '・前回のなぎさ・つかさの指摘のうち、修正案が指す部分に関わるものは、作り直しに反映してよい。\n'
  + '・修正案が、出口・前提条件・業界ルールと食い違う場合は、作り直したうえで、その食い違いを明記する。\n'
@@ -1554,7 +1592,7 @@ function nagisaPromptFor(mode, hasKb){
   const carry = hasKb
     ? '■ 担い手の仕分け\n（あずさの各案を、起案者が実行できること（起案基礎情報）で担える部分と、誰かに頼む部分に分ける。申請書類の作成代行・提出代行など士業の業務に当たる作業は、起案者が「含む（有資格者が担当）」と回答していない限り、有資格者に頼む部分に入れる）\n\n'
     : '';
-  return 'あなたはTriSight™のなぎさです。起案者の入力（目的・立ち位置・起案内容・ベース資料・起案基礎情報）と、業界マップと、関所の判定と、あずさの出力を受け取り、以下を出力してください。\n\n'
+  return 'あなたはTriSight®のなぎさです。起案者の入力（目的・立ち位置・起案内容・ベース資料・起案基礎情報）と、業界マップと、関所の判定と、あずさの出力を受け取り、以下を出力してください。\n\n'
     + body + rules + carry
     + '■ 前提の検証\n'
     + '（①あずさの出力に書かれた課題や状況のうち、入力に根拠があるものと、根拠が無い推測とを分けて示し、推測を事実のように書いている箇所を指摘する。②経営陣・現場職員の片方の言葉にしか基づいていない箇所を示す。③出口から逆算したときに落ちている条件があれば挙げる。④制度・法令・数値など、確かめないと正しいと言えない記述を挙げ、確かめる先を添える。⑤欠けている情報に依存している箇所を示す。自分の知識で正誤を断定しない）\n\n'
@@ -1562,7 +1600,7 @@ function nagisaPromptFor(mode, hasKb){
     + '（倫理的・法的・社会的な懸念点を抽出。なければ「懸念点なし」と記載）';
 }
 
-const TSUKASA_PROMPT = 'あなたはTriSight™のつかさです。起案者の入力（目的・立ち位置・起案内容・ベース資料）と、関所の判定と、なぎさの出力を受け取り、以下の3つを評価してください。\n\n'
+const TSUKASA_PROMPT = 'あなたはTriSight®のつかさです。起案者の入力（目的・立ち位置・起案内容・ベース資料）と、関所の判定と、なぎさの出力を受け取り、以下の3つを評価してください。\n\n'
  + '■ 出口との照合\n'
  + '（なぎさの出力が、関所で確認した出口（置けていない場合は起案者の目的）と、関所で決めた提案の段階に照らしてどこまで応えているかを、観測した事実として示す。次の5点を必ず見ること。①起案者の立ち位置（関所の確認結果）を正しく踏まえているか ②出口から逆算して組み立てられているか ③当事者に固有の内容か、どの会社・業界にも当てはまる一般論か ④入力に根拠の無い前提に立っていないか ⑤業界マップのルールに照らして評価できているか（業界マップが未整備ならその旨）。ずれがあれば、その方向と大きさを書く。良い・悪いの断定はしない）\n\n'
  + '■ 理論の評価\n'
@@ -1692,7 +1730,7 @@ async function run() {
   var tsukasa = document.getElementById('outT') ? document.getElementById('outT').innerText : '';
   var now = new Date();
   var dateStr = now.getFullYear() + ('0'+(now.getMonth()+1)).slice(-2) + ('0'+now.getDate()).slice(-2) + '_' + ('0'+now.getHours()).slice(-2) + ('0'+now.getMinutes()).slice(-2);
-  var content = '■TriSight™ 出力レポート\n生成日時：' + now.toLocaleString('ja-JP') + '\n\n【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + input + '\n\n【関所（立ち位置の確認と提案の段階）】\n' + gateTxt + (TS_LAST_REV ? '\n\n【修正の実行】\n' + TS_LAST_REV : '') + '\n\n【あずさ 出力】\n' + azusa + '\n\n【なぎさ 出力】\n' + nagisa + '\n\n【つかさ 出力】\n' + tsukasa;
+  var content = '■TriSight® 出力レポート\n生成日時：' + now.toLocaleString('ja-JP') + '\n\n【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + input + '\n\n【関所（立ち位置の確認と提案の段階）】\n' + gateTxt + (TS_LAST_REV ? '\n\n【修正の実行】\n' + TS_LAST_REV : '') + '\n\n【あずさ 出力】\n' + azusa + '\n\n【なぎさ 出力】\n' + nagisa + '\n\n【つかさ 出力】\n' + tsukasa;
   var blob = new Blob([content], {type: 'text/plain;charset=utf-8'});
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1724,7 +1762,7 @@ function openStandard() {
   var nagisa = document.getElementById('outN') ? document.getElementById('outN').innerText : '';
   var tsukasa = document.getElementById('outT') ? document.getElementById('outT').innerText : '';
   var now = new Date();
-  var content = '■TriSight™ 出力レポート\n生成日時：' + now.toLocaleString('ja-JP') + '\n\n【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + input;
+  var content = '■TriSight® 出力レポート\n生成日時：' + now.toLocaleString('ja-JP') + '\n\n【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + input;
   if (reference) {
     content += '\n\n【ベース資料】\n' + reference;
   }
@@ -1747,7 +1785,7 @@ function openStandard() {
   var nagisa = document.getElementById('outN') ? document.getElementById('outN').innerText : '';
   var tsukasa = document.getElementById('outT') ? document.getElementById('outT').innerText : '';
   var now = new Date();
-  var content = '■TriSight™ 出力レポート\n生成日時：' + now.toLocaleString('ja-JP') + '\n\n【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + input;
+  var content = '■TriSight® 出力レポート\n生成日時：' + now.toLocaleString('ja-JP') + '\n\n【達成したい目的】\n' + purpose + '\n\n【起案者の立ち位置】\n' + situation + '\n\n【起案内容】\n' + input;
   if (reference) {
     content += '\n\n【ベース資料】\n' + reference;
   }
@@ -1888,5 +1926,6 @@ fetch('version.json', {cache:'no-store'}).then(function(r){ return r.ok ? r.json
   }
 }).catch(function(){});
 </script>
+<script>try{ tsModelLine(); }catch(_){}</script>
 </body>
 </html>

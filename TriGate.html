@@ -10,6 +10,9 @@
 <link rel="manifest" href="manifest_trigate.json">
 <meta name="theme-color" content="#16213a">
 <link rel="apple-touch-icon" href="TriGate_icon_192.png">
+<!-- 2026-09-28：画面そのものに鳥居のアイコンを指定する。指定が無かったため、ノアPCでタスクバーに
+     ピン留めしたときに、同じサイトのトライサイトの絵が借りられていた。 -->
+<link rel="icon" type="image/png" href="TriGate_icon_192.png">
 <!-- 2026-07-27：PDF部品を外部CDN（cdnjs）から自前配信へ切り替えた。
      旧構成は <script src="https://cdnjs.cloudflare.com/.../pdf.min.js"></script> を head で同期読み込みしていたため、
      回線側でcdnjsが応答しないまま止まる環境では、ブラウザがここで解析を止め、
@@ -1027,16 +1030,22 @@ window.tsSyncBanner = function(msg){
     const code = tsCode();
     if(!code) throw new Error("認証コードが未入力です。");
     let res;
+    /* 2026-09-28：返事が来ないまま画面が終わりなく待ち続けないよう、5分で打ち切る */
+    const ac = (typeof AbortController !== "undefined") ? new AbortController() : null;
+    const tm = ac ? setTimeout(function(){ try{ ac.abort(); }catch(_){} }, 300000) : null;
     try{
-      res = await fetch(GATE_RELAY, {
+      const opt = {
         method: "POST",
         headers: {"Content-Type": "application/json", "x-trisight-code": code},
         body: JSON.stringify({ task: task, payload: payload || {} })
-      });
-    }catch(_){
+      };
+      if(ac) opt.signal = ac.signal;
+      res = await fetch(GATE_RELAY, opt);
+    }catch(err){
+      if(err && err.name === "AbortError") throw new Error("判定エンジンの答えが5分以内に届きませんでした。");
       /* 2026-09-16：届かなかった理由を見分けて出す */
       throw new Error(await window.tsNetWhy("判定エンジン", 0));
-    }
+    }finally{ if(tm) clearTimeout(tm); }
     if(tsAuthFail(res.status)) throw new Error("認証エラー（401）：認証コードを確認してください。");
     if(!res.ok){
       let msg = "";
@@ -1948,6 +1957,11 @@ window.tsSyncBanner = function(msg){
         why: "介護サービス事業者向けのお知らせ・補助金の案内が載る窓口",
         guide: ["事業者向けのお知らせから、補助金・支援事業の案内を開く", "申請期間と対象サービスを確かめる"],
         ind: ["医療", "福祉", "介護", "看護", "障害"], seen: "2026-09-28" },
+      { url: "https://www.fukushi.metro.tokyo.lg.jp/kourei/hoken/chiiki",
+        title: "地域を支える「訪問介護」応援事業（東京都福祉局）",
+        why: "訪問介護向けの採用・自転車・サービス提供体制の補助が並ぶ窓口",
+        guide: ["ページ内の事業の案内から、令和8年度の事業ページを開く", "受付期間と交付要綱を確かめる"],
+        ind: ["医療", "福祉", "介護", "看護", "障害"], seen: "2026-09-28" },
       { url: "https://www.fukushi.metro.tokyo.lg.jp/kourei/hoken/jinzai",
         title: "介護人材関連事業（東京都福祉局）",
         why: "介護人材の確保・定着・育成の補助事業がまとまっている窓口",
@@ -2091,15 +2105,16 @@ window.tsSyncBanner = function(msg){
        毎回ゼロから探させないことで、同じ地域なら同じ範囲を当たらせる。
        2026-09-06：市区町村を選んだときは、県の箱の入口も一緒に渡す。 */
     const seen = {};
-    /* 2026-09-28：業種を限った入口（ind 付き）は、渡す業種の語に当てはまるときだけ渡す。
-       ind の無い入口は、これまでどおり業種を問わず渡す。 */
-    const indText = String(industryHint || "");
+    /* 2026-09-28：業種を限った入口（二版目）（ind 付き）は、昼の掘りには渡さない。
+       一版目では掘るたびに渡していたが、入口の数だけ検索が増えて掘りが遅くなったうえ、
+       今日の3制度（サービス継続支援事業ほか）も拾えなかった。渡すだけでは入口のページを
+       開いて読むことにならないため。入口は夜の自動発掘（tsNightReadEntries）が開いて読み、
+       拾った制度を台帳へ入れる。昼はその台帳から出す。 */
     const known = [].concat(tsEntryGet(area), (area !== pref ? tsEntryGet(pref) : []))
       .filter(function(x){
         const u = x && x.url;
         if(!u || seen[u]) return false;
-        if(Array.isArray(x.ind) && x.ind.length
-           && !x.ind.some(function(w){ return indText.indexOf(w) >= 0; })) return false;
+        if(Array.isArray(x.ind) && x.ind.length) return false;
         seen[u] = true; return true;
       });
     try{ text = await tsAsk("dig_web", {
@@ -2199,6 +2214,118 @@ window.tsSyncBanner = function(msg){
       application_guidelines: [], outline_of_grant: [], application_form: []
     }));
   }
+
+  /* ===== 夜の自動発掘：当社の入口ページを開いて読む（2026-09-28） =====
+     これまで入口は「まず当たる先」としてAIの検索に渡すだけで、ページを開いて
+     並んでいる事業を拾う処理は無かった。そのため入口に載っている制度でも取りこぼしていた
+     （実例＝2026-09-28 ノア。東京都のサービス継続支援事業・訪問介護等サービス提供体制確保支援事業・
+     訪問系障害福祉サービス人材採用経費支援事業の3件が、一覧に一度も出なかった）。
+     ここでは入口のページをリレー（fetchdoc）で取り寄せ、リンクの見出しから制度らしいものを拾い、
+     台帳（保管庫・都道府県×年度）へ入れる。AIは使わない（見出しの語で拾うだけ）。
+     中身の確認は、昼に一覧から開いたときに行う。 */
+  const TS_NIGHT_WORDS = /(補助|助成|支援事業|支援金|奨励金|給付金|応援事業|交付金|支援補助)/;
+  const TS_NIGHT_SKIP  = /(受付(は|を)?終了|終了しました|募集終了|募集は終了|平成|令和元年度|令和[1-6１-６]年度|仕入控除税額|よくある|Ｑ＆Ａ|Q&A|Ｑ&Ａ|問い合わせ|お問合せ|様式|記入例|マニュアル)/;
+  const TS_NIGHT_FILE  = /\.(pdf|xlsx?|docx?|zip|csv|pptx?)(\?|#|$)/i;
+  async function tsNightFetchHtml(url){
+    const code = tsCode();
+    if(!code) throw new Error("認証コードが未入力です。");
+    const ac = (typeof AbortController !== "undefined") ? new AbortController() : null;
+    const tm = ac ? setTimeout(function(){ try{ ac.abort(); }catch(_){} }, 60000) : null;
+    try{
+      const opt = { method: "POST",
+        headers: {"Content-Type": "application/json", "x-trisight-code": code},
+        body: JSON.stringify({ url: url, name: "page.html" }) };
+      if(ac) opt.signal = ac.signal;
+      const res = await fetch(FD_RELAY, opt);
+      if(!res.ok) throw new Error("取り寄せに失敗（" + res.status + "）");
+      const d = await res.json();
+      if(!d || !d.base64) throw new Error("中身が空で返りました。");
+      return tsB64ToText(d.base64);
+    }catch(err){
+      if(err && err.name === "AbortError") throw new Error("60秒以内に取り寄せられませんでした。");
+      throw err;
+    }finally{ if(tm) clearTimeout(tm); }
+  }
+  /* 入口ページのHTMLから、制度らしい見出しのリンクを拾う */
+  function tsNightPickLinks(html, baseUrl){
+    let doc = null;
+    try{ doc = new DOMParser().parseFromString(String(html || ""), "text/html"); }catch(_){ return []; }
+    const out = [], seen = {};
+    const selfN = tsNormUrl(baseUrl);
+    Array.prototype.forEach.call(doc.querySelectorAll("a[href]"), function(a){
+      const text = String(a.textContent || "").replace(/[\s\u3000]+/g, " ").trim();
+      if(text.length < 6 || text.length > 120) return;
+      if(!TS_NIGHT_WORDS.test(text) || TS_NIGHT_SKIP.test(text)) return;
+      let u = "";
+      try{ u = new URL(a.getAttribute("href"), baseUrl).href; }catch(_){ return; }
+      if(!/^https?:\/\//i.test(u) || TS_NIGHT_FILE.test(u)) return;
+      const n = tsNormUrl(u);
+      if(n === selfN || seen[n]) return;
+      seen[n] = true;
+      out.push({ text: text, url: u });
+    });
+    return out.slice(0, 60);
+  }
+  /* 地域の入口を全部開いて読み、拾った制度を台帳へ入れる。
+     業種を限った入口（ind 付き）は、会社の業種の語に当てはまるときだけ読む。 */
+  async function tsNightReadEntries(pref, city, industryHint, onStep){
+    const area = pref + (city || "");
+    const indText = String(industryHint || "");
+    const seenU = {};
+    const list = [];
+    [[area, tsEntryGet(area)], [pref, (area !== pref ? tsEntryGet(pref) : [])]].forEach(function(pair){
+      (pair[1] || []).forEach(function(x){
+        const u = x && x.url;
+        if(!u || seenU[u]) return;
+        if(Array.isArray(x.ind) && x.ind.length
+           && !x.ind.some(function(w){ return indText.indexOf(w) >= 0; })) return;
+        seenU[u] = true;
+        list.push({ entry: x, areaName: pair[0] });
+      });
+    });
+    const targets = list.slice(0, 30);
+    const today = new Date().toISOString().slice(0, 10);
+    const items = [], report = [], seenId = {};
+    for(let i = 0; i < targets.length; i++){
+      const x = targets[i].entry;
+      if(typeof onStep === "function") onStep(i + 1, targets.length, x.title || x.url);
+      try{
+        const html = await tsNightFetchHtml(x.url);
+        const links = tsNightPickLinks(html, x.url);
+        report.push({ title: x.title || x.url, ok: true, n: links.length });
+        links.forEach(function(l){
+          const id = "web-" + tsWebStableId({ source_url: l.url, title: l.text });
+          if(seenId[id]) return;
+          seenId[id] = true;
+          items.push({
+            id: id, title: l.text, name: l.text,
+            subsidy_catch_phrase: "", subsidy_max_limit: null, subsidy_rate: null,
+            use_purpose: "", industry: "", target_number_of_employees: "",
+            target_area_search: targets[i].areaName, target_area_detail: targets[i].areaName,
+            acceptance_start_datetime: null, acceptance_end_datetime: null,
+            front_subsidy_detail_page_url: l.url,
+            detail: "夜の自動発掘で、当社の入口ページ「" + (x.title || "") + "」の一覧から拾った見出しです。"
+              + "当社は見出しを拾っただけで、中身（金額・期間・対象）は確認していません。必ず掲載元でお確かめください。",
+            ts_source: (x.title || targets[i].areaName) + "（当社の入口・夜の自動発掘）",
+            ts_source_short: "定点",
+            ts_from_entry: true,
+            ts_source_url: l.url,
+            ts_verified_on: today,
+            ts_guidelines: [], application_guidelines: [], outline_of_grant: [], application_form: []
+          });
+        });
+      }catch(err){
+        report.push({ title: x.title || x.url, ok: false, why: String((err && err.message) || err) });
+      }
+    }
+    let put = { ok: true };
+    if(items.length){
+      try{ put = await tsLedgerAdd(pref, city, items, false); }
+      catch(err){ put = { ok: false, why: String((err && err.message) || err) }; }
+    }
+    return { items: items, report: report, put: put, read: targets.length, skipped: list.length - targets.length };
+  }
+  window.tsNightReadEntries = tsNightReadEntries;
 
   /* ===== 拾った額の台帳（2026-09-05） =====
      制度名を鍵にして、これまでに拾った額をすべて残す。画面に出すのは最も低い額。
@@ -3564,9 +3691,16 @@ window.tsSyncBanner = function(msg){
         "進出予定地域": __cj["進出予定地域"] || [],
         "過去の申請実績": __cj["過去の申請実績"] || []
       };
-      for(let i=0;i<need.length;i+=CH){
-        const part=need.slice(i,i+CH), pk=keys.slice(i,i+CH);
-        let out=null;
+      /* 2026-09-28：18回を1回ずつ順番に送っていたため、174件で最悪9分前後かかり、
+         その間は画面の表示も変わらなかった（ノア・東京都東村山市で実測9分超）。
+         3回ずつ同時に送り、「足切り n/m」を画面に出す。 */
+      const chunks = [];
+      for(let i=0;i<need.length;i+=CH) chunks.push([need.slice(i,i+CH), keys.slice(i,i+CH)]);
+      const stEl = document.getElementById("digStatus");
+      const stBase = stEl ? String(stEl.textContent || "").replace(/\s*→ 足切り.*$/, "") : "";
+      let chunkNext = 0, chunkDone = 0;
+      const siftOne = async function(part, pk){
+        let out=null, why="";
         const ac = (typeof AbortController !== "undefined") ? new AbortController() : null;
         const timer = ac ? setTimeout(() => { try{ ac.abort(); }catch(_){} }, WAIT) : null;
         try{
@@ -3579,22 +3713,33 @@ window.tsSyncBanner = function(msg){
           const res = await fetch(GATE_RELAY, opt);
           if(res.ok){
             const j = await res.json();
-            try{ tsCheckRelay(j); }catch(ve){ mechWhy = String(ve.message || ve); }
-            if(!mechWhy && j && Array.isArray(j.sift)) out=j.sift;
-            else if(!mechWhy) mechWhy = "足切りの答えの形が読めませんでした。";
+            try{ tsCheckRelay(j); }catch(ve){ why = String(ve.message || ve); }
+            if(!why && j && Array.isArray(j.sift)) out=j.sift;
+            else if(!why) why = "足切りの答えの形が読めませんでした。";
           }else{
-            mechWhy = await window.tsNetWhy("判定エンジン", res.status);
+            why = await window.tsNetWhy("判定エンジン", res.status);
           }
         }catch(err){
-          mechWhy = (err && err.name === "AbortError")
+          why = (err && err.name === "AbortError")
             ? "判定エンジンの答えが30秒以内に届きませんでした。"
             : await window.tsNetWhy("判定エンジン", 0);
         }
         finally{ if(timer) clearTimeout(timer); }
+        /* 2026-09-28：同時に送るため、成否は回ごとに見る（1回の失敗で他の回の答えまで捨てない） */
+        if(why && !mechWhy) mechWhy = why;
         mechAsked++;
         if(out) pk.forEach((k,n)=>{ mechCache[k] = out[n] || null; });
         else { mechFailed++; pk.forEach(k=>{ delete mechCache[k]; }); }
-      }
+      };
+      const siftWorker = async function(){
+        while(chunkNext < chunks.length){
+          const c = chunks[chunkNext++];
+          await siftOne(c[0], c[1]);
+          chunkDone++;
+          if(stEl && chunks.length > 1) stEl.textContent = stBase + " → 足切り " + chunkDone + "/" + chunks.length;
+        }
+      };
+      await Promise.all([siftWorker(), siftWorker(), siftWorker()]);
     }
     function mechCheck(d){
       if(!company) return null;
@@ -4076,11 +4221,20 @@ window.tsSyncBanner = function(msg){
           __shunushi: !!it.__shunushi,
           __detailNg: !!it.__detailNg
         }));
+        /* 2026-09-28：夜の自動発掘で作った一覧かどうかと、最後に夜の発掘が動いた日時を残す。
+           昼に手で掘り直しても、最後に夜の発掘が動いた日時は引き継ぐ（朝の点検に使う）。 */
+        let prevSv = null;
+        try{ prevSv = JSON.parse(localStorage.getItem(DIG_SAVE_KEY) || "null"); }catch(_){ prevSv = null; }
+        const nightNow = !!window.__tsNightRun;
+        const nowIso = new Date().toISOString();
         localStorage.setItem(DIG_SAVE_KEY, JSON.stringify({
           company: (typeof tsCompanyKey === "function" ? tsCompanyKey() : ""),
           keyword: kw,
           status: statusText,
-          savedAt: new Date().toISOString(),
+          savedAt: nowIso,
+          night: nightNow,
+          nightAt: nightNow ? nowIso : ((prevSv && prevSv.nightAt) || null),
+          nightNote: nightNow ? String(window.__tsNightNote || "") : ((prevSv && prevSv.nightNote) || ""),
           rows: slim
         }));
       }catch(_){}
@@ -7565,7 +7719,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-28-01';
+  const TRIGATE_VERSION = '2026-09-28-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -7647,6 +7801,137 @@ window.tsSyncBanner = function(msg){
       }catch(_){ /* 失敗時は通常のドロップ操作にフォールバック */ }
     });
   }
+
+/* ===== 夜の自動発掘と朝の知らせ（2026-09-28） =====================
+   発掘は夜のうちに済ませ、昼は保管庫に貯まった結果から選んで申請へ持っていく。
+   ・TriGate.html?night=1 で開くと、この端末に入っている会社と地域で
+     ①当社の入口ページを開いて読み台帳へ入れる ②いつもの発掘を回す、を自動で行う。
+     毎晩の起動は、トライサイトPCのタスクスケジューラが行う（TriGate_night_setup.bat）。
+     終わると画面の表題を「TriGate 自動発掘 完了」にする（タスク側がそれを見て窓を閉じる）。
+   ・普通に開いたときは、最後に夜の発掘が動いた日時を画面上部に出す。
+     一度でも動いたことがあるのに30時間以上動いていなければ、動いていないと必ず出す。
+     8/22に置いた巡回監視は、動いていないことに1か月以上誰も気づけなかった。その再発を防ぐ。 */
+(function(){
+  var isNight = false;
+  try{ isNight = new URLSearchParams(location.search).get("night") === "1"; }catch(_){}
+  function bannerEl(){
+    var b = document.getElementById("nightBanner");
+    if(b) return b;
+    var st = document.getElementById("digStatus");
+    if(!st || !st.parentNode) return null;
+    b = document.createElement("div");
+    b.id = "nightBanner";
+    b.style.cssText = "margin:8px 0;padding:10px 12px;border-radius:6px;font-size:13.5px;line-height:1.7";
+    st.parentNode.insertBefore(b, st);
+    return b;
+  }
+  function paint(b, kind){
+    if(!b) return;
+    if(kind === "ng"){ b.style.background = "#fdeeea"; b.style.border = "1px solid #b4452f"; b.style.color = "#7a2412"; }
+    else if(kind === "run"){ b.style.background = "#fff8ef"; b.style.border = "1px solid #c9772a"; b.style.color = "#7a4010"; }
+    else { b.style.background = "#eef6f1"; b.style.border = "1px solid #2f6b4f"; b.style.color = "#1f4a36"; }
+  }
+  function fmt(iso){
+    try{
+      var d = new Date(iso);
+      if(isNaN(d)) return "";
+      return (d.getMonth()+1) + "月" + d.getDate() + "日 " + String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
+    }catch(_){ return ""; }
+  }
+  function esc(x){ return String(x == null ? "" : x).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]; }); }
+  function showMorning(){
+    var sv = null;
+    try{ sv = JSON.parse(localStorage.getItem("trisight_dig_saved") || "null"); }catch(_){ sv = null; }
+    if(!sv || !sv.nightAt) return;   /* 一度も動いていない（自動発掘を設定していない）利用者には何も出さない */
+    var b = bannerEl(); if(!b) return;
+    var hours = (Date.now() - new Date(sv.nightAt).getTime()) / 3600000;
+    if(!(hours <= 30)){
+      paint(b, "ng");
+      b.innerHTML = "<b>昨夜の自動発掘は動いていません。</b>最後に動いたのは " + esc(fmt(sv.nightAt))
+        + " です。いま出ている一覧はそれより前の結果です。トライサイトPCの電源とログオンの状態をお確かめください。";
+      return;
+    }
+    var rows = Array.isArray(sv.rows) ? sv.rows : [];
+    var fresh = rows.filter(function(r){ return r && r.ts_new; }).length;
+    paint(b, "ok");
+    b.innerHTML = "<b>" + esc(fmt(sv.nightAt)) + " に自動発掘した結果です。</b>"
+      + (sv.night ? "（一覧 " + rows.length + "件・うち新着 " + fresh + "件）" : "（その後、手で掘り直した一覧を表示しています）")
+      + (sv.nightNote ? "<br><span style=\"font-size:12.5px\">" + esc(sv.nightNote) + "</span>" : "");
+  }
+  function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  async function runNight(){
+    var b = bannerEl();
+    var say = function(m, kind){ if(b){ paint(b, kind || "run"); b.textContent = m; } };
+    document.title = "TriGate 自動発掘 実行中";
+    var stop = function(why){
+      say("自動発掘を中止しました：" + why, "ng");
+      window.__tsNightRun = false;
+      document.title = "TriGate 自動発掘 中止";
+    };
+    var code = (typeof tsCode === "function") ? tsCode() : "";
+    var comp = null;
+    try{ comp = JSON.parse(localStorage.getItem("trisight_dig_company") || "null"); }catch(_){ comp = null; }
+    if(!code){ stop("この端末に認証コードが入っていません。"); return; }
+    if(!comp){ stop("この端末に会社の基礎情報が読み込まれていません。"); return; }
+    var prefSel = document.getElementById("digPref"), citySel = document.getElementById("digCity");
+    var pref = prefSel ? prefSel.value : "";
+    var city = (citySel && !citySel.disabled) ? citySel.value : "";
+    if(!pref){ stop("地域（都道府県）が決まっていません。会社の本店所在地をお確かめください。"); return; }
+    /* 目的の印は外して、会社自身が申請できる制度を探す形で回す */
+    ["digShunushi", "digShinchi", "digTeikyou"].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el && el.checked){ el.checked = false; try{ el.dispatchEvent(new Event("change")); }catch(_){} }
+    });
+    window.__tsNightRun = true;
+    window.__tsNightNote = "";
+    /* ① 入口ページを開いて読む */
+    var ind = (function(){
+      var a = (comp["機械足切り条件"] && comp["機械足切り条件"]["業種"]) || "";
+      var w2 = "";
+      try{ w2 = (typeof tsIndustryWords === "function") ? tsIndustryWords(comp) : ""; }catch(_){}
+      return String(a) + "，" + String(w2 || "");
+    })();
+    say("自動発掘：①当社の入口ページを読んでいます…");
+    var r;
+    try{
+      r = await window.tsNightReadEntries(pref, city, ind, function(i, n, t){
+        say("自動発掘：①当社の入口ページを読んでいます（" + i + "/" + n + "：" + t + "）");
+      });
+    }catch(err){
+      r = { items: [], report: [], put: { ok: false, why: String((err && err.message) || err) }, read: 0, skipped: 0 };
+    }
+    var okN = r.report.filter(function(x){ return x.ok; }).length;
+    var ngN = r.report.length - okN;
+    window.__tsNightNote = "入口ページ " + r.report.length + "件を読み、制度の見出しを " + r.items.length + "件拾いました"
+      + (ngN ? "（読めなかった入口 " + ngN + "件）" : "")
+      + (r.skipped ? "（入口が多いため " + r.skipped + "件は今回読んでいません）" : "")
+      + (r.put && !r.put.ok ? "／拾った分を台帳へ入れられませんでした：" + r.put.why : "") + "。";
+    /* ② いつもの発掘を回す（終わると一覧が保管庫へ控えられ、他の端末でも同じ一覧が出る） */
+    var btn = document.getElementById("digBtn");
+    if(!btn){ stop("新着探索のボタンが見つかりません。"); return; }
+    var t0 = Date.now();
+    while(btn.disabled && Date.now() - t0 < 300000) await sleep(2000);
+    say("自動発掘：②いつもの発掘を回しています…（" + window.__tsNightNote + "）");
+    btn.click();
+    var started = false, t1 = Date.now();
+    while(Date.now() - t1 < 90 * 60000){
+      await sleep(3000);
+      if(btn.disabled) started = true;
+      else if(started) break;
+      else if(Date.now() - t1 > 60000) break;   /* 1分たっても始まらなければ、始まらなかったとみなす */
+    }
+    window.__tsNightRun = false;
+    if(!started){ stop("いつもの発掘が始まりませんでした。" + window.__tsNightNote); return; }
+    if(btn.disabled){ stop("いつもの発掘が90分で終わりませんでした。" + window.__tsNightNote); return; }
+    await sleep(15000);   /* 一覧の控えが保管庫へ送られるのを待つ */
+    say("自動発掘が終わりました（" + fmt(new Date().toISOString()) + "）。" + window.__tsNightNote, "ok");
+    document.title = "TriGate 自動発掘 完了";
+  }
+  var go = function(){ if(isNight) runNight(); else showMorning(); };
+  var ready = window.tsBoxReady;
+  if(ready && typeof ready.then === "function") ready.then(function(){ setTimeout(go, 1500); }, function(){ setTimeout(go, 1500); });
+  else setTimeout(go, 3000);
+})();
 </script>
 
 <script>

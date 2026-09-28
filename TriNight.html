@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>夜の自動発掘の登録 | TriSight</title>
+<style>
+  :root{ --ink:#1f2933; --muted:#6b7280; --line:#d9dee5; --ok:#1f7a4d; --ng:#b0203a; --warn:#9a5b00; --bg:#f7f8fa; --accent:#2c4a8a; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif; color:var(--ink); background:var(--bg); line-height:1.7; }
+  header{ display:flex; align-items:center; gap:12px; padding:14px 20px; background:#fff; border-bottom:1px solid var(--line); }
+  header img{ width:34px; height:34px; }
+  header h1{ margin:0; font-size:19px; font-weight:700; }
+  header .co{ font-size:12px; color:var(--muted); margin-left:auto; }
+  main{ max-width:780px; margin:0 auto; padding:20px; }
+  section{ background:#fff; border:1px solid var(--line); border-radius:8px; padding:16px 18px; margin-bottom:16px; }
+  h2{ font-size:15.5px; margin:0 0 8px; }
+  p{ margin:6px 0; font-size:14px; }
+  .muted{ color:var(--muted); font-size:13px; }
+  select{ font-size:15px; padding:6px 8px; min-width:280px; }
+  button{ font-size:14.5px; padding:8px 16px; border-radius:6px; border:1px solid var(--accent); background:var(--accent); color:#fff; cursor:pointer; }
+  button.sub{ background:#fff; color:var(--accent); }
+  button.danger{ background:#fff; color:var(--ng); border-color:var(--ng); }
+  button:disabled{ opacity:.5; cursor:default; }
+  .row{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:10px; }
+  .msg{ margin-top:10px; font-size:14px; white-space:pre-wrap; }
+  .msg.ok{ color:var(--ok); } .msg.ng{ color:var(--ng); } .msg.warn{ color:var(--warn); }
+  ul{ margin:6px 0 0 20px; padding:0; font-size:13.5px; }
+  .state{ font-size:14.5px; font-weight:700; }
+</style>
+</head>
+<body>
+<header>
+  <img src="TriSight_icon_512.png" alt="TriSight®">
+  <h1>夜の自動発掘の登録</h1>
+  <span class="co">合同会社トライサイト</span>
+</header>
+<main>
+  <section>
+    <h2>いまの登録</h2>
+    <p class="state" id="nowState">確かめています…</p>
+    <p class="muted" id="codeState"></p>
+  </section>
+
+  <section>
+    <h2>夜の発掘に載せる会社</h2>
+    <p>トライゲイトに読み込んである会社から選んでください。毎晩3時ごろ、この会社でトライゲイトの自動発掘が当社側で動きます。PCの電源は入れておく必要がありません。</p>
+    <div class="row">
+      <select id="compSel"></select>
+      <button id="regBtn">夜の発掘に載せる</button>
+    </div>
+    <p class="muted">当社側に置くのは写しだけです。代表者・担当者の氏名、連絡先、法人番号、番地以下、振込口座、事業所番号の後ろの桁は、写しを作る時点でこのPCの中で「非公開」などに置き換わります。本物はこのPCの外へ出ません。1つの認証コードで載せられるのは1社です。</p>
+    <div class="msg" id="regMsg"></div>
+    <div id="nameWarn" style="display:none">
+      <p class="msg warn">次の欄に、人の名前らしい書き方があります。人名であれば、基本情報シートで書き直してから、もう一度載せてください。人名でなければ、そのまま載せてかまいません。</p>
+      <ul id="nameList"></ul>
+      <div class="row"><button class="sub" id="forceBtn">人名ではないので、このまま載せる</button></div>
+    </div>
+    <details style="margin-top:10px"><summary class="muted">置き換えた欄の一覧を見る</summary><ul id="maskList"></ul></details>
+  </section>
+
+  <section>
+    <h2>写しを消す</h2>
+    <p>夜の発掘をやめるときや、会社を入れ替えるときに押してください。当社側に置いた写しを消します。掘った一覧や判定の記憶は消えません。</p>
+    <div class="row"><button class="danger" id="delBtn">当社側の写しを消す</button></div>
+    <div class="msg" id="delMsg"></div>
+  </section>
+</main>
+<script>
+(function(){
+  "use strict";
+  var BOX = "https://trisight-relay.vercel.app/api/box";
+  var LIB = "trisight_dig_company_lib", CUR = "trisight_dig_company", CODE = "trisight_access_code";
+  var NIGHT_KEY = "trisight_dig_company", NIGHT_NAME = "trisight_dig_company_name";
+  function $(id){ return document.getElementById(id); }
+  function ls(k){ try{ return localStorage.getItem(k); }catch(_){ return null; } }
+  function code(){ return String(ls(CODE) || ""); }
+  function mask(c){ return c.length > 4 ? "•••" + c.slice(-4) : "•••"; }
+  function say(el, text, kind){ el.className = "msg" + (kind ? " " + kind : ""); el.textContent = text; }
+  function nameOf(o){ var c = (o && o["会社"]) || {}; return String(c["名称"] || c["法人名"] || c["会社名"] || "").trim(); }
+
+  /* 会社の一覧＝トライゲイトが端末に貯めている会社（と、いま選んでいる会社） */
+  function companies(){
+    var m = {};
+    try{ m = JSON.parse(ls(LIB) || "{}") || {}; }catch(_){ m = {}; }
+    try{ var c = JSON.parse(ls(CUR) || "null"); var n = nameOf(c); if(n && !m[n]) m[n] = c; }catch(_){}
+    return m;
+  }
+
+  /* ===== ダミー入りの写しを作る（このPCの中で行う） =====
+     判定の材料（事業・規模・地域・条件・計画）は本物のまま残し、
+     個人や会社を特定する欄だけを、形のそろったダミーに置き換える。
+     欄を抜かずに置き換えるのは、判定するAIが「記載なし」を要確認に回さないため（2026-09-29の決定）。 */
+  var RULES = [
+    [/郵便番号/, "0000000"],
+    [/法人番号/, "0000000000000"],
+    [/番地/, "非公開"],
+    [/電話|FAX|ＦＡＸ|携帯/, "000-0000-0000"],
+    [/メール/, "hikokai@example.invalid"],
+    [/氏名|担当者名|担当者フリガナ|代表者名/, "非公開"],
+    [/口座番号/, "0000000"],
+    [/金融機関名|支店名|名義/, "非公開"],
+    [/手続代行者_住所/, "非公開"],
+    [/GビズID|gbiz/i, "非公開"]
+  ];
+  function dummyOf(key, v){
+    for(var i = 0; i < RULES.length; i++){ if(RULES[i][0].test(key)) return RULES[i][1]; }
+    return undefined;
+  }
+  function makeCopy(src){
+    var masked = [];
+    function walk(o, path, parentKey){
+      if(Array.isArray(o)){ return o.map(function(x, i){ return walk(x, path + "[" + (i + 1) + "]", parentKey); }); }
+      if(!o || typeof o !== "object") return o;
+      var out = {};
+      Object.keys(o).forEach(function(k){
+        var v = o[k], p = path ? path + "／" + k : k;
+        /* 事業所の番号は、先頭2桁（都道府県）だけ本物にする */
+        if(parentKey === "事業所" && k === "番号" && v != null && String(v)){
+          var s = String(v); out[k] = s.slice(0, 2) + s.slice(2).replace(/[0-9０-９]/g, "0"); masked.push(p + "（先頭2桁は本物）"); return;
+        }
+        if(parentKey === "事業所" && k === "事業所名"){ out[k] = "非公開"; masked.push(p); return; }
+        if(v != null && typeof v !== "object"){
+          var d = dummyOf(k, v);
+          if(d !== undefined && String(v) !== ""){ out[k] = d; masked.push(p); return; }
+        }
+        out[k] = walk(v, p, k);
+      });
+      return out;
+    }
+    var copy = walk(src, "", "");
+    copy["夜の発掘用の写し"] = { "作成日時": new Date().toISOString(), "説明": "個人・会社を特定する欄はダミーに置き換えた写し。正本はこの会社のPCにある。" };
+    return { copy: copy, masked: masked };
+  }
+  /* 起案基礎情報などの自由記述に、人名らしい書き方がないかを見る（見つけたら知らせるだけ） */
+  function nameHints(o){
+    var hits = [];
+    var re = /[一-龥々]{1,4}(さん|氏|君|ちゃん)/g;
+    (function walk(x, path){
+      if(Array.isArray(x)){ x.forEach(function(y, i){ walk(y, path + "[" + (i + 1) + "]"); }); return; }
+      if(x && typeof x === "object"){ Object.keys(x).forEach(function(k){ walk(x[k], path ? path + "／" + k : k); }); return; }
+      if(typeof x === "string"){ var m = x.match(re); if(m) hits.push(path + "：「" + m.join("」「") + "」"); }
+    })(o, "");
+    return hits;
+  }
+
+  async function box(body){
+    var c = code();
+    if(!c) return { ok:false, why:"このPCに認証コードが入っていません。先にトライゲイトを開いて認証コードを入れてください。" };
+    try{
+      var r = await fetch(BOX, { method:"POST", headers:{ "Content-Type":"application/json", "x-trisight-code": c }, body: JSON.stringify(body) });
+      var j = null; try{ j = await r.json(); }catch(_){}
+      if(!r.ok) return { ok:false, why: (j && j.error) || ("当社の保管庫が受け付けませんでした（" + r.status + "）") };
+      return Object.assign({ ok:true }, j || {});
+    }catch(_){ return { ok:false, why:"当社の保管庫につながりませんでした。通信の状態をお確かめください。" }; }
+  }
+
+  async function refresh(){
+    var c = code();
+    $("codeState").textContent = c ? ("認証コード：" + mask(c) + "（トライゲイトと同じもの）") : "このPCに認証コードが入っていません。先にトライゲイトを開いて認証コードを入れてください。";
+    var r = await box({ op:"get" });
+    if(!r.ok){ $("nowState").textContent = "登録の状態を確かめられませんでした：" + r.why; return; }
+    var d = r.data || {}, nm = d[NIGHT_NAME] || "", at = "";
+    try{ var o = JSON.parse(d[NIGHT_KEY] || "null"); at = o && o["夜の発掘用の写し"] ? o["夜の発掘用の写し"]["作成日時"] : ""; }catch(_){}
+    $("nowState").textContent = nm
+      ? ("「" + nm + "」が夜の発掘に載っています" + (at ? "（写しを作った日時 " + new Date(at).toLocaleString("ja-JP") + "）" : ""))
+      : "夜の発掘に載っている会社はありません";
+  }
+
+  function render(){
+    var m = companies(), names = Object.keys(m).sort(), sel = $("compSel");
+    sel.innerHTML = names.length
+      ? names.map(function(n){ return '<option value="' + n.replace(/"/g, "&quot;") + '">' + n.replace(/</g, "&lt;") + "</option>"; }).join("")
+      : '<option value="">（トライゲイトに読み込んだ会社がありません）</option>';
+    $("regBtn").disabled = !names.length;
+  }
+
+  var pending = null;
+  async function send(copyObj, nm){
+    var r = await box({ op:"put", data: (function(){ var d = {}; d[NIGHT_KEY] = JSON.stringify(copyObj); d[NIGHT_NAME] = nm; return d; })() });
+    if(!r.ok){ say($("regMsg"), "載せられませんでした：" + r.why, "ng"); return; }
+    $("nameWarn").style.display = "none";
+    say($("regMsg"), "「" + nm + "」を夜の発掘に載せました。今夜3時ごろから、この会社で自動発掘が動きます。", "ok");
+    refresh();
+  }
+  $("regBtn").addEventListener("click", async function(){
+    var nm = $("compSel").value, src = companies()[nm];
+    if(!src){ say($("regMsg"), "会社が選ばれていません。", "ng"); return; }
+    var made = makeCopy(src);
+    $("maskList").innerHTML = made.masked.length ? made.masked.map(function(p){ return "<li>" + p.replace(/</g, "&lt;") + "</li>"; }).join("") : "<li>置き換える欄はありませんでした</li>";
+    var hints = nameHints(made.copy);
+    if(hints.length){
+      pending = { copy: made.copy, nm: nm };
+      $("nameList").innerHTML = hints.map(function(h){ return "<li>" + h.replace(/</g, "&lt;") + "</li>"; }).join("");
+      $("nameWarn").style.display = "";
+      say($("regMsg"), "まだ載せていません。下の注意をご覧ください。", "warn");
+      return;
+    }
+    await send(made.copy, nm);
+  });
+  $("forceBtn").addEventListener("click", async function(){ if(pending){ await send(pending.copy, pending.nm); pending = null; } });
+  $("delBtn").addEventListener("click", async function(){
+    if(!confirm("当社側に置いた会社の写しを消します。消すと、今夜から夜の自動発掘は動きません。\nよろしいですか？")) return;
+    var d = {}; d[NIGHT_KEY] = null; d[NIGHT_NAME] = null;
+    var r = await box({ op:"put", data: d });
+    say($("delMsg"), r.ok ? "写しを消しました。" : ("消せませんでした：" + r.why), r.ok ? "ok" : "ng");
+    refresh();
+  });
+
+  window.__tnMakeCopy = makeCopy; window.__tnNameHints = nameHints;   /* 動作確認用 */
+  render(); refresh();
+})();
+</script>
+</body>
+</html>

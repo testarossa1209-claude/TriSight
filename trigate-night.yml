@@ -1,0 +1,95 @@
+# ============================================================
+# トライゲイト 夜の自動発掘（PCの電源が切れていても動かす）
+# 置き場所：TriSight リポジトリの .github/workflows/trigate-night.yml
+# ------------------------------------------------------------
+# 毎晩3時（日本時間）に、GitHubが用意する仮想のPCでトライゲイトを開き、
+# 夜の自動発掘（?night=1）を最後まで走らせる。処理はトライゲイトの画面そのもの。
+# 会社の情報は、TriNight.html で当社の保管庫に置いた「ダミー入りの写し」だけを使う。
+# 認証コードはリポジトリの Secrets（名前：TRIGATE_NIGHT_CODE）に置く。ここには書かない。
+# このリポジトリは公開なので、記録（ログ）にも会社の情報は書き出さない。
+# 導入：2026-09-29
+# ============================================================
+name: トライゲイト夜の自動発掘
+
+on:
+  schedule:
+    - cron: '0 18 * * *'     # 世界標準時18時＝日本時間3時
+  workflow_dispatch:          # 画面の「Run workflow」から手で動かすこともできる
+
+concurrency:
+  group: trigate-night
+  cancel-in-progress: false
+
+jobs:
+  night:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: 仮想ブラウザを用意する
+        run: |
+          npm install --no-save playwright@1.47.2
+          npx playwright install --with-deps chromium
+      - name: 自動発掘を動かす
+        env:
+          TRIGATE_CODE: ${{ secrets.TRIGATE_NIGHT_CODE }}
+        run: |
+          cat > night.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          const CODE = process.env.TRIGATE_CODE || '';
+          const PAGE = 'https://testarossa1209-claude.github.io/TriSight/TriGate.html?night=1';
+          const BOX = 'https://trisight-relay.vercel.app/api/box';
+          const log = (m) => console.log(new Date().toISOString().slice(0, 19) + ' ' + m);
+          if (!CODE) { log('認証コード（Secrets の TRIGATE_NIGHT_CODE）が登録されていません。'); process.exit(1); }
+
+          /* 当社の保管庫から、夜の発掘に載っている会社の写しを取る */
+          let comp = '', name = '';
+          try {
+            const r = await fetch(BOX, { method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-trisight-code': CODE },
+              body: JSON.stringify({ op: 'get' }) });
+            if (!r.ok) { log('当社の保管庫が受け付けませんでした（' + r.status + '）。'); process.exit(1); }
+            const j = await r.json();
+            comp = (j && j.data && j.data.trisight_dig_company) || '';
+            name = (j && j.data && j.data.trisight_dig_company_name) || '';
+          } catch (e) { log('当社の保管庫につながりませんでした。'); process.exit(1); }
+          if (!comp || !name) { log('夜の発掘に載っている会社がありません（TriNight.html で載せてください）。今夜は何もしません。'); process.exit(0); }
+
+          /* 仮想ブラウザでトライゲイトを開く。開く前に、写しと認証コードを入れておく */
+          const browser = await chromium.launch();
+          const ctx = await browser.newContext({ locale: 'ja-JP', timezoneId: 'Asia/Tokyo' });
+          await ctx.addInitScript(({ code, comp, name }) => {
+            try {
+              if (location.hostname.endsWith('github.io')) {
+                localStorage.setItem('trisight_access_code', code);
+                localStorage.setItem('trisight_dig_company', comp);
+                localStorage.setItem('trisight_dig_company_name', name);
+              }
+            } catch (e) {}
+          }, { code: CODE, comp, name });
+          const page = await ctx.newPage();
+          page.on('dialog', (d) => { d.accept().catch(() => {}); });
+          await page.goto(PAGE, { waitUntil: 'load', timeout: 120000 });
+          log('トライゲイトを開きました。');
+
+          /* 表題が「自動発掘 完了」か「自動発掘 中止」になるまで待つ（最長280分） */
+          const t0 = Date.now();
+          let title = '', last = '';
+          while (Date.now() - t0 < 280 * 60000) {
+            await page.waitForTimeout(30000);
+            title = await page.title().catch(() => '');
+            if (title !== last) { log('画面の表題：' + title); last = title; }
+            if (/自動発掘 (完了|中止)/.test(title)) break;
+          }
+          const banner = await page.evaluate(() => {
+            const b = document.getElementById('nightBanner'); return b ? b.textContent : '';
+          }).catch(() => '');
+          await page.waitForTimeout(20000);   /* 保管庫への送り残しを待つ */
+          await browser.close();
+          if (/自動発掘 完了/.test(title)) { log('自動発掘が完了しました。'); process.exit(0); }
+          log('自動発掘が完了しませんでした：' + (banner || '（280分以内に終わりませんでした）'));
+          process.exit(1);
+          EOF
+          node night.mjs

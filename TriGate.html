@@ -2792,6 +2792,74 @@ window.tsSyncBanner = function(msg){
         out.push(c);
       });
     });
+    /* 2026-09-28（四版目）：重複をまとめる。
+       同じ制度が複数の入口ページからリンクされていて、リンク先のURLがページごとに違うため、
+       夜の発掘で拾ったものが別の制度として2度・3度入っていた（実例＝東京都介護職員宿舎借り上げ支援事業、
+       介護DX推進人材育成支援事業、人材育成促進支援事業）。また、昼の検索で拾った制度と夜に拾った同じ制度も、
+       URLが違えば並んでいた。重複は一覧を長くし、「事業に照らした仕分け」で同じ制度を何度もAIに送る。
+       まとめるのは、夜に拾ったものが1件でも入っている組だけ。昼の検索とJグランツだけの組には、
+       新築・既存のように同じ名前でも中身の違う制度があるため、これまでどおり注意を添えるだけにする。
+       同じ制度とみなす条件＝名前をそろえて（「東京都」「令和○年度」、空白、記号を落とす）一致するか、
+       片方の名前（10字以上）がもう片方に丸ごと含まれるか（報道発表の見出しと事業名の関係）。
+       残すのは、金額・期間など中身の書かれている側。昼の検索で拾ったものを夜のものより先にする。 */
+    const isNight = function(x){ return String(x.ts_source || "").indexOf("夜の自動発掘") >= 0; };
+    const dupKey = function(x){
+      return String(x.title || x.name || "")
+        .replace(/[（(]旧[：:][^）)]*[）)]/g, "")
+        .replace(/(令和|平成)\s*[0-9０-９元]+\s*年度?/g, "")
+        .replace(/^東京都\s*/, "")
+        .replace(/[\s　「」『』【】！!？?・,，、。]/g, "");
+    };
+    const richness = function(x){
+      let n = 0;
+      if(x.subsidy_max_limit != null && x.subsidy_max_limit !== "") n += 2;
+      if(x.acceptance_end_datetime) n += 2;
+      if(!isNight(x)) n += 1;
+      return n;
+    };
+    const keys = out.map(dupKey);
+    /* 名前の変わった事業は「(旧：○○)」と旧名を添えていることがある。旧名とも突き合わせる */
+    const oldKeys = out.map(function(x){
+      const m = String(x.title || x.name || "").match(/[（(]旧[：:]([^）)]*)[）)]/);
+      return m ? dupKey({ title: m[1] }) : "";
+    });
+    const parent = out.map(function(_, i){ return i; });
+    const find = function(i){ while(parent[i] !== i){ parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+    for(let i = 0; i < out.length; i++){
+      for(let j = i + 1; j < out.length; j++){
+        if(!(isNight(out[i]) || isNight(out[j]))) continue;
+        const a = keys[i], b = keys[j];
+        if(!a || !b) continue;
+        const same = (a === b) || (a.length >= 10 && b.indexOf(a) >= 0) || (b.length >= 10 && a.indexOf(b) >= 0)
+          || (oldKeys[i] && oldKeys[i] === b) || (oldKeys[j] && oldKeys[j] === a);
+        if(same) parent[find(j)] = find(i);
+      }
+    }
+    const groups = {};
+    out.forEach(function(x, i){ const r = find(i); (groups[r] = groups[r] || []).push(x); });
+    const merged = [];
+    out.forEach(function(x, i){
+      const g = groups[find(i)];
+      if(!g || g.__done) return;
+      g.__done = true;
+      if(g.length === 1){ merged.push(x); return; }
+      /* 中身の量が同じなら、名前の短いほう（事業名そのもの。報道発表の見出しより短い）を残す */
+      const best = g.slice().sort(function(p, q){
+        const cur = function(x){ return /[（(]旧[：:]/.test(String(x.title || "")) ? 1 : 0; };
+        return (richness(q) - richness(p))
+          || (cur(q) - cur(p))   /* 旧名を添えている側＝いまの名前を残す */
+          || (String(p.title || "").length - String(q.title || "").length);
+      })[0];
+      best.ts_source = (best.ts_source || "") + "／同じ制度をほかに " + (g.length - 1) + " か所でも確認";
+      if(g.some(function(y){ return y.ts_new; })) best.ts_new = true;
+      if(!best.industry){
+        const withInd = g.filter(function(y){ return y.industry; })[0];
+        if(withInd) best.industry = withInd.industry;
+      }
+      merged.push(best);
+    });
+    out.length = 0;
+    merged.forEach(function(x){ out.push(x); });
     /* 同じ名前で別のページの制度には、区分を確かめる必要があることを添える */
     const nm = function(x){ return String(x.title || x.name || "").replace(/[\s　]/g, ""); };
     const cnt = {};
@@ -7799,7 +7867,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-28-03';
+  const TRIGATE_VERSION = '2026-09-28-04';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

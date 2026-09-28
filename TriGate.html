@@ -455,6 +455,7 @@ body.presenMode table{font-size:1.02em}
         </div>
       <button id="digBtn" class="rbtn">新着探索</button>
       <button type="button" class="rc-toggle" id="digAutoReg" onclick="window.open('TriNight.html', '_blank')" title="決まった時刻に自動で発掘する会社を登録します">自動発掘の登録</button>
+      <span id="digAutoRegState" style="font-size:12.5px;margin-left:6px"></span>
     </div>
     <div class="digrow" style="margin-top:8px">
       <label class="digfile">企業基礎情報を追加：<input type="file" id="digCompanyFile" accept=".json,application/json"></label>
@@ -897,6 +898,13 @@ window.tsSyncBanner = function(msg){
       }catch(_){}
       window.__tsBoxShare = (j && j.share) || "code";
       var d = (j && j.data) || {};
+      /* 2026-09-29：自動発掘に載っている会社（登録の画面で保管庫に置いた写し）の名前と作成日時を控える。
+         写しの中身は画面では使わない。端末の保存場所にも書かない（会社の基礎情報は端末のものを使うため）。 */
+      try{
+        var __an = String(d.trisight_dig_company_name || ""), __aat = "";
+        if(__an){ try{ var __ao = JSON.parse(d.trisight_dig_company || "null"); var __am = __ao && (__ao["自動発掘用の写し"] || __ao["夜の発掘用の写し"]); __aat = __am ? String(__am["作成日時"] || "") : ""; }catch(_){} }
+        window.__tsAutoReg = { name: __an, at: __aat };
+      }catch(_){ window.__tsAutoReg = null; }
       Object.keys(d).forEach(function(k){
         if(!isBox(k) || d[k] == null) return;
         if(dirty[k]) return;            /* 取り込み中に画面側が書いたものは残す */
@@ -1318,6 +1326,18 @@ window.tsSyncBanner = function(msg){
     if(btn){ btn.disabled = true; btn.textContent = '保管庫を読み込み中…'; }
     if(st && !st.textContent) st.textContent = '保管庫から、これまでに拾った案件を取り込んでいます…';
     window.tsBoxReady = window.tsBoxLoad().then(function(ok){
+      /* 2026-09-29：自動発掘の登録の状態を、ボタンの右に出す */
+      try{
+        var __el = document.getElementById("digAutoRegState"), __r = window.__tsAutoReg;
+        if(__el && ok && __r){
+          var __cur = (typeof window.tsCompanyName === "function") ? window.tsCompanyName() : "";
+          var __when = "";
+          if(__r.at){ var __d = new Date(__r.at); if(!isNaN(__d)) __when = (__d.getMonth() + 1) + "/" + __d.getDate() + " " + __d.getHours() + ":" + String(__d.getMinutes()).padStart(2, "0"); }
+          if(!__r.name){ __el.style.color = "var(--muted,#868e96)"; __el.textContent = "自動発掘：未登録"; }
+          else if(__r.name === __cur){ __el.style.color = "#1f7a4d"; __el.style.fontWeight = "700"; __el.textContent = "自動発掘：登録済み" + (__when ? "（" + __when + " 登録）" : ""); }
+          else { __el.style.color = "#9a5b00"; __el.textContent = "自動発掘：「" + __r.name + "」が登録されています（いま選んでいる会社とは別）"; }
+        }
+      }catch(_){}
       if(btn){ btn.disabled = false; btn.textContent = lab; }
       if(st && st.textContent.indexOf('取り込んでいます') >= 0) st.textContent = '';
       try{ if(typeof window.tsBoardRefresh === 'function') window.tsBoardRefresh(); }catch(e){}
@@ -7990,7 +8010,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-29-03';
+  const TRIGATE_VERSION = '2026-09-29-04';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

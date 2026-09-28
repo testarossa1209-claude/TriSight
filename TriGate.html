@@ -1028,6 +1028,7 @@ window.tsSyncBanner = function(msg){
   const GATE_RELAY = "https://trisight-relay.vercel.app/api/gate";
   async function tsAsk(task, payload){
     const code = tsCode();
+    try{ window.__tsAiCalls = window.__tsAiCalls || { ask: 0, sift: 0 }; window.__tsAiCalls.ask++; }catch(_){}
     if(!code) throw new Error("認証コードが未入力です。");
     let res;
     /* 2026-09-28：返事が来ないまま画面が終わりなく待ち続けないよう、5分で打ち切る */
@@ -1962,6 +1963,13 @@ window.tsSyncBanner = function(msg){
         why: "訪問介護向けの採用・自転車・サービス提供体制の補助が並ぶ窓口",
         guide: ["ページ内の事業の案内から、令和8年度の事業ページを開く", "受付期間と交付要綱を確かめる"],
         ind: ["医療", "福祉", "介護", "看護", "障害"], seen: "2026-09-28" },
+      /* 2026-09-28（三版目）：障害福祉の人材系の事業が見出しで並ぶ窓口。事業名が見出しで、
+         リンクの文字は「詳細は、こちら」の形（見出しから題名を取る読み方で拾える）。所在確認＝2026-09-28。 */
+      { url: "https://www.fukushi.metro.tokyo.lg.jp/shougai/shougai_shisaku/syougai_jinzai",
+        title: "福祉人材関連事業・障害者施策（東京都福祉局）",
+        why: "障害福祉サービス事業所向けの宿舎借り上げ・資格取得・奨学金返済などの支援事業が並ぶ窓口",
+        guide: ["ページ内の事業の見出しを確かめ、「詳細は、こちら」から事業ページを開く", "受付期間と対象サービスを確かめる"],
+        ind: ["医療", "福祉", "介護", "看護", "障害"], seen: "2026-09-28" },
       { url: "https://www.fukushi.metro.tokyo.lg.jp/kourei/hoken/jinzai",
         title: "介護人材関連事業（東京都福祉局）",
         why: "介護人材の確保・定着・育成の補助事業がまとまっている窓口",
@@ -2223,9 +2231,55 @@ window.tsSyncBanner = function(msg){
      ここでは入口のページをリレー（fetchdoc）で取り寄せ、リンクの見出しから制度らしいものを拾い、
      台帳（保管庫・都道府県×年度）へ入れる。AIは使わない（見出しの語で拾うだけ）。
      中身の確認は、昼に一覧から開いたときに行う。 */
-  const TS_NIGHT_WORDS = /(補助|助成|支援事業|支援金|奨励金|給付金|応援事業|交付金|支援補助)/;
-  const TS_NIGHT_SKIP  = /(受付(は|を)?終了|終了しました|募集終了|募集は終了|平成|令和元年度|令和[1-6１-６]年度|仕入控除税額|よくある|Ｑ＆Ａ|Q&A|Ｑ&Ａ|問い合わせ|お問合せ|様式|記入例|マニュアル)/;
-  const TS_NIGHT_FILE  = /\.(pdf|xlsx?|docx?|zip|csv|pptx?)(\?|#|$)/i;
+  /* 2026-09-28（三版目）：二版目の実走（ノア・東京都東村山市）で、拾った見出し78件の多くが
+     制度ではなかった。区市の補助金一覧のページ、申請書・届出書などの書式、注意喚起、
+     登録製品の一覧、令和4年・6年の古い事業など。これらは台帳に入り、昼の一覧に並び、
+     「事業に照らした仕分け」でAIに送られてトークンを使う。入口の段階で落とす。
+     条件＝①制度の名前に付く語（事業・助成金・補助金・奨励金・支援金・給付金・交付金・手当）を含む
+     ②書式・一覧・案内・古い年度・結果発表などの語を含まない
+     ③「・」で並べた分類名（例＝給付金・補助金・行政ポイント）は、「事業」を含まない限り落とす
+     ④「〜情報」「〜一覧」「〜のご案内」「〜の紹介」「〜制度」で終わるものは一覧ページとみなして落とす */
+  const TS_NIGHT_NEED = /(事業|助成金|補助金|奨励金|支援金|給付金|交付金|手当)/;
+  const TS_NIGHT_SKIP = /(受付(は|を)?終了|終了しました|募集終了|募集は終了|平成|令和元年|令和[1-6１-６]年|仕入控除税額|届出書|届出|申請書|報告書|承認申請|辞退|撤回|廃止届|注意喚起|登録済|製品|公式WEBサイト|公式サイト|要綱|要領|様式|記入例|マニュアル|よくある|Ｑ＆Ａ|Q&A|Ｑ&Ａ|問い合わせ|お問合せ|採択決定|採択結果|交付決定|決定|変更届|結果について|説明会|セミナー|開催します|開催について|審議会|委員会|ライトアップ)/;
+  const TS_NIGHT_FILE = /\.(pdf|xlsx?|docx?|zip|csv|pptx?)(\?|#|$)/i;
+  const TS_NIGHT_GENERIC_LINK = /^(詳細|詳しく|こちら|詳細は|詳細については|詳細はこちら|もっと見る|一覧へ)/;
+  function tsNightTitleOk(text){
+    const t = String(text || "").replace(/[\s\u3000]+/g, " ").trim();
+    if(t.length < 6 || t.length > 120) return false;
+    if(!TS_NIGHT_NEED.test(t) || TS_NIGHT_SKIP.test(t)) return false;
+    if(/[・･]/.test(t) && t.indexOf("事業") < 0) return false;
+    const tail = t.replace(/（[^（）]*）$/, "").replace(/\([^()]*\)$/, "").trim();
+    if(/(情報|一覧|のご案内|の紹介|制度)$/.test(tail)) return false;
+    return true;
+  }
+  window.tsNightTitleOk = tsNightTitleOk;
+  /* 夜に読む入口を選ぶ。業種に合う入口（ind 付き）と、市区町村の入口だけを読む。
+     都道府県の環境系の入口（クール・ネット東京など）は施主向けで、昼の発掘が別に扱っている。
+     二版目では夜にも読んでいたため、区市の一覧ページや書式が大量に混ざった。 */
+  function tsNightIndOk(x, indText){
+    return Array.isArray(x.ind) && x.ind.length
+      && x.ind.some(function(w){ return indText.indexOf(w) >= 0; });
+  }
+  /* 都の報道発表は、最新の月の分しか並ばない一覧を入口にしていたため、8/17の
+     「訪問系障害福祉サービス人材採用経費支援事業」に届かなかった。
+     都庁総合ホームページの月別の報道発表を、福祉局（organizationID=57490496）に絞って、
+     今月と先月の2か月分読む。所在の確認＝2026-09-28、
+     https://www.metro.tokyo.lg.jp/information/press/2026/08 の組織別の絞り込みリンクに実在。 */
+  function tsNightExtraEntries(pref, indText){
+    const out = [];
+    if(pref !== "東京都") return out;
+    const care = ["医療", "福祉", "介護", "看護", "障害"];
+    if(!care.some(function(w){ return indText.indexOf(w) >= 0; })) return out;
+    const d = new Date();
+    [0, 1].forEach(function(back){
+      const y = new Date(d.getFullYear(), d.getMonth() - back, 1);
+      const ym = y.getFullYear() + "/" + String(y.getMonth() + 1).padStart(2, "0");
+      out.push({ url: "https://www.metro.tokyo.lg.jp/information/press/" + ym + "?organizationID=57490496",
+                 title: "都の報道発表（福祉局・" + y.getFullYear() + "年" + (y.getMonth() + 1) + "月）",
+                 ind: care });
+    });
+    return out;
+  }
   async function tsNightFetchHtml(url){
     const code = tsCode();
     if(!code) throw new Error("認証コードが未入力です。");
@@ -2246,23 +2300,29 @@ window.tsSyncBanner = function(msg){
       throw err;
     }finally{ if(tm) clearTimeout(tm); }
   }
-  /* 入口ページのHTMLから、制度らしい見出しのリンクを拾う */
+  /* 入口ページのHTMLから、制度らしい見出しのリンクを拾う。
+     2026-09-28（三版目）：事業名を見出し（h2〜h5）に置き、リンクの文字が
+     「詳細は、こちらをご覧ください」になっているページ（例＝東京都福祉局「福祉人材関連事業」）では、
+     リンクの文字しか見ない作りだと何も拾えない。リンクの文字がこの形のときは、直前の見出しを題名にする。 */
   function tsNightPickLinks(html, baseUrl){
     let doc = null;
     try{ doc = new DOMParser().parseFromString(String(html || ""), "text/html"); }catch(_){ return []; }
     const out = [], seen = {};
     const selfN = tsNormUrl(baseUrl);
-    Array.prototype.forEach.call(doc.querySelectorAll("a[href]"), function(a){
-      const text = String(a.textContent || "").replace(/[\s\u3000]+/g, " ").trim();
-      if(text.length < 6 || text.length > 120) return;
-      if(!TS_NIGHT_WORDS.test(text) || TS_NIGHT_SKIP.test(text)) return;
+    let lastHead = "";
+    Array.prototype.forEach.call(doc.querySelectorAll("h2,h3,h4,h5,a[href]"), function(el){
+      const text = String(el.textContent || "").replace(/[\s\u3000]+/g, " ").trim();
+      if(/^H[2-5]$/.test(el.tagName)){ lastHead = text.replace(/^[0-9０-９]+[\s　.．、]*/, ""); return; }
+      let title = text;
+      if(TS_NIGHT_GENERIC_LINK.test(text) || /こちら/.test(text)) title = lastHead;
+      if(!tsNightTitleOk(title)) return;
       let u = "";
-      try{ u = new URL(a.getAttribute("href"), baseUrl).href; }catch(_){ return; }
+      try{ u = new URL(el.getAttribute("href"), baseUrl).href; }catch(_){ return; }
       if(!/^https?:\/\//i.test(u) || TS_NIGHT_FILE.test(u)) return;
       const n = tsNormUrl(u);
       if(n === selfN || seen[n]) return;
       seen[n] = true;
-      out.push({ text: text, url: u });
+      out.push({ text: title, url: u });
     });
     return out.slice(0, 60);
   }
@@ -2273,17 +2333,21 @@ window.tsSyncBanner = function(msg){
     const indText = String(industryHint || "");
     const seenU = {};
     const list = [];
-    [[area, tsEntryGet(area)], [pref, (area !== pref ? tsEntryGet(pref) : [])]].forEach(function(pair){
-      (pair[1] || []).forEach(function(x){
+    const cityLevel = (area !== pref);
+    [[area, tsEntryGet(area), cityLevel], [pref, (cityLevel ? tsEntryGet(pref) : []), false],
+     [pref, tsNightExtraEntries(pref, indText), false]].forEach(function(trip){
+      (trip[1] || []).forEach(function(x){
         const u = x && x.url;
         if(!u || seenU[u]) return;
-        if(Array.isArray(x.ind) && x.ind.length
-           && !x.ind.some(function(w){ return indText.indexOf(w) >= 0; })) return;
+        const hasInd = Array.isArray(x.ind) && x.ind.length;
+        if(hasInd && !tsNightIndOk(x, indText)) return;
+        /* 業種の指定の無い入口は、市区町村の入口だけ読む（都道府県の環境系は昼の発掘に任せる） */
+        if(!hasInd && !trip[2]) return;
         seenU[u] = true;
-        list.push({ entry: x, areaName: pair[0] });
+        list.push({ entry: x, areaName: trip[0] });
       });
     });
-    const targets = list.slice(0, 30);
+    const targets = list.slice(0, 20);
     const today = new Date().toISOString().slice(0, 10);
     const items = [], report = [], seenId = {};
     for(let i = 0; i < targets.length; i++){
@@ -2300,7 +2364,10 @@ window.tsSyncBanner = function(msg){
           items.push({
             id: id, title: l.text, name: l.text,
             subsidy_catch_phrase: "", subsidy_max_limit: null, subsidy_rate: null,
-            use_purpose: "", industry: "", target_number_of_employees: "",
+            use_purpose: "",
+            /* 業種を限った入口から拾ったものは、その業種を持たせる（「この業界向けの制度」に並べるため） */
+            industry: (Array.isArray(x.ind) && x.ind.length) ? x.ind.join("、") : "",
+            target_number_of_employees: "",
             target_area_search: targets[i].areaName, target_area_detail: targets[i].areaName,
             acceptance_start_datetime: null, acceptance_end_datetime: null,
             front_subsidy_detail_page_url: l.url,
@@ -2702,6 +2769,18 @@ window.tsSyncBanner = function(msg){
         try{ c = JSON.parse(JSON.stringify(r.item)); }catch(_){ return; }
         c.id = id;
         if(!tsCityOk(c, pref, city)) return;
+        /* 2026-09-28（三版目）：二版目の夜の発掘で台帳に入った、制度でない見出しは出さない。
+           一覧に出さなければ「事業に照らした仕分け」にも送られず、トークンを使わない。
+           業種の欄が空のものは、拾った入口の業種を補う。 */
+        if(String(c.ts_source || "").indexOf("夜の自動発掘") >= 0){
+          if(!tsNightTitleOk(c.title || c.name)) return;
+          if(!c.industry){
+            const src = String(c.ts_source || "");
+            const hit = (TS_ENTRY_FIXED[pref] || []).concat(TS_ENTRY_FIXED[pref + (city || "")] || [])
+              .filter(function(e){ return e && e.title && Array.isArray(e.ind) && src.indexOf(e.title) === 0; })[0];
+            if(hit) c.industry = hit.ind.join("、");
+          }
+        }
         seen[id] = true;
         c.__fy = Number(fy);
         c.__shunushi = !!(r.marks && r.marks.shunushi);
@@ -3701,6 +3780,7 @@ window.tsSyncBanner = function(msg){
       let chunkNext = 0, chunkDone = 0;
       const siftOne = async function(part, pk){
         let out=null, why="";
+        try{ window.__tsAiCalls = window.__tsAiCalls || { ask: 0, sift: 0 }; window.__tsAiCalls.sift++; }catch(_){}
         const ac = (typeof AbortController !== "undefined") ? new AbortController() : null;
         const timer = ac ? setTimeout(() => { try{ ac.abort(); }catch(_){} }, WAIT) : null;
         try{
@@ -7719,7 +7799,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-28-02';
+  const TRIGATE_VERSION = '2026-09-28-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -7892,6 +7972,7 @@ window.tsSyncBanner = function(msg){
       return String(a) + "，" + String(w2 || "");
     })();
     say("自動発掘：①当社の入口ページを読んでいます…");
+    var tEnt = Date.now();
     var r;
     try{
       r = await window.tsNightReadEntries(pref, city, ind, function(i, n, t){
@@ -7902,8 +7983,10 @@ window.tsSyncBanner = function(msg){
     }
     var okN = r.report.filter(function(x){ return x.ok; }).length;
     var ngN = r.report.length - okN;
-    window.__tsNightNote = "入口ページ " + r.report.length + "件を読み、制度の見出しを " + r.items.length + "件拾いました"
-      + (ngN ? "（読めなかった入口 " + ngN + "件）" : "")
+    var entSec = Math.round((Date.now() - tEnt) / 1000);
+    var ngNames = r.report.filter(function(x){ return !x.ok; }).map(function(x){ return x.title; });
+    window.__tsNightNote = "入口ページ " + r.report.length + "件を読み（" + (entSec >= 60 ? Math.floor(entSec / 60) + "分" : "") + (entSec % 60) + "秒）、制度の見出しを " + r.items.length + "件拾いました"
+      + (ngN ? "（読めなかった入口 " + ngN + "件：" + ngNames.join("、") + "）" : "")
       + (r.skipped ? "（入口が多いため " + r.skipped + "件は今回読んでいません）" : "")
       + (r.put && !r.put.ok ? "／拾った分を台帳へ入れられませんでした：" + r.put.why : "") + "。";
     /* ② いつもの発掘を回す（終わると一覧が保管庫へ控えられ、他の端末でも同じ一覧が出る） */
@@ -8444,7 +8527,9 @@ window.TSB_HOST = "gate";
     var pref = selText("digPref"), city = selText("digCity");
     var vault = /保管庫/.test(btn.textContent || "");
     run = { t0: Date.now(), pref: pref, city: city, vault: vault,
-            check: !!window.__tsCheckMode, lastText: st.textContent || "", lastAt: Date.now() };
+            check: !!window.__tsCheckMode, lastText: st.textContent || "", lastAt: Date.now(),
+            stages: {}, order: [] };
+    window.__tsAiCalls = { ask: 0, sift: 0 };
     panel.style.display = "block";
     draw();
     if(iv) clearInterval(iv);
@@ -8453,6 +8538,7 @@ window.TSB_HOST = "gate";
   function stop(){
     if(!run) return;
     if(iv){ clearInterval(iv); iv = null; }
+    stageTick(Date.now(), "");
     var sec = Math.round((Date.now() - run.t0) / 1000);
     if(!run.vault && !run.check && run.pref && sec >= 5){
       var o = load(); var a = o[run.pref] || []; a.push(sec); o[run.pref] = a.slice(-10); save(o);
@@ -8461,14 +8547,44 @@ window.TSB_HOST = "gate";
     panel.innerHTML = run.vault
       ? '<span class="sub">保管庫の読み込みが終わりました（' + fmt(sec) + '）。</span>'
       : '<b>完了しました。</b>今回の所要時間は <b>' + fmt(sec) + '</b> でした。' +
-        '<span class="sub">（この時間は次回の目安として記録しました）</span>';
+        '<span class="sub">（この時間は次回の目安として記録しました）</span>' + stageSummary();
     run = null;
+  }
+  /* 2026-09-28：工程ごとの時間を積む。工程名は表示の最後の段から数字と括弧を落としたもの
+     （「掲載内容と突き合わせ中…（12/174）」→「掲載内容と突き合わせ中」）。 */
+  function stageName(t){
+    var seg = String(t || "").split("→").pop();
+    return seg.replace(/（[^）]*）|\([^)]*\)/g, "").replace(/[0-9０-９,/／]+/g, "").replace(/[…\s]+/g, " ")
+              .replace(/\s*件\s*/g, "").replace(/\s*を表示.*$/, "").trim().slice(0, 28);
+  }
+  function stageTick(now, nextText){
+    if(!run) return;
+    var name = stageName(run.lastText);
+    if(name){
+      if(!(name in run.stages)){ run.stages[name] = 0; run.order.push(name); }
+      run.stages[name] += (now - run.lastAt);
+    }
+    run.lastText = nextText; run.lastAt = now;
+  }
+  function stageSummary(){
+    if(!run) return "";
+    var parts = run.order.map(function(n){ return { n: n, s: Math.round(run.stages[n] / 1000) }; })
+      .filter(function(x){ return x.s >= 5; });
+    var ai = window.__tsAiCalls || { ask: 0, sift: 0 };
+    var html = "";
+    if(parts.length){
+      html += '<br><span class="sub">工程ごとの時間：</span>'
+        + parts.map(function(x){ return esc(x.n) + ' ' + fmt(x.s); }).join('／');
+    }
+    html += '<br><span class="sub">判定エンジンへの問い合わせ：</span>' + (ai.ask + ai.sift) + '回'
+      + '<span class="sub">（うち足切り ' + ai.sift + '回）</span>';
+    return html;
   }
   function draw(){
     if(!run) return;
     var now = Date.now();
     var txt = st.textContent || "";
-    if(txt !== run.lastText){ run.lastText = txt; run.lastAt = now; }
+    if(txt !== run.lastText){ stageTick(now, txt); }
     var sec = Math.floor((now - run.t0) / 1000);
     var stepSec = Math.floor((now - run.lastAt) / 1000);
     var where = run.pref ? (run.pref + (run.city || "")) : "";
@@ -8505,7 +8621,7 @@ window.TSB_HOST = "gate";
   new MutationObserver(function(){
     if(!run) return;
     var t = st.textContent || "";
-    if(t !== run.lastText){ run.lastText = t; run.lastAt = Date.now(); }
+    if(t !== run.lastText){ stageTick(Date.now(), t); }
   }).observe(st, { childList: true, characterData: true, subtree: true });
   new MutationObserver(function(){
     if(btn.disabled && !run) start();

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>夜の自動発掘の登録 | TriSight</title>
+<title>自動発掘の登録 | TriSight</title>
 <style>
   :root{ --ink:#1f2933; --muted:#6b7280; --line:#d9dee5; --ok:#1f7a4d; --ng:#b0203a; --warn:#9a5b00; --bg:#f7f8fa; --accent:#2c4a8a; }
   *{ box-sizing:border-box; }
@@ -32,7 +32,7 @@
 <body>
 <header>
   <img src="TriSight_icon_512.png" alt="TriSight®">
-  <h1>夜の自動発掘の登録</h1>
+  <h1>自動発掘の登録</h1>
   <span class="co">合同会社トライサイト</span>
 </header>
 <main>
@@ -43,11 +43,11 @@
   </section>
 
   <section>
-    <h2>夜の発掘に載せる会社</h2>
-    <p>トライゲイトに読み込んである会社から選んでください。毎晩3時ごろ、この会社でトライゲイトの自動発掘が当社側で動きます。PCの電源は入れておく必要がありません。</p>
+    <h2>自動発掘に載せる会社</h2>
+    <p>トライゲイトに読み込んである会社から選んでください。決まった時刻に（いまは午前3時ごろ）、この会社でトライゲイトの自動発掘が当社側で動きます。PCの電源は入れておく必要がありません。</p>
     <div class="row">
       <select id="compSel"></select>
-      <button id="regBtn">夜の発掘に載せる</button>
+      <button id="regBtn">自動発掘に載せる</button>
     </div>
     <p class="muted">当社側に置くのは写しだけです。代表者・担当者の氏名、連絡先、法人番号、番地以下、振込口座、事業所番号の後ろの桁は、写しを作る時点でこのPCの中で「非公開」などに置き換わります。本物はこのPCの外へ出ません。1つの認証コードで載せられるのは1社です。</p>
     <div class="msg" id="regMsg"></div>
@@ -61,7 +61,7 @@
 
   <section>
     <h2>写しを消す</h2>
-    <p>夜の発掘をやめるときや、会社を入れ替えるときに押してください。当社側に置いた写しを消します。掘った一覧や判定の記憶は消えません。</p>
+    <p>自動発掘をやめるときや、会社を入れ替えるときに押してください。当社側に置いた写しを消します。掘った一覧や判定の記憶は消えません。</p>
     <div class="row"><button class="danger" id="delBtn">当社側の写しを消す</button></div>
     <div class="msg" id="delMsg"></div>
   </section>
@@ -129,7 +129,7 @@
       return out;
     }
     var copy = walk(src, "", "");
-    copy["夜の発掘用の写し"] = { "作成日時": new Date().toISOString(), "説明": "個人・会社を特定する欄はダミーに置き換えた写し。正本はこの会社のPCにある。" };
+    copy["自動発掘用の写し"] = { "作成日時": new Date().toISOString(), "説明": "個人・会社を特定する欄はダミーに置き換えた写し。正本はこの会社のPCにある。" };
     return { copy: copy, masked: masked };
   }
   /* 起案基礎情報などの自由記述に、人名らしい書き方がないかを見る（見つけたら知らせるだけ） */
@@ -161,10 +161,10 @@
     var r = await box({ op:"get" });
     if(!r.ok){ $("nowState").textContent = "登録の状態を確かめられませんでした：" + r.why; return; }
     var d = r.data || {}, nm = d[NIGHT_NAME] || "", at = "";
-    try{ var o = JSON.parse(d[NIGHT_KEY] || "null"); at = o && o["夜の発掘用の写し"] ? o["夜の発掘用の写し"]["作成日時"] : ""; }catch(_){}
+    try{ var o = JSON.parse(d[NIGHT_KEY] || "null"); var mk = o && (o["自動発掘用の写し"] || o["夜の発掘用の写し"]); at = mk ? mk["作成日時"] : "";   /* 改称前に載せた写しも読む */ }catch(_){}
     $("nowState").textContent = nm
-      ? ("「" + nm + "」が夜の発掘に載っています" + (at ? "（写しを作った日時 " + new Date(at).toLocaleString("ja-JP") + "）" : ""))
-      : "夜の発掘に載っている会社はありません";
+      ? ("「" + nm + "」が自動発掘に載っています" + (at ? "（写しを作った日時 " + new Date(at).toLocaleString("ja-JP") + "）" : ""))
+      : "自動発掘に載っている会社はありません";
   }
 
   function render(){
@@ -180,7 +180,7 @@
     var r = await box({ op:"put", data: (function(){ var d = {}; d[NIGHT_KEY] = JSON.stringify(copyObj); d[NIGHT_NAME] = nm; return d; })() });
     if(!r.ok){ say($("regMsg"), "載せられませんでした：" + r.why, "ng"); return; }
     $("nameWarn").style.display = "none";
-    say($("regMsg"), "「" + nm + "」を夜の発掘に載せました。今夜3時ごろから、この会社で自動発掘が動きます。", "ok");
+    say($("regMsg"), "「" + nm + "」を自動発掘に載せました。次の決まった時刻（いまは午前3時ごろ）から、この会社で自動発掘が動きます。", "ok");
     refresh();
   }
   $("regBtn").addEventListener("click", async function(){
@@ -200,7 +200,7 @@
   });
   $("forceBtn").addEventListener("click", async function(){ if(pending){ await send(pending.copy, pending.nm); pending = null; } });
   $("delBtn").addEventListener("click", async function(){
-    if(!confirm("当社側に置いた会社の写しを消します。消すと、今夜から夜の自動発掘は動きません。\nよろしいですか？")) return;
+    if(!confirm("当社側に置いた会社の写しを消します。消すと、次の回から自動発掘は動きません。\nよろしいですか？")) return;
     var d = {}; d[NIGHT_KEY] = null; d[NIGHT_NAME] = null;
     var r = await box({ op:"put", data: d });
     say($("delMsg"), r.ok ? "写しを消しました。" : ("消せませんでした：" + r.why), r.ok ? "ok" : "ng");

@@ -454,6 +454,7 @@ body.presenMode table{font-size:1.02em}
           <a href="#drop" style="display:inline-block;margin-top:8px;padding:5px 16px;background:#c9772a;color:#fff;border-radius:4px;text-decoration:none;font-size:13px;font-weight:bold">▼ PDFの入力欄へ進む</a>
         </div>
       <button id="digBtn" class="rbtn">新着探索</button>
+      <button type="button" class="rc-toggle" id="digAutoReg" onclick="window.open('TriNight.html', '_blank')" title="決まった時刻に自動で発掘する会社を登録します">自動発掘の登録</button>
     </div>
     <div class="digrow" style="margin-top:8px">
       <label class="digfile">企業基礎情報を追加：<input type="file" id="digCompanyFile" accept=".json,application/json"></label>
@@ -2390,9 +2391,9 @@ window.tsSyncBanner = function(msg){
             target_area_search: targets[i].areaName, target_area_detail: targets[i].areaName,
             acceptance_start_datetime: null, acceptance_end_datetime: null,
             front_subsidy_detail_page_url: l.url,
-            detail: "夜の自動発掘で、当社の入口ページ「" + (x.title || "") + "」の一覧から拾った見出しです。"
+            detail: "自動発掘で、当社の入口ページ「" + (x.title || "") + "」の一覧から拾った見出しです。"
               + "当社は見出しを拾っただけで、中身（金額・期間・対象）は確認していません。必ず掲載元でお確かめください。",
-            ts_source: (x.title || targets[i].areaName) + "（当社の入口・夜の自動発掘）",
+            ts_source: (x.title || targets[i].areaName) + "（当社の入口・自動発掘）",
             ts_source_short: "定点",
             ts_from_entry: true,
             ts_source_url: l.url,
@@ -2791,7 +2792,7 @@ window.tsSyncBanner = function(msg){
         /* 2026-09-28（三版目）：二版目の夜の発掘で台帳に入った、制度でない見出しは出さない。
            一覧に出さなければ「事業に照らした仕分け」にも送られず、トークンを使わない。
            業種の欄が空のものは、拾った入口の業種を補う。 */
-        if(String(c.ts_source || "").indexOf("夜の自動発掘") >= 0){
+        if(String(c.ts_source || "").indexOf("自動発掘") >= 0){   /* 2026-09-29：「夜の自動発掘」から「自動発掘」へ改称。これまでの台帳の分も同じ語で見分けられる */
           if(!tsNightTitleOk(c.title || c.name)) return;
           if(!c.industry){
             const src = String(c.ts_source || "");
@@ -2821,7 +2822,7 @@ window.tsSyncBanner = function(msg){
        同じ制度とみなす条件＝名前をそろえて（「東京都」「令和○年度」、空白、記号を落とす）一致するか、
        片方の名前（10字以上）がもう片方に丸ごと含まれるか（報道発表の見出しと事業名の関係）。
        残すのは、金額・期間など中身の書かれている側。昼の検索で拾ったものを夜のものより先にする。 */
-    const isNight = function(x){ return String(x.ts_source || "").indexOf("夜の自動発掘") >= 0; };
+    const isNight = function(x){ return String(x.ts_source || "").indexOf("自動発掘") >= 0; };
     const dupKey = function(x){
       return String(x.title || x.name || "")
         .replace(/[（(]旧[：:][^）)]*[）)]/g, "")
@@ -7989,7 +7990,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-29-02';
+  const TRIGATE_VERSION = '2026-09-29-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -8117,8 +8118,8 @@ window.tsSyncBanner = function(msg){
     var hours = (Date.now() - new Date(sv.nightAt).getTime()) / 3600000;
     if(!(hours <= 30)){
       paint(b, "ng");
-      b.innerHTML = "<b>昨夜の自動発掘は動いていません。</b>最後に動いたのは " + esc(fmt(sv.nightAt))
-        + " です。いま出ている一覧はそれより前の結果です。トライサイトPCの電源とログオンの状態をお確かめください。";
+      b.innerHTML = "<b>自動発掘がしばらく動いていません。</b>最後に動いたのは " + esc(fmt(sv.nightAt))
+        + " です。いま出ている一覧はそれより前の結果です。「自動発掘の登録」の画面で、会社が載っているかをお確かめください。";
       return;
     }
     var rows = Array.isArray(sv.rows) ? sv.rows : [];

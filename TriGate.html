@@ -1931,7 +1931,52 @@ window.tsSyncBanner = function(msg){
         title: "区市町村の補助金等情報（クール・ネット東京）",
         why: "都内62の区市町村の温暖化対策の補助金が、自治体ごとの対象ページとして並ぶ",
         guide: ["表から対象の区市町村を探す", "その自治体の対象ページを開いて制度を拾う"],
-        seen: "2026-09-14" }
+        seen: "2026-09-14" },
+      /* 2026-09-28：介護・障害福祉の入口。ノアの件で、東京都福祉局が出した「訪問介護」応援事業・
+         サービス継続支援事業（事前申請9/30締切）・訪問系障害福祉サービス人材採用経費支援事業を、
+         トライゲイトが一つも拾えていなかったことが分かった。当社の入口が環境系しかなかったため。
+         ind を付けた入口は、会社の業種に医療・福祉の語があるときだけ渡す
+         （入口の数だけ検索回数が増え、掘りが遅くなるため。施主向けや他業種には渡さない）。
+         出所＝東京都福祉局・東京都障害者サービス情報。2026-09-28に所在を確認。 */
+      { url: "https://www.fukushi.metro.tokyo.lg.jp/kourei/hoken",
+        title: "介護保険（東京都福祉局）",
+        why: "都の介護事業者向けの補助・支援事業が一覧で並ぶ窓口",
+        guide: ["ページ内の事業一覧から、受付中・令和8年度の事業を開く", "各事業のページで対象サービス・受付期間・交付要綱を確かめる"],
+        ind: ["医療", "福祉", "介護", "看護", "障害"], seen: "2026-09-28" },
+      { url: "https://www.fukushi.metro.tokyo.lg.jp/kourei/hoken/kaigo_lib",
+        title: "東京都介護サービス情報（東京都福祉局）",
+        why: "介護サービス事業者向けのお知らせ・補助金の案内が載る窓口",
+        guide: ["事業者向けのお知らせから、補助金・支援事業の案内を開く", "申請期間と対象サービスを確かめる"],
+        ind: ["医療", "福祉", "介護", "看護", "障害"], seen: "2026-09-28" },
+      { url: "https://www.fukushi.metro.tokyo.lg.jp/kourei/hoken/jinzai",
+        title: "介護人材関連事業（東京都福祉局）",
+        why: "介護人材の確保・定着・育成の補助事業がまとまっている窓口",
+        guide: ["事業ごとの説明から、事業者が申請する補助を開く", "受付期間と補助対象経費を確かめる"],
+        ind: ["医療", "福祉", "介護", "看護", "障害"], seen: "2026-09-28" },
+      { url: "https://www.shougaifukushi.metro.tokyo.lg.jp/",
+        title: "東京都障害者サービス情報",
+        why: "障害福祉サービス事業者向けの補助金・支援事業の新着が並ぶ窓口",
+        guide: ["新着のお知らせから、申請受付中の補助・支援事業を開く", "受付期間と対象の障害福祉サービスを確かめる"],
+        ind: ["医療", "福祉", "介護", "看護", "障害"], seen: "2026-09-28" },
+      { url: "https://www.fukushi.metro.tokyo.lg.jp/information/press",
+        title: "報道発表（東京都福祉局）",
+        why: "新しく始まる補助事業は、事業ページより先に報道発表で出ることがある",
+        guide: ["報道発表の一覧から、補助・支援事業の開始や募集の記事を開く", "記事内のリンクから事業ページと要綱を開く"],
+        ind: ["医療", "福祉", "介護", "看護", "障害"], seen: "2026-09-28" }
+    ],
+    "東京都東村山市": [
+      /* 2026-09-28：東村山市。介護保険は ind 付き、事業者向けの助成一覧は業種を問わず渡す。
+         出所＝東村山市公式サイト。2026-09-28に所在を確認。 */
+      { url: "https://www.city.higashimurayama.tokyo.jp/kenko/korei/kaigohoken/index.html",
+        title: "介護保険（東村山市）",
+        why: "市の介護保険事業者向け情報・お知らせへの入口",
+        guide: ["「介護保険事業者向け情報」「お知らせ」から、支援金・補助の案内を開く", "申請期間と申請方法を確かめる"],
+        ind: ["医療", "福祉", "介護", "看護", "障害"], seen: "2026-09-28" },
+      { url: "https://www.city.higashimurayama.tokyo.jp/kurashi/jigyo/chusyo/josei_hojo_kyuuhu/index.html",
+        title: "助成金・補助金・給付金（東村山市・事業者向け）",
+        why: "市内の中小企業者向けの助成・補助が並ぶ窓口",
+        guide: ["一覧から【募集中】の制度を開く", "対象者・受付期間を確かめる"],
+        seen: "2026-09-28" }
     ],
     "東京都世田谷区": [
       { url: "https://www.city.setagaya.lg.jp/sumaimachizukuri/kankyou/category/11890.html",
@@ -2046,10 +2091,15 @@ window.tsSyncBanner = function(msg){
        毎回ゼロから探させないことで、同じ地域なら同じ範囲を当たらせる。
        2026-09-06：市区町村を選んだときは、県の箱の入口も一緒に渡す。 */
     const seen = {};
+    /* 2026-09-28：業種を限った入口（ind 付き）は、渡す業種の語に当てはまるときだけ渡す。
+       ind の無い入口は、これまでどおり業種を問わず渡す。 */
+    const indText = String(industryHint || "");
     const known = [].concat(tsEntryGet(area), (area !== pref ? tsEntryGet(pref) : []))
       .filter(function(x){
         const u = x && x.url;
         if(!u || seen[u]) return false;
+        if(Array.isArray(x.ind) && x.ind.length
+           && !x.ind.some(function(w){ return indText.indexOf(w) >= 0; })) return false;
         seen[u] = true; return true;
       });
     try{ text = await tsAsk("dig_web", {
@@ -7515,7 +7565,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-26-03';
+  const TRIGATE_VERSION = '2026-09-28-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

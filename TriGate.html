@@ -1980,6 +1980,13 @@ window.tsSyncBanner = function(msg){
         why: "障害福祉サービス事業者向けの補助金・支援事業の新着が並ぶ窓口",
         guide: ["新着のお知らせから、申請受付中の補助・支援事業を開く", "受付期間と対象の障害福祉サービスを確かめる"],
         ind: ["医療", "福祉", "介護", "看護", "障害"], seen: "2026-09-28" },
+      /* 2026-09-29：東京都保健医療局。訪問看護ステーションも対象の「東京都医療機関等における賃上げ・物価上昇に対する
+         支援事業」（1施設228,000円）が、ここにしか入口が無く一覧に出ていなかった。所在の確認＝2026-09-29。 */
+      { url: "https://www.hokeniryo.metro.tokyo.lg.jp/iryo/jigyo/h_gaiyou",
+        title: "民間医療機関向け補助金概要（東京都保健医療局）",
+        why: "診療所・訪問看護ステーション等の民間医療機関向けの補助・支援金が並ぶ窓口",
+        guide: ["一覧から令和8年度の事業を開く", "対象施設（訪問看護ステーションが入っているか）と申請期間を確かめる"],
+        ind: ["医療", "看護"], seen: "2026-09-29" },
       { url: "https://www.fukushi.metro.tokyo.lg.jp/information/press",
         title: "報道発表（東京都福祉局）",
         why: "新しく始まる補助事業は、事業ページより先に報道発表で出ることがある",
@@ -1989,11 +1996,15 @@ window.tsSyncBanner = function(msg){
     "東京都東村山市": [
       /* 2026-09-28：東村山市。介護保険は ind 付き、事業者向けの助成一覧は業種を問わず渡す。
          出所＝東村山市公式サイト。2026-09-28に所在を確認。 */
-      { url: "https://www.city.higashimurayama.tokyo.jp/kenko/korei/kaigohoken/index.html",
-        title: "介護保険（東村山市）",
-        why: "市の介護保険事業者向け情報・お知らせへの入口",
-        guide: ["「介護保険事業者向け情報」「お知らせ」から、支援金・補助の案内を開く", "申請期間と申請方法を確かめる"],
-        ind: ["医療", "福祉", "介護", "看護", "障害"], seen: "2026-09-28" },
+      /* 2026-09-29：入口を介護保険の総合トップ（市民向けを含む）から、事業者向けの補助が並ぶ
+         「【事業者向け】補助金等のご案内」（介護保険事業者向け情報の一段下）へ差し替えた。
+         一段上のページでは見出しが「〜のご案内」で一覧ページとして落ちるため、並ぶ場所そのものを入口にする。
+         所在の確認＝2026-09-29（ページ番号17056。この日は掲載0件）。 */
+      { url: "https://www.city.higashimurayama.tokyo.jp/kenko/korei/kaigohoken/jigyousya/hojokin/index.html",
+        title: "【事業者向け】補助金等のご案内（東村山市・介護保険）",
+        why: "市が介護保険事業者向けの補助金・支援金を掲載する場所",
+        guide: ["ページに並ぶ補助金・支援金の案内を開く", "申請期間と申請方法を確かめる"],
+        ind: ["医療", "福祉", "介護", "看護", "障害"], seen: "2026-09-29" },
       { url: "https://www.city.higashimurayama.tokyo.jp/kurashi/jigyo/chusyo/josei_hojo_kyuuhu/index.html",
         title: "助成金・補助金・給付金（東村山市・事業者向け）",
         why: "市内の中小企業者向けの助成・補助が並ぶ窓口",
@@ -2244,7 +2255,7 @@ window.tsSyncBanner = function(msg){
      （実例＝2026-09-29 ノア・東村山市の夜間発掘）。「事業者」「事業所」の事業は制度名の語として数えない。
      ただし末尾が「促進・推進・支援・対策・確保」で終わる題名は施策名として残す（例＝要介護度等の維持改善に向けた介護事業者の取組促進）。 */
   const TS_NIGHT_NEED = /(事業(?![者所])|助成金|補助金|奨励金|支援金|給付金|交付金|手当|(促進|推進|支援|対策|確保)$)/;
-  const TS_NIGHT_SKIP = /(受付(は|を)?終了|終了しました|募集終了|募集は終了|平成|令和元年|令和[1-6１-６]年|仕入控除税額|届出書|届出|申請書|報告書|承認申請|辞退|撤回|廃止届|注意喚起|登録済|製品|公式WEBサイト|公式サイト|要綱|要領|様式|記入例|マニュアル|よくある|Ｑ＆Ａ|Q&A|Ｑ&Ａ|問い合わせ|お問合せ|採択決定|採択結果|交付決定|決定|変更届|結果について|説明会|セミナー|開催します|開催について|審議会|委員会|ライトアップ|報告について|の方へ|皆様へ|から探す|トップ|メーリングリスト|指定更新|指定手続)/;
+  const TS_NIGHT_SKIP = /(受付(は|を)?終了|終了しました|募集終了|募集は終了|平成|令和元年|令和[1-6１-６]年|仕入控除税額|届出書|届出|申請書|報告書|承認申請|辞退|撤回|廃止届|注意喚起|登録済|製品|公式WEBサイト|公式サイト|要綱|要領|様式|記入例|マニュアル|よくある|Ｑ＆Ａ|Q&A|Ｑ&Ａ|問い合わせ|お問合せ|採択決定|採択結果|交付決定|決定|変更届|結果について|説明会|セミナー|開催します|開催について|審議会|委員会|ライトアップ|報告について|の方へ|皆様へ|から探す|トップ|メーリングリスト|指定更新|指定手続|手続きの流れ|財産処分)/;
   const TS_NIGHT_FILE = /\.(pdf|xlsx?|docx?|zip|csv|pptx?)(\?|#|$)/i;
   const TS_NIGHT_GENERIC_LINK = /^(詳細|詳しく|こちら|詳細は|詳細については|詳細はこちら|もっと見る|一覧へ)/;
   function tsNightTitleOk(text){
@@ -4192,7 +4203,15 @@ window.tsSyncBanner = function(msg){
 
     function digRowsHtml(rows){
       let html = '<table class="digtbl"><thead><tr><th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th></tr></thead><tbody>';
+      /* 2026-09-29：朝に呼び戻して見る一覧（夜の自動発掘の結果）にも、施主向けを最後に回した見出しを出す */
+      const __ownN = rows.filter(function(x){ return x && x.__ownerOff; }).length;
+      let __ownSep = false;
       for(const it of rows){
+        if(it && it.__ownerOff && !__ownSep){
+          __ownSep = true;
+          html += '<tr class="digsep"><td colspan="5" style="background:#f6f7f9;font-weight:600;padding:6px 8px">'
+            + '施主（個人）が受け取る制度　※会社の申請先を探す回のため、最後に回しています（' + __ownN + '件）</td></tr>';
+        }
         html += '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'"'
               + ' data-steady="'+e(it.__steady||"")+'" data-work="'+e(it.__work||"")+'"' + tsRowDataAttrs(it) + '>'
               + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)
@@ -5752,7 +5771,11 @@ window.tsSyncBanner = function(msg){
         if(!lastShow.length) return;
         /* 施主（個人）が受け取る制度は会社基準の判定にかけない（2026-09-04）。
            ここを通すと、自社が申請しない制度が候補へ自動登録され、見込み額に混ざる。 */
-        const items = lastShow.filter(it => !(it && it.__shunushi));
+        /* 2026-09-29：夜の自動発掘から押されたときは、「事業外の可能性」「地域外の可能性」の印が付いた案件を判定に回さない
+           （昼に人が見て必要なら、この判定を外すか、個別に判定する）。昼に人が押したときは、これまでどおり全件。 */
+        const __night = (window.__tsNightGate === true);
+        const items = lastShow.filter(it => !(it && it.__shunushi) && !(__night && it && it.__offBiz));
+        let __fresh = 0, __memo = 0, __ng = 0;
         if(!items.length){
           fullGateBtn.textContent = "施主（個人）向けの制度のみのため、会社基準の判定対象がありません";
           return;
@@ -5784,6 +5807,7 @@ window.tsSyncBanner = function(msg){
             try{
               let d = digDetails[it.id];
               if(!d){ d = await fetchDetail(it.id); digDetails[it.id] = d; }
+              if(tsJudgeGet("gate", it.id)) __memo++; else __fresh++;
               const g = await aiGateCheck(d);
               try{
                 let cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]");
@@ -5803,6 +5827,7 @@ window.tsSyncBanner = function(msg){
                 if($("pjDetail") && $("pjDetail").classList.contains("on")) pjRenderDetail();
               }
             }catch(err){
+              __ng++;
               setDigRowBadge(it.id, '<br><span style="font-size:11px;color:var(--fix)">判定失敗：'+e(String(err && err.message ? err.message : err)).slice(0,40)+'</span>');
             }
             done++;
@@ -5810,6 +5835,8 @@ window.tsSyncBanner = function(msg){
           }
         }
         await Promise.all([worker(), worker(), worker()]);
+        window.__tsNightGateRes = { total: total, fresh: __fresh, memo: __memo, ng: __ng,
+          skipped: __night ? lastShow.filter(it => it && !it.__shunushi && it.__offBiz).length : 0 };
         try{ tsResortDigRows(); }catch(_){}
         fullGateBtn.textContent = "詳細AIゲート判定が完了しました（"+total+"件・優先度の高い順、急ぎを先頭に並べ替えました）";
         setTimeout(()=>{ fullGateBtn.textContent = origLabel; fullGateBtn.disabled = false; }, 3000);
@@ -7962,7 +7989,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-29-01';
+  const TRIGATE_VERSION = '2026-09-29-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -8170,6 +8197,45 @@ window.tsSyncBanner = function(msg){
     if(!started){ stop("いつもの発掘が始まりませんでした。" + window.__tsNightNote); return; }
     if(btn.disabled){ stop("いつもの発掘が90分で終わりませんでした。" + window.__tsNightNote); return; }
     await sleep(15000);   /* 一覧の控えが保管庫へ送られるのを待つ */
+    /* ③ 詳細AIゲート判定まで通す（2026-09-29・宏史さんの決定＝商品としては夜間でゲートまで通すのが最良）。
+       判定は会社×案件で記憶するので、APIを使うのは新しく出た案件の分だけ。使った分は認証コードごとに
+       リレーへ記録され（今月の使用量の「個別の詳細判定」）、利用分として料金に反映する。
+       判定の記憶と候補は保管庫へ載る鍵なので、朝に別の端末で開いても見込み額まで出る。 */
+    var gateNote = "";
+    var fg = document.getElementById("digFullGateBtn");
+    if(fg){
+      say("自動発掘：③詳細AIゲート判定を回しています…（" + window.__tsNightNote + "）");
+      window.__tsNightGate = true;
+      window.__tsNightGateRes = null;
+      var tg = Date.now(), gStarted = false;
+      fg.click();
+      while(Date.now() - tg < 120 * 60000){
+        await sleep(3000);
+        if(fg.disabled) gStarted = true;
+        else if(gStarted) break;
+        else if(Date.now() - tg > 30000) break;   /* 30秒たっても始まらなければ、判定する案件が無かったとみなす */
+      }
+      window.__tsNightGate = false;
+      var gr = window.__tsNightGateRes;
+      if(gr){
+        gateNote = "詳細AIゲート判定 " + gr.total + "件（新たに判定 " + gr.fresh + "件・前回までの判定を使った分 " + gr.memo + "件"
+          + (gr.ng ? "・判定できなかった分 " + gr.ng + "件" : "")
+          + (gr.skipped ? "・事業外／地域外の印が付いた " + gr.skipped + "件は判定に回していません" : "") + "）";
+      }else if(!gStarted){
+        gateNote = "詳細AIゲート判定は行っていません（判定に回す案件がありませんでした）";
+      }else{
+        gateNote = "詳細AIゲート判定が120分で終わりませんでした（途中までの判定は残っています）";
+      }
+      window.__tsNightNote = String(window.__tsNightNote || "").replace(/。$/, "") + "／" + gateNote + "。";
+      /* 朝に出す帯の文言（保存済みの控え）へ書き足し、保管庫へ送り切ってから終える */
+      try{
+        var svg = JSON.parse(localStorage.getItem("trisight_dig_saved") || "null");
+        if(svg){ svg.nightNote = window.__tsNightNote; localStorage.setItem("trisight_dig_saved", JSON.stringify(svg)); }
+      }catch(_){}
+      /* 書き込めば2.5秒後に自動で保管庫へ送られる。②と同じく、送り終わるのを待ってから終える
+         （tsBoxSync は送信の完了を待たずに取りに行くため、ここでは使わない） */
+      await sleep(15000);
+    }
     say("自動発掘が終わりました（" + fmt(new Date().toISOString()) + "）。" + window.__tsNightNote, "ok");
     document.title = "TriGate 自動発掘 完了";
   }

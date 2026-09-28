@@ -44,9 +44,10 @@
 
   <section>
     <h2>自動発掘に載せる会社</h2>
-    <p>トライゲイトに読み込んである会社から選んでください。決まった時刻に（いまは午前3時ごろ）、この会社でトライゲイトの自動発掘が当社側で動きます。PCの電源は入れておく必要がありません。</p>
+    <p>トライゲイトに読み込んである会社と、発掘を動かす時刻を選んでください。毎日その時刻ごろ、この会社でトライゲイトの自動発掘が当社側で動きます。PCの電源は入れておく必要がありません。</p>
     <div class="row">
       <select id="compSel"></select>
+      <label style="font-size:14.5px">毎日 <select id="hourSel"></select> ごろ</label>
       <button id="regBtn">自動発掘に載せる</button>
     </div>
     <p class="muted">当社側に置くのは写しだけです。代表者・担当者の氏名、連絡先、法人番号、番地以下、振込口座、事業所番号の後ろの桁は、写しを作る時点でこのPCの中で「非公開」などに置き換わります。本物はこのPCの外へ出ません。1つの認証コードで載せられるのは1社です。</p>
@@ -107,6 +108,12 @@
     for(var i = 0; i < RULES.length; i++){ if(RULES[i][0].test(key)) return RULES[i][1]; }
     return undefined;
   }
+  /* 2026-09-29：動かす時刻（日本時間の時）を選べるようにする。GitHubの側は1時間ごとに起き、この時刻が来た会社だけ動かす */
+  function hourSelInit(cur){
+    var s = $("hourSel"), h = (cur == null || isNaN(cur)) ? 3 : Number(cur), html = "";
+    for(var i = 0; i < 24; i++) html += '<option value="' + i + '"' + (i === h ? " selected" : "") + ">" + i + "時</option>";
+    s.innerHTML = html;
+  }
   function makeCopy(src){
     var masked = [];
     function walk(o, path, parentKey){
@@ -129,7 +136,8 @@
       return out;
     }
     var copy = walk(src, "", "");
-    copy["自動発掘用の写し"] = { "作成日時": new Date().toISOString(), "説明": "個人・会社を特定する欄はダミーに置き換えた写し。正本はこの会社のPCにある。" };
+    var hr = Number(($("hourSel") && $("hourSel").value) || 3);
+    copy["自動発掘用の写し"] = { "作成日時": new Date().toISOString(), "実行時刻": hr, "説明": "個人・会社を特定する欄はダミーに置き換えた写し。正本はこの会社のPCにある。実行時刻は日本時間の時。" };
     return { copy: copy, masked: masked };
   }
   /* 起案基礎情報などの自由記述に、人名らしい書き方がないかを見る（見つけたら知らせるだけ） */
@@ -160,10 +168,12 @@
     $("codeState").textContent = c ? ("認証コード：" + mask(c) + "（トライゲイトと同じもの）") : "このPCに認証コードが入っていません。先にトライゲイトを開いて認証コードを入れてください。";
     var r = await box({ op:"get" });
     if(!r.ok){ $("nowState").textContent = "登録の状態を確かめられませんでした：" + r.why; return; }
-    var d = r.data || {}, nm = d[NIGHT_NAME] || "", at = "";
-    try{ var o = JSON.parse(d[NIGHT_KEY] || "null"); var mk = o && (o["自動発掘用の写し"] || o["夜の発掘用の写し"]); at = mk ? mk["作成日時"] : "";   /* 改称前に載せた写しも読む */ }catch(_){}
+    var d = r.data || {}, nm = d[NIGHT_NAME] || "", at = "", hr = null;
+    try{ var o = JSON.parse(d[NIGHT_KEY] || "null"); var mk = o && (o["自動発掘用の写し"] || o["夜の発掘用の写し"]); at = mk ? mk["作成日時"] : "";   /* 改称前に載せた写しも読む */
+         hr = (mk && mk["実行時刻"] != null) ? Number(mk["実行時刻"]) : (nm ? 3 : null); }catch(_){}
+    if(hr != null) hourSelInit(hr);
     $("nowState").textContent = nm
-      ? ("「" + nm + "」が自動発掘に載っています" + (at ? "（写しを作った日時 " + new Date(at).toLocaleString("ja-JP") + "）" : ""))
+      ? ("「" + nm + "」が自動発掘に載っています（毎日" + hr + "時ごろ）" + (at ? "　写しを作った日時 " + new Date(at).toLocaleString("ja-JP") : ""))
       : "自動発掘に載っている会社はありません";
   }
 
@@ -180,7 +190,8 @@
     var r = await box({ op:"put", data: (function(){ var d = {}; d[NIGHT_KEY] = JSON.stringify(copyObj); d[NIGHT_NAME] = nm; return d; })() });
     if(!r.ok){ say($("regMsg"), "載せられませんでした：" + r.why, "ng"); return; }
     $("nameWarn").style.display = "none";
-    say($("regMsg"), "「" + nm + "」を自動発掘に載せました。次の決まった時刻（いまは午前3時ごろ）から、この会社で自動発掘が動きます。", "ok");
+    var hr = (copyObj["自動発掘用の写し"] || {})["実行時刻"];
+    say($("regMsg"), "「" + nm + "」を自動発掘に載せました。毎日" + hr + "時ごろ、この会社で自動発掘が動きます。時刻を変えるときは、時刻を選び直してもう一度このボタンを押してください。", "ok");
     refresh();
   }
   $("regBtn").addEventListener("click", async function(){
@@ -208,7 +219,7 @@
   });
 
   window.__tnMakeCopy = makeCopy; window.__tnNameHints = nameHints;   /* 動作確認用 */
-  render(); refresh();
+  hourSelInit(3); render(); refresh();
 })();
 </script>
 </body>

@@ -901,9 +901,10 @@ window.tsSyncBanner = function(msg){
       /* 2026-09-29：自動発掘に載っている会社（登録の画面で保管庫に置いた写し）の名前と作成日時を控える。
          写しの中身は画面では使わない。端末の保存場所にも書かない（会社の基礎情報は端末のものを使うため）。 */
       try{
-        var __an = String(d.trisight_dig_company_name || ""), __aat = "";
-        if(__an){ try{ var __ao = JSON.parse(d.trisight_dig_company || "null"); var __am = __ao && (__ao["自動発掘用の写し"] || __ao["夜の発掘用の写し"]); __aat = __am ? String(__am["作成日時"] || "") : ""; }catch(_){} }
-        window.__tsAutoReg = { name: __an, at: __aat };
+        var __an = String(d.trisight_dig_company_name || ""), __aat = "", __ahr = 3;
+        if(__an){ try{ var __ao = JSON.parse(d.trisight_dig_company || "null"); var __am = __ao && (__ao["自動発掘用の写し"] || __ao["夜の発掘用の写し"]); __aat = __am ? String(__am["作成日時"] || "") : "";
+          if(__am && __am["実行時刻"] != null && !isNaN(Number(__am["実行時刻"]))) __ahr = Number(__am["実行時刻"]); }catch(_){} }
+        window.__tsAutoReg = { name: __an, at: __aat, hour: __ahr };
       }catch(_){ window.__tsAutoReg = null; }
       Object.keys(d).forEach(function(k){
         if(!isBox(k) || d[k] == null) return;
@@ -1334,7 +1335,7 @@ window.tsSyncBanner = function(msg){
           var __when = "";
           if(__r.at){ var __d = new Date(__r.at); if(!isNaN(__d)) __when = (__d.getMonth() + 1) + "/" + __d.getDate() + " " + __d.getHours() + ":" + String(__d.getMinutes()).padStart(2, "0"); }
           if(!__r.name){ __el.style.color = "var(--muted,#868e96)"; __el.textContent = "自動発掘：未登録"; }
-          else if(__r.name === __cur){ __el.style.color = "#1f7a4d"; __el.style.fontWeight = "700"; __el.textContent = "自動発掘：登録済み" + (__when ? "（" + __when + " 登録）" : ""); }
+          else if(__r.name === __cur){ __el.style.color = "#1f7a4d"; __el.style.fontWeight = "700"; __el.textContent = "自動発掘：登録済み（毎日" + (__r.hour != null ? __r.hour : 3) + "時ごろ" + (__when ? "・" + __when + " 登録" : "") + "）"; }
           else { __el.style.color = "#9a5b00"; __el.textContent = "自動発掘：「" + __r.name + "」が登録されています（いま選んでいる会社とは別）"; }
         }
       }catch(_){}
@@ -8010,7 +8011,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-29-04';
+  const TRIGATE_VERSION = '2026-09-29-05';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

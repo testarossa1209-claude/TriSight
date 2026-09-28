@@ -2239,8 +2239,12 @@ window.tsSyncBanner = function(msg){
      ②書式・一覧・案内・古い年度・結果発表などの語を含まない
      ③「・」で並べた分類名（例＝給付金・補助金・行政ポイント）は、「事業」を含まない限り落とす
      ④「〜情報」「〜一覧」「〜のご案内」「〜の紹介」「〜制度」で終わるものは一覧ページとみなして落とす */
-  const TS_NIGHT_NEED = /(事業|助成金|補助金|奨励金|支援金|給付金|交付金|手当)/;
-  const TS_NIGHT_SKIP = /(受付(は|を)?終了|終了しました|募集終了|募集は終了|平成|令和元年|令和[1-6１-６]年|仕入控除税額|届出書|届出|申請書|報告書|承認申請|辞退|撤回|廃止届|注意喚起|登録済|製品|公式WEBサイト|公式サイト|要綱|要領|様式|記入例|マニュアル|よくある|Ｑ＆Ａ|Q&A|Ｑ&Ａ|問い合わせ|お問合せ|採択決定|採択結果|交付決定|決定|変更届|結果について|説明会|セミナー|開催します|開催について|審議会|委員会|ライトアップ)/;
+  /* 2026-09-29：「事業」の2文字だけで制度とみなしていたため、「事業者の方トップ」「事業所名から探す」
+     「新規事業者指定手続き」など、事業者向けの案内ページが制度として台帳に入り、一覧に並んでいた
+     （実例＝2026-09-29 ノア・東村山市の夜間発掘）。「事業者」「事業所」の事業は制度名の語として数えない。
+     ただし末尾が「促進・推進・支援・対策・確保」で終わる題名は施策名として残す（例＝要介護度等の維持改善に向けた介護事業者の取組促進）。 */
+  const TS_NIGHT_NEED = /(事業(?![者所])|助成金|補助金|奨励金|支援金|給付金|交付金|手当|(促進|推進|支援|対策|確保)$)/;
+  const TS_NIGHT_SKIP = /(受付(は|を)?終了|終了しました|募集終了|募集は終了|平成|令和元年|令和[1-6１-６]年|仕入控除税額|届出書|届出|申請書|報告書|承認申請|辞退|撤回|廃止届|注意喚起|登録済|製品|公式WEBサイト|公式サイト|要綱|要領|様式|記入例|マニュアル|よくある|Ｑ＆Ａ|Q&A|Ｑ&Ａ|問い合わせ|お問合せ|採択決定|採択結果|交付決定|決定|変更届|結果について|説明会|セミナー|開催します|開催について|審議会|委員会|ライトアップ|報告について|の方へ|皆様へ|から探す|トップ|メーリングリスト|指定更新|指定手続)/;
   const TS_NIGHT_FILE = /\.(pdf|xlsx?|docx?|zip|csv|pptx?)(\?|#|$)/i;
   const TS_NIGHT_GENERIC_LINK = /^(詳細|詳しく|こちら|詳細は|詳細については|詳細はこちら|もっと見る|一覧へ)/;
   function tsNightTitleOk(text){
@@ -2354,7 +2358,11 @@ window.tsSyncBanner = function(msg){
       const x = targets[i].entry;
       if(typeof onStep === "function") onStep(i + 1, targets.length, x.title || x.url);
       try{
-        const html = await tsNightFetchHtml(x.url);
+        /* 2026-09-29：東村山市の入口2件が読めず、理由も画面に出ていなかった。
+           一時的な失敗で取りこぼさないよう、5秒おいて一度だけ取り直す。 */
+        let html;
+        try{ html = await tsNightFetchHtml(x.url); }
+        catch(err1){ await new Promise(function(r){ setTimeout(r, 5000); }); html = await tsNightFetchHtml(x.url); }
         const links = tsNightPickLinks(html, x.url);
         report.push({ title: x.title || x.url, ok: true, n: links.length });
         links.forEach(function(l){
@@ -4156,9 +4164,14 @@ window.tsSyncBanner = function(msg){
               : "")
           + "</div>"
         : "";
-      const base = mark + fyFn(it && it.subsidy_max_limit);
+      /* 2026-09-29：印の文字を前に付けた後で「—」かどうかを見ていたため、印の付いた行では判定がすり抜け、
+         金額が無いのに注記が出ていた。また奨学金返済など設備と関係のない制度にも一律で出ていた。
+         金額そのもので判定し、設備・住宅・車両の制度にだけ出す。 */
+      const amtTxt = fyFn(it && it.subsidy_max_limit);
+      const base = mark + amtTxt;
       const isWeb = String(it && it.id || "").indexOf("web-") === 0;
-      if(!isWeb || base === "—" || base === "記載なし") return base;
+      if(!isWeb || amtTxt === "—" || amtTxt === "記載なし") return base;
+      if(!/(設備|機器|太陽光|蓄電|住宅|断熱|改修|給湯|V2H|車両|省エネ|ゼロエミ)/.test(String((it && (it.title || it.name)) || ""))) return base;
       return base + '<div style="font-size:11px;color:var(--muted,#868e96);line-height:1.4">設備ごとに額が変わる場合があります。要領でご確認ください</div>';
     };
     const fy = n => {
@@ -4186,6 +4199,7 @@ window.tsSyncBanner = function(msg){
               + tsRowMarksHtml({ tsnew: it.ts_new ? 1 : 0, fy: it.__fy, same: it.ts_same_name ? 1 : 0, dng: it.__detailNg ? 1 : 0 })
                 + tsSteadyBadgeHtml(it.__steady || "") + tsWorkBadgeHtml(it.__work || "")
                 + (it.__offBiz ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__offBiz)+'</span>' : "")
+                + (it.__ownerOff ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">施主（個人）向け・会社の申請先ではありません</span>' : "")
           + (it.__amtOut ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__amtOut)+'</span>' : "")
                 + "</td>"
               + "<td>"+tsAmountCell(it, fy)+"</td>"
@@ -4367,6 +4381,7 @@ window.tsSyncBanner = function(msg){
           ts_new: !!it.ts_new,
           ts_same_name: !!it.ts_same_name,
           __shunushi: !!it.__shunushi,
+          __ownerOff: !!it.__ownerOff,
           __detailNg: !!it.__detailNg
         }));
         /* 2026-09-28：夜の自動発掘で作った一覧かどうかと、最後に夜の発掘が動いた日時を残す。
@@ -4662,6 +4677,42 @@ window.tsSyncBanner = function(msg){
         /* 2026-09-16：利用者が「一覧から外す」を押した案件は、一覧を組む前に除く。
            これまでは表を組んだ後に除いていたため、外した案件が表に出ていた。 */
         list = list.filter(it => !(it && it.id && tsIsHidden(it.id)));
+        /* 2026-09-29：新しく申請する制度ではない「採択済みの事業者が行う後続の手続き」
+           （事業再構築補助金の交付申請等・共同申請、仕入控除税額報告、事業化状況報告、事業完了後の申請）が
+           制度として並んでいた。一覧から外し、外した件数を帯に出す。
+           あわせて、Jグランツ同士の二重（名前の空白の有無だけが違うもの、先頭に「×」の付いたもの）をまとめる。
+           「×」付きは、同じ名前の「×」無しがあるときだけ外す（片方しか無いものは残す）。
+           名前が同じでも受付期間の終わり・上限額が違うものは、別の区分として残す（同名の印が付く）。 */
+        let __cutNote = "";
+        {
+          const FOLLOW = /(交付申請等|仕入控除税額報告|事業化状況報告|事業完了後|完了後の各種申請|共同申請)/;
+          const b0 = list.length;
+          list = list.filter(it => !FOLLOW.test(String((it && (it.title || it.name)) || "")));
+          const cutFollow = b0 - list.length;
+          const nmOf = x => String(x.title || x.name || "");
+          const isX = x => /^[×✕✖]/.test(nmOf(x));
+          const keyOf = x => nmOf(x).replace(/^[×✕✖]\s*/, "").replace(/[\s　]/g, "");
+          const groups = {};
+          list.forEach(x => {
+            if(!x || String(x.id || "").indexOf("web-") === 0) return;
+            const k = keyOf(x); if(!k) return;
+            (groups[k] = groups[k] || []).push(x);
+          });
+          const drop = new Set();
+          Object.keys(groups).forEach(k => {
+            const g = groups[k]; if(g.length < 2) return;
+            const plain = g.filter(x => !isX(x));
+            if(plain.length) g.filter(isX).forEach(x => drop.add(x));
+            const seenSig = {};
+            (plain.length ? plain : g).forEach(x => {
+              const sig = String(x.acceptance_end_datetime || "").slice(0, 10) + "|" + String(x.subsidy_max_limit == null ? "" : x.subsidy_max_limit);
+              if(seenSig[sig]) drop.add(x); else seenSig[sig] = true;
+            });
+          });
+          if(drop.size) list = list.filter(x => !drop.has(x));
+          if(cutFollow) __cutNote += "／採択済みの事業者が行う後続の手続き " + cutFollow + " 件は、新しく申請する制度ではないため外しています";
+          if(drop.size) __cutNote += "／同じ制度の二重掲載 " + drop.size + " 件をまとめました";
+        }
         /* 年度を付ける（新年度を上、前年度で有効なものをその下に並べるため） */
         list.forEach(it => { if(it && it.__fy == null) it.__fy = tsItemFy(it); });
         let cutByArea = 0;
@@ -4805,8 +4856,38 @@ window.tsSyncBanner = function(msg){
         /* 業界固有のものを先に並べる（2026-08-22）。
            どこでも手に入る全業種向けの制度と、その業界にしか当たらない制度を分けて見せる。
            全業種向けを捨てるのではない（金額が大きいのはむしろそちら）。順序と見出しで分ける。 */
-        let grpS = show.filter(it => it.__shunushi);
-        let rest = show.filter(it => !it.__shunushi);
+        /* 2026-09-29：目的①（施主が受け取る制度）を選んでいない回でも、台帳に施主向けの印がある制度が
+           最上段に並んでいた。会社自身が申請できる制度を探す回では、施主向けは一番下へ回し、その旨の印を付ける。
+           施主向けの印そのものは書き換えない（詳細AIゲート判定の対象外判定などに使っているため）。 */
+        const __shuEl = document.getElementById("digShunushi");
+        const __wantShu = !!(__shuEl && __shuEl.checked);
+        show.forEach(it => { it.__ownerOff = (!__wantShu && !!it.__shunushi); });
+        /* 2026-09-29：病院向けの制度（救命救急・医師派遣など）と、選んだ市区町村以外の市区町村の制度に、
+           「事業外の可能性」「地域外の可能性」を付けて下へ回す。消しはしない。印は「この判定を外す」で取り消せる。 */
+        {
+          const indTxt = company ? (String((company["機械足切り条件"] && company["機械足切り条件"]["業種"]) || "") + "，" + String(tsIndustryWords(company) || "")) : "";
+          const cityOf = function(tt){
+            const s = String(tt || "").replace(/^[【［\[]\s*/, "");
+            const m = s.match(/^([一-龥ぁ-んァ-ヶー]{2,5}?[市区町村])/);
+            if(!m) return "";
+            const c = m[1];
+            if(/[都道府県]/.test(c.slice(0, -1)) || /^(特別区|農山村|山漁村|農村)$/.test(c)) return "";
+            return c;
+          };
+          show.forEach(it => {
+            if(it.__offBiz || it.__shunushi || tsOffBizOverride(it.id)) return;
+            const nm = String(it.title || it.name || "");
+            if(company && !/病院/.test(indTxt) && /(病院|救命救急|救急医療|救急搬送|医師派遣|地域医療確保|急性期医療)/.test(nm)){
+              it.__offBiz = "事業外の可能性（病院向け）"; return;
+            }
+            const c = cityOf(nm);
+            if(c && selCity && c !== selCity){ it.__offBiz = "地域外の可能性（" + c + "の制度）"; }
+          });
+        }
+        let grpS = show.filter(it => it.__shunushi && !it.__ownerOff);
+        let rest = show.filter(it => !it.__shunushi || it.__ownerOff);
+        let grpO = rest.filter(it => it.__ownerOff);
+        rest = rest.filter(it => !it.__ownerOff);
         let grpA = rest.filter(it => tsIsIndustrySpecific(it));
         let grpB = rest.filter(it => !tsIsIndustrySpecific(it));
         /* 上限・下限の目安を一覧にも効かせる（2026-09-04）。
@@ -4850,7 +4931,7 @@ window.tsSyncBanner = function(msg){
         /* 2026-09-06：ここで並べ替えた結果を show にだけ入れていたため、
            表は並べ替え前のまま組まれていた（印の付いた案件が、印の無い案件より上に出る）。
            計算はしていたが、表に届いていなかった。組み立てに使う側にも入れ直す。 */
-        grpS = byRange(grpS); grpA = byRange(grpA); grpB = byRange(grpB); rest = byRange(rest);
+        grpS = byRange(grpS); grpA = byRange(grpA); grpB = byRange(grpB); rest = byRange(rest); grpO = byRange(grpO);
         /* 2026-09-16：新年度を上に、前年度で受付中のものをその下へ（宏史さんの決定）。
            同じ年度の中では、これまでの並び（事業外・規模の目安外を下へ）を保つ。 */
         const byFy = function(arr){
@@ -4858,8 +4939,8 @@ window.tsSyncBanner = function(msg){
           return arr.filter(function(x){ return (Number(x.__fy) || 0) >= top; })
                     .concat(arr.filter(function(x){ return (Number(x.__fy) || 0) < top; }));
         };
-        grpS = byFy(grpS); grpA = byFy(grpA); grpB = byFy(grpB); rest = byFy(rest);
-        show = grpS.concat(grpA, grpB);
+        grpS = byFy(grpS); grpA = byFy(grpA); grpB = byFy(grpB); rest = byFy(rest); grpO = byFy(grpO);
+        show = grpS.concat(grpA, grpB, grpO);
         /* 表に出すのは今回の検索で見つかったものだけにする（2026-09-05）。
            2026-09-16：台帳を一覧の元にしたため、持ち越し分は畳まない（新着の印で新しい分を見分ける）。
            畳むのは、受付が終わった分だけ。 */
@@ -4871,8 +4952,8 @@ window.tsSyncBanner = function(msg){
             return true;
           });
         };
-        grpS = pickOut(grpS); grpA = pickOut(grpA); grpB = pickOut(grpB); rest = pickOut(rest);
-        try{ if(st && __amtNote) st.textContent = st.textContent + __amtNote; }catch(e){}
+        grpS = pickOut(grpS); grpA = pickOut(grpA); grpB = pickOut(grpB); rest = pickOut(rest); grpO = pickOut(grpO);
+        try{ if(st && __amtNote) st.textContent = st.textContent + __amtNote + (__cutNote || ""); }catch(e){}
         const headCells = '<th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th>';
         const rowOf = (it) => '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'" data-end="'+e(it.acceptance_end_datetime||"")+'"'
                 + ' data-steady="'+e(tsSteadyOf(it))+'" data-work="'+e(tsWorkOf(it))+'"' + tsRowDataAttrs(it) + '>'
@@ -4880,6 +4961,7 @@ window.tsSyncBanner = function(msg){
                 + tsRowMarksHtml({ tsnew: it.ts_new ? 1 : 0, fy: it.__fy, same: it.ts_same_name ? 1 : 0, dng: it.__detailNg ? 1 : 0 })
                 + tsSteadyBadgeHtml(tsSteadyOf(it)) + tsWorkBadgeHtml(tsWorkOf(it))
                 + (it.__offBiz ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__offBiz)+'</span>' : "")
+                + (it.__ownerOff ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">施主（個人）向け・会社の申請先ではありません</span>' : "")
           + (it.__amtOut ? '<span style="font-size:11px;color:var(--fix);margin-left:4px">'+e(it.__amtOut)+'</span>' : "")
                 + "</td>"
                 + "<td>"+tsAmountCell(it, fy)+"</td>"
@@ -4931,6 +5013,11 @@ window.tsSyncBanner = function(msg){
         }else{
           /* 施主向けは上で出しているので、ここでは残りだけ出す（2026-09-01） */
           rest.forEach(it => { html += rowOf(it); });
+        }
+        /* 2026-09-29：会社自身の申請先を探す回では、施主向けを最後に見出し付きで出す */
+        if(grpO.length){
+          html += sepOf("施主（個人）が受け取る制度　※今回は会社の申請先を探す回のため、最後に回しています", grpO.length);
+          grpO.forEach(it => { html += rowOf(it); });
         }
         html += "</tbody></table>" + "<div class='digNote'>国土交通省・厚生労働省・自治体の制度は、検索する語では絞っていません。業種・規模・地域で当てています（語で絞ると、業種から当たる制度を取りこぼすため）。／受付期間の終わりは掲載元（Jグランツ等）の表記をそのまま表示しています。申請の締切と異なる場合があります。"
               + e(webNote)
@@ -7100,7 +7187,15 @@ window.tsSyncBanner = function(msg){
       const judgedCount = pjCandidates().filter(c => c.gate).length;
       $("pjFigs").innerHTML = judgedCount === 0
         ? '<span class="rc-fig" style="color:var(--muted)">まだAIゲート判定を実行していません。実行すると、ここに確実に取れる見込み額が積み上がります。</span>'
-        : '<span class="rc-fig" style="color:var(--muted)">現時点で「要件を満たせば確実に取れる」案件はありません。補助金の多くは審査・採択枠のある競争的な制度のため、0件は想定内の結果です。</span>' + pjPendingHtml();
+        : (function(){
+            /* 2026-09-29：一覧の緑の「要件充足（満たせば原則支給）」は給付方式を仕分けただけの印で、
+               御社の要件とはまだ照らしていない。それが残っているのに「0件は想定内」と言い切っていた。 */
+            const liteN = pjDedupe(pjCandidates().filter(c => c.gate && c.gate_lite !== false
+              && c.gate["給付方式"] === "要件充足型" && c.gate["除外条件抵触"] !== true)).list.length;
+            return liteN
+              ? '<span class="rc-fig" style="color:var(--muted)">詳細AIゲート判定で「追う」と出た案件は、まだありません。一覧で「要件充足（満たせば原則支給）」の印が付いている <b>' + liteN + '件</b>は、給付方式を仕分けただけで、御社の要件とはまだ照らしていません。「この一覧すべてで詳細AIゲート判定を実行する」を押すと照らし合わせ、要件を満たすものがここに積み上がります。</span>'
+              : '<span class="rc-fig" style="color:var(--muted)">現時点で「要件を満たせば確実に取れる」案件はありません。補助金の多くは審査・採択枠のある競争的な制度のため、0件は想定内の結果です。</span>';
+          })() + pjPendingHtml();
       pjRenderOutliers([], min, max);
       return;
     }
@@ -7867,7 +7962,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-28-04';
+  const TRIGATE_VERSION = '2026-09-29-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -8052,7 +8147,7 @@ window.tsSyncBanner = function(msg){
     var okN = r.report.filter(function(x){ return x.ok; }).length;
     var ngN = r.report.length - okN;
     var entSec = Math.round((Date.now() - tEnt) / 1000);
-    var ngNames = r.report.filter(function(x){ return !x.ok; }).map(function(x){ return x.title; });
+    var ngNames = r.report.filter(function(x){ return !x.ok; }).map(function(x){ return x.title + (x.why ? "＝" + x.why : ""); });
     window.__tsNightNote = "入口ページ " + r.report.length + "件を読み（" + (entSec >= 60 ? Math.floor(entSec / 60) + "分" : "") + (entSec % 60) + "秒）、制度の見出しを " + r.items.length + "件拾いました"
       + (ngN ? "（読めなかった入口 " + ngN + "件：" + ngNames.join("、") + "）" : "")
       + (r.skipped ? "（入口が多いため " + r.skipped + "件は今回読んでいません）" : "")

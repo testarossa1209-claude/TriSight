@@ -1,7 +1,13 @@
-name: TriGate night dig
+# トライゲイト 自動発掘（PCの電源が切れていても動かす）
+# 置き場所：.github/workflows/trigate-night.yml
+# 1時間ごとに起き、登録の画面（TriNight.html）で選んだ時刻（日本時間）が来ていて、
+# その日まだ動いていなければ、トライゲイトの自動発掘を最後まで走らせる。
+# 会社の情報は保管庫に置いた「ダミー入りの写し」だけを使い、記録（ログ）には書き出さない。
+# 2026-09-29
+name: TriGate auto dig
 on:
   schedule:
-    - cron: '0 18 * * *'
+    - cron: '0 * * * *'
   workflow_dispatch:
 concurrency:
   group: trigate-night
@@ -14,17 +20,56 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: |
+      - name: check
+        id: check
+        env:
+          TRIGATE_CODE: ${{ secrets.TRIGATE_NIGHT_CODE }}
+        run: |
+          cat > check.cjs <<'EOF'
+          const fs = require('fs');
+          const CODE = process.env.TRIGATE_CODE || '';
+          const log = (m) => console.log(new Date().toISOString().slice(0, 19) + ' ' + m);
+          const out = (v) => fs.appendFileSync(process.env.GITHUB_OUTPUT, 'go=' + v + '\n');
+          (async () => {
+            if (!CODE) { log('secret TRIGATE_NIGHT_CODE is missing'); out('no'); process.exit(1); }
+            let d = {};
+            try {
+              const r = await fetch('https://trisight-relay.vercel.app/api/box', { method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-trisight-code': CODE },
+                body: JSON.stringify({ op: 'get' }) });
+              if (!r.ok) { log('box refused ' + r.status); out('no'); process.exit(1); }
+              const j = await r.json(); d = (j && j.data) || {};
+            } catch (e) { log('box unreachable'); out('no'); process.exit(1); }
+            if (!d.trisight_dig_company || !d.trisight_dig_company_name) { log('no company registered'); out('no'); return; }
+            let hour = 3;
+            try {
+              const c = JSON.parse(d.trisight_dig_company);
+              const m = c && (c['自動発掘用の写し'] || c['夜の発掘用の写し']);
+              if (m && m['実行時刻'] != null && !isNaN(Number(m['実行時刻']))) hour = Number(m['実行時刻']);
+            } catch (e) {}
+            const now = Date.now();
+            const j = new Date(now + 9 * 3600000);
+            const todaySet = Date.UTC(j.getUTCFullYear(), j.getUTCMonth(), j.getUTCDate(), hour) - 9 * 3600000;
+            let last = 0;
+            try { const sv = JSON.parse(d.trisight_dig_saved || 'null'); last = Date.parse(sv && sv.nightAt) || 0; } catch (e) {}
+            if (now < todaySet) { log('set hour ' + hour + ' JST not reached yet'); out('no'); return; }
+            if (last >= todaySet) { log('already ran today'); out('no'); return; }
+            log('time to run (set hour ' + hour + ' JST)'); out('yes');
+          })();
+          EOF
+          node check.cjs
+      - if: steps.check.outputs.go == 'yes'
+        run: |
           npm install --no-save playwright@1.47.2
           npx playwright install --with-deps chromium
-      - env:
+      - if: steps.check.outputs.go == 'yes'
+        env:
           TRIGATE_CODE: ${{ secrets.TRIGATE_NIGHT_CODE }}
         run: |
           cat > night.mjs <<'EOF'
           import { chromium } from 'playwright';
           const CODE = process.env.TRIGATE_CODE || '';
           const log = (m) => console.log(new Date().toISOString().slice(0, 19) + ' ' + m);
-          if (!CODE) { log('secret TRIGATE_NIGHT_CODE is missing'); process.exit(1); }
           let comp = '', name = '';
           try {
             const r = await fetch('https://trisight-relay.vercel.app/api/box', { method: 'POST',
@@ -35,7 +80,7 @@ jobs:
             comp = (j && j.data && j.data.trisight_dig_company) || '';
             name = (j && j.data && j.data.trisight_dig_company_name) || '';
           } catch (e) { log('box unreachable'); process.exit(1); }
-          if (!comp || !name) { log('no company registered in TriNight; nothing to do'); process.exit(0); }
+          if (!comp || !name) { log('no company registered'); process.exit(0); }
           const browser = await chromium.launch();
           const ctx = await browser.newContext({ locale: 'ja-JP', timezoneId: 'Asia/Tokyo' });
           await ctx.addInitScript(({ code, comp, name }) => {

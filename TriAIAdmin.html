@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI構成の登録（当社用） | TriSight</title>
+<style>
+  :root{ --navy:#16244a; --gold:#c8a24a; --ink:#1a2433; --muted:#5d6678; --line:#d9dce4; --wash:#f3f5f9; --ok:#1f7a45; --ng:#b3261e; --warn:#8a5a00; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--wash); color:var(--ink); font-family:"Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif; font-size:15px; line-height:1.7; }
+  .wrap{ max-width:900px; margin:0 auto; padding:22px 18px 60px; }
+  .lh{ display:flex; align-items:center; gap:14px; }
+  .lh img{ height:44px; width:auto; }
+  .lh h1{ margin:0; font-size:23px; font-family:Georgia,"Yu Mincho",serif; }
+  .co{ font-size:12.5px; color:var(--muted); margin:4px 0 0 58px; }
+  .rule{ border:0; border-top:2px solid var(--navy); margin:12px 0 18px; }
+  section{ background:#fff; border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin-bottom:16px; }
+  h2{ margin:0 0 8px; font-size:16px; color:var(--navy); border-left:4px solid var(--gold); padding-left:8px; }
+  p{ margin:6px 0; font-size:14px; }
+  .muted{ color:var(--muted); font-size:13px; }
+  input,select{ font-size:14.5px; padding:6px 8px; border:1px solid var(--line); border-radius:6px; }
+  button{ font-size:14px; padding:7px 14px; border-radius:6px; border:1px solid var(--navy); background:var(--navy); color:#fff; cursor:pointer; }
+  button.sub{ background:#fff; color:var(--navy); }
+  button.danger{ background:#fff; color:var(--ng); border-color:var(--ng); padding:4px 10px; font-size:13px; }
+  .row{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:8px 0; }
+  .row label{ min-width:120px; font-size:14px; }
+  table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  th,td{ border-bottom:1px solid var(--line); padding:6px 6px; text-align:left; vertical-align:top; }
+  th{ color:var(--muted); font-weight:600; }
+  .msg{ margin-top:8px; font-size:14px; white-space:pre-wrap; }
+  .ok{ color:var(--ok); } .ng{ color:var(--ng); } .warn{ color:var(--warn); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="lh"><img src="TriSight_icon_512.png" alt="TriSight®"><h1>AI構成の登録（当社用）</h1></div>
+  <div class="co">合同会社トライサイト</div>
+  <hr class="rule">
+
+  <section>
+    <h2>この画面について</h2>
+    <p>トライサイト プロバージョンのお客様について、ご契約のときに決めたAIの組み合わせ（理論AI・検証AI・評価AI）を、認証コードごとに登録します。登録した組み合わせで、そのお客様のトライサイトシステム本体が動きます。お客様の画面では変えられません。</p>
+    <p>登録していない認証コードは標準版として、基本構成（理論＝OpenAI標準・検証＝Claude標準・評価＝OpenAI標準）で動きます。</p>
+    <p class="muted">この画面の操作は、管理用コードでのみ行えます。管理用コードはこの画面を閉じると消え、端末には残りません。</p>
+    <div class="row"><label for="adm">管理用コード</label><input id="adm" type="password" autocomplete="off" style="width:260px"><button id="loadBtn">登録の一覧を読み込む</button></div>
+    <div class="msg" id="admMsg"></div>
+  </section>
+
+  <section>
+    <h2>組み合わせを登録する</h2>
+    <div class="row"><label for="target">お客様の認証コード</label><input id="target" type="text" autocomplete="off" style="width:260px"></div>
+    <div class="row"><label for="p_azusa">理論AI（あずさ）</label><select id="p_azusa"></select></div>
+    <div class="row"><label for="p_nagisa">検証AI（なぎさ）</label><select id="p_nagisa"></select></div>
+    <div class="row"><label for="p_tsukasa">評価AI（つかさ）</label><select id="p_tsukasa"></select></div>
+    <div class="msg warn" id="hint"></div>
+    <div class="row"><button id="saveBtn">この組み合わせで登録する</button></div>
+    <div class="msg" id="saveMsg"></div>
+  </section>
+
+  <section>
+    <h2>登録済みの組み合わせ</h2>
+    <div id="list"><p class="muted">管理用コードを入れて「登録の一覧を読み込む」を押すと出ます。</p></div>
+  </section>
+</div>
+<script>
+(function(){
+  'use strict';
+  var API = 'https://trisight-relay.vercel.app/api/gemini';
+  /* 選択肢は本体の部品（TriAIPick.js）と同じ並び・同じ名前 */
+  var CHOICES = [
+    ['openai-std', 'OpenAI（標準）gpt-6-sol', 'openai'],
+    ['openai-top', 'OpenAI（最上位）gpt-6-astra', 'openai'],
+    ['claude-std', 'Claude（標準）claude-sonnet-5', 'anthropic'],
+    ['claude-top', 'Claude（最上位）claude-fable-5-1', 'anthropic'],
+    ['gemini-std', 'Gemini（標準）gemini-3.5-flash', 'google'],
+    ['gemini-top', 'Gemini（最上位）gemini-3.1-pro-preview', 'google']
+  ];
+  var BASE = { azusa: 'openai-std', nagisa: 'claude-std', tsukasa: 'openai-std' };
+  var ROLES = ['azusa', 'nagisa', 'tsukasa'];
+  function $(id){ return document.getElementById(id); }
+  function esc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; }); }
+  function nameOf(id){ for(var i = 0; i < CHOICES.length; i++) if(CHOICES[i][0] === id) return CHOICES[i][1]; return id || ''; }
+  function vendorOf(id){ for(var i = 0; i < CHOICES.length; i++) if(CHOICES[i][0] === id) return CHOICES[i][2]; return ''; }
+  function mask(c){ c = String(c || ''); return c.length > 6 ? c.slice(0, 2) + '•••' + c.slice(-4) : c; }
+  function say(el, t, k){ el.className = 'msg' + (k ? ' ' + k : ''); el.textContent = t; }
+
+  ROLES.forEach(function(r){
+    $('p_' + r).innerHTML = CHOICES.map(function(c){ return '<option value="' + c[0] + '"' + (c[0] === BASE[r] ? ' selected' : '') + '>' + esc(c[1]) + '</option>'; }).join('');
+    $('p_' + r).addEventListener('change', hint);
+  });
+  /* トライサイトの考え方（ロボの「AIの選び方」と同じ）：検証AIは理論・評価と別の会社に */
+  function hint(){
+    var n = vendorOf($('p_nagisa').value);
+    var same = [];
+    if(n === vendorOf($('p_azusa').value)) same.push('理論AI');
+    if(n === vendorOf($('p_tsukasa').value)) same.push('評価AI');
+    $('hint').textContent = same.length ? ('検証AIが' + same.join('・') + 'と同じ会社のAIになっています。同じ会社が続くと、同じ癖が点検を素通りしやすくなります。お客様のご希望であれば、このまま登録できます。') : '';
+  }
+
+  async function call(body){
+    var a = $('adm').value.trim();
+    if(!a) return { ok: false, why: '管理用コードを入れてください。' };
+    try{
+      var r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-trisight-code': a }, body: JSON.stringify(body) });
+      var j = null; try{ j = await r.json(); }catch(_){}
+      if(!r.ok) return { ok: false, why: (j && j.error) || ('当社のリレーが受け付けませんでした（' + r.status + '）') };
+      return Object.assign({ ok: true }, j || {});
+    }catch(_){ return { ok: false, why: '当社のリレーにつながりませんでした。' }; }
+  }
+
+  async function load(){
+    var r = await call({ op: 'listPicks' });
+    if(!r.ok){ say($('admMsg'), r.why, 'ng'); return; }
+    say($('admMsg'), '読み込みました（登録 ' + (r.rows || []).length + '件）。', 'ok');
+    var rows = r.rows || [];
+    if(!rows.length){ $('list').innerHTML = '<p class="muted">登録はまだありません。</p>'; return; }
+    $('list').innerHTML = '<table><thead><tr><th>認証コード</th><th>理論AI</th><th>検証AI</th><th>評価AI</th><th>登録日時</th><th></th></tr></thead><tbody>'
+      + rows.map(function(x){
+          var p = x.picks || {};
+          return '<tr><td>' + esc(mask(x.code)) + '</td><td>' + esc(nameOf(p.azusa)) + '</td><td>' + esc(nameOf(p.nagisa)) + '</td><td>' + esc(nameOf(p.tsukasa)) + '</td><td>'
+            + esc(x.at ? new Date(x.at).toLocaleString('ja-JP') : '') + '</td><td><button class="danger" data-code="' + esc(x.code) + '">登録を消す</button></td></tr>';
+        }).join('') + '</tbody></table>'
+      + '<p class="muted">登録を消すと、そのお客様は次に開いたときから基本構成（標準版）で動きます。</p>';
+    Array.prototype.forEach.call($('list').querySelectorAll('button[data-code]'), function(b){
+      b.addEventListener('click', async function(){
+        if(!confirm('認証コード ' + mask(b.getAttribute('data-code')) + ' の登録を消します。よろしいですか？')) return;
+        var d = await call({ op: 'delPicks', target: b.getAttribute('data-code') });
+        if(!d.ok){ say($('admMsg'), '消せませんでした：' + d.why, 'ng'); return; }
+        load();
+      });
+    });
+  }
+  $('loadBtn').addEventListener('click', load);
+  $('saveBtn').addEventListener('click', async function(){
+    var t = $('target').value.trim();
+    if(!t){ say($('saveMsg'), 'お客様の認証コードを入れてください。', 'ng'); return; }
+    var picks = {}; ROLES.forEach(function(r){ picks[r] = $('p_' + r).value; });
+    var r = await call({ op: 'setPicks', target: t, picks: picks });
+    if(!r.ok){ say($('saveMsg'), '登録できませんでした：' + r.why, 'ng'); return; }
+    say($('saveMsg'), '認証コード ' + mask(t) + ' に登録しました。そのお客様は、次に本体を開いたときからこの組み合わせで動きます。', 'ok');
+    load();
+  });
+  hint();
+})();
+</script>
+</body>
+</html>

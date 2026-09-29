@@ -73,7 +73,7 @@ footer{margin-top:26px;font-size:12px;color:var(--muted);text-align:center}
   <div class="lh">
     <img src="TriSight_logo_registered_trimmed.png" alt="TriSight®">
     <h1>トライサイトロボ<small>使い方の案内</small></h1>
-    <span class="ver">版 <span id="verLabel">2026-09-26-03</span></span>
+    <span class="ver">版 <span id="verLabel">2026-09-29-01</span></span>
   </div>
   <div class="co">合同会社トライサイト</div>
   <hr class="rule">
@@ -91,6 +91,7 @@ footer{margin-top:26px;font-size:12px;color:var(--muted);text-align:center}
     <button role="tab" aria-selected="false" data-tab="scene">場面別の使い方</button>
     <button role="tab" aria-selected="false" data-tab="ask">質問する</button>
     <button role="tab" aria-selected="false" data-tab="tip">便利な使い方</button>
+    <button role="tab" aria-selected="false" data-tab="ai">AIの選び方</button>
   </div>
 
   <section class="panel" id="p_map" role="tabpanel">
@@ -116,6 +117,36 @@ footer{margin-top:26px;font-size:12px;color:var(--muted);text-align:center}
     <div id="tipOut"></div>
   </section>
 
+  <section class="panel" id="p_ai" role="tabpanel" hidden>
+    <p class="lead">トライサイトシステム本体の3人のAIに、どの会社のAIを使うかを、ご契約のときに決めるための考え方です。</p>
+
+    <h3>AIの組み合わせは、ご契約のときに決めます</h3>
+    <p>標準版は、通常の構成（理論＝OpenAI、検証＝Claude、評価＝OpenAI）で固定です。トライサイト プロバージョンは、ご契約のときに役割ごとに使うAIを決めていただき、その組み合わせで固定してお届けします。画面の操作で組み合わせが変わることはありません。組み合わせを変えたいときは、トライサイトへご相談ください。</p>
+    <p>いまの組み合わせは、トライサイトシステム本体の起動画面で確かめられます。あずさ・なぎさ・つかさの3枚のカードのいちばん上に役割の看板（理論AI・検証AI・評価AI）があり、名前のすぐ下に、使っているAIの名前が出ています。</p>
+
+    <h3>3人の役割</h3>
+    <p><b>理論AI（あずさ）</b>：起案者の目的と立ち位置から、構想を広げて理論に組み立てます。<br>
+    <b>検証AI（なぎさ）</b>：理論の筋道・前提・懸念を点検し、足りないところを補います。<br>
+    <b>評価AI（つかさ）</b>：実現できるか、どんな危険があるかを判定し、起案者の判断材料にまとめます。</p>
+
+    <h3>選び方の基本</h3>
+    <p><b>1. 検証AIは、理論AI・評価AIと別の会社にする</b><br>
+    同じ会社のAIが続くと、同じ癖や思い込みが点検を素通りしやすくなります。真ん中に別の会社のAIを挟むことで、理論と評価の間に違う目が入ります。通常の構成（OpenAI・Claude・OpenAI）は、この形になっています。</p>
+    <p><b>2. 理論AIと評価AIは、同じ会社でもかまいません</b><br>
+    3人はそれぞれ別々に動き、前のAIの考え方を引き継ぎません。次のAIには、前のAIが書いた結果だけが届きます。そのため、同じ会社でも、構想を広げる役と冷静に判定する役は分かれます。</p>
+    <p><b>3. 迷ったら、通常の構成の形のまま決める</b><br>
+    通常の構成（OpenAI・Claude・OpenAI）は、当社が役割の分け方に合わせて決めた組み合わせです。特に理由がなければ、この形のまま、標準か最上位かだけを決めるのが確実です。</p>
+
+    <h3>「標準」と「最上位」の違い</h3>
+    <p>各社のAIには「標準」と「最上位」があります。最上位は、難しい起案や長い資料を扱うときに力を発揮しますが、答えが返るまでの時間と利用料が増えます。日常の起案が中心であれば標準で足りることが多く、難しい起案が多い使い方であれば最上位が向きます。</p>
+
+    <h3>実際にどのAIで動いたかを確かめる</h3>
+    <p>起動画面の「ワークフロー開始」の下に、小さな字で「使用中のAI」の行があります。ここに、実際に使ったモデルの名前が出ます。名前の後ろに「（新しいモデルが使えず前のモデルで実行）」と出たときは、決めたモデルがその時は使えず、当社が用意した一つ前のモデルで動いた印です。結果は出ていますが、気になるときは、時間をおいてもう一度流してください。</p>
+
+    <h3>組み合わせに使えるAIについて</h3>
+    <p>各社のAIは、定期的に新しいものへ入れ替わります。組み合わせに使えるのは、当社が各社の公式の一覧で名前を確かめたものだけです。確かめた日は「使用中のAI」の行の最後に出ています。</p>
+  </section>
+
   <footer>TriSight® は合同会社トライサイトの登録商標です ／ © 2026 合同会社トライサイト</footer>
 </div>
 <iframe id="probe" sandbox="allow-same-origin" title="画面の読み取り用" aria-hidden="true" tabindex="-1"></iframe>
@@ -123,7 +154,7 @@ footer{margin-top:26px;font-size:12px;color:var(--muted);text-align:center}
 <script>
 (function(){
 'use strict';
-var ROBO_VERSION = '2026-09-26-03';
+var ROBO_VERSION = '2026-09-29-01';
 var RELAY = 'https://trisight-relay.vercel.app/api/anthropic';
 
 /* 案内の対象。ready の画面だけを選択窓に出す（まずトライゲイト）。
@@ -471,7 +502,7 @@ async function boot(){
 document.querySelectorAll('.tabs button').forEach(function(b){
   b.onclick = function(){
     document.querySelectorAll('.tabs button').forEach(function(x){ x.setAttribute('aria-selected', x===b?'true':'false'); });
-    ['map','scene','ask','tip'].forEach(function(t){ $('p_'+t).hidden = (t!==b.dataset.tab); });
+    ['map','scene','ask','tip','ai'].forEach(function(t){ $('p_'+t).hidden = (t!==b.dataset.tab); });
   };
 });
 $('askBtn').onclick = ask;

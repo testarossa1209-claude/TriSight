@@ -503,7 +503,7 @@ textarea {
 .kb-map { margin-top:6px; border-left:3px solid var(--border-gold); padding:6px 10px; font-size:0.76rem; line-height:1.7; color:#ccc; }
 .kb-map a { color:var(--gold-light); word-break:break-all; }
 .kb-map b { color:var(--gold); }
-.kb-star { color:#e8b04a; margin-left:4px; }
+.kb-star { color:#e8b04a; margin-left:4px; font-weight:700; }
 #kbStatus { white-space:pre-line; line-height:1.7; }
 .rev-box { margin-top:12px; border:1px solid var(--border); border-radius:6px; padding:10px 12px; background:var(--bg2); }
 .rev-box .kb-item select { width:100%; }
@@ -779,7 +779,7 @@ textarea {
           <div onclick="openBusiness()" style="padding:12px 20px; cursor:pointer; color:#f5f0e8; font-size:0.85rem; border-bottom:1px solid rgba(201,168,76,0.2);">📋 ビジネスレポート</div>
     </div>      
      </div>  
-  <div class="wf-footer">© 2026 合同会社トライサイト　TriSight® is a registered trademark.<div class="verline" style="margin-top:6px;font-size:14px;color:#f5f0e8">版 <span id="verLabel">2026-09-29-01</span></div></div>
+  <div class="wf-footer">© 2026 合同会社トライサイト　TriSight® is a registered trademark.<div class="verline" style="margin-top:6px;font-size:14px;color:#f5f0e8">版 <span id="verLabel">2026-09-30-01</span></div></div>
 </div>
 
 <script>
@@ -1054,12 +1054,12 @@ function kbEsc(t){ return String(t == null ? '' : t).replace(/[&<>"]/g, function
 function kbBuild(){
   const root = document.getElementById('kbForm');
   if (!root || root.dataset.built) return;
-  let h = '<div class="kb-note" style="margin-bottom:6px">★の付いた設問は、提案の段階の判定に使います。まず★を埋め、その他は分かる範囲で構いません。空欄は「欠けている情報」として扱われ、提案の中で「確かめてから決める」と示されます。</div>';
+  let h = '<div class="kb-note" style="margin-bottom:6px"><b style="color:#e8b04a">★必須</b>の設問は、提案の段階（解決提案まで進むかどうか）の判定に使います。★必須に答えていないと、解決提案には進まず、足りない情報の洗い出しになります。そのほかの設問は、分かる範囲で構いません。空欄は「欠けている情報」として扱われ、提案の中で「確かめてから決める」と示されます。</div>';
   KB_SECS.forEach(function(sec){
     h += '<div class="kb-sec">' + kbEsc(sec[0]) + '</div>';
     let lastQ = '';
     sec[1].forEach(function(f){
-      if (f.q !== lastQ) { if (lastQ) h += '</div>'; const star = sec[1].some(function(x){ return x.q === f.q && x.mark; }); h += '<div class="kb-block"><span class="kb-qn">' + f.q + (star ? '<span class="kb-star">★</span>' : '') + '</span>'; lastQ = f.q; }
+      if (f.q !== lastQ) { if (lastQ) h += '</div>'; const star = sec[1].some(function(x){ return x.q === f.q && x.mark; }); h += '<div class="kb-block"><span class="kb-qn">' + f.q + (star ? '<span class="kb-star">★必須</span>' : '') + '</span>'; lastQ = f.q; }
       h += '<div class="kb-item"><span class="kb-lab">' + kbEsc(f.label) + '</span>';
       const id = 'kb_' + f.key;
       if (f.type === 'text') h += '<input type="text" id="' + id + '">';
@@ -1188,6 +1188,7 @@ function kbStatusShow(){
     st.textContent = '使用中：' + sel.value + (rec.saved ? '（最終保存 ' + rec.saved + '）' : '') + '\n'
       + '判定に使う回答：関係 ' + v(a.q4) + '／業種 ' + v(a.q6) + '／知識 ' + v(a.q9) + '\n'
       + '　経営陣の言葉 ' + (a.q14 ? 'あり（' + v(a.q16_mgmt) + '）' : 'なし') + '／現場職員の言葉 ' + (a.q15 ? 'あり（' + v(a.q16_field) + '）' : 'なし') + '／出口 ' + (a.q23 ? v(a.q23_mark) : 'なし') + '\n'
+      + (function(){ var r = [['q4','Q4'],['q6','Q6'],['q9','Q9'],['q12','Q12'],['q14','Q14'],['q15','Q15'],['q16_mgmt','Q16（経営陣）'],['q16_field','Q16（現場）'],['q23','Q23']].filter(function(x){ var y = a[x[0]]; return !y || (Array.isArray(y) && !y.length); }).map(function(x){ return x[1]; }); return r.length ? '★必須の未回答：' + r.join('、') + '（答えるまで解決提案には進みません。「起案基礎情報を開く」から答えてください）\n' : ''; })()
       + 'この回答での提案の段階（見込み）：' + KB_MODE_SHORT[p.mode] + '\n'
       + '前回から変わったことがあるときだけ「起案基礎情報を開く」で直して保存してください。変わりがなければ、開かずにそのまま実行できます。';
     st.className = 'kb-status ok';

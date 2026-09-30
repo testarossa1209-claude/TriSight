@@ -64,7 +64,7 @@ pre.out{white-space:pre-wrap;font-size:12px;font-family:var(--font-mono);backgro
     <div style="font-size:20px;font-weight:500">基本情報シート</div>
   </div>
   <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">発行：合同会社トライサイト</div>
-  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-09-26-01</span> <span id="verMsg"></span></div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-09-30-01</span> <span id="verMsg"></span></div>
   <div style="border-top:1px solid var(--border-strong);margin:8px 0 12px"></div>
   <div id="orgBar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px">
     <label for="orgSel">登録している会社</label>
@@ -1382,4 +1382,73 @@ boot();
 
 </script>
 
-</div></body></html>
+</div><script>
+/* ============================================================
+   基本情報シート：提案の段階の判定に使う設問に「必須」の印（2026-09-30-01）
+   ・トライサイトシステム本体・AI連携オプションは、起案基礎情報の次の設問で提案の段階を決める。
+     答えていないと、解決提案には進まず、足りない情報の洗い出しになる。
+     Q4 起案者との関係／Q6 業種／Q9 知識／Q12 問題の把握の方法／Q14・Q15 経営陣と現場職員の言葉（と印）／
+     Q16 問題の明確さ（経営陣・現場）／Q23 出口（と当事者への確認）
+     自社の問題のときは、会社カードの「業種（大分類）」がQ6として渡るので、それも必須。
+   ・これらの行に「必須」の印を付け、章の頭に説明を置く。「空欄を確認」では必須の空欄を先に知らせる。
+     保存は止めない（分かるところから入れて保存できるようにする）。
+   ============================================================ */
+(function(){
+  'use strict';
+  var REQ = ['q4','q6','q9','q12','q14','q14_mark','q15','q15_mark','q16_mgmt','q16_field','q23','q23_mark'];
+  var NOTE = '「必須」の印の設問は、トライサイトシステムが提案の段階（解決提案まで進むかどうか）を決めるのに使います。必須に答えていないと、解決提案には進まず、足りない情報の洗い出しになります。そのほかの設問は、分かる範囲で構いません。';
+  function css(){
+    if(document.getElementById('reqCss')) return;
+    var s = document.createElement('style'); s.id = 'reqCss';
+    s.textContent = '.req-badge{display:inline-block;margin-right:6px;padding:0 6px;border-radius:4px;background:#b3261e;color:#fff;font-size:11px;font-weight:600;line-height:1.6;vertical-align:1px}'
+      + '.req-note{margin:6px 0 10px;padding:8px 10px;border:1px solid #b3261e;border-radius:6px;color:#b3261e;font-size:12.5px;line-height:1.7}';
+    document.head.appendChild(s);
+  }
+  function isSelf(){ try{ return (val.self || []).indexOf('自社の問題') !== -1; }catch(_){ return false; } }
+  /* 自社の問題のときは、会社カードの「業種（大分類）」がQ6として渡るので、そちらも必須 */
+  function keys(){ return isSelf() ? REQ.concat(['業種（大分類）']) : REQ; }
+  function shownReq(){ return keys().filter(function(k){ return !!document.getElementById('r_' + k); }); }
+  function mark(){
+    css();
+    var ks = shownReq(); if(!ks.length) return;
+    ks.forEach(function(k){
+      var r = document.getElementById('r_' + k); if(r.querySelector('.req-badge')) return;
+      var lb = r.querySelector('.lb, .cellk'); if(!lb) return;
+      var b = document.createElement('span'); b.className = 'req-badge'; b.textContent = '必須';
+      lb.insertBefore(b, lb.firstChild);
+    });
+    if(!document.getElementById('reqNote')){
+      var first = document.getElementById('r_q2') || document.getElementById('r_' + ks[0]);
+      if(first && first.parentNode){ var n = document.createElement('div'); n.id = 'reqNote'; n.className = 'req-note'; n.textContent = NOTE; first.parentNode.insertBefore(n, first); }
+    }
+  }
+  function emptyVal(k){ var x = (typeof val === 'object' && val) ? val[k] : undefined; return Array.isArray(x) ? !x.length : (x === undefined || x === null || x === ''); }
+  function reqMissing(){
+    return shownReq().filter(function(k){ return emptyVal(k); }).map(function(k){
+      var r = document.getElementById('r_' + k), lb = r && r.querySelector('.lb, .cellk');
+      var t = lb ? lb.textContent.replace(/^必須/, '').trim() : k;
+      if(r) r.classList.add('miss');
+      return t;
+    });
+  }
+  function tell(){
+    var m = reqMissing(); var r = document.getElementById('res'); if(!r || !m.length) return false;
+    r.style.color = 'var(--text-danger)';
+    r.textContent = '必須の空欄 ' + m.length + ' 件（答えるまで解決提案には進みません）：' + m.slice(0, 4).join('、') + (m.length > 4 ? ' ほか' : '');
+    return true;
+  }
+  /* 描き直しのたびに印を付ける */
+  if(typeof draw === 'function'){ var _draw = draw; draw = function(){ var x = _draw.apply(this, arguments); try{ mark(); }catch(_){} return x; }; }
+  /* 「空欄を確認」：必須の空欄を先に知らせる */
+  var chk = document.getElementById('chk');
+  if(chk){ var orig = chk.onclick; chk.onclick = function(e){ if(orig) orig.call(this, e); if(plan) tell(); }; }
+  /* 保存するときにも知らせる（保存は止めない） */
+  document.addEventListener('click', function(e){
+    var t = e.target; if(!t || !t.id) return;
+    if(t.id === 'ssdSave'){ setTimeout(function(){ if(plan) tell(); }, 0); }
+  }, true);
+  try{ mark(); }catch(_){}
+})();
+
+</script>
+</body></html>

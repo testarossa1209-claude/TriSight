@@ -52,6 +52,7 @@
     <div class="row"><label for="p_azusa">理論AI（あずさ）</label><select id="p_azusa"></select></div>
     <div class="row"><label for="p_nagisa">検証AI（なぎさ）</label><select id="p_nagisa"></select></div>
     <div class="row"><label for="p_tsukasa">評価AI（つかさ）</label><select id="p_tsukasa"></select></div>
+    <div class="row"><label for="p_win">選択窓オプション</label><label><input type="checkbox" id="p_win"> 付ける（お客様の画面の3人の下に選択窓を出し、お客様が組み合わせを変えられるようにする）</label></div>
     <div class="msg warn" id="hint"></div>
     <div class="row"><button id="saveBtn">この組み合わせで登録する</button></div>
     <div class="msg" id="saveMsg"></div>
@@ -112,12 +113,12 @@
     var r = await call({ op: 'listPicks' });
     if(!r.ok){ say($('admMsg'), r.why, 'ng'); return; }
     say($('admMsg'), '読み込みました（登録 ' + (r.rows || []).length + '件）。', 'ok');
-    var rows = r.rows || [];
+    var rows = r.rows || []; window.__picksRows = rows;
     if(!rows.length){ $('list').innerHTML = '<p class="muted">登録はまだありません。</p>'; return; }
-    $('list').innerHTML = '<table><thead><tr><th>認証コード</th><th>理論AI</th><th>検証AI</th><th>評価AI</th><th>登録日時</th><th></th></tr></thead><tbody>'
+    $('list').innerHTML = '<table><thead><tr><th>認証コード</th><th>理論AI</th><th>検証AI</th><th>評価AI</th><th>選択窓</th><th>登録日時</th><th></th></tr></thead><tbody>'
       + rows.map(function(x){
           var p = x.picks || {};
-          return '<tr><td>' + esc(mask(x.code)) + '</td><td>' + esc(nameOf(p.azusa)) + '</td><td>' + esc(nameOf(p.nagisa)) + '</td><td>' + esc(nameOf(p.tsukasa)) + '</td><td>'
+          return '<tr><td>' + esc(mask(x.code)) + '</td><td>' + esc(nameOf(p.azusa)) + '</td><td>' + esc(nameOf(p.nagisa)) + '</td><td>' + esc(nameOf(p.tsukasa)) + '</td><td>' + (p.win ? 'あり' : 'なし') + '</td><td>'
             + esc(x.at ? new Date(x.at).toLocaleString('ja-JP') : '') + '</td><td><button class="danger" data-code="' + esc(x.code) + '">登録を消す</button></td></tr>';
         }).join('') + '</tbody></table>'
       + '<p class="muted">登録を消すと、そのお客様は次に開いたときから基本構成（標準版）で動きます。</p>';
@@ -134,11 +135,17 @@
   $('saveBtn').addEventListener('click', async function(){
     var t = $('target').value.trim();
     if(!t){ say($('saveMsg'), 'お客様の認証コードを入れてください。', 'ng'); return; }
-    var picks = {}; ROLES.forEach(function(r){ picks[r] = $('p_' + r).value; });
+    var picks = {}; ROLES.forEach(function(r){ picks[r] = $('p_' + r).value; }); picks.win = $('p_win').checked;
     var r = await call({ op: 'setPicks', target: t, picks: picks });
     if(!r.ok){ say($('saveMsg'), '登録できませんでした：' + r.why, 'ng'); return; }
     say($('saveMsg'), '認証コード ' + mask(t) + ' に登録しました。そのお客様は、次に本体を開いたときからこの組み合わせで動きます。', 'ok');
     load();
+  });
+  /* 入れたコードが登録済みなら、今の組み合わせとオプションの有無を欄に入れる（2026-10-01） */
+  $('target').addEventListener('change', function(){
+    var t = $('target').value.trim(), x = null; (window.__picksRows || []).forEach(function(r){ if(r.code === t) x = r; });
+    if(!x || !x.picks) return;
+    ROLES.forEach(function(r){ $('p_' + r).value = x.picks[r]; }); $('p_win').checked = !!x.picks.win; hint();
   });
   hint();
 })();

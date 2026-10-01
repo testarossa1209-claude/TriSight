@@ -1,10 +1,16 @@
 /* ============================================================
-   TriAIPick.js — トライサイト本体のAIの組み合わせ（2026-09-29）
+   TriAIPick.js — トライサイト本体のAIの組み合わせ（2026-09-29／2026-10-01 改2）
    ------------------------------------------------------------
    ・3人のカードの上に役割の看板（理論AI・検証AI・評価AI）を出し、名前の下に、使っているAIを表示する。
    ・標準版は、通常の構成（理論＝OpenAI標準・検証＝Claude標準・評価＝OpenAI標準）で固定。
-   ・プロバージョンは、契約のときにお客様と決めたAIの組み合わせで固定して出荷する（2026-09-29・宏史さんの決定）。
-     画面では変えられない。組み合わせは当社のリレー（api/gemini の plan）が認証コードごとに答える。
+   ・プロバージョンは、契約のときにお客様と決めたAIの組み合わせで出荷する（2026-09-29・宏史さんの決定）。
+     2026-10-01 改1：選択窓オプションを付けたコード（組み合わせの記録に win: true）だけ、3人の下に選択窓を出し、
+     お客様が使い勝手や能力に合わせて変えられる。選んだ内容はその端末にコードごとに残す。「契約時組合せに戻す」で戻る。
+     オプションの無いプロのコードは、今までどおり画面では変えられない。
+   ・流れの図（2026-10-01 改2・標準版も含むすべてのコード）：見出し「出口を解決するプロセス構造」を付け、枠を明確に、
+     矢印を見えるように、6つを1行に並べる（宏史さんの指示）。
+   ・プロのコードでは表紙をプロの形にする（2026-10-01 確定）：表題の横に「Pro」、
+     開始ボタンの下に「プロ：契約時組合せに戻す（オプション付きのみ）・自動発掘・トライゲイト」。組み合わせは当社のリレー（api/gemini の plan）が認証コードごとに答える。
      契約の組み合わせが登録されていないプロのコードは、通常の構成を各社の最上位モデルにしたもの（2026-09-26の決定）。
    ・組み合わせは、本体の「使うAIの表」（TS_MODELS）へそのまま入れる。呼び出しは、その会社の口へ自動で振り分ける。
    ・本体（TriSight_v5.html）とAI連携オプション（TriSight_v5_auto.html）の両方が、このファイルを読み込む。
@@ -26,7 +32,11 @@
   ];
   var STD = { azusa: 'openai-std', nagisa: 'claude-std', tsukasa: 'openai-std' };
   var PRO_DEFAULT = { azusa: 'openai-top', nagisa: 'claude-top', tsukasa: 'openai-top' };
-  var isPro = false, contracted = null;
+  var isPro = false, contracted = null, optWin = false;
+  function ownKey(){ return 'trisight_pro_picks:' + code(); }
+  function valid(p){ return p && ROLES.every(function(r){ return !!byId(p[r]); }); }
+  function loadOwn(){ try{ var j = JSON.parse(localStorage.getItem(ownKey()) || 'null'); return valid(j) ? j : null; }catch(_){ return null; } }
+  function saveOwn(p){ try{ if(p) localStorage.setItem(ownKey(), JSON.stringify(p)); else localStorage.removeItem(ownKey()); }catch(_){} }
 
   function byId(id){ for(var i = 0; i < CHOICES.length; i++){ if(CHOICES[i].id === id) return CHOICES[i]; } return null; }
   function code(){ try{ return localStorage.getItem('trisight_access_code') || ''; }catch(_){ return ''; } }
@@ -42,7 +52,7 @@
     TS_MODELS.checked = CHECKED;
     try{ if(typeof tsModelLine === 'function') tsModelLine(); }catch(_){}
   }
-  function current(){ return isPro ? (contracted || PRO_DEFAULT) : STD; }
+  function current(){ if(!isPro) return STD; var base = contracted || PRO_DEFAULT; return optWin ? (loadOwn() || base) : base; }
 
   /* ---- 画面：看板と選択窓 ---- */
   function injectStyle(){
@@ -54,7 +64,16 @@
       + '.ai-pick{margin:4px 0 10px}'
       + '.ai-pick .ai-model{display:inline-block;font-size:0.78rem;padding:4px 10px;border-radius:4px;'
       + 'background:var(--bg3,#1b2a3d);color:var(--text,#f5f0e8);border:1px solid var(--border-gold,#c9a84c)}'
-      + '.ai-pick-note{font-size:0.68rem;color:var(--text-dim,#9aa4b2);margin-top:4px}';
+      + '.ai-pick-note{font-size:0.68rem;color:var(--text-dim,#9aa4b2);margin-top:4px}'
+      + '.ai-pick select{font-family:inherit;font-size:0.8rem;padding:5px 8px;border-radius:4px;max-width:100%;'
+      + 'background:var(--bg3,#12122a);color:var(--text,#e8e0d0);border:1px solid var(--border-gold,#c9a84c44);cursor:pointer}'
+      + '.ts-pro-tag{font-size:1rem;margin-left:10px;padding:1px 10px;border:1px solid var(--gold,#c9a84c);border-radius:4px;letter-spacing:0.12em;vertical-align:middle;font-family:\'Zen Kaku Gothic New\',sans-serif}'
+      + '.ts-flowbox{background:var(--bg2,#0d0d1e);border:1px solid var(--border,#2a2a3e);border-radius:12px;padding:18px 16px 22px;margin-bottom:40px}'
+      + '.ts-flow-title{text-align:center;font-size:0.85rem;color:var(--gold-light,#e0be6a);letter-spacing:0.12em;margin:0 0 14px;font-family:\'Zen Kaku Gothic New\',sans-serif}'
+      + '.ts-flowbox .flow-diagram{background:none;border:0;padding:0;margin:0;gap:4px;flex-wrap:nowrap;overflow-x:auto}'
+      + '.ts-flowbox .flow-node{background:#1a1a36;border:1.5px solid var(--gold,#c9a84c);color:var(--gold-light,#e0be6a);padding:7px 9px;font-size:0.78rem;flex:none}'
+      + '.ts-flowbox .flow-arrow{color:var(--gold,#c9a84c);font-size:1.05rem;padding:0 1px;flex:none}'
+      + '.ts-pro-links a{cursor:pointer}';
     document.head.appendChild(s);
   }
   function render(){
@@ -76,6 +95,13 @@
         if(nameEl && nameEl.nextSibling) card.insertBefore(box, nameEl.nextSibling); else card.appendChild(box);
       }
       var c = byId(picks[r]) || byId(STD[r]);
+      if(optWin){                          /* 選択窓オプション付きのプロ：3人それぞれ選べる */
+        var sel = document.createElement('select'); sel.setAttribute('data-role', r); sel.setAttribute('aria-label', SIGN[r] + 'に使うAI');
+        CHOICES.forEach(function(ch){ var o = document.createElement('option'); o.value = ch.id; o.textContent = label(ch); if(ch.id === c.id) o.selected = true; sel.appendChild(o); });
+        sel.onchange = function(){ var p = current(); var q = { azusa: p.azusa, nagisa: p.nagisa, tsukasa: p.tsukasa }; q[sel.getAttribute('data-role')] = sel.value; saveOwn(q); apply(current()); render(); };
+        box.innerHTML = ''; box.appendChild(sel);
+        return;
+      }
       var tag = document.createElement('span'); tag.className = 'ai-model'; tag.setAttribute('data-role', r);
       tag.textContent = label(c);
       box.innerHTML = ''; box.appendChild(tag);
@@ -86,6 +112,36 @@
         box.appendChild(note);
       }
     });
+    renderFlow();
+    renderProCover();
+  }
+
+  /* ---- プロの表紙（2026-10-01 確定）：プロのコードのときだけ ---- */
+  /* ---- 流れの図（2026-10-01 改2）：標準版も含むすべてのコード ---- */
+  function renderFlow(){
+    var fd = document.querySelector('#launcher .flow-diagram');
+    if(fd && !fd.parentNode.classList.contains('ts-flowbox')){
+      var box = document.createElement('div'); box.className = 'ts-flowbox';
+      var h = document.createElement('div'); h.className = 'ts-flow-title'; h.textContent = '出口を解決するプロセス構造';
+      fd.parentNode.insertBefore(box, fd); box.appendChild(h); box.appendChild(fd);
+    }
+  }
+  function renderProCover(){
+    if(!isPro) return;
+    var t = document.querySelector('#launcher .launcher-title');
+    if(t && !t.querySelector('.ts-pro-tag')){ var g = document.createElement('span'); g.className = 'ts-pro-tag'; g.textContent = 'Pro'; t.appendChild(g); }
+    var sl = document.querySelector('#launcher .sheet-links');
+    if(!sl) return;
+    var row = document.getElementById('tsProLinks');
+    if(!row){ row = document.createElement('div'); row.id = 'tsProLinks'; row.className = 'sheet-links ts-pro-links'; sl.parentNode.insertBefore(row, sl.nextSibling); }
+    row.innerHTML = 'プロ：'
+      + (optWin ? '<a role="button" id="tsBackContract">契約時組合せに戻す</a>' : '')
+      + '<a href="TriNight.html" target="_blank" rel="noopener">自動発掘</a>'
+      + '<a href="TriGate.html" target="_blank" rel="noopener">トライゲイト</a>';
+    var b = document.getElementById('tsBackContract');
+    if(b) b.onclick = function(e){ e.preventDefault(); saveOwn(null); apply(current()); render();
+      var x = document.getElementById('tsBackContract'); if(!x) return; x.textContent = '契約時組合せに戻しました';
+      setTimeout(function(){ var y = document.getElementById('tsBackContract'); if(y) y.textContent = '契約時組合せに戻す'; }, 2000); };
   }
 
   /* ---- 呼び出しの振り分け：選んだ会社の口へ送る ---- */
@@ -161,7 +217,8 @@
     var plan = await askPlan();
     isPro = plan.pro;
     contracted = null;
-    if(plan.picks){ var ok = ROLES.every(function(r){ return !!byId(plan.picks[r]); }); if(ok) contracted = plan.picks; }
+    if(plan.picks){ var ok = ROLES.every(function(r){ return !!byId(plan.picks[r]); }); if(ok) contracted = { azusa: plan.picks.azusa, nagisa: plan.picks.nagisa, tsukasa: plan.picks.tsukasa }; }
+    optWin = !!(isPro && contracted && plan.picks.win === true);
     apply(current()); render();
   }
   window.tsAiPick = { choices: CHOICES, std: STD, proDefault: PRO_DEFAULT, checked: CHECKED, isPro: function(){ return isPro; } };

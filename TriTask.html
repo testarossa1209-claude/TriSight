@@ -142,6 +142,12 @@
   .step .body{flex:1}
   .step .title{font-family:"Shippori Mincho",serif;font-weight:700;font-size:16.5px;color:var(--ink)}
   .step .action{font-size:14px;color:var(--ink-soft);margin-top:5px}
+  .step details.subs{margin-top:8px;font-size:13px;color:var(--ink-soft)}
+  .step details.subs summary{cursor:pointer;color:var(--amber);font-weight:700}
+  .step details.subs ol{margin:8px 0 0 18px;padding:0}
+  .step details.subs li{margin:0 0 8px}
+  .step details.subs .sa{color:var(--ink)}
+  .step details.subs .sc{white-space:pre-line;font-size:12px;margin-top:2px}
   .step .verify{
     font-size:12.5px;color:var(--ink-soft);margin-top:10px;
     padding:8px 12px;background:var(--paper);border-radius:8px;border-left:3px solid var(--amber-soft);
@@ -376,7 +382,7 @@
     <div style="text-align:center"><button class="reset" id="resetBtn">別の理論で、最初からやり直す</button></div>
   </section>
 
-  <footer>TriTask® v0.3（版 2026-09-06-01） ／ TriSight® Family 共通基盤エンジン</footer>
+  <footer>TriTask® v0.3（版 2026-10-02-01） ／ TriSight® Family 共通基盤エンジン</footer>
 </div>
 
 <script>
@@ -843,7 +849,7 @@
     let dRestAt = tasks.length - 1;
     if(dRestAt < 0) dRestAt = 0;
 
-    return tasks.map((t,i)=>{
+    const steps0 = tasks.map((t,i)=>{
       const mine = vFor[i], myDocs = dFor[i];
       let verify;
       if(mine.length){
@@ -876,14 +882,56 @@
       if(t.output)    chain.push("この工程でできるもの：" + t.output);
       if(t.submit_to) chain.push("持っていく先：" + t.submit_to);
       if(t.receive)   chain.push("持ち帰るもの：" + t.receive);
+      const note = verify;
       if(chain.length) verify = chain.join("\n") + "\n" + verify;
+      /* 2026-10-02：書類ごとにまとめるための鍵。トライフォームが書類（型）ごとに開いた工程は
+         from に書類名を持つ。期限つきの工程・先頭の確かめる工程はまとめない。 */
+      const gkey = (!t.due_text && t.from && t.from !== "制度" && t.from !== "確認") ? String(t.from) : "";
       return {
-        title: t.due_text ? (/まで$/.test(t.due_text) ? t.due_text : t.due_text + "まで")
+        title: t.due_text ? (/まで|迄|前$|後$|に$/.test(t.due_text) ? t.due_text : t.due_text + "まで")
              : (t.from && t.from !== "制度" ? t.from : ("工程" + (i+1))),
         action: t.action || "",
         verify: verify,
         must_verify: !!t.must_verify,
-        verify_count: mine.length
+        verify_count: mine.length,
+        _gkey: gkey, _chain: chain, _note: note
+      };
+    });
+    return ttGroupByDoc(steps0);
+  }
+  /* 2026-10-02（9/14の控え17件目）：同じ書類の「取る・見る・書く・出す」が3〜4行に割れ、
+     ASVの案件で52工程に膨らんでいた。書類1件＝1工程にまとめ、手順は工程の中に畳む。
+     まとめるのは表示だけで、届いたデータ（reverse_tasks）は書き換えない。 */
+  function ttGroupByDoc(list){
+    const out = [], at = {};
+    list.forEach(function(s){
+      if(!s._gkey){ out.push(s); return; }
+      if(at[s._gkey] === undefined){
+        at[s._gkey] = out.length;
+        out.push({ title: s._gkey, action: "", verify: "", must_verify: false, verify_count: 0,
+                   substeps: [], _notes: [] });
+      }
+      const g = out[at[s._gkey]];
+      g.substeps.push({ action: s.action, chain: s._chain.join("\n"), must_verify: s.must_verify });
+      g.must_verify = g.must_verify || s.must_verify;
+      g.verify_count += s.verify_count;
+      String(s._note || "").split("\n").forEach(function(line){
+        const l = line.trim();
+        if(!l || l === "期限内に完了していること") return;
+        if(g._notes.indexOf(l) < 0) g._notes.push(l);
+      });
+    });
+    return out.map(function(s){
+      if(!s.substeps) return { title:s.title, action:s.action, verify:s.verify,
+                               must_verify:s.must_verify, verify_count:s.verify_count };
+      const n = s.substeps.length;
+      return {
+        title: s.title,
+        action: "「" + s.title + "」を用意する（手順" + n + "つ）",
+        verify: s._notes.length ? s._notes.join("\n") : "期限内に完了していること",
+        must_verify: s.must_verify,
+        verify_count: s.verify_count,
+        substeps: s.substeps
       };
     });
   }
@@ -1161,6 +1209,30 @@
         '</div>';
       li.querySelector(".title").textContent = s.title||("作業"+(i+1));
       li.querySelector(".action").textContent = s.action||"";
+      if(s.substeps && s.substeps.length){
+        const det = document.createElement("details");
+        det.className = "subs";
+        const sm = document.createElement("summary");
+        sm.textContent = "手順を見る（" + s.substeps.length + "つ）";
+        det.appendChild(sm);
+        const ol = document.createElement("ol");
+        s.substeps.forEach(function(x){
+          const it = document.createElement("li");
+          const a = document.createElement("div");
+          a.className = "sa";
+          a.textContent = (x.must_verify ? "◇ " : "") + (x.action || "");
+          it.appendChild(a);
+          if(x.chain){
+            const c = document.createElement("div");
+            c.className = "sc";
+            c.textContent = x.chain;
+            it.appendChild(c);
+          }
+          ol.appendChild(it);
+        });
+        det.appendChild(ol);
+        li.querySelector(".action").after(det);
+      }
       const vSpan = li.querySelector(".verify span");
       vSpan.textContent = s.verify||"";
       vSpan.style.whiteSpace = "pre-line";

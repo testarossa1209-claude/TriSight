@@ -405,7 +405,7 @@
     <div style="text-align:center"><button class="reset" id="resetBtn">別の理論で、最初からやり直す</button></div>
   </section>
 
-  <footer>TriTask® v0.3（版 2026-10-02-03） ／ TriSight® Family 共通基盤エンジン</footer>
+  <footer>TriTask® v0.3（版 2026-10-02-05） ／ TriSight® Family 共通基盤エンジン</footer>
 </div>
 
 <script>
@@ -752,6 +752,35 @@
     return d.getFullYear() + "/" + p(d.getMonth()+1) + "/" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
   }
 
+  function ttIsPendingForm(g){
+    try{
+      return !!g && g.source_product === "TriGate®" && !g.triform_applied && isFamilyTier(myAuthCode());
+    }catch(e){ return false; }
+  }
+  function ttShowPending(g){
+    let box = document.getElementById("ttPendingBox");
+    if(!box){
+      box = document.createElement("div");
+      box.id = "ttPendingBox";
+      box.style.cssText = "margin:14px 0;padding:16px 18px;border:1px solid var(--line);border-left:4px solid #2F6FA8;border-radius:0;background:var(--white);line-height:1.8";
+      const lc = document.getElementById("grantListCard");
+      lc.parentNode.insertBefore(box, lc.nextSibling);
+    }
+    box.innerHTML = "";
+    const h = document.createElement("div"); h.style.cssText = "font-weight:700;font-size:15px;margin-bottom:6px";
+    h.textContent = g.program_name || "（名称不明）";
+    const p = document.createElement("div"); p.style.cssText = "font-size:13.5px;color:var(--ink-soft)";
+    p.textContent = "この案件は、まだトライフォームで工程に分解されていません。分解すると、書類ごとにまとめた工程と、AIの下ごしらえが付いた形でここに届きます。";
+    const a = document.createElement("a");
+    a.href = "TriForm.html?case=" + encodeURIComponent(g.id); a.target = "_blank"; a.rel = "noopener";
+    a.textContent = "TriFormで分解する ›";
+    a.style.cssText = "display:inline-block;margin-top:10px;padding:7px 16px;border-radius:6px;background:#2F6FA8;color:#fff;font-weight:700;text-decoration:none";
+    const back = document.createElement("button"); back.type = "button"; back.textContent = "案件一覧へ戻る";
+    back.style.cssText = "margin:10px 0 0 10px;padding:6px 14px;border-radius:6px;border:1px solid var(--line);background:transparent;cursor:pointer;font-family:inherit";
+    back.addEventListener("click", function(){ box.remove(); });
+    box.appendChild(h); box.appendChild(p); box.appendChild(a); box.appendChild(back);
+    box.scrollIntoView({behavior:"smooth", block:"start"});
+  }
   function gitemEl(g){
     const li = document.createElement("li");
     li.className = "gitem";
@@ -773,7 +802,7 @@
     li.querySelector(".garr").textContent = "届いた日：" + arrivedLabel(g);
     li.querySelector(".gco").textContent = g.company_name ? ("送付元：" + g.company_name) : "";
     li.querySelector(".gdue").textContent = "期限：" + due;
-    li.querySelector(".gstatus").textContent = g.status || "未着手";
+    li.querySelector(".gstatus").textContent = ttIsPendingForm(g) ? "分解待ち" : (g.status || "未着手");
     li.addEventListener("click", ()=>openGrant(g.id));
     li.querySelector(".gdel").addEventListener("click", (ev)=>{
       ev.stopPropagation();
@@ -961,6 +990,10 @@
   async function openGrant(id){
     const g = allInbox().find(x=>x.id===id);
     if(!g) return;
+    /* 2026-10-02：トライゲイトから届いたまま、トライフォームで分解されていない案件は、
+       工程として並べない（期限つきの3工程だけが出て迷うため）。AIの自動仕分けも動かさない。
+       トライフォームを使えない契約では従来どおり開く。 */
+    if(ttIsPendingForm(g)){ ttShowPending(g); return; }
     currentGrantId = id;
     const steps = reverseTasksToSteps(g);
     if(steps){
@@ -969,7 +1002,7 @@
       /* 2026-10-02：宏史さんの指摘「AIができることは全部済ませておいてと依頼しているのに
          ボタンを押さないとやらないというのはおかしい」。初めて開いたとき（または工程が
          送り直されて変わったとき）に、AIが自動で済ませる。ボタンはやり直し用に残す。 */
-      if(!g.ai_prep || g.ai_prep.sig !== ttStepSig(steps)) ttRunAiPrep();
+      if(!g.ai_prep || g.ai_prep.sig !== ttStepSig(steps) || !Object.keys(g.ai_prep.by_title||{}).length) ttRunAiPrep();
       $("grantListCard").style.display = "none";
       $("inputCard").style.display = "none";
     }else{
@@ -1236,7 +1269,18 @@
     const ap = g && g.ai_prep;
     if(ap && ap.at){
       msg.innerHTML = "";
-      msg.textContent = ttPrepSummary(ap) + "\n（" + new Date(ap.at).toLocaleString("ja-JP") + " にAIが仕分けました。もう一度押すと、仕分けをやり直します）";
+      const n = Object.keys(ap.by_title || {}).length;
+      msg.textContent = (n ? ttPrepSummary(ap)
+          : "AIの返事を読み取れず、仕分けができませんでした。工程はそのまま使えます。上のボタンで、もう一度AIに済ませさせてください。" + (ap.note ? "\n" + ap.note : ""))
+        + "\n（" + new Date(ap.at).toLocaleString("ja-JP") + " にAIが仕分けました。もう一度押すと、仕分けをやり直します）";
+      if(ap.raw){
+        const d = document.createElement("details");
+        d.style.marginTop = "6px";
+        const sm = document.createElement("summary"); sm.textContent = "AIの返事の原文を見る"; sm.style.cursor = "pointer";
+        const pre = document.createElement("pre"); pre.textContent = ap.raw;
+        pre.style.cssText = "white-space:pre-wrap;font-size:11.5px;max-height:240px;overflow:auto;background:var(--paper-deep);padding:8px;border-radius:6px";
+        d.appendChild(sm); d.appendChild(pre); msg.appendChild(d);
+      }
       $("aiPrepBtn").textContent = "AIの仕分けをやり直す（AI・API利用）";
     }else{
       msg.textContent = "";
@@ -1328,11 +1372,28 @@
       let parsed;
       try{ parsed = JSON.parse(clean); }
       catch(e){ const m = clean.match(/\{[\s\S]*\}/); if(!m) throw new Error("AIの返答を読み取れませんでした"); parsed = JSON.parse(m[0]); }
-      const out = Array.isArray(parsed.steps) ? parsed.steps : [];
+      /* 2026-10-02（19:45の実地で全件が捨てられた件）：返事の書き方の揺れを吸収する。
+         ①steps 以外の名前の配列でも受ける ②i が無い・ずれていれば並び順で受ける
+         ③仕分け名の綴りの揺れ（大文字・ハイフン・日本語）を正規化する。原文は案件に残す。 */
+      let out = Array.isArray(parsed.steps) ? parsed.steps
+              : (Array.isArray(parsed) ? parsed
+              : (Object.values(parsed).find(v=>Array.isArray(v)) || []));
+      const normKind = function(k){
+        const t = String(k||"").trim().toLowerCase().replace(/[-\s]/g,"_");
+        if(TT_KIND[t]) return t;
+        if(/済ませ|完了|done/.test(String(k))) return "ai_done";
+        if(/下書|draft/.test(String(k))) return "ai_draft";
+        if(/当てはまら|対象外|not_?applicable|n\/?a/.test(String(k))) return "not_applicable";
+        if(/人|human/.test(String(k))) return "human";
+        return "";
+      };
+      const hasIdx = out.length && out.every(x=>x && x.i !== undefined && !isNaN(Number(x.i)));
       const byTitle = {};
       let missing = 0;
       steps.forEach((s,i)=>{
-        const r = out.find(x=>Number(x.i) === i);
+        let r = hasIdx ? out.find(x=>Number(x.i) === i) : out[i];
+        if(!r && out.length === steps.length) r = out[i];
+        if(r) r = Object.assign({}, r, { kind: normKind(r.kind || r.type || r.category) });
         if(!r || !TT_KIND[r.kind]){ missing++; return; }
         let kind = r.kind, done = String(r.done||""), draft = String(r.draft||""), human = String(r.human||"");
         /* 先頭の「要領で確かめる」工程は、分解を信じさせず人に疑わせるための関所（2026-08-01）。
@@ -1355,7 +1416,7 @@
       const note = (parsed.note ? String(parsed.note) : "")
         + (missing ? (parsed.note ? "\n" : "") + "AIが仕分けを返さなかった工程が" + missing + "件あります。その工程は人の工程として扱ってください。" : "")
         + (company ? "" : "\n会社の基礎情報がこの端末に読み込まれていないため、基礎情報を使う判定はできていません。トライゲイトで基礎情報を読み込んでから、もう一度押してください。");
-      list[idx] = Object.assign({}, list[idx], { ai_prep: { at: new Date().toISOString(), by_title: byTitle, note: note.trim(), sig: ttStepSig(steps) } });
+      list[idx] = Object.assign({}, list[idx], { ai_prep: { at: new Date().toISOString(), by_title: byTitle, note: note.trim(), sig: ttStepSig(steps), raw: text.slice(0, 20000) } });
       saveInbox(list);
       /* 済ませた工程・当てはまらない工程に完了の印を付ける（人が戻せる） */
       steps.forEach((s,i)=>{

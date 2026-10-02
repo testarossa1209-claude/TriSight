@@ -556,7 +556,7 @@ body.presenMode table{font-size:1.02em}
   <!-- 結果バー（印刷・次の案件へ） -->
   <div id="resultBar" class="no-print" style="display:none">
     <button id="printBtn" class="rbtn">印刷する</button>
-    <button id="taskBtn" class="rbtn">TriTaskへ送る</button>
+    <button id="taskBtn" class="rbtn">送信内容を確認・修正する</button>
     <button id="matchBtn" class="rbtn">要件を照合する</button>
     <button id="comboBtn" class="rbtn">併せて取れる制度を調べる</button>
     <button id="hoBtn" class="rbtn">読み手ごとに渡す</button>
@@ -570,7 +570,7 @@ body.presenMode table{font-size:1.02em}
   <!-- TriTask送信前の確認・編集パネル（AI出力を無検証で流さないための人の確認工程） -->
   <div id="sendReview" class="no-print" style="display:none;border:2px solid #c9772a;border-radius:10px;padding:18px 20px;margin:14px 0;background:#fffaf3">
     <h3 style="margin:0 0 4px;font-size:16px">送信内容の確認（AIが出した工程です。必要に応じて修正してから送ってください）</h3>
-    <p style="margin:0 0 14px;font-size:12.5px;color:#7a5a30">ここで内容を確認・修正しない限り、TriTaskへは送信されません。</p>
+    <p style="margin:0 0 14px;font-size:12.5px;color:#7a5a30">読み取った内容は、すでに次の分解へ渡す準備ができています。ここで直した内容は、その分解と進捗の管理にそのまま使われます。</p>
     <label style="display:block;margin-bottom:8px">制度名<br><input type="text" id="srProgramName" style="width:100%;padding:6px"></label>
     <label style="display:block;margin-bottom:12px">交付元<br><input type="text" id="srIssuer" style="width:100%;padding:6px"></label>
     <div style="font-weight:bold;margin-bottom:6px">工程（期限・やること・要確認）</div>
@@ -578,7 +578,7 @@ body.presenMode table{font-size:1.02em}
     <button type="button" id="srAddTask" style="margin:6px 0 16px;padding:5px 12px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer">＋ 工程を追加</button>
     <div id="srDocsRO" style="font-size:12.5px;color:#666;margin-bottom:14px"></div>
     <div>
-      <button type="button" id="srConfirmBtn" class="rbtn">この内容でTriTaskへ送る</button>
+      <button type="button" id="srConfirmBtn" class="rbtn">この内容で保存する</button>
       <button type="button" id="srCancelBtn" class="rbtn ghost">キャンセル</button>
     </div>
   </div>
@@ -6555,9 +6555,20 @@ window.tsSyncBanner = function(msg){
     const hhmm = ("0"+t.getHours()).slice(-2) + ":" + ("0"+t.getMinutes()).slice(-2);
     /* 送った先へその場から行けるようにする（2026-09-04）。
        これまで送信済みの表示だけで行き先が無く、画面の一番上まで戻らせていた。 */
-    showTaskMsg((existingId && idx>=0 ? "✓ 修正内容を保存しました " : "✓ 自動でTriTaskへ送信されました ") + hhmm, true,
-                '　<a href="TriTask.html" target="_blank" rel="noopener">TriTaskで開く</a>'
-                + '　<a href="TriForm.html" target="_blank" rel="noopener">TriFormで分解する</a>');
+    /* 2026-10-02：宏史さんの指摘「迷いそうなボタンは極力作らない。開発者の私でさえ迷う」。
+       読み取りの直後に「TriTaskで開く」を出していたため、分解を飛ばして期限つきの3工程だけの
+       案件を開く道ができていた。トライフォームを使える契約では、次にやることを
+       「TriFormで分解する」一つに絞り、その案件を開いた状態でトライフォームを立ち上げる。
+       トライフォームを使えない契約（8/20の廉価版設定が残る間）は、従来どおりトライタスクへ。 */
+    const __fam = isFamilyTier(__authCode);
+    const __btn = 'display:inline-block;margin-left:10px;padding:5px 14px;border-radius:6px;background:#2F6FA8;color:#fff;font-weight:700;text-decoration:none';
+    if(__fam){
+      showTaskMsg((existingId && idx>=0 ? "✓ 修正内容を保存しました " : "✓ 分解の準備ができました ") + hhmm, true,
+                  '<a href="TriForm.html?case=' + encodeURIComponent(card.id) + '" target="_blank" rel="noopener" style="' + __btn + '">TriFormで分解する ›</a>');
+    }else{
+      showTaskMsg((existingId && idx>=0 ? "✓ 修正内容を保存しました " : "✓ 保存しました ") + hhmm, true,
+                  '<a href="TriTask.html" target="_blank" rel="noopener" style="' + __btn + '">TriTaskで開く ›</a>');
+    }
     const b = $("taskBtn");
     b.disabled = false;
     b.textContent = "送信内容を確認・修正する";
@@ -6582,7 +6593,7 @@ window.tsSyncBanner = function(msg){
   function resetTaskBtn(){
     const b = $("taskBtn");
     b.disabled = false;
-    b.textContent = "TriTaskへ送る";
+    b.textContent = "送信内容を確認・修正する";
     b.title = "";
     const m = $("taskMsg");
     m.style.display = "none";
@@ -8011,7 +8022,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-09-29-05';
+  const TRIGATE_VERSION = '2026-10-02-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

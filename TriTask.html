@@ -353,8 +353,8 @@
       <div class="v" id="goalText"></div>
     </div>
     <div class="aiprep" id="aiPrepBox" style="display:none">
-      <button type="button" class="aiprep-btn" id="aiPrepBtn">AIにできる工程を先に済ませる（AI・API利用）</button>
-      <div class="aiprep-note">基礎情報と要領の内容から、AIが済ませられる工程は済ませ、下書きできるものは下書きを付けます。
+      <button type="button" class="aiprep-btn" id="aiPrepBtn">AIの仕分けをやり直す（AI・API利用）</button>
+      <div class="aiprep-note">案件を初めて開いたときに、基礎情報と要領の内容から、AIが済ませられる工程を自動で済ませ、下書きできるものには下書きを付けます。
         購入・支払い・署名押印・従業員への表明・提出は、人の工程として残します。AIの結果は必ず目で確かめてください。</div>
       <div class="aiprep-msg" id="aiPrepMsg"></div>
     </div>
@@ -405,7 +405,7 @@
     <div style="text-align:center"><button class="reset" id="resetBtn">別の理論で、最初からやり直す</button></div>
   </section>
 
-  <footer>TriTask® v0.3（版 2026-10-02-02） ／ TriSight® Family 共通基盤エンジン</footer>
+  <footer>TriTask® v0.3（版 2026-10-02-03） ／ TriSight® Family 共通基盤エンジン</footer>
 </div>
 
 <script>
@@ -966,6 +966,10 @@
     if(steps){
       renderPlan({ goal: g.program_name || "（名称不明）", steps: steps });
       ttShowAiPrep(g);
+      /* 2026-10-02：宏史さんの指摘「AIができることは全部済ませておいてと依頼しているのに
+         ボタンを押さないとやらないというのはおかしい」。初めて開いたとき（または工程が
+         送り直されて変わったとき）に、AIが自動で済ませる。ボタンはやり直し用に残す。 */
+      if(!g.ai_prep || g.ai_prep.sig !== ttStepSig(steps)) ttRunAiPrep();
       $("grantListCard").style.display = "none";
       $("inputCard").style.display = "none";
     }else{
@@ -1214,6 +1218,9 @@
      下書きは「会社が自社の書類を自分で作るための下書き」であり、当社が代わりに作るものではない。
      結果は案件（tritask_inbox の該当行の ai_prep）に保存し、開き直しても残す。 */
   let ttCurSteps = [];
+  function ttStepSig(steps){
+    return (steps || []).map(function(s){ return (s.title || "") + "／" + (s.substeps ? s.substeps.length : 0); }).join("｜");
+  }
   function ttCompany(){
     try{ const o = JSON.parse(localStorage.getItem("trisight_dig_company") || "null"); return (o && typeof o === "object") ? o : null; }
     catch(e){ return null; }
@@ -1233,7 +1240,7 @@
       $("aiPrepBtn").textContent = "AIの仕分けをやり直す（AI・API利用）";
     }else{
       msg.textContent = "";
-      $("aiPrepBtn").textContent = "AIにできる工程を先に済ませる（AI・API利用）";
+      $("aiPrepBtn").textContent = "AIの仕分けをやり直す（AI・API利用）";
     }
   }
   function ttPrepSummary(ap){
@@ -1279,7 +1286,7 @@
     const steps = ttCurSteps;
     if(!steps.length){ msg.textContent = "工程がありません。"; return; }
     btn.disabled = true;
-    msg.textContent = "AIが工程を仕分けています。工程が多いため長めにかかります。この画面のままお待ちください。";
+    msg.textContent = "AIが、済ませられる工程を済ませています。工程が多いため長めにかかります。この画面のままお待ちください。終わると各工程に札が付きます。";
     const company = ttCompany();
     const stepList = steps.map((s,i)=>({
       i: i, title: s.title || "", action: s.action || "",
@@ -1348,7 +1355,7 @@
       const note = (parsed.note ? String(parsed.note) : "")
         + (missing ? (parsed.note ? "\n" : "") + "AIが仕分けを返さなかった工程が" + missing + "件あります。その工程は人の工程として扱ってください。" : "")
         + (company ? "" : "\n会社の基礎情報がこの端末に読み込まれていないため、基礎情報を使う判定はできていません。トライゲイトで基礎情報を読み込んでから、もう一度押してください。");
-      list[idx] = Object.assign({}, list[idx], { ai_prep: { at: new Date().toISOString(), by_title: byTitle, note: note.trim() } });
+      list[idx] = Object.assign({}, list[idx], { ai_prep: { at: new Date().toISOString(), by_title: byTitle, note: note.trim(), sig: ttStepSig(steps) } });
       saveInbox(list);
       /* 済ませた工程・当てはまらない工程に完了の印を付ける（人が戻せる） */
       steps.forEach((s,i)=>{
@@ -1360,7 +1367,7 @@
       stepState = keep; persist(); refresh(); syncGrantStatus();
       ttShowAiPrep(list[idx]);
     }catch(e){
-      msg.textContent = "AIの仕分けができませんでした（" + (e.message || e) + "）。工程はそのまま使えます。少し待って、もう一度押してください。";
+      msg.textContent = "AIが工程を済ませられませんでした（" + (e.message || e) + "）。工程はそのまま使えます。少し待って、上のボタンで、もう一度AIに済ませさせてください。";
     }finally{
       btn.disabled = false;
     }

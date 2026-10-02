@@ -203,7 +203,7 @@
 
 <footer>
   合同会社トライサイト　TriSight&reg; ファミリー
-  <div class="verline">版 <span id="verLabel">2026-09-14-01</span>（v3）</div>
+  <div class="verline">版 <span id="verLabel">2026-10-02-01</span>（v3）</div>
 </footer>
 </div>
 
@@ -971,12 +971,23 @@
      人の判断が要る工程だけを前に出し、当社が組み立てて済んでいる工程は
      「工程処理情報」として畳む。減った数を画面に出す。 */
   let showDone = false;
+  /* 2026-10-02：トライタスクは同じ書類の手順を1工程にまとめて出す（TriTask 2026-10-02-01）。
+     こちらの件数も同じ数え方で出す。手順の数は括弧で併記する。 */
+  function tfGroupCount(list){
+    const keys = {}; let single = 0;
+    (list || []).forEach(function(r){
+      const k = (r && !r.due_text && r.from && r.from !== "制度" && r.from !== "確認") ? String(r.from) : "";
+      if(k) keys[k] = true; else single++;
+    });
+    return single + Object.keys(keys).length;
+  }
   function renderRows(){
     const wrap = $("tList");
     wrap.innerHTML = "";
     const needN = rows.filter(r=>r.must_verify).length;
     const doneN = rows.length - needN;
-    $("tHint").innerHTML = "全" + rows.length + "工程のうち、<b>ご自身の判断が要るのは " + needN + "件</b>です。"
+    $("tHint").innerHTML = "書類ごとにまとめて<b>" + tfGroupCount(rows) + "工程</b>（手順にすると" + rows.length + "）です。"
+      + "手順のうち、<b>ご自身の判断が要るのは " + needN + "件</b>です。"
       + "残る " + doneN + "件は当社が組み立てて済んでいます。内容はここで直せます。直したものがトライタスクへ渡ります。";
     if(doneN){
       const tg = document.createElement("button");
@@ -1283,7 +1294,7 @@
     if(!saveInbox(list)){ m.className="msg ng show"; m.textContent="× 保存できませんでした。"; return; }
     current = list[idx];
     m.className = "msg ok show";
-    m.textContent = "○ " + (sendRows.length + 1) + "件の工程をトライタスクへ渡しました（先頭に「要領で確かめる」工程を入れています）。"
+    m.textContent = "○ 書類ごとにまとめて " + (tfGroupCount(sendRows) + 1) + "工程（手順にすると" + (sendRows.length + 1) + "）をトライタスクへ渡しました（先頭に「要領で確かめる」工程を入れています）。"
       + (dropped.length ? "要領に根拠が見つからなかった工程 " + dropped.length + "件は渡していません（"
           + dropped.map(function(x){ return x.action; }).join("／") + "）。" : "")
       + (unchecked.length ? "未確認の項目が" + unchecked.length + "件あり、その工程の中に書き出してあります。" : "")

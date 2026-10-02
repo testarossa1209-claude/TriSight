@@ -142,6 +142,23 @@
   .step .body{flex:1}
   .step .title{font-family:"Shippori Mincho",serif;font-weight:700;font-size:16.5px;color:var(--ink)}
   .step .action{font-size:14px;color:var(--ink-soft);margin-top:5px}
+  .aiprep{margin:14px 0 6px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--white)}
+  .aiprep-btn{border:0;border-radius:8px;padding:9px 16px;font-size:13.5px;font-weight:700;cursor:pointer;
+    background:var(--ink);color:#fff;font-family:inherit}
+  .aiprep-btn:disabled{opacity:.5;cursor:default}
+  .aiprep-note{font-size:12px;color:var(--ink-soft);margin-top:6px;line-height:1.7}
+  .aiprep-msg{font-size:13px;margin-top:8px;line-height:1.8;white-space:pre-line}
+  .step .aitag{display:inline-block;font-size:11.5px;font-weight:700;border-radius:4px;padding:1px 7px;margin-left:8px;vertical-align:middle}
+  .step .aitag.done{background:#e8f3ea;color:#2f6b3a}
+  .step .aitag.draft{background:#eef3ff;color:#2c4a8a}
+  .step .aitag.human{background:#fdf3e3;color:#8a5a1a}
+  .step .aitag.na{background:#eceff3;color:#555}
+  .step .aibox{margin-top:8px;padding:8px 12px;border-radius:8px;font-size:12.5px;white-space:pre-line;line-height:1.75}
+  .step .aibox.done{background:#f3faf4;border-left:3px solid #2f6b3a}
+  .step .aibox.draft{background:#f4f7ff;border-left:3px solid #2c4a8a}
+  .step .aibox.human{background:#fffaf1;border-left:3px solid #c9772a}
+  .step .aibox.na{background:#f4f5f7;border-left:3px solid #999}
+  .step .aibox .bs{display:block;color:var(--muted);font-size:11.5px;margin-top:4px}
   .step details.subs{margin-top:8px;font-size:13px;color:var(--ink-soft)}
   .step details.subs summary{cursor:pointer;color:var(--amber);font-weight:700}
   .step details.subs ol{margin:8px 0 0 18px;padding:0}
@@ -335,6 +352,12 @@
       <div class="k">この理論が目指す到達点（ゴール）</div>
       <div class="v" id="goalText"></div>
     </div>
+    <div class="aiprep" id="aiPrepBox" style="display:none">
+      <button type="button" class="aiprep-btn" id="aiPrepBtn">AIにできる工程を先に済ませる（AI・API利用）</button>
+      <div class="aiprep-note">基礎情報と要領の内容から、AIが済ませられる工程は済ませ、下書きできるものは下書きを付けます。
+        購入・支払い・署名押印・従業員への表明・提出は、人の工程として残します。AIの結果は必ず目で確かめてください。</div>
+      <div class="aiprep-msg" id="aiPrepMsg"></div>
+    </div>
 
     <div class="meter">
       <div class="meter-top">
@@ -382,7 +405,7 @@
     <div style="text-align:center"><button class="reset" id="resetBtn">別の理論で、最初からやり直す</button></div>
   </section>
 
-  <footer>TriTask® v0.3（版 2026-10-02-01） ／ TriSight® Family 共通基盤エンジン</footer>
+  <footer>TriTask® v0.3（版 2026-10-02-02） ／ TriSight® Family 共通基盤エンジン</footer>
 </div>
 
 <script>
@@ -942,6 +965,7 @@
     const steps = reverseTasksToSteps(g);
     if(steps){
       renderPlan({ goal: g.program_name || "（名称不明）", steps: steps });
+      ttShowAiPrep(g);
       $("grantListCard").style.display = "none";
       $("inputCard").style.display = "none";
     }else{
@@ -1180,7 +1204,172 @@
     return parsed;
   }
 
+  /* ===== 2026-10-02：AIにできる工程を先に済ませる =====================
+     宏史さんの指示「トライタスクのAIができることはすべてやっておいて工程を作成してください」。
+     AIが各工程を4つに仕分ける：
+       ai_done ＝渡された情報だけでこの場で済む判定・計算・整理（済ませて結果を付け、完了の印を付ける）
+       ai_draft＝人が確かめて決める前提の下書き（下書きを付ける。完了にはしない）
+       human   ＝購入・支払い・署名押印・表明・現物の取り出し・提出・外部サイトでの確認（人の工程として残す）
+       not_applicable＝基礎情報から明らかに当てはまらない（理由を付け、完了の印を付ける）
+     下書きは「会社が自社の書類を自分で作るための下書き」であり、当社が代わりに作るものではない。
+     結果は案件（tritask_inbox の該当行の ai_prep）に保存し、開き直しても残す。 */
+  let ttCurSteps = [];
+  function ttCompany(){
+    try{ const o = JSON.parse(localStorage.getItem("trisight_dig_company") || "null"); return (o && typeof o === "object") ? o : null; }
+    catch(e){ return null; }
+  }
+  function ttCurGrant(){
+    if(!currentGrantId) return null;
+    return allInbox().find(x=>x.id===currentGrantId) || null;
+  }
+  function ttShowAiPrep(g){
+    const box = $("aiPrepBox"); if(!box) return;
+    box.style.display = "";
+    const msg = $("aiPrepMsg");
+    const ap = g && g.ai_prep;
+    if(ap && ap.at){
+      msg.innerHTML = "";
+      msg.textContent = ttPrepSummary(ap) + "\n（" + new Date(ap.at).toLocaleString("ja-JP") + " にAIが仕分けました。もう一度押すと、仕分けをやり直します）";
+      $("aiPrepBtn").textContent = "AIの仕分けをやり直す（AI・API利用）";
+    }else{
+      msg.textContent = "";
+      $("aiPrepBtn").textContent = "AIにできる工程を先に済ませる（AI・API利用）";
+    }
+  }
+  function ttPrepSummary(ap){
+    const c = { ai_done:0, ai_draft:0, human:0, not_applicable:0 };
+    Object.keys(ap.by_title || {}).forEach(k=>{ const kd = ap.by_title[k].kind; if(c[kd] !== undefined) c[kd]++; });
+    return "全" + Object.keys(ap.by_title||{}).length + "工程のうち、AIが済ませた " + c.ai_done + "・AIが下書きした " + c.ai_draft
+         + "・人がやる " + c.human + "・御社には当てはまらない " + c.not_applicable
+         + (ap.note ? "\n" + ap.note : "");
+  }
+  const TT_KIND = {
+    ai_done:        { tag:"AIが済ませました", cls:"done",  head:"AIの結果：" },
+    ai_draft:       { tag:"AIが下書きしました", cls:"draft", head:"下書き（確かめてからお使いください）：" },
+    human:          { tag:"人がやる工程", cls:"human", head:"人がやること：" },
+    not_applicable: { tag:"御社には当てはまりません", cls:"na", head:"理由：" }
+  };
+  function ttPaintAi(li, s, i){
+    const g = ttCurGrant();
+    const ap = g && g.ai_prep;
+    if(!ap || !ap.by_title) return;
+    const r = ap.by_title[s.title || ""];
+    if(!r || !TT_KIND[r.kind]) return;
+    const k = TT_KIND[r.kind];
+    const tag = document.createElement("span");
+    tag.className = "aitag " + k.cls; tag.textContent = k.tag;
+    li.querySelector(".title").appendChild(tag);
+    const body = r.kind === "ai_done" ? r.done : r.kind === "ai_draft" ? r.draft : r.kind === "human" ? r.human : r.basis;
+    if(!body && !r.human) return;
+    const box = document.createElement("div");
+    box.className = "aibox " + k.cls;
+    box.textContent = k.head + "\n" + String(body || "");
+    if(r.kind === "ai_draft" && r.human){
+      box.textContent += "\n\n人がやること：\n" + r.human;
+    }
+    if(r.basis && r.kind !== "not_applicable"){
+      const bs = document.createElement("span"); bs.className = "bs"; bs.textContent = "根拠：" + r.basis;
+      box.appendChild(bs);
+    }
+    li.querySelector(".action").after(box);
+  }
+  async function ttRunAiPrep(){
+    const g = ttCurGrant(); if(!g) return;
+    const btn = $("aiPrepBtn"), msg = $("aiPrepMsg");
+    const steps = ttCurSteps;
+    if(!steps.length){ msg.textContent = "工程がありません。"; return; }
+    btn.disabled = true;
+    msg.textContent = "AIが工程を仕分けています。工程が多いため長めにかかります。この画面のままお待ちください。";
+    const company = ttCompany();
+    const stepList = steps.map((s,i)=>({
+      i: i, title: s.title || "", action: s.action || "",
+      procedure: (s.substeps || []).map(x=>x.action || ""),
+      note: String(s.verify || "").slice(0, 600)
+    }));
+    const docs = (g.required_documents || []).map(d=>(d.name||"") + (d.note ? "（" + d.note + "）" : ""));
+    const vItems = (g.verify_items || []).map(v=>(v.item||"") + (v.why ? "（" + v.why + "）" : "") + (v.contact ? " 確認先：" + v.contact : ""));
+    const system =
+      "あなたは補助金申請の下ごしらえ係です。会社が自社の申請書類を自分で作るための下準備をします。代わりに申請したり、代わりに書類を作成して提出したりはしません。\n"
+      + "渡された工程の一つ一つを、次の4つのどれかに仕分けてください。\n"
+      + "ai_done：渡された情報（会社の基礎情報・制度の情報・工程）だけで、いまこの場で済む判定・計算・整理。結果を done に書く。例＝中小企業者等に当たるかの判定、期限の整理、要件と基礎情報の突き合わせ、必要な現物のチェックリスト作り。\n"
+      + "ai_draft：人が確かめて決める前提で下書きを作れるもの。下書きを draft に書く。例＝申請フォームに入れる値の一覧、様式の記入の下書き、従業員への表明文の文案。基礎情報に無い値は推測で埋めず【要入力：項目名】と書く。人が確かめて決めることを human に短く書く。\n"
+      + "human：人にしかできないもの。車両の購入と支払い、署名・押印、従業員への表明そのもの、通帳・決算書・税務書類など現物の取り出し、申請システムへのログインと送信、外部のウェブサイトでの確認。何をすればよいかを human に短く具体的に書く。あなたは外部のウェブサイトを見られないので、行政処分の検索や予算残額の確認は human にし、見る場所が渡された情報にあれば書き添える。\n"
+      + "先頭の「交付元の要領で確かめる」工程と、ご自身での確認・判断が要ると書かれた工程は、ai_done にしない。\n"
+      + "not_applicable：基礎情報から、この会社には明らかに当てはまらない工程。例＝「申請者がリース事業者の場合」の工程で、会社がリース事業者でないとき。理由を basis に書く。当てはまるか分からないときは not_applicable にしない。\n"
+      + "厳守：(1)推測で値や事実を作らない。基礎情報と渡された情報に書いてあることだけを使う。(2)採択・受給を約束する言葉を書かない。(3)各工程の basis に、使った基礎情報の項目名か、工程・注記のどこを根拠にしたかを書く。(4)工程は渡された i の順にすべて返す。(5)出力はJSONのみ。前置きやコードフェンスを付けない。\n"
+      + '出力形式：{"steps":[{"i":0,"kind":"ai_done|ai_draft|human|not_applicable","done":"","draft":"","human":"","basis":""}],"note":"全体についての一言（無ければ空）"}';
+    const userMsg = "【制度】" + (g.program_name || "") + "\n【交付元】" + (g.issuer || g.source_product || "")
+      + "\n【制度の概要】" + String(g.summary || "").slice(0, 1500)
+      + "\n【必要書類】\n" + docs.join("\n")
+      + "\n【確かめる点】\n" + vItems.join("\n")
+      + "\n【会社の基礎情報】\n" + (company ? JSON.stringify(company).slice(0, 9000) : "（読み込まれていません）")
+      + "\n【工程】\n" + JSON.stringify(stepList);
+    try{
+      const res = await fetch(PROXY_URL, {
+        method:"POST",
+        headers:{"Content-Type":"application/json","x-trisight-code":tsCode()},
+        body: JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:12000, system:system,
+          messages:[{ role:"user", content:userMsg }] })
+      });
+      if(!res.ok){
+        if(tsAuthFail(res.status)) throw new Error("認証エラー（401）：認証コードを確認してください。");
+        throw new Error("中継サーバの応答 " + res.status);
+      }
+      const data = await res.json();
+      const text = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("").trim();
+      const clean = text.replace(/```json/gi,"").replace(/```/g,"").trim();
+      let parsed;
+      try{ parsed = JSON.parse(clean); }
+      catch(e){ const m = clean.match(/\{[\s\S]*\}/); if(!m) throw new Error("AIの返答を読み取れませんでした"); parsed = JSON.parse(m[0]); }
+      const out = Array.isArray(parsed.steps) ? parsed.steps : [];
+      const byTitle = {};
+      let missing = 0;
+      steps.forEach((s,i)=>{
+        const r = out.find(x=>Number(x.i) === i);
+        if(!r || !TT_KIND[r.kind]){ missing++; return; }
+        let kind = r.kind, done = String(r.done||""), draft = String(r.draft||""), human = String(r.human||"");
+        /* 先頭の「要領で確かめる」工程は、分解を信じさせず人に疑わせるための関所（2026-08-01）。
+           AIがどう返しても、人の工程として残す。 */
+        if(/交付元の要領で確かめる/.test(s.action || "")){
+          kind = "human";
+          human = "この工程の並びが制度の要件に合っているかを、交付元の要領で確かめてください。"
+                + (done || draft ? "\n（AIの見立て：" + (done || draft) + "）" : "");
+          done = ""; draft = "";
+        }else if(s.must_verify && kind === "ai_done"){
+          /* ご自身での確認・判断が要る工程は、AIが済ませた扱いにせず、見立ての下書きに留める */
+          kind = "ai_draft"; draft = "AIの見立て：" + done; done = "";
+          human = human || "この見立てでよいかを、ご自身で確かめて判断してください。";
+        }
+        byTitle[s.title || ""] = { kind:kind, done:done, draft:draft, human:human, basis:String(r.basis||"") };
+      });
+      const list = allInbox();
+      const idx = list.findIndex(x=>x.id===g.id);
+      if(idx < 0) throw new Error("案件が見つかりませんでした");
+      const note = (parsed.note ? String(parsed.note) : "")
+        + (missing ? (parsed.note ? "\n" : "") + "AIが仕分けを返さなかった工程が" + missing + "件あります。その工程は人の工程として扱ってください。" : "")
+        + (company ? "" : "\n会社の基礎情報がこの端末に読み込まれていないため、基礎情報を使う判定はできていません。トライゲイトで基礎情報を読み込んでから、もう一度押してください。");
+      list[idx] = Object.assign({}, list[idx], { ai_prep: { at: new Date().toISOString(), by_title: byTitle, note: note.trim() } });
+      saveInbox(list);
+      /* 済ませた工程・当てはまらない工程に完了の印を付ける（人が戻せる） */
+      steps.forEach((s,i)=>{
+        const r = byTitle[s.title || ""];
+        if(r && (r.kind === "ai_done" || r.kind === "not_applicable")) stepState[i] = true;
+      });
+      const keep = stepState.slice();
+      renderPlan({ goal: g.program_name || "（名称不明）", steps: steps });
+      stepState = keep; persist(); refresh(); syncGrantStatus();
+      ttShowAiPrep(list[idx]);
+    }catch(e){
+      msg.textContent = "AIの仕分けができませんでした（" + (e.message || e) + "）。工程はそのまま使えます。少し待って、もう一度押してください。";
+    }finally{
+      btn.disabled = false;
+    }
+  }
+  (function(){ const b = document.getElementById("aiPrepBtn"); if(b) b.addEventListener("click", ttRunAiPrep); })();
+
   function renderPlan(plan){
+    ttCurSteps = (plan && plan.steps) ? plan.steps : [];
+    if(!currentGrantId){ const ab = document.getElementById("aiPrepBox"); if(ab) ab.style.display = "none"; }
     $("goalText").textContent = plan.goal || "（到達点の記述なし）";
     stepState = plan.steps.map(()=>false);
     stepMeta  = plan.steps.map(s=>({
@@ -1237,6 +1426,7 @@
       vSpan.textContent = s.verify||"";
       vSpan.style.whiteSpace = "pre-line";
       if(s.must_verify) li.querySelector(".verify").style.borderLeft = "3px solid var(--ok)";
+      ttPaintAi(li, s, i);
       li.querySelector(".num").addEventListener("click",()=>toggle(i));
       ul.appendChild(li);
     });

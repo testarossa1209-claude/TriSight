@@ -1522,10 +1522,14 @@ window.tsSyncBanner = function(msg){
       const sl = Math.min(b.length, mineBase.length);
       return sl >= 8 && (b.indexOf(mineBase) >= 0 || mineBase.indexOf(b) >= 0);
     };
-    const othersAll = digRows.filter(function(it){
+    /* 2026-10-05：相手は一覧の上から12件ではなく、地元（全国以外）の制度を先にして20件まで。
+       岡山市の検証で、重ねる見込みの大きい岡山県・岡山市の制度が13件目以降に並び、相手から漏れていた。 */
+    const tsIsLocal = function(it){ const a = String((it && it.target_area_search) || ""); return !!a && a.indexOf("全国") !== 0; };
+    const othersBase = digRows.filter(function(it){
       return it && !it.__offBiz && !tsIsMine(it.title || it.name || "");
     });
-    const othersArr = othersAll.slice(0, 12);
+    const othersAll = othersBase.filter(tsIsLocal).concat(othersBase.filter(function(it){ return !tsIsLocal(it); }));
+    const othersArr = othersAll.slice(0, 20);
     const othersRest = othersAll.length - othersArr.length;
     const others = othersArr
       .map(function(it, i){
@@ -1557,8 +1561,10 @@ window.tsSyncBanner = function(msg){
         + "『要確認』＝どの文書にも記載が無い、または記載から結論が出ないもの。"
         + "②迷ったら必ず『要確認』にする。書かれていないことを推測で『可』『条件付き可』にしてはいけない。"
         + "間違えれば申請者が二重取りとみなされ、返還を求められる。安全な側へ倒すこと。"
-        + "③定めが「国の補助」「他の補助金」「国庫補助」のような区分の言い方で書かれている場合は、その区分に当たる相手すべてに当てはめる"
-        + "（相手が国の制度なら「国の補助」の定めが効く）。ただし相手が同じ経費（同じ物）を対象にするかどうかが文書から読めないときは、その旨を condition に書く。"
+        + "③定めが「国の補助」「他の補助金」「国庫補助」のような区分の言い方で書かれている場合、その区分に金額・名称・対象（例：レベル1又は2で60万円の国の補助）が添えられていれば、"
+        + "それに合う相手にだけ当てはめる。合うかどうかが文書から読めない相手は『要確認』とし、condition に「この定めの言う『国の補助』等に当たるかを確認」と書く。"
+        + "金額・名称・対象が添えられていない区分の定め（例：国または他の補助制度との併用可能）は、その区分に当たる相手すべてに当てはめる。"
+        + "いずれの場合も、相手が同じ経費（同じ物）を対象にするかどうかが文書から読めないときは、その旨を condition に書く。"
         + "④判定の根拠として、どの文書のどこに書いてあるか（Ａ要領の章・項番／Ｂ案内ページの見出しと記述の要約／Ｃ相手の掲載内容）を basis に必ず書く。"
         + "『要確認』の場合は basis に『記載なし』と書き、確認先を contact に書く。"
         + "⑤文書に制度名が明記されている併給不可・条件付き可の制度は、渡された一覧に無くても列挙する。"
@@ -1608,13 +1614,14 @@ window.tsSyncBanner = function(msg){
       const othersInfo = othersArr.map(function(it, i){
         const pg = pages[i + 1];
         if(pg && pg.ok) otherOk++;
-        const hits = (pg && pg.ok) ? tsPickHits(pg.text, 2500) : "";
+        const hits = (pg && pg.ok) ? tsPickHits(pg.text, 1800) : "";
         const det = String(it.detail || "").replace(/※この案件は、発掘時にウェブ検索で拾ったものです。[\s\S]*$/, "").slice(0, 600);
         if(!hits && !det) return "";
         return "【" + (i+1) + "】" + String(it.title || it.name || "")
              + (det ? "\n（一覧の要約）" + det : "")
              + (hits ? "\n（掲載ページのうち併給に関わる箇所）\n" + hits : "");
       }).filter(Boolean).join("\n\n");
+      const mismatchNote = mineRow ? "" : "読み取った制度が、いま調査した一覧（診断する会社・地域）に見当たりません。会社・地域と、読み取った要領の自治体が合っているかをご確認ください。合っていない場合、この結果は使えません。";
       const readNote = "要領：読み取り済み／案内ページ：" + (minePage.ok ? (mineHits ? "取得し、併給に関わる記述あり" : "取得したが、併給に関わる記述なし") : "取得できず（" + minePage.why + "）")
         + "／相手の掲載ページ：" + othersArr.length + "件中" + otherOk + "件を取得";
       const user = "■ いま読み取った制度\n" + mine + "\n\n"
@@ -1722,6 +1729,7 @@ window.tsSyncBanner = function(msg){
         + '判定は<b>この制度の要領・案内ページと、相手の制度の掲載内容に書かれていることだけ</b>を根拠にしています。'
         + '書かれていない組み合わせは「要確認」とし、確認先を添えています。客先へお伝えする前に、相手側の要領もお確かめください。'
         + '<br><span style="color:var(--muted)">読んだもの：' + ce(readNote) + '</span>'
+        + (mismatchNote ? '<br><span style="color:#b0203a;font-weight:bold">' + ce(mismatchNote) + '</span>' : '')
         + '<br>調査した一覧にある制度には「一覧でこの制度の詳細を開く」が付きます。そこから相手側の要領も読み取れます。'
           + (othersRest > 0 ? '<br><span style="color:#b0203a">一覧のうち先頭' + othersArr.length + '件と突き合わせました。残り' + othersRest + '件は今回の対象外です。</span>' : '')
           + '</div>';
@@ -8123,7 +8131,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-10-05-03';
+  const TRIGATE_VERSION = '2026-10-05-04';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

@@ -1456,7 +1456,10 @@ window.tsSyncBanner = function(msg){
     const text = String(src || "");
     const words = ["併給", "重複", "二重", "他の補助", "他の助成", "国庫補助", "他制度",
                    "国又は地方公共団体", "国及び地方公共団体", "他の国庫", "交付を受けて",
-                   "併用", "同一の経費", "同一経費", "重ねて"];
+                   "併用", "同一の経費", "同一経費", "重ねて",
+                   /* 2026-10-05：区分の言い方と額の調整の言い方（三重県UDタクシーの「国補助あり・なし」で漏れた） */
+                   "国補助", "国の補助", "国からも", "国からの補助", "上乗せ", "他の補助金", "他の補助制度",
+                   "補助を受け", "併せて", "とは別の制度", "補助無し", "補助なし", "併給"];
     const spans = [];
     words.forEach(function(w){
       let from = 0, at;
@@ -1501,14 +1504,33 @@ window.tsSyncBanner = function(msg){
       const sv = JSON.parse(localStorage.getItem("trisight_dig_saved") || "null");
       if(sv && Array.isArray(sv.rows)) digRows = sv.rows;
     }catch(_){ digRows = []; }
-    const others = digRows
-      .filter(function(it){
-        return it && !it.__offBiz && String(it.title || it.name || "") !== mine;
-      })
-      .slice(0, 12)
+    /* 2026-10-05：併給の相手を「名前」ではなく「一覧の番号」で結び付ける。
+       それまでは相手の名前に地域（例：（全国））を付けて渡し、AIが返した名前で一覧を探していたため、
+       同じ名前の系統（事故防止5件・キャリアアップ4件など）は一字一句が合わず、一覧に載っているのに
+       「掘った一覧には無い制度です」と出ていた（三重県UDタクシーの検証で判明）。
+       あわせて、読み取った制度そのもの（追加募集など回違いの同じ制度）を相手から外す。 */
+    const tsComboBase = function(t){
+      let x = String(t || "");
+      for(let k = 0; k < 4; k++){ x = x.replace(/（[^（）]*）|\([^()]*\)/g, ""); }
+      return x.replace(/^令和[0-9０-９元]+年度/, "").replace(/[\s　・･「」『』]/g, "");
+    };
+    const mineBase = tsComboBase(mine);
+    const tsIsMine = function(t){
+      const b = tsComboBase(t);
+      if(!b || !mineBase) return false;
+      if(b === mineBase) return true;
+      const sl = Math.min(b.length, mineBase.length);
+      return sl >= 8 && (b.indexOf(mineBase) >= 0 || mineBase.indexOf(b) >= 0);
+    };
+    const othersAll = digRows.filter(function(it){
+      return it && !it.__offBiz && !tsIsMine(it.title || it.name || "");
+    });
+    const othersArr = othersAll.slice(0, 12);
+    const othersRest = othersAll.length - othersArr.length;
+    const others = othersArr
       .map(function(it, i){
         return (i+1) + "．" + String(it.title || it.name || "")
-             + "（" + (it.target_area_search || "地域の記載なし") + "）";
+             + "　［地域：" + (it.target_area_search || "地域の記載なし") + "］";
       }).join("\n");
     if(!others){
       box.style.display = "";
@@ -1521,25 +1543,85 @@ window.tsSyncBanner = function(msg){
     /* 2026-09-04：時計を止めてから、同じ枠へ結果を書く。
        枠を増やしたり消したりするのをやめ、書き換えを一箇所にする。 */
     const outEl = box;
-    const tm = tsTimer(box, "要領の中の併給に関する記述と、掘ってある制度を突き合わせています。", tsComboCheck);
+    const tm = tsTimer(box, "要領・案内ページ・相手の掲載ページを取り寄せ、併給に関する記述を突き合わせています。", tsComboCheck);
     try{
-      const sys = "あなたは、補助金の併給（2つ以上の制度を同じ工事で受けること）の可否を、公募要領の記述だけから判定する役です。"
+      const sys = "あなたは、補助金・助成金の併給（2つ以上の制度を受けること）の可否を、渡された文書の記述だけから判定する役です。"
+        + "文書は3種類あります。Ａ＝いま読み取った制度の公募要領、Ｂ＝その制度の案内ページ（掲載元）、Ｃ＝相手の制度の掲載内容。"
         + "次の規律を必ず守ってください。"
-        + "①判定は3つのいずれか。"
-        + "『不可』＝要領に併給できない旨が書かれているもの。制度名が明記されている場合に限る。"
-        + "『可』＝要領に併用できる旨が明記されているもの。"
-        + "『要確認』＝要領に記載が無い、または記載があっても対象経費の重なり方で結論が変わるもの。"
-        + "②迷ったら必ず『要確認』にする。書かれていないことを推測で『可』にしてはいけない。"
+        + "①判定は4つのいずれか。"
+        + "『不可』＝文書に併給できない旨が書かれているもの（同一経費の二重受給の禁止、他の補助を受けた物は対象外とする定めを含む）。"
+        + "『可』＝文書に併用できる旨が条件なしで明記されているもの。"
+        + "『条件付き可』＝文書に、条件つきで併用できる旨、または併用すると額・対象・順序が変わる旨が書かれているもの"
+        + "（例：国の補助を受ける場合は県の上限が下がる／対象経費を分ければ併用できる／相手を先に受けることが要件）。"
+        + "条件を condition に、額の変わり方を amount に、順序を order に書く。"
+        + "『要確認』＝どの文書にも記載が無い、または記載から結論が出ないもの。"
+        + "②迷ったら必ず『要確認』にする。書かれていないことを推測で『可』『条件付き可』にしてはいけない。"
         + "間違えれば申請者が二重取りとみなされ、返還を求められる。安全な側へ倒すこと。"
-        + "③判定の根拠として、要領のどこに書いてあるか（章・項番・見出し）を basis に必ず書く。"
-        + "『要確認』の場合は basis に『要領に記載なし』と書き、確認先を contact に書く。"
-        + "④要領に制度名が明記されている併給不可の制度は、渡された一覧に無くても列挙する。"
-        + "⑤順序の縛り（片方を先に申し込まないと取れない等）が要領にあれば order に書く。無ければ空。"
+        + "③定めが「国の補助」「他の補助金」「国庫補助」のような区分の言い方で書かれている場合は、その区分に当たる相手すべてに当てはめる"
+        + "（相手が国の制度なら「国の補助」の定めが効く）。ただし相手が同じ経費（同じ物）を対象にするかどうかが文書から読めないときは、その旨を condition に書く。"
+        + "④判定の根拠として、どの文書のどこに書いてあるか（Ａ要領の章・項番／Ｂ案内ページの見出しと記述の要約／Ｃ相手の掲載内容）を basis に必ず書く。"
+        + "『要確認』の場合は basis に『記載なし』と書き、確認先を contact に書く。"
+        + "⑤文書に制度名が明記されている併給不可・条件付き可の制度は、渡された一覧に無くても列挙する。"
+        + "⑥順序の縛り（片方を先に申し込まないと取れない等）が文書にあれば order に書く。無ければ空。"
         + "出力はJSONのみ。前置きもコードブロックも付けないでください。"
-        + '形式：{"pairs":[{"name":"相手の制度名","verdict":"不可|可|要確認","reason":"短い理由","basis":"要領の該当箇所","contact":"確認先","order":"順序の縛り"}]}';
+        + "⑦相手が「突き合わせる相手」の一覧にある制度なら、その番号を no に数字で書く。一覧に無い制度（⑤で挙げたもの）は no を0にする。name には一覧の制度名を地域の部分を付けずにそのまま書く。"
+        + "⑧いま読み取った制度そのもの（同じ制度の別の回・追加募集を含む）は相手に含めない。"
+        + '形式：{"pairs":[{"no":0,"name":"相手の制度名","verdict":"不可|可|条件付き可|要確認","reason":"短い理由","condition":"併用の条件","amount":"併用したときの額の変わり方","basis":"どの文書のどこか","contact":"確認先","order":"順序の縛り"}]}';
+      /* 2026-10-05：根拠を要領だけから「要領＋案内ページ＋相手の掲載内容」へ広げる。
+         三重県UDタクシーでは「国の補助を受ける場合は県の上限が下がる」が要領ではなく
+         県の案内ページにだけ書かれており、要領だけでは全件「要確認」になった。
+         併用できる道を条件つきで見分けることがトライゲイトの肝なので、書かれている場所を広げる。
+         取り寄せられなかったページは、その旨を画面に出す（黙って落とさない）。 */
+      const tsHtmlText = function(html){
+        try{
+          const d = new DOMParser().parseFromString(String(html || ""), "text/html");
+          Array.prototype.forEach.call(d.querySelectorAll("script,style,noscript"), function(n){ n.remove(); });
+          return String((d.body && d.body.textContent) || "").replace(/[ \t\u3000]+/g, " ").replace(/\n\s*\n+/g, "\n");
+        }catch(_){ return ""; }
+      };
+      const tsPickHits = function(text, limit){
+        const t = String(text || "");
+        const words = ["併給","併用","重複","二重","他の補助","他の助成","国庫補助","他制度","国補助","国の補助","国からも",
+                       "上乗せ","他の補助金","補助を受け","補助無し","補助なし","とは別の制度","同一の経費","同一経費","重ねて"];
+        const sp = [];
+        words.forEach(function(w){ let f = 0, a; while((a = t.indexOf(w, f)) >= 0){ sp.push([Math.max(0, a - 300), Math.min(t.length, a + 500)]); f = a + w.length; if(sp.length > 30) break; } });
+        if(!sp.length) return "";
+        sp.sort(function(a,b){ return a[0] - b[0]; });
+        const mg = [];
+        sp.forEach(function(x){ const l = mg[mg.length - 1]; if(l && x[0] <= l[1]) l[1] = Math.max(l[1], x[1]); else mg.push([x[0], x[1]]); });
+        return mg.map(function(x){ return t.slice(x[0], x[1]); }).join("\n……\n").slice(0, limit);
+      };
+      const tsPageOf = function(it){ return String((it && (it.front_subsidy_detail_page_url || it.ts_source_url)) || ""); };
+      const tsGetPage = async function(url){
+        if(!/^https?:\/\//i.test(url) || typeof window.tsNightFetchHtml !== "function") return { ok:false, why:"掲載元のURLがありません" };
+        try{ return { ok:true, text: tsHtmlText(await window.tsNightFetchHtml(url)) }; }
+        catch(err){ return { ok:false, why: String((err && err.message) || err) }; }
+      };
+      const mineRow = digRows.filter(function(it){ return it && tsIsMine(it.title || it.name || ""); })[0] || null;
+      const mineUrl = tsPageOf(mineRow);
+      const pageJobs = [mineUrl ? tsGetPage(mineUrl) : Promise.resolve({ ok:false, why:"一覧に掲載元が見当たりません" })]
+        .concat(othersArr.map(function(it){ const u = tsPageOf(it); return u ? tsGetPage(u) : Promise.resolve({ ok:false, why:"掲載元のURLがありません" }); }));
+      const pages = await Promise.all(pageJobs);
+      const minePage = pages[0];
+      const mineHits = minePage.ok ? tsPickHits(minePage.text, 8000) : "";
+      let otherOk = 0;
+      const othersInfo = othersArr.map(function(it, i){
+        const pg = pages[i + 1];
+        if(pg && pg.ok) otherOk++;
+        const hits = (pg && pg.ok) ? tsPickHits(pg.text, 2500) : "";
+        const det = String(it.detail || "").replace(/※この案件は、発掘時にウェブ検索で拾ったものです。[\s\S]*$/, "").slice(0, 600);
+        if(!hits && !det) return "";
+        return "【" + (i+1) + "】" + String(it.title || it.name || "")
+             + (det ? "\n（一覧の要約）" + det : "")
+             + (hits ? "\n（掲載ページのうち併給に関わる箇所）\n" + hits : "");
+      }).filter(Boolean).join("\n\n");
+      const readNote = "要領：読み取り済み／案内ページ：" + (minePage.ok ? (mineHits ? "取得し、併給に関わる記述あり" : "取得したが、併給に関わる記述なし") : "取得できず（" + minePage.why + "）")
+        + "／相手の掲載ページ：" + othersArr.length + "件中" + otherOk + "件を取得";
       const user = "■ いま読み取った制度\n" + mine + "\n\n"
-        + "■ その公募要領のうち、併給・重複に関わる箇所\n" + tsPickCombo(src) + "\n\n"
-        + "■ 突き合わせる相手（掘ってある制度）\n" + others;
+        + "■ Ａ：その公募要領のうち、併給・重複に関わる箇所\n" + tsPickCombo(src) + "\n\n"
+        + "■ Ｂ：その制度の案内ページ（掲載元）のうち、併給に関わる箇所\n" + (mineHits || "（記載なし、または取得できず）") + "\n\n"
+        + "■ 突き合わせる相手（掘ってある制度）\n" + others + "\n\n"
+        + "■ Ｃ：相手の制度の掲載内容のうち、併給に関わる箇所\n" + (othersInfo || "（記載なし、または取得できず）");
       const res = await fetch(ANTHROPIC_RELAY, {
         method: "POST",
         headers: {"Content-Type":"application/json", "x-trisight-code": tsCode()},
@@ -1577,18 +1659,25 @@ window.tsSyncBanner = function(msg){
          9/15の実演時点では、結果は文字で並ぶだけで「可と出た制度から進む道は無い」状態だった。
          AIが返す制度名は表記が揺れるため、括弧書き・年度・空白を落として一覧の案件名と突き合わせる。
          一致したものだけに「一覧でこの制度の詳細を開く」を付け、一致しないものは推測で結び付けない。 */
-      const tsComboNorm = function(t){
-        return String(t || "")
-          .replace(/（[^）]*）|\([^)]*\)/g, "")
-          .replace(/^令和[0-9０-９元]+年度/, "")
-          .replace(/[\s　・･「」『』]/g, "");
+      const tsComboNorm = tsComboBase;
+      /* 2026-10-05：まず番号で結び付ける。番号が無い・合わないときだけ名前で探す（地域の付け足しは落とす） */
+      const tsComboByNo = function(pr){
+        const n = parseInt(pr && pr.no, 10);
+        if(!(n >= 1 && n <= othersArr.length)) return null;
+        const it = othersArr[n - 1];
+        /* AIが番号を取り違えた場合に別の制度へ結び付けないよう、括弧の中まで含めた名前が合うときだけ採る */
+        const full = function(t){
+          return String(t || "").replace(/[\s　]*［地域：[^］]*］$/, "").replace(/（(全国|地域の記載なし)）$/, "")
+            .replace(/^令和[0-9０-９元]+年度/, "").replace(/[\s　・･「」『』]/g, "")
+            .replace(/\(/g, "（").replace(/\)/g, "）");
+        };
+        return (full(pr.name) === full(it && (it.title || it.name))) ? it : null;
       };
       const tsComboFind = function(name){
+        name = String(name || "").replace(/[\s　]*［地域：[^］]*］$/, "").replace(/（(全国|地域の記載なし)）$/, "");
         const k = tsComboNorm(name);
         if(!k) return null;
-        const cand = digRows.filter(function(it){
-          return it && it.id && String(it.title || it.name || "") !== mine;
-        });
+        const cand = othersAll;
         /* 括弧書きを落とすと同じ名前になる制度が複数ある場合（本体と事業者向け等）、
            括弧書きまで含めて一致するものだけを採る。それでも決まらなければ結び付けない。 */
         const same = cand.filter(function(it){ return tsComboNorm(it.title || it.name) === k; });
@@ -1607,13 +1696,17 @@ window.tsSyncBanner = function(msg){
         });
         return hits.length === 1 ? hits[0] : null;   /* 候補が2件以上なら決め打ちしない */
       };
-      const rank = { "不可":0, "要確認":1, "可":2 };
-      pairs.sort(function(a,b){ return (rank[a.verdict]||1) - (rank[b.verdict]||1); });
-      const color = { "不可":"#b0203a", "可":"#1a7f37", "要確認":"#9a3412" };
-      const tsComboGoHtml = function(name){
-        const nm = String(name || "");
+      { const __cut = pairs.__cut; pairs = pairs.filter(function(pr){ return !tsIsMine(pr && pr.name); }); if(__cut) pairs.__cut = true; }
+      const rank = { "可":0, "条件付き可":1, "不可":2, "要確認":3 };
+      pairs.sort(function(a,b){ return (a.verdict in rank ? rank[a.verdict] : 3) - (b.verdict in rank ? rank[b.verdict] : 3); });
+      const color = { "不可":"#b0203a", "可":"#1a7f37", "条件付き可":"#1d5fa5", "要確認":"#9a3412" };
+      const tsComboGoHtml = function(pr){
+        const nm = String((pr && pr.name) || "");
         if(!nm) return "";
-        const hit = tsComboFind(nm);
+        const hit = tsComboByNo(pr) || tsComboFind(nm);
+        if(hit && !hit.id){
+          return '<div class="combo-go"><span class="combo-gomsg">掘った一覧にある制度です（この行には詳細の画面がありません）。</span></div>';
+        }
         if(hit){
           return '<div class="combo-go">'
             + '<button type="button" class="dbtn" data-combo-id="' + ce(hit.id) + '">一覧でこの制度の詳細を開く</button>'
@@ -1626,19 +1719,24 @@ window.tsSyncBanner = function(msg){
         + (pairs.__cut ? '<span style="color:#b0203a">　※ 返答が途中で切れたため、'
                          + '読み取れた分だけを表示しています。もう一度押すと全件を試します。</span>' : "")
         + '<br>'
-        + '判定は<b>この制度の要領に書かれていることだけ</b>を根拠にしています。'
-        + '相手側の要領にも別の定めがある場合がありますので、<b>両方を確かめてから客先へお伝えください</b>。'
-        + '<br>掘った一覧にある制度には「一覧でこの制度の詳細を開く」が付きます。そこから相手側の要領も読み取れます。</div>';
+        + '判定は<b>この制度の要領・案内ページと、相手の制度の掲載内容に書かれていることだけ</b>を根拠にしています。'
+        + '書かれていない組み合わせは「要確認」とし、確認先を添えています。客先へお伝えする前に、相手側の要領もお確かめください。'
+        + '<br><span style="color:var(--muted)">読んだもの：' + ce(readNote) + '</span>'
+        + '<br>掘った一覧にある制度には「一覧でこの制度の詳細を開く」が付きます。そこから相手側の要領も読み取れます。'
+          + (othersRest > 0 ? '<br><span style="color:#b0203a">一覧のうち先頭' + othersArr.length + '件と突き合わせました。残り' + othersRest + '件は今回の対象外です。</span>' : '')
+          + '</div>';
       h += pairs.map(function(pr){
         const v = String(pr.verdict || "要確認");
         return '<div class="combo-row">'
           + '<span class="combo-v" style="color:' + (color[v] || "#9a3412") + '">' + ce(v) + '</span> '
           + '<b>' + ce(String(pr.name||"")) + '</b>'
           + (pr.reason ? '<div class="combo-r">' + ce(String(pr.reason)) + '</div>' : "")
+          + (pr.condition ? '<div class="combo-r"><b>条件：</b>' + ce(String(pr.condition)) + '</div>' : "")
+          + (pr.amount ? '<div class="combo-r"><b>額：</b>' + ce(String(pr.amount)) + '</div>' : "")
           + (pr.order ? '<div class="combo-r"><b>順序：</b>' + ce(String(pr.order)) + '</div>' : "")
-          + '<div class="combo-b">根拠：' + ce(String(pr.basis || "要領に記載なし"))
+          + '<div class="combo-b">根拠：' + ce(String(pr.basis || "記載なし"))
           + (pr.contact ? '　／　確認先：' + ce(String(pr.contact)) : "") + '</div>'
-          + tsComboGoHtml(pr.name)
+          + tsComboGoHtml(pr)
           + '</div>';
       }).join("");
       try{ tm.stop(); }catch(_){}
@@ -2436,6 +2534,7 @@ window.tsSyncBanner = function(msg){
     return { items: items, report: report, put: put, read: targets.length, skipped: list.length - targets.length };
   }
   window.tsNightReadEntries = tsNightReadEntries;
+  window.tsNightFetchHtml = tsNightFetchHtml;
 
   /* ===== 拾った額の台帳（2026-09-05） =====
      制度名を鍵にして、これまでに拾った額をすべて残す。画面に出すのは最も低い額。
@@ -8024,7 +8123,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-10-02-02';
+  const TRIGATE_VERSION = '2026-10-05-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

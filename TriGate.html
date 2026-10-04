@@ -426,14 +426,14 @@ body.presenMode table{font-size:1.02em}
   </div>
 
   <!-- 発掘（新着探索・Jグランツ） 2026-07-13 -->
-  <div class="step"><span class="no">発掘</span><h2>新着補助金探索</h2><span class="hint">Jグランツ・国土交通省・厚生労働省に加え、選んだ都道府県・市区町村の独自制度をその場で検索して掘ります</span></div>
+  <div class="step"><span class="no">発掘</span><h2>新着補助金探索</h2><span class="hint">Jグランツ・国土交通省・厚生労働省に加え、選んだ都道府県・市区町村の独自制度をその場で検索して調査します</span></div>
   <div class="card">
     <div class="digrow">
       <label class="digkwlabel" for="digKeyword">検索する語</label>
         <input type="text" id="digKeyword" value="事業" placeholder="制度名に出る語を入れます（例：事業、雇用、人材、賃上げ）">
       <label class="digkwlabel" for="digPref" style="margin-left:10px">地域</label>
         <select id="digPref" title="この地域と「全国」の制度だけを表示します"></select>
-        <select id="digCity" title="市区町村まで絞ると、その市区町村のページを直接掘りに行きます" style="margin-left:6px"></select>
+        <select id="digCity" title="市区町村まで絞ると、その市区町村のページを直接調査しに行きます" style="margin-left:6px"></select>
         <div style="margin-top:6px;font-size:12px;color:var(--muted)">発掘の目的を選んでください（複数可）</div>
         <div style="margin-top:4px;display:flex;flex-direction:column;gap:6px">
           <label style="font-size:13px;cursor:pointer" title="住宅用の補助のように、受け取るのが会社ではなく個人（施主）の制度も探します。営業マンが顧客（施主）へ渡す情報として使えます">
@@ -469,11 +469,11 @@ body.presenMode table{font-size:1.02em}
     <div class="digstatus" id="digStatus"></div>
     <div class="digrow" style="margin-top:8px">
       <button id="digFullGateBtn" class="dbtn" style="display:none">この一覧すべてで詳細AIゲート判定を実行する（API複数回・時間がかかります）</button>
-      <button type="button" class="rc-toggle" id="digClearBtn" style="display:none" title="掘った一覧と見込み額を消します。判定の記憶は残るので、掘り直せば元に戻ります。獲得実績の記録は消えません">掘った一覧と見込み額を消す</button>
+      <button type="button" class="rc-toggle" id="digClearBtn" style="display:none" title="調査した一覧と見込み額を消します。判定の記憶は残るので、調査し直せば元に戻ります。獲得実績の記録は消えません">調査した一覧と見込み額を消す</button>
       <button type="button" class="rc-toggle" id="digLedgerViewBtn" title="ウェブ検索で拾って台帳に貯まっている案件を、地域ごとに一覧で出します">拾った案件の台帳を見る</button>
       <button type="button" class="rc-toggle" id="digLedgerClearBtn" title="選んでいる地域の、ウェブ検索で拾った案件を、この認証コードの一覧から外します。当社の台帳からは消えません。台帳を見るボタンから戻せます">拾った案件を一覧から外す</button>
-      <button type="button" class="rc-toggle" id="digCheckBtn" title="前回掘ったときと同じ条件で一覧を組み直し、違いがあれば理由を出します。ウェブ検索は行いません">検査（前回と比べる）</button>
-      <button type="button" class="rc-toggle" id="digSieveResetBtn" title="事業に照らした仕分けの記憶だけを消します。次に掘るとき、全件をもう一度AIが仕分けます。仕分けの当て方を変えたときに使ってください">事業に照らした仕分けをやり直す</button>
+      <button type="button" class="rc-toggle" id="digCheckBtn" title="前回調査したときと同じ条件で一覧を組み直し、違いがあれば理由を出します。ウェブ検索は行いません">検査（前回と比べる）</button>
+      <button type="button" class="rc-toggle" id="digSieveResetBtn" title="事業に照らした仕分けの記憶だけを消します。次に調査するとき、全件をもう一度AIが仕分けます。仕分けの当て方を変えたときに使ってください">事業に照らした仕分けをやり直す</button>
     </div>
     <div id="digLedgerBox" style="display:none;margin-top:10px"></div>
     <div id="tsCheckBox" style="display:none;margin-top:10px"></div>
@@ -1620,7 +1620,7 @@ window.tsSyncBanner = function(msg){
       const user = "■ いま読み取った制度\n" + mine + "\n\n"
         + "■ Ａ：その公募要領のうち、併給・重複に関わる箇所\n" + tsPickCombo(src) + "\n\n"
         + "■ Ｂ：その制度の案内ページ（掲載元）のうち、併給に関わる箇所\n" + (mineHits || "（記載なし、または取得できず）") + "\n\n"
-        + "■ 突き合わせる相手（掘ってある制度）\n" + others + "\n\n"
+        + "■ 突き合わせる相手（調査済みの制度）\n" + others + "\n\n"
         + "■ Ｃ：相手の制度の掲載内容のうち、併給に関わる箇所\n" + (othersInfo || "（記載なし、または取得できず）");
       const res = await fetch(ANTHROPIC_RELAY, {
         method: "POST",
@@ -1705,14 +1705,14 @@ window.tsSyncBanner = function(msg){
         if(!nm) return "";
         const hit = tsComboByNo(pr) || tsComboFind(nm);
         if(hit && !hit.id){
-          return '<div class="combo-go"><span class="combo-gomsg">掘った一覧にある制度です（この行には詳細の画面がありません）。</span></div>';
+          return '<div class="combo-go"><span class="combo-gomsg">調査した一覧にある制度です（この行には詳細の画面がありません）。</span></div>';
         }
         if(hit){
           return '<div class="combo-go">'
             + '<button type="button" class="dbtn" data-combo-id="' + ce(hit.id) + '">一覧でこの制度の詳細を開く</button>'
             + '<span class="combo-gomsg"></span></div>';
         }
-        return '<div class="combo-go"><span class="combo-gomsg">掘った一覧には無い制度です。</span>'
+        return '<div class="combo-go"><span class="combo-gomsg">調査した一覧には無い制度です。</span>'
           + '<a href="https://www.google.com/search?q=' + encodeURIComponent(nm) + '" target="_blank" rel="noopener">制度名でウェブ検索する（別の画面で開きます）</a></div>';
       };
       let h = '<div class="combo-note"><b>併給の突き合わせ（' + pairs.length + '件）</b>'
@@ -1722,7 +1722,7 @@ window.tsSyncBanner = function(msg){
         + '判定は<b>この制度の要領・案内ページと、相手の制度の掲載内容に書かれていることだけ</b>を根拠にしています。'
         + '書かれていない組み合わせは「要確認」とし、確認先を添えています。客先へお伝えする前に、相手側の要領もお確かめください。'
         + '<br><span style="color:var(--muted)">読んだもの：' + ce(readNote) + '</span>'
-        + '<br>掘った一覧にある制度には「一覧でこの制度の詳細を開く」が付きます。そこから相手側の要領も読み取れます。'
+        + '<br>調査した一覧にある制度には「一覧でこの制度の詳細を開く」が付きます。そこから相手側の要領も読み取れます。'
           + (othersRest > 0 ? '<br><span style="color:#b0203a">一覧のうち先頭' + othersArr.length + '件と突き合わせました。残り' + othersRest + '件は今回の対象外です。</span>' : '')
           + '</div>';
       h += pairs.map(function(pr){
@@ -1856,8 +1856,8 @@ window.tsSyncBanner = function(msg){
   function tsSteadyBadgeHtml(v){
     if(v !== "1" && v !== "0") return "";
     return v === "1"
-      ? ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#e8f3ea;color:#2f6b3a;white-space:nowrap" title="当社が毎回見に行く入口ページから拾ったものです。掘り直しても同じものが出ます">定点</span>'
-      : ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#fdf3e3;color:#8a5a1a;white-space:nowrap" title="AIがウェブ検索で見つけたものです（当社が毎回見に行く入口ページからではありません）。一度拾ったものは当社の台帳に残り、掘り直しても一覧からは外れません">その回</span>';
+      ? ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#e8f3ea;color:#2f6b3a;white-space:nowrap" title="当社が毎回見に行く入口ページから拾ったものです。調査し直しても同じものが出ます">定点</span>'
+      : ' <span style="font-size:.75em;padding:1px 5px;border-radius:3px;background:#fdf3e3;color:#8a5a1a;white-space:nowrap" title="AIがウェブ検索で見つけたものです（当社が毎回見に行く入口ページからではありません）。一度拾ったものは当社の台帳に残り、調査し直しても一覧からは外れません">その回</span>';
   }
   /* 2026-09-16：新着・年度・同名・掲載内容未取得の印。行（data-tsnew / data-fy / data-same / data-dng）に
      値を持たせ、表を組むとき・判定の結果を書き込むとき・見込み額の印を書き込むとき・呼び戻すとき、
@@ -3824,7 +3824,7 @@ window.tsSyncBanner = function(msg){
     function mechAlert(){
       if(!mechAsked || !mechFailed) return "";
       return (mechFailed >= mechAsked)
-        ? "　⚠ 足切りが働いていません（判定に届きませんでした）。落とすべき案件がそのまま残っています。もう一度掘り直してください。"
+        ? "　⚠ 足切りが働いていません（判定に届きませんでした）。落とすべき案件がそのまま残っています。もう一度調査し直してください。"
         : "　⚠ 足切りの一部が届きませんでした（" + mechFailed + "/" + mechAsked + " 回）。落とすべき案件が残っている可能性があります。";
     }
     /* 2026-09-09：新規展開地の発掘。
@@ -4194,7 +4194,7 @@ window.tsSyncBanner = function(msg){
       }
       box.innerHTML = '<div style="font-size:12.5px;color:var(--muted);margin-bottom:6px">'
         + '台帳にあるもの　合計 ' + total + '件（年度・都道府県 ' + areas.length + '）。'
-        + '当社の台帳です。掘った回の検索で返ってこなかった案件も、ここに残っています。</div>' + html + hidHtml;
+        + '当社の台帳です。調査した回の検索で返ってこなかった案件も、ここに残っています。</div>' + html + hidHtml;
       box.style.display = "block";
       box.querySelectorAll("button[data-unhide]").forEach(function(ub){
         ub.addEventListener("click", async function(){
@@ -4411,7 +4411,7 @@ window.tsSyncBanner = function(msg){
     const TS_INPUT_LABEL = {
       company: "企業基礎情報（または選んでいる会社）が変わった",
       threshold: "上限・下限の目安の金額が変わった",
-      date: "掘った日が違う（受付終了・締切までの日数が変わる）",
+      date: "調査した日が違う（受付終了・締切までの日数が変わる）",
       screen: "画面（TriGate.html）の版が変わった",
       relay: "判定エンジン（gate.js）の版またはモデルが変わった",
       share: "台帳の共有の範囲の設定が変わった",
@@ -4433,7 +4433,7 @@ window.tsSyncBanner = function(msg){
       };
       box.style.display = "block";
       if(!prev || !Array.isArray(prev.rows)){
-        box.innerHTML = card("#5a6070", "比べる前回の控えがありません", "一度「新着探索」で掘ってから、検査を押してください。");
+        box.innerHTML = card("#5a6070", "比べる前回の控えがありません", "一度「新着探索」で調査してから、検査を押してください。");
         return;
       }
       if(!now.boxOk){
@@ -4471,7 +4471,7 @@ window.tsSyncBanner = function(msg){
       if(diffs.length){
         box.innerHTML = card("#9a3412", "前回（" + e(when) + "）と違います。変わった入力で説明がつきます",
           '<div>変わった入力：</div><ul style="margin:4px 0 0 18px">' + diffs.map(function(d){ return "<li>" + e(d) + "</li>"; }).join("") + "</ul>"
-          + detail + '<div style="margin-top:8px;font-size:12px;color:var(--muted)">この結果を次の検査の基準にするには、「新着探索」で掘り直してください。</div>');
+          + detail + '<div style="margin-top:8px;font-size:12px;color:var(--muted)">この結果を次の検査の基準にするには、「新着探索」で調査し直してください。</div>');
         return;
       }
       const st0 = prev.stages || {}, st1 = now.stages || {};
@@ -4562,7 +4562,7 @@ window.tsSyncBanner = function(msg){
                 + String(d2.getHours()).padStart(2,"0") + ":" + String(d2.getMinutes()).padStart(2,"0");
         }catch(_){}
         st.innerHTML = '<span style="color:#a45a1a">' + e(when2)
-          + ' に掘った結果がこの端末に残っています（' + sv.rows.length + '件）。'
+          + ' に調査した結果がこの端末に残っています（' + sv.rows.length + '件）。'
           + '読み込んでいる会社が違うため、自動では表示していません。</span>'
           + ' <button type="button" class="rbtn" id="digForceBtn" style="margin-left:6px">前回の結果を表示する</button>';
         const fb = document.getElementById("digForceBtn");
@@ -4580,7 +4580,7 @@ window.tsSyncBanner = function(msg){
              + String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
       }catch(_){}
       st.innerHTML = e(sv.status || "")
-        + '<br><span style="color:#a45a1a">※ ' + e(when) + ' に掘った結果を、この端末から呼び戻して表示しています。'
+        + '<br><span style="color:#a45a1a">※ ' + e(when) + ' に調査した結果を、この端末から呼び戻して表示しています。'
         + '最新にするには「新着探索」を押してください。</span>';
       try{ if(typeof pjRefreshRowBadges === "function") pjRefreshRowBadges(); }catch(_){}
       return true;
@@ -5841,7 +5841,7 @@ window.tsSyncBanner = function(msg){
         const lines = mc.results.map(r => e((r.ok ? "○ " : "× ") + r.k + "：" + r.v)).join("<br>");
         if(mc.undone){
           act = '<div class="digpick"><span style="color:var(--fix)">掲載内容との突き合わせ：未判定（判定に届きませんでした）</span><br>' + lines
-              + '<br><span style="color:var(--muted);font-weight:400">通信が届かなかったため、この案件は足切りを通っていません。掘り直すと判定されます。</span>'
+              + '<br><span style="color:var(--muted);font-weight:400">通信が届かなかったため、この案件は足切りを通っていません。調査し直すと判定されます。</span>'
               + '<br>'
               + '　<button class="rbtn" data-act="gate" data-id="'+e(id)+'" style="margin-top:6px">この案件を深く読む（AI判定・API利用）</button>'
               + '<span class="digpicked"></span><div class="diggate"></div></div>';
@@ -5884,7 +5884,7 @@ window.tsSyncBanner = function(msg){
       var hideBtn2 = "<div style=\"margin:10px 0 0;text-align:right\">"
         + "<button data-hideid=\"" + safeId2 + "\" class=\"digHideBtn\" "
         + "style=\"font-size:11px;padding:2px 8px;color:#c00;border:1px solid #c00;background:none;cursor:pointer\" "
-        + "title=\"この案件を一覧から外します。外した案件は掘り直せば戻ります\">この案件を一覧から外す</button>"
+        + "title=\"この案件を一覧から外します。外した案件は調査し直せば戻ります\">この案件を一覧から外す</button>"
         + "</div>";
       return "<dl>"+rows.join("")+"</dl>"+ovHtml + act + usageBlock + hideBtn2;
     }
@@ -8123,7 +8123,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-10-05-02';
+  const TRIGATE_VERSION = '2026-10-05-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -8259,7 +8259,7 @@ window.tsSyncBanner = function(msg){
     var fresh = rows.filter(function(r){ return r && r.ts_new; }).length;
     paint(b, "ok");
     b.innerHTML = "<b>" + esc(fmt(sv.nightAt)) + " に自動発掘した結果です。</b>"
-      + (sv.night ? "（一覧 " + rows.length + "件・うち新着 " + fresh + "件）" : "（その後、手で掘り直した一覧を表示しています）")
+      + (sv.night ? "（一覧 " + rows.length + "件・うち新着 " + fresh + "件）" : "（その後、手で調査し直した一覧を表示しています）")
       + (sv.nightNote ? "<br><span style=\"font-size:12.5px\">" + esc(sv.nightNote) + "</span>" : "");
   }
   function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
@@ -8964,7 +8964,7 @@ window.TSB_HOST = "gate";
     var stepSec = Math.floor((now - run.lastAt) / 1000);
     var where = run.pref ? (run.pref + (run.city || "")) : "";
     var html = '<span class="hg">⏳</span><b>' +
-      (run.vault ? "保管庫から、これまでに拾った案件を取り込んでいます" : (esc(where) + (where ? "を" : "") + "掘っています")) +
+      (run.vault ? "保管庫から、これまでに拾った案件を取り込んでいます" : (esc(where) + (where ? "を" : "") + "調査しています")) +
       '</b>　経過 <b>' + fmt(sec) + '</b>';
     if(txt) html += '<br><span class="sub">いまの工程：</span>' + esc(txt) + ' <span class="sub">（この工程 ' + fmt(stepSec) + '）</span>';
     if(!run.vault){

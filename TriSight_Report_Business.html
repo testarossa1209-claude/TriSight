@@ -3,7 +3,7 @@
 <html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TriSight™ Business Report</title>
+<title>TriSight® Business Report</title>
 <style>
   /* ─────── 基本設定 ─────── */
   :root {
@@ -577,7 +577,7 @@
       <div class="check-item">APIキーは <strong>リレーサーバー側</strong> に安全に保持され、画面では入力・保存しません</div>
       <div class="check-item">通信は <strong>HTTPS/TLS暗号化</strong> されます</div>
       <div class="check-item">本ファイルは <strong>クライアント側</strong> で動作し、AI処理のみTriSightリレーを経由します</div>
-      <p style="margin-top: 14px; font-size: 12px; color: var(--gray);">本報告書はTriSight™経営判断支援システムの一部として、ファクトチェック済みの結論を起案者へ提示するものです。最終的な経営判断責任は起案者に帰属します。</p>
+      <p style="margin-top: 14px; font-size: 12px; color: var(--gray);">本報告書はTriSight®経営判断支援システムの一部として、ファクトチェック済みの結論を起案者へ提示するものです。最終的な経営判断責任は起案者に帰属します。</p>
     </div>
     <button class="btn btn-primary" style="width: 100%;" onclick="acknowledgeSecurity()">確認しました</button>
   </div>
@@ -585,23 +585,29 @@
 
 <!-- ─────── 操作パネル ─────── -->
 <div class="control-panel">
-  <h1>TriSight™ Business Report — 操作パネル</h1>
+  <h1>TriSight® Business Report — 操作パネル</h1>
   <div class="panel-grid">
 
     <!-- パネル1: 三身一体出力 -->
     <div class="panel-section">
-      <h2>1. TriSight™ 三身一体出力（TXT）</h2>
+      <h2>1. TriSight® 三身一体出力（TXT）</h2>
       <textarea id="txtInput" placeholder="v5.htmlからの自動受信、または手動でTXTを貼り付けてください..."></textarea>
     </div>
 
     <!-- パネル2: クライアント情報 -->
     <div class="panel-section">
       <h2>2. クライアント情報</h2>
-      <input type="text" id="clientName" value="ノア・コーポレーション合同会社" placeholder="提出先名">
-      <input type="text" id="clientPeriod" placeholder="数値の対象月（例：5月20日提出分なら 令和8年4月分）">
+      <select id="reportType" title="報告書の種類">
+        <option value="proposal">提案書</option>
+        <option value="research">調査報告書</option>
+        <option value="monthly">月次経営報告書</option>
+      </select>
+      <input type="text" id="clientName" value="" placeholder="提出先名">
+      <input type="text" id="clientPeriod" placeholder="対象期間（月次経営報告書は数値の対象月 例：令和8年4月分。提案書・調査報告書は空欄で可）">
       <input type="text" id="clientNo" placeholder="報告書番号（例：No.010）※保存するファイル名に使います">
       <input type="date" id="clientDate">
       <select id="clientPlan">
+        <option value="">契約プランを記載しない</option>
         <option value="エグゼクティブプラン（月次訪問コンサル付）">エグゼクティブプラン（月次訪問コンサル付）</option>
         <option value="スタンダードプラン">スタンダードプラン</option>
         <option value="ベーシックプラン">ベーシックプラン</option>
@@ -640,40 +646,40 @@
     </div>
 
     <div class="cover-title">
-      <div class="label">MONTHLY EXECUTIVE REPORT</div>
-      <h1>月次経営報告書</h1>
-      <div class="subtitle" id="coverPeriod">令和8年4月分</div>
+      <div class="label" id="coverLabel">PROPOSAL</div>
+      <h1 id="coverTitle">提案書</h1>
+      <div class="subtitle" id="coverPeriod"></div>
     </div>
 
     <div class="cover-info">
       <table>
-        <tbody><tr><td>提出先</td><td id="coverClient">ノア・コーポレーション合同会社</td></tr>
+        <tbody><tr><td>提出先</td><td id="coverClient"></td></tr>
         <tr><td>発行元</td><td contenteditable="true">合同会社トライサイト</td></tr>
-        <tr><td>提出日</td><td id="coverDate">令和8年5月6日</td></tr>
-        <tr><td>契約プラン</td><td id="coverPlan">エグゼクティブプラン（月次訪問コンサル付）</td></tr>
-        <tr><td>分析システム</td><td>TriSight™ 三身一体型AIワークフロー</td></tr>
+        <tr><td>提出日</td><td id="coverDate"></td></tr>
+        <tr id="coverPlanRow"><td>契約プラン</td><td id="coverPlan"></td></tr>
+        <tr><td>分析システム</td><td>TriSight® 三身一体型AIワークフロー</td></tr>
       </tbody></table>
     </div>
 
     <div class="cover-footer">
-      © 合同会社トライサイト　TriSight™ is a registered trademark.
+      © 合同会社トライサイト　TriSight® is a registered trademark.
     </div>
   </div>
 
   <!-- ── 本文ページ1 ── -->
   <div class="page">
     <div class="page-header">
-      <div class="title">月次経営報告書</div>
-      <div class="meta" id="pageMeta1">令和8年4月分 / 提出先：ノア・コーポレーション合同会社</div>
+      <div class="title tsDocTitle">提案書</div>
+      <div class="meta" id="pageMeta1"></div>
     </div>
 
     <div class="section">
-      <h2>1. 基本情報</h2>
+      <h2 id="h_info">1. 基本情報</h2>
       <table class="info-table">
         <tbody><tr><th style="width: 30%;">項目</th><th>内容</th></tr>
-        <tr><td>報告書種別</td><td>月次経営報告書（ビジネスレポート版）</td></tr>
-        <tr><td>分析対象期間</td><td id="infoPeriod">令和8年4月分</td></tr>
-        <tr><td>分析手法</td><td>TriSight™ 三身一体型AIワークフロー（あずさ・なぎさ・つかさ）</td></tr>
+        <tr><td>報告書種別</td><td id="infoType">提案書</td></tr>
+        <tr id="infoPeriodRow"><td>対象期間</td><td id="infoPeriod"></td></tr>
+        <tr><td>分析手法</td><td>TriSight® 三身一体型AIワークフロー（あずさ・なぎさ・つかさ）</td></tr>
         <tr><td>結論抽出AI</td><td>つかさ（評価AI / OpenAI gpt-4o）</td></tr>
         <tr><td>発行元</td><td contenteditable="true">合同会社トライサイト 代表 野木君江</td></tr>
         <tr><td>担当コンサルタント</td><td contenteditable="true">野木宏史（合同会社トライサイト 主任コンサルタント）</td></tr>
@@ -681,13 +687,13 @@
     </div>
 
     <div class="section">
-      <h2>2. 経営サマリー</h2>
+      <h2 id="h_sec2">2. 提案の要旨</h2>
       <div class="content" contenteditable="true" id="sec2">
-（つかさAPI実行後、ここに経営サマリーが自動配置されます。生成後、本欄は手動で編集可能です。）
+（つかさAPI実行後、ここに自動配置されます。生成後、本欄は手動で編集可能です。）
       </div>
     </div>
 
-    <div class="section">
+    <div class="section" id="box_sec3">
       <h2>3. 月次実績データ（部門別損益）</h2>
       <div class="content" contenteditable="true" id="sec3figures">
 （v5からデータ受信後、「2. クライアント情報」の対象期間に数値の対象月（例：5月20日提出分なら 令和8年4月分）を入力すると、その月の確定数値がここに自動表示されます。本欄は手動で編集可能です。）
@@ -696,7 +702,7 @@
     </div>
 
     <div class="page-footer">
-      <span>TriSight™ Business Report</span>
+      <span>TriSight® Business Report</span>
       <span>1 / 3</span>
     </div>
   </div>
@@ -704,11 +710,11 @@
   <!-- ── 本文ページ2 ── -->
   <div class="page">
     <div class="page-header">
-      <div class="title">月次経営報告書</div>
-      <div class="meta" id="pageMeta2">令和8年4月分 / 提出先：ノア・コーポレーション合同会社</div>
+      <div class="title tsDocTitle">提案書</div>
+      <div class="meta" id="pageMeta2"></div>
     </div>
 
-    <div class="section">
+    <div class="section" id="box_sec4">
       <h2>4. 費用構造分析</h2>
       <p style="font-size: 11px; color: var(--gray); margin-bottom: 8px;">※ 数値解析ロボのデータからコードが自動計算（人件費＝役員報酬＋給料手当＋賞与＋法定福利費＋福利厚生費／構成比＝対販売管理費計／その他＝販売管理費計−掲載科目合計）。セルは手動修正可能。</p>
       <table class="data-table">
@@ -762,21 +768,21 @@
     </div>
 
     <div class="section">
-      <h2>5. AI分析所見（あずさ・なぎさ・つかさ統合）</h2>
+      <h2 id="h_sec5">3. 提案の内容</h2>
       <div class="content" contenteditable="true" id="sec5">
-（つかさAPI実行後、ここに三身一体型AIワークフローによる統合分析所見が自動配置されます。）
+（つかさAPI実行後、ここに自動配置されます。）
       </div>
     </div>
 
     <div class="section">
-      <h2>6. リスク評価</h2>
+      <h2 id="h_sec6">4. リスクと留意点</h2>
       <div class="content" contenteditable="true" id="sec6">
-（つかさAPI実行後、ここにリスク評価が自動配置されます。発生確率・影響度の観点から整理されます。）
+（つかさAPI実行後、ここに自動配置されます。）
       </div>
     </div>
 
     <div class="page-footer">
-      <span>TriSight™ Business Report</span>
+      <span>TriSight® Business Report</span>
       <span>2 / 3</span>
     </div>
   </div>
@@ -784,14 +790,14 @@
   <!-- ── 本文ページ3 ── -->
   <div class="page">
     <div class="page-header">
-      <div class="title">月次経営報告書</div>
-      <div class="meta" id="pageMeta3">令和8年4月分 / 提出先：ノア・コーポレーション合同会社</div>
+      <div class="title tsDocTitle">提案書</div>
+      <div class="meta" id="pageMeta3"></div>
     </div>
 
     <div class="section">
-      <h2>7. 次月アクションプラン</h2>
+      <h2 id="h_sec7">5. 実行の手順</h2>
       <div class="content" contenteditable="true" id="sec7">
-（つかさAPI実行後、ここに具体的な次月アクションプランが自動配置されます。）
+（つかさAPI実行後、ここに自動配置されます。）
       </div>
     </div>
 
@@ -807,7 +813,7 @@
     </div>
 
     <div class="page-footer">
-      <span>TriSight™ Business Report</span>
+      <span>TriSight® Business Report</span>
       <span>3 / 3</span>
     </div>
   </div>
@@ -816,7 +822,7 @@
 
 <!-- ─────── エクスポートバー ─────── -->
 <div class="export-bar">
-  <span style="font-size:11px;opacity:.75;margin-right:8px">版 <span id="verLabel">2026-09-17-01</span></span>
+  <span style="font-size:11px;opacity:.75;margin-right:8px">版 <span id="verLabel">2026-10-05-01</span></span>
   <button class="btn btn-primary" onclick="saveToMaster()">📁 正本フォルダへ保存</button>
   <button class="btn btn-secondary" onclick="printReport()">🖨 印刷 / PDF保存</button>
   <button class="btn btn-secondary" onclick="downloadHTML()">💾 HTML保存</button>
@@ -840,27 +846,84 @@ function hideStatus(){
   document.getElementById('statusBar').className = 'status-bar';
 }
 
+// ─────── 報告書の種類（2026-10-05-01追加） ───────
+// 月次経営報告書はノア向けの月次報告の形。提案書・調査報告書は起案の結果を出す汎用の形。
+const TS_TYPES = {
+  monthly: {
+    label: 'MONTHLY EXECUTIVE REPORT', title: '月次経営報告書', file: '月次報告書', figures: true,
+    heads: { sec2: '経営サマリー', sec5: 'AI分析所見（あずさ・なぎさ・つかさ統合）', sec6: 'リスク評価', sec7: '次月アクションプラン' },
+    purpose: '経営者向け月次報告書',
+    fields: {
+      summary: '経営サマリー（250-350文字。当月の業績の要点に加え、入力テキストに含まれる当月の主な出来事・対応・コンサルティング活動を簡潔に含める。数値は入力テキストの確定値のみ使用）',
+      ai_findings: 'AI分析所見（300-400文字）',
+      risk_assessment: 'リスク評価（200-300文字、発生確率・影響度を明記）',
+      next_action: '次月アクションプラン（200-300文字、具体的なアクションを箇条書き含めて）'
+    }
+  },
+  proposal: {
+    label: 'PROPOSAL', title: '提案書', file: '提案書', figures: false,
+    heads: { sec2: '提案の要旨', sec5: '提案の内容', sec6: 'リスクと留意点', sec7: '実行の手順' },
+    purpose: '起案の結果を相手に示す提案書',
+    fields: {
+      summary: '提案の要旨（250-400文字。何を提案するのか、結論を一つに絞って先に書く）',
+      ai_findings: '提案の内容（800-1500文字。入力テキストの結論を項目ごとに整理する。金額・日付・条件は入力テキストにあるものだけを使い、入力にない数字を作らない。決まっていない点は「未決」と明記する）',
+      risk_assessment: 'リスクと留意点（200-400文字。発生確率・影響度の観点で整理）',
+      next_action: '実行の手順（200-400文字。誰が何をいつまでにするかを箇条書きで）'
+    }
+  },
+  research: {
+    label: 'RESEARCH REPORT', title: '調査報告書', file: '調査報告書', figures: false,
+    heads: { sec2: '調査の要旨', sec5: '調査の結果', sec6: '留意点と未確認事項', sec7: '今後の対応' },
+    purpose: '調べた結果を相手に示す調査報告書',
+    fields: {
+      summary: '調査の要旨（250-400文字。何を調べ、何が分かったかを先に書く）',
+      ai_findings: '調査の結果（800-1500文字。分かった事実を項目ごとに整理し、入力テキストに出所があるものはその出所を添える。入力にない事実・数字を作らない）',
+      risk_assessment: '留意点と未確認事項（200-400文字。確かめられていない点と、その確かめ先を書く）',
+      next_action: '今後の対応（200-400文字。次に何を確かめ、何をするかを箇条書きで）'
+    }
+  }
+};
+function tsType(){
+  const el = document.getElementById('reportType');
+  return TS_TYPES[(el && el.value) || 'proposal'] || TS_TYPES.proposal;
+}
+function applyReportType(){
+  const t = tsType();
+  document.getElementById('coverLabel').textContent = t.label;
+  document.getElementById('coverTitle').textContent = t.title;
+  document.querySelectorAll('.tsDocTitle').forEach(function(el){ el.textContent = t.title; });
+  document.getElementById('infoType').textContent = t.title;
+  document.getElementById('box_sec3').style.display = t.figures ? '' : 'none';
+  document.getElementById('box_sec4').style.display = t.figures ? '' : 'none';
+  // 章番号：月次は 1〜7、提案書・調査報告書は 1〜5
+  const n = t.figures ? { sec2: 2, sec5: 5, sec6: 6, sec7: 7 } : { sec2: 2, sec5: 3, sec6: 4, sec7: 5 };
+  ['sec2','sec5','sec6','sec7'].forEach(function(k){
+    document.getElementById('h_' + k).textContent = n[k] + '. ' + t.heads[k];
+  });
+}
+
 // ─────── 表紙・ヘッダー情報の同期 ───────
+function tsWareki(d){
+  return '令和' + (d.getFullYear() - 2018) + '年' + (d.getMonth()+1) + '月' + d.getDate() + '日';
+}
 function syncCoverInfo(){
-  const period = document.getElementById('clientPeriod').value || '令和8年4月分';
-  const client = document.getElementById('clientName').value || 'ノア・コーポレーション合同会社';
+  applyReportType();
+  const period = (document.getElementById('clientPeriod').value || '').trim();
+  const client = (document.getElementById('clientName').value || '').trim();
   const dateRaw = document.getElementById('clientDate').value;
   const plan = document.getElementById('clientPlan').value;
 
-  let dateStr = '令和8年5月7日';
-  if(dateRaw){
-    const d = new Date(dateRaw);
-    const wareki = d.getFullYear() - 2018;
-    dateStr = '令和' + wareki + '年' + (d.getMonth()+1) + '月' + d.getDate() + '日';
-  }
+  const dateStr = tsWareki(dateRaw ? new Date(dateRaw) : new Date());
 
   document.getElementById('coverPeriod').textContent = period;
   document.getElementById('coverClient').textContent = client;
   document.getElementById('coverDate').textContent = dateStr;
   document.getElementById('coverPlan').textContent = plan;
+  document.getElementById('coverPlanRow').style.display = plan ? '' : 'none';
   document.getElementById('infoPeriod').textContent = period;
+  document.getElementById('infoPeriodRow').style.display = period ? '' : 'none';
 
-  const meta = period + ' / 提出先：' + client;
+  const meta = [period, client ? '提出先：' + client : ''].filter(Boolean).join(' / ');
   document.getElementById('pageMeta1').textContent = meta;
   document.getElementById('pageMeta2').textContent = meta;
   document.getElementById('pageMeta3').textContent = meta;
@@ -900,15 +963,15 @@ async function generateReport(){
   const txt = document.getElementById('txtInput').value.trim();
 
   if(!txt){
-    showStatus('⚠ TriSight™三身一体出力（TXT）が入力されていません', true);
+    showStatus('⚠ TriSight®三身一体出力（TXT）が入力されていません', true);
     return;
   }
 
   showStatus('⏳ つかさ（gpt-4o）がリレー経由で結論を抽出中... しばらくお待ちください');
 
-  const systemPrompt = `あなたはTriSight™経営判断支援システムにおける評価AI「つかさ」です。
-入力されたTriSight™三身一体型AIワークフロー（あずさ＝構想、なぎさ＝検証、つかさ＝評価）の出力TXTを読み解き、
-経営者向け月次報告書の各セクションに配置するための結論を、以下の5段階プロセスで生成してください。
+  const systemPrompt = `あなたはTriSight®経営判断支援システムにおける評価AI「つかさ」です。
+入力されたTriSight®三身一体型AIワークフロー（あずさ＝構想、なぎさ＝検証、つかさ＝評価）の出力TXTを読み解き、
+${tsType().purpose}の各セクションに配置するための結論を、以下の5段階プロセスで生成してください。
 
 【5段階プロセス】
 1. 検証：入力TXTの論理整合性を確認
@@ -921,16 +984,11 @@ async function generateReport(){
 本報告書は経営者層が読む文書です。専門用語は必要最小限とし、判断の根拠を明示してください。
 
 【出力形式（JSON厳守）】
-{
-  "summary": "経営サマリー（250-350文字。当月の業績の要点に加え、入力テキストに含まれる当月の主な出来事・対応・コンサルティング活動を簡潔に含める。数値は入力テキストの確定値のみ使用）",
-  "ai_findings": "AI分析所見（300-400文字）",
-  "risk_assessment": "リスク評価（200-300文字、発生確率・影響度を明記）",
-  "next_action": "次月アクションプラン（200-300文字、具体的なアクションを箇条書き含めて）"
-}
+${JSON.stringify(tsType().fields, null, 2)}
 
 最終的な経営判断責任は起案者に帰属することを前提に、参考情報として結論を提示してください。`;
 
-  const userPrompt = `以下はTriSight™三身一体型AIワークフローの出力です。月次報告書の各セクション結論を生成してください。\n\n${txt}`;
+  const userPrompt = `以下はTriSight®三身一体型AIワークフローの出力です。${tsType().title}の各セクション結論を生成してください。\n\n${txt}`;
 
   try {
     const response = await fetch('https://trisight-relay.vercel.app/api/openai', {
@@ -946,7 +1004,7 @@ async function generateReport(){
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.4,
-        max_tokens: 3000,
+        max_tokens: 4000,
         response_format: { type: 'json_object' }
       })
     });
@@ -1028,14 +1086,15 @@ function downloadHTML(){
 }
 
 // ─────── 保存名・正本フォルダ保存・閉じる前の警告（2026-09-17-01追加）───────
-// 保存名：提出日_提出先の略称月次報告書_報告書番号_提出月分（例：20260520_ノア月次報告書_No006_5月分）
+// 保存名：提出日_提出先の略称＋種類_報告書番号（月次は末尾に提出月分）（例：20260520_ノア月次報告書_No006_5月分／20261009_全タク連提案書_No001）
 function reportFileBase(){
   const dRaw = (document.getElementById('clientDate')||{}).value || '';
   const ymd = dRaw ? dRaw.replace(/-/g,'') : new Date().toISOString().slice(0,10).replace(/-/g,'');
-  const mon = dRaw ? (parseInt(dRaw.slice(5,7),10) + '月分') : '';
-  const cl = ((document.getElementById('clientName')||{}).value || '').replace(/合同会社|株式会社|有限会社|・?コーポレーション/g,'').trim() || '報告先';
+  const t = tsType();
+  const mon = (t.figures && dRaw) ? (parseInt(dRaw.slice(5,7),10) + '月分') : '';
+  const cl = ((document.getElementById('clientName')||{}).value || '').replace(/合同会社|株式会社|有限会社|一般社団法人|公益社団法人|一般財団法人|公益財団法人|・?コーポレーション/g,'').trim() || '報告先';
   const no = (((document.getElementById('clientNo')||{}).value || '').replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)).replace(/[.\s．]/g,'').replace(/^no/i,'No'));
-  return [ymd, cl + '月次報告書', no, mon].filter(Boolean).join('_').replace(/[\\/:*?"<>|]/g,'');
+  return [ymd, cl + t.file, no, mon].filter(Boolean).join('_').replace(/[\\/:*?"<>|]/g,'');
 }
 
 // 閉じる前の警告：生成・編集したあと保存していなければ、ブラウザの確認を出す
@@ -1133,20 +1192,24 @@ function downloadTXT(){
   a.click();
 }
 function buildReportTXT(){
-  const period = document.getElementById('clientPeriod').value || '令和8年4月分';
-  const client = document.getElementById('clientName').value || 'ノア・コーポレーション合同会社';
+  syncCoverInfo();
+  const t = tsType();
+  const period = (document.getElementById('clientPeriod').value || '').trim();
+  const client = (document.getElementById('clientName').value || '').trim();
+  const h = function(k){ return document.getElementById('h_' + k).textContent; };
 
   let content = '═══════════════════════════════\n';
-  content += 'TriSight™ Business Report\n';
-  content += '月次経営報告書\n';
+  content += 'TriSight® Business Report\n';
+  content += t.title + '\n';
   content += '═══════════════════════════════\n\n';
-  content += '提出先：' + client + '\n';
-  content += '対象期間：' + period + '\n\n';
-  content += '【2. 経営サマリー】\n' + document.getElementById('sec2').textContent + '\n\n';
-  content += '【3. 月次実績データ（確定値）】\n' + document.getElementById('sec3figures').textContent + '\n\n';
-  content += '【5. AI分析所見】\n' + document.getElementById('sec5').textContent + '\n\n';
-  content += '【6. リスク評価】\n' + document.getElementById('sec6').textContent + '\n\n';
-  content += '【7. 次月アクションプラン】\n' + document.getElementById('sec7').textContent + '\n\n';
+  if(client) content += '提出先：' + client + '\n';
+  if(period) content += '対象期間：' + period + '\n';
+  content += '\n';
+  content += '【' + h('sec2') + '】\n' + document.getElementById('sec2').textContent + '\n\n';
+  if(t.figures) content += '【3. 月次実績データ（確定値）】\n' + document.getElementById('sec3figures').textContent + '\n\n';
+  content += '【' + h('sec5') + '】\n' + document.getElementById('sec5').textContent + '\n\n';
+  content += '【' + h('sec6') + '】\n' + document.getElementById('sec6').textContent + '\n\n';
+  content += '【' + h('sec7') + '】\n' + document.getElementById('sec7').textContent + '\n\n';
   content += '【結論（起案者最終判断）】\n' + document.getElementById('conclusion').textContent + '\n';
   return content;
 }
@@ -1166,6 +1229,7 @@ window.addEventListener('DOMContentLoaded', function(){
       if(m && m[1].trim()){
         window.TS_PAYLOAD = saved;
         window.TS_BASE_RAW = m[1].trim();
+        if(/対象月[:：]/.test(window.TS_BASE_RAW)){ document.getElementById('reportType').value = 'monthly'; }
         renderSec3();
       }
     }
@@ -1289,7 +1353,7 @@ window.addEventListener('DOMContentLoaded', function(){
   const cp = document.getElementById('clientPeriod');
   if(cp){ cp.addEventListener('input', function(){ if(window.renderSec3) window.renderSec3(); }); }
   if(window.TS_BASE_RAW) window.renderSec3();
-  ['clientName','clientPeriod','clientDate','clientPlan'].forEach(id => {
+  ['reportType','clientName','clientPeriod','clientDate','clientPlan'].forEach(id => {
     document.getElementById(id).addEventListener('input', syncCoverInfo);
     document.getElementById(id).addEventListener('change', syncCoverInfo);
   });

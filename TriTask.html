@@ -225,6 +225,13 @@
     background:var(--white);color:var(--ink-soft);cursor:pointer;
   }
   .gitem .gdel:hover{border-color:#c0546a;color:#b0203a}
+  /* 2026-10-12：トライタイムへ載せる承認。起案者が押したものだけがトライタイムの事務局の予定に出る */
+  .gitem .gtt{
+    margin-left:auto;font-size:11px;padding:2px 9px;border:1px solid var(--line);border-radius:99px;
+    background:var(--white);color:var(--ink-soft);cursor:pointer;
+  }
+  .gitem .gtt.on{background:#eef5ef;border-color:var(--ok);color:var(--ok);font-weight:700}
+  .gitem .gtt + .gdel{margin-left:0}
   .srcbadge{
     display:inline-block;font-size:11px;font-weight:700;padding:2px 10px;border-radius:99px;
     background:var(--ink);color:var(--paper);letter-spacing:.03em;
@@ -405,7 +412,7 @@
     <div style="text-align:center"><button class="reset" id="resetBtn">別の理論で、最初からやり直す</button></div>
   </section>
 
-  <footer>TriTask® v0.3（版 2026-10-02-05） ／ TriSight® Family 共通基盤エンジン</footer>
+  <footer>TriTask® v0.3（版 2026-10-12-01） ／ TriSight® Family 共通基盤エンジン</footer>
 </div>
 
 <script>
@@ -796,13 +803,26 @@
               || (g.deadlines && g.deadlines[0]) || "期限記載なし";
     li.innerHTML =
       '<div class="gname"></div>'+
-      '<div class="gmeta"><span class="srcbadge"></span><span class="garr"></span><span class="gco"></span><span class="gdue"></span><span class="gstatus '+statusCls+'"></span><button type="button" class="gdel" title="この案件を削除">削除</button></div>';
+      '<div class="gmeta"><span class="srcbadge"></span><span class="garr"></span><span class="gco"></span><span class="gdue"></span><span class="gstatus '+statusCls+'"></span><button type="button" class="gtt'+(g.to_tritime ? ' on' : '')+'"></button><button type="button" class="gdel" title="この案件を削除">削除</button></div>';
     li.querySelector(".gname").textContent = g.program_name || "（名称不明）";
     li.querySelector(".srcbadge").textContent = g.source_product || "外部システム";
     li.querySelector(".garr").textContent = "届いた日：" + arrivedLabel(g);
     li.querySelector(".gco").textContent = g.company_name ? ("送付元：" + g.company_name) : "";
     li.querySelector(".gdue").textContent = "期限：" + due;
     li.querySelector(".gstatus").textContent = ttIsPendingForm(g) ? "分解待ち" : (g.status || "未着手");
+    li.querySelector(".gtt").textContent = g.to_tritime ? "✓ トライタイムに載せています" : "トライタイムに載せる";
+    li.querySelector(".gtt").title = g.to_tritime ? "押すとトライタイムから外します" : "押すと、この案件の期限をトライタイムの事務局の予定に載せます";
+    li.querySelector(".gtt").addEventListener("click", (ev)=>{
+      ev.stopPropagation();
+      /* 2026-10-12：宏史さんの指示。トライタイムに自動で入れるのは、ここで起案者が承認したものだけ。 */
+      const list = allInbox();
+      const it = list.find(x => x.id === g.id);
+      if(!it) return;
+      it.to_tritime = !it.to_tritime;
+      it.to_tritime_at = it.to_tritime ? new Date().toISOString() : "";
+      saveInbox(list);
+      renderGrantList();
+    });
     li.addEventListener("click", ()=>openGrant(g.id));
     li.querySelector(".gdel").addEventListener("click", (ev)=>{
       ev.stopPropagation();

@@ -90,6 +90,10 @@
   .empty{color:var(--muted);font-size:14px;padding:8px 0}
   .alert{background:#fbecea;border:2px solid var(--red);border-radius:12px;padding:12px 16px;margin:14px 0;font-size:14.5px}
   .alert ul{margin:6px 0 0 18px}
+  .alert.note{background:#eef3f8;border-color:var(--ink-soft)}
+  .note-item{border:1px solid var(--paper-deep);border-radius:10px;padding:10px 12px;margin:8px 0;font-size:14px}
+  .note-item.unread{border-color:var(--amber);background:#fffaf2}
+  .visit.meet{background:#fbf6ec}
   @media (max-width:560px){ header h1{font-size:20px} .visit{grid-template-columns:52px 1fr} .visit .act{grid-column:1 / -1} }
   @media print{ nav.tabs,.note,.btns,.mic{display:none} section.tab{display:none} section.tab.on{display:block} .card{box-shadow:none} }
 </style>
@@ -101,7 +105,7 @@
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small>訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-12-03</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-13-01</span></div>
 <div id="verNotice"></div>
 <div id="alertBox"></div>
 <div class="note" id="shareNote"></div>
@@ -132,8 +136,27 @@
     <div id="planBody"></div>
   </div>
   <div class="card">
-    <h2>事務局の予定（トライタスクの期限）</h2>
-    <p class="lead">この端末のトライタスクに入っている案件のうち、完了していない工程を期限の近い順に並べます。事務局の仕事なので、看護師さんの予定には入れません。</p>
+    <h2>連絡板（事務局から看護部へ）</h2>
+    <p class="lead">連絡事項・会議の案内・申し送りを、全員・看護部・一人ひとりあてに出せます。宛先の人の端末には知らせが出て、読んだかどうかがここで分かります。会議の案内は、その日の予定にも並びます。</p>
+    <details id="nbNew"><summary>新しく出す</summary>
+      <div class="row">
+        <div><label class="f" for="nb_kind">種類</label><select id="nb_kind"><option>連絡事項</option><option>会議の案内</option><option>申し送り</option></select></div>
+        <div><label class="f" for="nb_from">出す人</label><select id="nb_from"></select></div>
+        <div><label class="f" for="nb_to">宛先</label><select id="nb_to"><option value="all">職員全員</option><option value="nurses">看護部の全員</option><option value="pick">一人ひとりを選ぶ</option></select></div>
+      </div>
+      <div id="nb_pickWrap" style="display:none;margin-top:8px"></div>
+      <div class="row" id="nb_meet" style="display:none">
+        <div><label class="f" for="nb_mdate">会議の日</label><input type="date" id="nb_mdate"></div>
+        <div><label class="f" for="nb_mtime">会議の時刻</label><input type="time" id="nb_mtime"></div>
+      </div>
+      <label class="f" for="nb_title">件名</label><input type="text" id="nb_title">
+      <label class="f" for="nb_body">本文</label><textarea id="nb_body"></textarea>
+      <div class="btns"><button class="btn" id="nb_send">出す</button><span class="muted" id="nb_msg"></span></div>
+    </details>
+    <div class="btns" style="margin-top:6px"><label class="muted"><input type="checkbox" id="nb_mine"> 自分あてのものだけ表示</label></div>
+    <div id="nbList"></div>
+    <h3>事務局の期限（トライタスクで承認したもの）</h3>
+    <p class="muted">トライタスクの案件一覧で「トライタイムに載せる」を押した案件だけを、期限の近い順に並べます。事務局の仕事なので、看護師さんの予定には入れません。</p>
     <div id="officeBody"></div>
   </div>
 </section>
@@ -274,9 +297,12 @@
   </div>
   <div class="card">
     <h2>職員</h2>
+    <p class="lead">職員は、トライシート（基本情報シート）の会社カード「人員」の「職員名簿」に入れたものを読み込みます。会社の基本情報と同じ名簿を使うので、二か所で入れ直す必要はありません。ここで足したり直したりした職員も、この端末のトライシートの名簿へ書き戻します。</p>
+    <div class="btns"><button class="btn" id="st_pull">トライシートから読み込む</button><a class="btn sub" href="TriSheet.html?focus=roster" target="_blank" rel="noopener" style="text-decoration:none">トライシートの職員名簿を開く</a></div>
+    <p class="muted" id="st_pullMsg" style="margin:6px 0 10px"></p>
     <div class="row">
       <div><label class="f" for="st_name">呼び名</label><input type="text" id="st_name"></div>
-      <div><label class="f" for="st_job">職種</label><select id="st_job"><option>看護師（正看）</option><option>准看護師</option><option>事務局</option><option>その他</option></select></div>
+      <div><label class="f" for="st_job">職種</label><select id="st_job"><option>看護師（正看）</option><option>准看護師</option><option>介護職</option><option>相談員・ケアマネジャー</option><option>事務局</option><option>その他</option></select></div>
       <div><label class="f" for="st_emp">雇用形態</label><select id="st_emp"><option>常勤</option><option>非常勤</option></select></div>
       <div><label class="f">&nbsp;</label><label><input type="checkbox" id="st_mgr"> 管理者</label></div>
     </div>
@@ -466,12 +492,14 @@ function renderPlan(){
   var start = parseYmd($('planWeek').value) || mondayOf(new Date());
   var only = $('planStaff').value;
   var html = '';
-  if(!weekly().length){ $('planBody').innerHTML = '<p class="empty">週間予定がまだありません。「名簿・設定」で入れてください。</p>'; renderOffice(); return; }
+  if(!weekly().length && !events().some(function(e){ return e.type === 'note' && e.kind === '会議の案内'; })){ $('planBody').innerHTML = '<p class="empty">週間予定がまだありません。「名簿・設定」で入れてください。</p>'; renderOffice(); renderBoard(); return; }
   for(var i = 0; i < 7; i++){
     var date = ymd(addDays(start, i));
     var vs = visitsOn(date).filter(function(v){ return !only || v.staffId === only; });
-    if(!vs.length) continue;
+    var meets = events().filter(function(e){ return e.type === 'note' && e.kind === '会議の案内' && e.mDate === date && (!only || isNoteFor(e, only)); });
+    if(!vs.length && !meets.length) continue;
     html += '<div class="day"><h3>' + esc(jpDate(date)) + '</h3>';
+    meets.forEach(function(m){ html += '<div class="visit meet"><div class="t">' + esc(m.mTime || '') + '</div><div class="who"><span class="tag amber">会議</span> ' + esc(m.title) + ' <small>' + esc(toLabel(m)) + '</small></div><div class="act"></div></div>'; });
     vs.forEach(function(v){
       var tags = '';
       if(v.cx){
@@ -488,6 +516,7 @@ function renderPlan(){
     html += '</div>';
   }
   $('planBody').innerHTML = html || '<p class="empty">この週に表示する訪問はありません。</p>';
+  renderBoard();
   $('planBody').querySelectorAll('[data-gap]').forEach(function(b){
     b.addEventListener('click', function(){ toggleGap(b.getAttribute('data-gap')); });
   });
@@ -565,6 +594,72 @@ function toggleGap(key){
   });
 }
 
+/* ---- 連絡板：事務局から看護部への連絡・会議の案内・申し送り ----
+   1件の連絡は events に type "note" で持つ。読んだ印は連絡そのものを書き換えず、
+   別の件（type "read"）として足す。二つの端末で同時に読んだ印を付けても消し合わないため。 */
+function noteRecipients(n){
+  if(n.to === 'all') return staff().map(function(s){ return s.id; });
+  if(n.to === 'nurses') return nurses().map(function(s){ return s.id; });
+  return Array.isArray(n.to) ? n.to : [];
+}
+function isNoteFor(n, id){ return !!id && noteRecipients(n).indexOf(id) >= 0; }
+function readsOf(noteId){ var m = {}; events().forEach(function(e){ if(e.type === 'read' && e.noteId === noteId) m[e.staffId] = e.at; }); return m; }
+function toLabel(n){ if(n.to === 'all') return '職員全員'; if(n.to === 'nurses') return '看護部の全員'; return noteRecipients(n).map(staffName).join('・'); }
+function renderBoard(){
+  var me = dev().me, mineOnly = $('nb_mine').checked;
+  var ns = events().filter(function(e){ return e.type === 'note'; }).sort(function(a,b){ return (b.created||'') < (a.created||'') ? -1 : 1; });
+  if(mineOnly) ns = ns.filter(function(n){ return isNoteFor(n, me); });
+  if(!ns.length){ $('nbList').innerHTML = '<p class="empty">' + (mineOnly ? '自分あての連絡はありません。' : 'まだ連絡はありません。') + '</p>'; return; }
+  $('nbList').innerHTML = ns.slice(0, 40).map(function(n){
+    var rec = noteRecipients(n), rd = readsOf(n.id);
+    var done = rec.filter(function(id){ return rd[id]; }), yet = rec.filter(function(id){ return !rd[id]; });
+    var forMe = isNoteFor(n, me), readByMe = !!rd[me];
+    return '<div class="note-item' + (forMe && !readByMe ? ' unread' : '') + '">' +
+      '<div><span class="tag ' + (n.kind === '会議の案内' ? 'amber' : (n.kind === '申し送り' ? 'gray' : 'green')) + '">' + esc(n.kind) + '</span> <b>' + esc(n.title) + '</b></div>' +
+      '<div class="muted">' + esc(staffName(n.from) || '（出す人の記録なし）') + ' → ' + esc(toLabel(n)) + '　' + esc(String(n.created || '').replace('T', ' ')) + '</div>' +
+      (n.kind === '会議の案内' && n.mDate ? '<div><b>会議：' + esc(jpDate(n.mDate)) + ' ' + esc(n.mTime || '') + '</b></div>' : '') +
+      (n.body ? '<div style="white-space:pre-wrap;margin-top:4px">' + esc(n.body) + '</div>' : '') +
+      '<div class="muted" style="margin-top:4px">読んだ人 ' + done.length + '／' + rec.length + (done.length ? '（' + done.map(staffName).map(esc).join('・') + '）' : '') + (yet.length ? '　まだの人：' + yet.map(staffName).map(esc).join('・') : '') + '</div>' +
+      '<div class="btns" style="margin-top:6px">' + (forMe && !readByMe ? '<button class="btn small amber" data-nbread="' + esc(n.id) + '">読みました</button>' : '') +
+      (forMe && readByMe ? '<span class="tag green">読みました</span>' : '') +
+      '<button class="btn small danger" data-nbdel="' + esc(n.id) + '">取り下げる</button></div></div>';
+  }).join('');
+  $('nbList').querySelectorAll('[data-nbread]').forEach(function(b){ b.addEventListener('click', function(){
+    var me2 = dev().me; if(!me2) return;
+    var a = events(); a.push({ id:uid(), type:'read', noteId:b.getAttribute('data-nbread'), staffId:me2, at:nowLocal(), date:ymd(new Date()) });
+    saveEvents(a);
+    var al = lj(ALERT_KEY, []).filter(function(x){ return x.id !== b.getAttribute('data-nbread'); }); sj(ALERT_KEY, al); renderAlerts();
+    renderBoard();
+  }); });
+  $('nbList').querySelectorAll('[data-nbdel]').forEach(function(b){ b.addEventListener('click', function(){
+    if(!confirm('この連絡を取り下げますか？（宛先の人の連絡板からも消えます）')) return;
+    saveEvents(events().filter(function(e){ return e.id !== b.getAttribute('data-nbdel') && !(e.type === 'read' && e.noteId === b.getAttribute('data-nbdel')); }));
+    renderBoard(); renderPlan();
+  }); });
+}
+function nbRefreshForm(){
+  fillSelect('nb_from', staff().map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
+  if(!$('nb_from').value && dev().me) $('nb_from').value = dev().me;
+  var picked = {}; document.querySelectorAll('#nb_pickWrap input:checked').forEach(function(c){ picked[c.value] = 1; });
+  $('nb_pickWrap').innerHTML = staff().map(function(s){ return '<label style="display:inline-block;margin:2px 14px 2px 0"><input type="checkbox" value="' + esc(s.id) + '"' + (picked[s.id] ? ' checked' : '') + '> ' + esc(staffLabel(s)) + '</label>'; }).join('') || '<span class="muted">職員がまだ登録されていません。</span>';
+  $('nb_pickWrap').style.display = $('nb_to').value === 'pick' ? '' : 'none';
+  $('nb_meet').style.display = $('nb_kind').value === '会議の案内' ? '' : 'none';
+}
+function nbSend(){
+  var from = $('nb_from').value, title = $('nb_title').value.trim(), kind = $('nb_kind').value, toSel = $('nb_to').value;
+  if(!from){ alert('「出す人」を選んでください。'); return; }
+  if(!title){ alert('件名を入れてください。'); $('nb_title').focus(); return; }
+  var to = toSel;
+  if(toSel === 'pick'){ to = []; document.querySelectorAll('#nb_pickWrap input:checked').forEach(function(c){ to.push(c.value); }); if(!to.length){ alert('宛先の人を選んでください。'); return; } }
+  if(kind === '会議の案内' && !$('nb_mdate').value){ alert('会議の日を入れてください。'); return; }
+  var a = events();
+  a.push({ id:uid(), type:'note', kind:kind, from:from, to:to, title:title, body:$('nb_body').value.trim(), mDate: kind === '会議の案内' ? $('nb_mdate').value : '', mTime: kind === '会議の案内' ? $('nb_mtime').value : '', created:nowLocal(), date:ymd(new Date()) });
+  saveEvents(a);
+  ['nb_title','nb_body','nb_mdate','nb_mtime'].forEach(function(id){ $(id).value = ''; });
+  $('nb_msg').textContent = '出しました。';
+  renderBoard(); renderPlan();
+}
+
 /* ---- 事務局の予定：トライタスクの未完了工程 ---- */
 function parseDue(s){
   var t = String(s||'').replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0)-0xFEE0); });
@@ -579,6 +674,7 @@ function renderOffice(){
   var rows = [];
   list.forEach(function(g){
     if(!g || g.status === '完了') return;
+    if(g.to_tritime !== true) return; /* 2026-10-12：トライタスクで起案者が承認したものだけ */
     var name = g.program_name || g.title || '（名称不明）';
     var tasks = Array.isArray(g.reverse_tasks) ? g.reverse_tasks : [];
     var any = false;
@@ -592,7 +688,7 @@ function renderOffice(){
       rows.push({ d:d2, due:g.deadlines[0], name:name, act:'（工程未登録）' });
     }
   });
-  if(!rows.length){ $('officeBody').innerHTML = '<p class="empty">この端末のトライタスクに、完了していない案件はありません。</p>'; return; }
+  if(!rows.length){ $('officeBody').innerHTML = '<p class="empty">トライタスクで「トライタイムに載せる」を押した、完了していない案件はありません。</p>'; return; }
   rows.sort(function(a,b){ if(a.d && b.d) return a.d - b.d; if(a.d) return -1; if(b.d) return 1; return 0; });
   $('officeBody').innerHTML = '<div class="tbl-scroll"><table><tr><th>期限</th><th>案件</th><th>工程</th></tr>' +
     rows.slice(0, 30).map(function(r){ return '<tr><td>' + esc(r.due) + '</td><td>' + esc(r.name) + '</td><td>' + esc(r.act) + '</td></tr>'; }).join('') + '</table></div>';
@@ -813,6 +909,102 @@ function renderAdmin(){
   }).join('') + '</ul><p class="muted">「患者さんの経過」で、今も同じか確かめた結果を残してください。</p>' : '<p class="empty">見直しの時期が来た記録はありません。</p>';
 }
 
+/* ---- トライシートの職員名簿とのつなぎ（2026-10-13）----
+   職員の正本は、トライシートの元帳（trisight_office_master_v1）の自社（activeOrg）の
+   sheet.val["職員名簿"]。1人＝{id, name, job, emp, mgr}。
+   トライタイムの職員は sheetId でその1人と結び付ける。
+   ・読み込み：名簿の人を足す・直す。名簿から外された人（sheetId があるのに名簿にいない人）は外す。
+   ・書き戻し：トライタイムで足した・直した・外した職員を、この端末の名簿へ映す。
+   トライシートが無い端末（看護師さんの端末など）では書き戻さない。名簿は共有で届く。
+   雇用形態：名簿は「常勤・正社員／常勤・正社員以外／非常勤」、トライタイムは「常勤／非常勤」。
+   トライタイムの「常勤」からは正社員かどうかが分からないので、名簿の側は決めつけない。 */
+var SHEET_KEY = 'trisight_office_master_v1';
+var RO_COUNT = { '従業員数（合計）':'従業員数_合計', 'うち正社員':'従業員数_正社員', 'うち非常勤':'従業員数_非常勤' };
+function sheetDoc(){ try{ var d = JSON.parse(localStorage.getItem(SHEET_KEY) || 'null'); return (d && Array.isArray(d.orgs)) ? d : null; }catch(e){ return null; } }
+function sheetSelf(d){ if(!d) return null; return d.orgs.filter(function(o){ return o && o.id === d.activeOrg; })[0] || null; }
+function sheetName(o){ return (o && o.corp && o.corp.name) || (o && o.sheet && o.sheet.val && o.sheet.val['法人名']) || '自社'; }
+function empToTT(e){ return e === '非常勤' ? '非常勤' : (e ? '常勤' : ''); }
+function empToSheet(cur, tt){
+  if(tt === '非常勤') return '非常勤';
+  if(tt === '常勤') return (cur === '常勤・正社員' || cur === '常勤・正社員以外') ? cur : '';
+  return cur || '';
+}
+function sheetRecount(o, ro){
+  var v = o.sheet.val, a = ro.filter(function(r){ return r && String(r.name || '').trim(); });
+  if(!a.length) return;
+  var c = { '従業員数（合計）':a.length, 'うち正社員':a.filter(function(r){ return r.emp === '常勤・正社員'; }).length, 'うち非常勤':a.filter(function(r){ return r.emp === '非常勤'; }).length };
+  Object.keys(c).forEach(function(k){ v[k] = String(c[k]); });
+  var g = o.gateJSON && o.gateJSON['会社'];
+  if(g) Object.keys(c).forEach(function(k){ g[RO_COUNT[k]] = c[k]; });
+}
+function sheetWrite(d, o, before){
+  var after = JSON.stringify(o.sheet.val['職員名簿'] || []);
+  if(after === before) return false;
+  var today = ymd(new Date());
+  o.meta = o.meta || {}; o.meta.fd = o.meta.fd || {}; o.meta.hist = o.meta.hist || [];
+  ['職員名簿','従業員数（合計）','うち正社員','うち非常勤'].forEach(function(k){ o.meta.fd[k] = today; });
+  var h = o.meta.hist, e = (h.length && h[h.length - 1].d === today) ? h[h.length - 1] : null;
+  if(!e){ e = { d:today, k:[] }; h.push(e); }
+  if(e.k.indexOf('職員名簿（トライタイムから）') < 0) e.k.push('職員名簿（トライタイムから）');
+  d.updated = new Date().toLocaleString('ja-JP');
+  localStorage.setItem(SHEET_KEY, JSON.stringify(d));
+  return true;
+}
+/* トライタイムの職員 → この端末の名簿 */
+function sheetPush(){
+  var d = sheetDoc(), o = sheetSelf(d);
+  if(!o || !o.sheet) return false;
+  o.sheet.val = o.sheet.val || {};
+  var ro = Array.isArray(o.sheet.val['職員名簿']) ? o.sheet.val['職員名簿'] : [];
+  var before = JSON.stringify(ro);
+  var tt = staff(), gone = {};
+  raw('staff').forEach(function(x){ if(x && x.del && x.sheetId && !tt.some(function(t){ return t.sheetId === x.sheetId; })) gone[x.sheetId] = 1; });
+  ro = ro.filter(function(r){ return !gone[r.id]; });
+  var linked = false;
+  tt.forEach(function(st){
+    var r = null;
+    if(st.sheetId){
+      r = ro.filter(function(x){ return x.id === st.sheetId; })[0];
+      if(!r) return; /* 名簿の側で外された人。次の読み込みでトライタイムからも外れる */
+    } else {
+      r = ro.filter(function(x){ return x.name === st.name && !tt.some(function(t){ return t.sheetId === x.id; }); })[0];
+      if(!r){ r = { id:'R' + Date.now().toString(36) + Math.random().toString(36).slice(2,6), name:'', job:'', emp:'', mgr:false }; ro.push(r); }
+      st.sheetId = r.id; linked = true;
+    }
+    r.name = st.name; if(jobOf(st)) r.job = jobOf(st); r.emp = empToSheet(r.emp, st.emp); r.mgr = isMgr(st);
+  });
+  o.sheet.val['職員名簿'] = ro;
+  sheetRecount(o, ro);
+  var wrote = sheetWrite(d, o, before);
+  if(linked) saveCol('staff', tt);
+  return wrote;
+}
+/* この端末の名簿 → トライタイムの職員 */
+function sheetPull(){
+  var msg = $('st_pullMsg');
+  var d = sheetDoc(), o = sheetSelf(d);
+  var ro = (o && o.sheet && o.sheet.val && Array.isArray(o.sheet.val['職員名簿'])) ? o.sheet.val['職員名簿'].filter(function(r){ return r && String(r.name || '').trim(); }) : [];
+  if(!o){ msg.textContent = 'この端末のトライシートに、自社がまだ登録されていません。「トライシートの職員名簿を開く」から会社を入れてください。看護師さんの端末では、共有を設定すると事務局の端末から名簿が届きます。'; return; }
+  if(!ro.length){ msg.textContent = 'トライシートの「' + sheetName(o) + '」に、職員名簿がまだありません。「トライシートの職員名簿を開く」から一人ずつ入れてから、もう一度押してください。'; return; }
+  var tt = staff(), add = 0, upd = 0;
+  ro.forEach(function(r){
+    var st = tt.filter(function(x){ return x.sheetId === r.id; })[0] || tt.filter(function(x){ return !x.sheetId && x.name === r.name; })[0];
+    if(!st){ st = { id:uid() }; tt.push(st); add++; }
+    else upd++;
+    st.sheetId = r.id; st.name = String(r.name).trim();
+    if(r.job){ st.job = r.job; delete st.role; }
+    var e = empToTT(r.emp); if(e) st.emp = e; else if(st.emp == null) st.emp = '';
+    st.mgr = !!r.mgr;
+  });
+  var keep = tt.filter(function(x){ return !x.sheetId || ro.some(function(r){ return r.id === x.sheetId; }); });
+  var rem = tt.length - keep.length;
+  var only = keep.filter(function(x){ return !x.sheetId; }).length;
+  saveCol('staff', keep);
+  sheetPush();
+  refreshAll();
+  msg.textContent = 'トライシートの「' + sheetName(o) + '」の職員名簿を読み込みました。新しく ' + add + '人、直した ' + upd + '人' + (rem ? '、名簿から外されていた ' + rem + '人をこちらでも外しました（これまでの記録は残ります）' : '') + (only ? '。トライタイムにだけいた ' + only + '人は、トライシートの名簿へ書き戻しました' : '') + '。';
+}
+
 /* ---- 名簿・設定 ---- */
 function renderSetup(){
   var pts = patients();
@@ -840,8 +1032,8 @@ function renderSetup(){
     $('st_add').textContent = 'この内容で直す'; $('st_cancel').style.display = ''; $('st_name').focus();
   }); });
   $('stList').querySelectorAll('[data-stdel]').forEach(function(b){ b.addEventListener('click', function(){
-    if(!confirm('この職員を名簿から外しますか？（これまでの記録は残ります）')) return;
-    saveCol('staff', staff().filter(function(x){ return x.id !== b.getAttribute('data-stdel'); })); refreshAll();
+    if(!confirm('この職員を名簿から外しますか？（これまでの記録は残ります。この端末のトライシートの職員名簿からも外れます）')) return;
+    saveCol('staff', staff().filter(function(x){ return x.id !== b.getAttribute('data-stdel'); })); sheetPush(); refreshAll();
   }); });
   $('wkList').querySelectorAll('[data-wkdel]').forEach(function(b){ b.addEventListener('click', function(){
     saveCol('weekly', weekly().filter(function(x){ return x.id !== b.getAttribute('data-wkdel'); })); refreshAll();
@@ -935,7 +1127,10 @@ function mergeIncoming(items){
       if(loc && mine && (loc.upd || 0) >= (d.upd || 0)) return;
       if(loc && strip(loc) === strip(d) && !!loc.del === !!d.del) return;
       if(col === 'events' && !loc && !d.del && d.type === 'cancel' && me && (d.staffId === me || d.fwdTo === me) && d.by !== me){
-        alerts.push({ id:d.id, no:d.patientNo, date:d.date, time:d.time || '', words:d.words || '', cat:d.cat || '', fee:!!d.fee, fwd:d.fwdTo === me });
+        alerts.push({ k:'cancel', id:d.id, no:d.patientNo, date:d.date, time:d.time || '', words:d.words || '', cat:d.cat || '', fee:!!d.fee, fwd:d.fwdTo === me });
+      }
+      if(col === 'events' && !loc && !d.del && d.type === 'note' && me && d.from !== me && isNoteFor(d, me)){
+        alerts.push({ k:'note', id:d.id, kind:d.kind || '', title:d.title || '', from:d.from, mDate:d.mDate || '', mTime:d.mTime || '' });
       }
       if(i == null){ idx[k] = arr.length; arr.push(d); } else { arr[i] = d; }
       changed++;
@@ -946,16 +1141,30 @@ function mergeIncoming(items){
   return changed;
 }
 function renderAlerts(){
-  var a = lj(ALERT_KEY, []), box = $('alertBox'); if(!box) return;
-  if(!a.length){ box.innerHTML = ''; return; }
-  box.innerHTML = '<div class="alert"><b>あなたの担当の訪問にキャンセルが入りました</b><ul>' + a.map(function(x){
+  var all = lj(ALERT_KEY, []), box = $('alertBox'); if(!box) return;
+  var a = all.filter(function(x){ return x.k !== 'note'; }), nt = all.filter(function(x){ return x.k === 'note'; });
+  if(!all.length){ box.innerHTML = ''; return; }
+  var nh = nt.length ? '<div class="alert note"><b>あなたあての連絡があります</b><ul>' + nt.map(function(x){
+    return '<li>【' + esc(x.kind) + '】' + esc(x.title) + '（' + esc(staffName(x.from)) + 'から）' + (x.mDate ? '　会議：' + esc(jpDate(x.mDate)) + ' ' + esc(x.mTime) : '') + '</li>';
+  }).join('') + '</ul><div class="btns"><button class="btn small" id="alBoard">連絡板を開く</button></div></div>' : '';
+  if(!a.length){ box.innerHTML = nh; wireNoteAlert(); return; }
+  box.innerHTML = nh + '<div class="alert"><b>あなたの担当の訪問にキャンセルが入りました</b><ul>' + a.map(function(x){
     return '<li>' + esc(jpDate(x.date)) + ' ' + esc(x.time) + '　' + esc(x.no) + '：「' + esc(x.words) + '」（' + esc(x.cat) + '）' + (x.fee ? '・キャンセル料あり' : '') + (x.fwd ? '・事務局から回されました' : '') + '</li>';
   }).join('') + '</ul><div class="btns"><button class="btn small amber" id="alGap">予定で空いた時間の案を見る</button><button class="btn small sub" id="alOk">確認した</button></div></div>';
-  $('alOk').onclick = function(){ sj(ALERT_KEY, []); renderAlerts(); };
+  wireNoteAlert();
+  $('alOk').onclick = function(){ sj(ALERT_KEY, lj(ALERT_KEY, []).filter(function(y){ return y.k === 'note'; })); renderAlerts(); };
   $('alGap').onclick = function(){
-    var x = a[0]; sj(ALERT_KEY, []); renderAlerts();
+    var x = a[0]; sj(ALERT_KEY, lj(ALERT_KEY, []).filter(function(y){ return y.k === 'note'; })); renderAlerts();
     document.querySelector('#tabs button[data-tab=plan]').click();
     var d = parseYmd(x.date); if(d){ $('planWeek').value = ymd(mondayOf(d)); renderPlan(); toggleGap(x.date + '|' + x.time + '|' + x.no); }
+  };
+}
+function wireNoteAlert(){
+  var b = $('alBoard'); if(!b) return;
+  b.onclick = function(){
+    document.querySelector('#tabs button[data-tab=plan]').click();
+    $('nb_mine').checked = true; renderBoard();
+    var c = $('nbList'); if(c && c.scrollIntoView) c.scrollIntoView({ behavior:'smooth', block:'start' });
   };
 }
 function syncNow(){
@@ -1044,7 +1253,7 @@ function imImport(){
     if(wk.some(function(x){ return String(x.dow) === v.dow && x.time === v.time && x.no === v.no; })){ same++; return; }
     wk.push({ id:uid(), dow:v.dow, time:v.time, min:v.min, no:v.no, staffId:s.id }); addW++;
   });
-  saveCol('staff', st); saveCol('patients', pts); saveCol('weekly', wk);
+  saveCol('staff', st); saveCol('patients', pts); saveCol('weekly', wk); sheetPush();
   $('im_map').innerHTML = '<p class="muted">取り込みました。予定 ' + addW + '件' + (same ? '（すでにあった ' + same + '件は飛ばしました）' : '') + '、新しく登録した職員 ' + addS + '人、患者さん ' + addP + '人。</p>';
   $('im_text').value = '';
   refreshAll();
@@ -1052,7 +1261,7 @@ function imImport(){
 
 function refreshAll(){
   setShareNote(); renderAlerts();
-  refreshSelects();
+  refreshSelects(); nbRefreshForm();
   fillSelect('dv_me', staff().map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
   if(!$('dv_me').value && dev().me) $('dv_me').value = dev().me;
   $('dv_share').checked = dev().share;
@@ -1124,7 +1333,7 @@ $('st_add').addEventListener('click', function(){
   var rec = { name:n, job:$('st_job').value, emp:$('st_emp').value, mgr:$('st_mgr').checked };
   var cur = id ? a.filter(function(x){ return x.id === id; })[0] : null;
   if(cur){ delete cur.role; Object.assign(cur, rec); } else { a.push(Object.assign({ id:uid() }, rec)); }
-  saveCol('staff', a); stFormReset(); refreshAll();
+  saveCol('staff', a); sheetPush(); stFormReset(); refreshAll();
 });
 $('wk_add').addEventListener('click', function(){
   if(!$('wk_time').value || !$('wk_no').value || !$('wk_staff').value){ alert('時刻・契約書番号・担当を入れてください。'); return; }
@@ -1136,6 +1345,10 @@ $('s_save').addEventListener('click', function(){
   $('s_msg').textContent = '保存しました。'; refreshAll();
 });
 $('im_read').addEventListener('click', imRead);
+$('st_pull').addEventListener('click', sheetPull);
+['nb_kind','nb_to'].forEach(function(id){ $(id).addEventListener('change', nbRefreshForm); });
+$('nb_send').addEventListener('click', nbSend);
+$('nb_mine').addEventListener('change', renderBoard);
 $('dv_save').addEventListener('click', function(){
   var was = dev().share;
   sj(DEV_KEY, { me:$('dv_me').value, share:$('dv_share').checked });

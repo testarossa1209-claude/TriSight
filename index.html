@@ -76,6 +76,10 @@ footer{text-align:center;color:#7e8499;font-size:11px;margin-top:14px;line-heigh
 .e-foot{margin-top:12px;text-align:right}
 .e-foot a{font-size:12.5px;color:var(--gold-soft);text-decoration:none;border-bottom:1px solid rgba(230,205,143,.5)}
 .e-foot a:hover,.e-foot a:focus-visible{color:#fff;border-color:#fff;outline:none}
+.h1row{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap}
+.robo-btn{display:inline-flex;align-items:baseline;gap:6px;padding:4px 12px;border:1px solid var(--gold);border-radius:999px;text-decoration:none;font-family:Georgia,"Yu Mincho",serif;font-size:13px;font-weight:700;color:var(--gold-soft);letter-spacing:.04em;background:rgba(10,20,40,.35);transition:background .15s}
+.robo-btn span{font-family:inherit;font-size:11.5px;font-weight:700;color:#cdd6ea;letter-spacing:.06em}
+.robo-btn:hover,.robo-btn:focus-visible{background:rgba(200,162,74,.18);outline:none}
 .mod:focus-visible,.parent:focus-visible{outline:2px solid var(--gold-soft);outline-offset:3px}
 @media (prefers-reduced-motion:reduce){.hd,.mod,.parent,.eng{animation:none;opacity:1}.mod,.parent{transition:none}}
 </style></head>
@@ -83,7 +87,8 @@ footer{text-align:center;color:#7e8499;font-size:11px;margin-top:14px;line-heigh
 
 <div class="hd">
   <div class="ey">TriSight&reg; Family's</div>
-  <h1>TriSight System's</h1>
+  <!-- 2026-10-12：トライサイトロボは困りごとの担当ではなく全システムの利用解説書のため、ファミリーの段から外し、表題の横に小さく置く -->
+  <div class="h1row"><h1>TriSight System's</h1><a class="robo-btn" href="TriRobo.html" title="トライサイトロボ（全システムの利用解説書）">TriRobo<span>利用解説書 &rsaquo;</span></a></div>
   <div class="jp">トライサイト ファミリー</div>
   <div class="tag">すべてのシステムを、ひとつの表札から。<br>開きたいものを選んでください。</div>
   <div class="rule"></div>
@@ -135,12 +140,6 @@ footer{text-align:center;color:#7e8499;font-size:11px;margin-top:14px;line-heigh
   <a class="mod" href="TriSight_Report_CarePlan.html">
     <div><div class="nm"><b>TriCare</b><span class="sys">System</span></div>
     <div class="fn">ケアマネ帳票の作成支援</div></div>
-    <span class="go">OPEN &rsaquo;</span>
-  </a>
-
-  <a class="mod" href="TriRobo.html">
-    <div><div class="nm"><b>TriRobo</b><span class="sys">System</span></div>
-    <div class="fn">使い方の案内（トライサイトロボ）</div></div>
     <span class="go">OPEN &rsaquo;</span>
   </a>
 

@@ -101,7 +101,7 @@
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small>訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-12-02</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-12-03</span></div>
 <div id="verNotice"></div>
 <div id="alertBox"></div>
 <div class="note" id="shareNote"></div>
@@ -276,9 +276,11 @@
     <h2>職員</h2>
     <div class="row">
       <div><label class="f" for="st_name">呼び名</label><input type="text" id="st_name"></div>
-      <div><label class="f" for="st_role">役割</label><select id="st_role"><option>看護師</option><option>事務局</option><option>管理者</option></select></div>
+      <div><label class="f" for="st_job">職種</label><select id="st_job"><option>看護師（正看）</option><option>准看護師</option><option>事務局</option><option>その他</option></select></div>
+      <div><label class="f" for="st_emp">雇用形態</label><select id="st_emp"><option>常勤</option><option>非常勤</option></select></div>
+      <div><label class="f">&nbsp;</label><label><input type="checkbox" id="st_mgr"> 管理者</label></div>
     </div>
-    <div class="btns"><button class="btn" id="st_add">追加する</button></div>
+    <input type="hidden" id="st_id"><div class="btns"><button class="btn" id="st_add">追加する</button><button class="btn sub" id="st_cancel" style="display:none">直すのをやめる</button></div>
     <div class="tbl-scroll" id="stList"></div>
   </div>
   <div class="card">
@@ -400,7 +402,14 @@ function events(){ return live('events'); }
 function saveEvents(a){ saveCol('events', a); }
 function staffName(id){ var s = raw('staff').filter(function(x){ return x.id === id; })[0]; return s ? s.name : ''; }
 function patient(no){ return patients().filter(function(p){ return p.no === no; })[0] || null; }
-function nurses(){ return staff().filter(function(s){ return s.role === '看護師'; }); }
+/* 職員は「職種」「雇用形態」「管理者かどうか」を持つ（2026-10-12）。
+   以前の形（role：看護師／事務局／管理者）で入っている職員も、読み替えて扱う。 */
+var NURSE_JOBS = ['看護師（正看）', '准看護師'];
+function jobOf(s){ if(s.job) return s.job; if(s.role === '看護師') return '看護師（正看）'; if(s.role === '事務局') return '事務局'; return ''; }
+function isMgr(s){ return !!s.mgr || s.role === '管理者'; }
+var JOB_SHORT = { '看護師（正看）':'正看', '准看護師':'准看' };
+function staffLabel(s){ var j = jobOf(s); var p = [JOB_SHORT[j] || j, s.emp || '', isMgr(s) ? '管理者' : ''].filter(Boolean); return s.name + (p.length ? '（' + p.join('・') + '）' : ''); }
+function nurses(){ return staff().filter(function(s){ return NURSE_JOBS.indexOf(jobOf(s)) >= 0; }); }
 
 /* ---- 共通：選択肢 ---- */
 function fillSelect(sel, items, blank){
@@ -414,7 +423,7 @@ function refreshSelects(){
   var pts = patients().map(function(p){ return { v:p.no, t:p.no + (p.area ? '（' + p.area + '）' : '') }; });
   ['c_no','k_no','rp_no','wk_no'].forEach(function(id){ fillSelect(id, pts, '選んでください'); });
   var ns = nurses().map(function(s){ return { v:s.id, t:s.name }; });
-  var all = staff().map(function(s){ return { v:s.id, t:s.name + '（' + s.role + '）' }; });
+  var all = staff().map(function(s){ return { v:s.id, t:staffLabel(s) }; });
   ['c_staff','p_staff','d_staff','r_staff','wk_staff'].forEach(function(id){ fillSelect(id, ns, '選んでください'); });
   fillSelect('c_fwdTo', ns, '回していない');
   ['c_by','r_by'].forEach(function(id){ fillSelect(id, all, '選んでください'); });
@@ -811,8 +820,8 @@ function renderSetup(){
     return '<tr><td>' + esc(p.no) + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.instDate ? jpDate(p.instDate) : '') + '</td><td><button class="btn small danger" data-ptdel="' + esc(p.no) + '">外す</button></td></tr>';
   }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var st = staff();
-  $('stList').innerHTML = st.length ? '<table><tr><th>呼び名</th><th>役割</th><th></th></tr>' + st.map(function(s){
-    return '<tr><td>' + esc(s.name) + '</td><td>' + esc(s.role) + '</td><td><button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
+  $('stList').innerHTML = st.length ? '<table><tr><th>呼び名</th><th>職種</th><th>雇用形態</th><th>管理者</th><th></th></tr>' + st.map(function(s){
+    return '<tr><td>' + esc(s.name) + '</td><td>' + esc(jobOf(s) || '未設定') + '</td><td>' + esc(s.emp || '未設定') + '</td><td>' + (isMgr(s) ? '管理者' : '') + '</td><td><button class="btn small sub" data-stedit="' + esc(s.id) + '">直す</button> <button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
   }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var wk = weekly().slice().sort(function(a,b){ var da = (+a.dow + 6) % 7, db = (+b.dow + 6) % 7; return da - db || (a.time < b.time ? -1 : 1); });
   $('wkList').innerHTML = wk.length ? '<table><tr><th>曜日</th><th>時刻</th><th>契約書番号</th><th>担当</th><th></th></tr>' + wk.map(function(v){
@@ -824,6 +833,11 @@ function renderSetup(){
   $('ptList').querySelectorAll('[data-ptdel]').forEach(function(b){ b.addEventListener('click', function(){
     if(!confirm('この患者さんを名簿から外しますか？（これまでの記録は残ります）')) return;
     saveCol('patients', patients().filter(function(p){ return p.no !== b.getAttribute('data-ptdel'); })); refreshAll();
+  }); });
+  $('stList').querySelectorAll('[data-stedit]').forEach(function(b){ b.addEventListener('click', function(){
+    var s = staff().filter(function(x){ return x.id === b.getAttribute('data-stedit'); })[0]; if(!s) return;
+    $('st_id').value = s.id; $('st_name').value = s.name; $('st_job').value = jobOf(s) || 'その他'; $('st_emp').value = s.emp || '常勤'; $('st_mgr').checked = isMgr(s);
+    $('st_add').textContent = 'この内容で直す'; $('st_cancel').style.display = ''; $('st_name').focus();
   }); });
   $('stList').querySelectorAll('[data-stdel]').forEach(function(b){ b.addEventListener('click', function(){
     if(!confirm('この職員を名簿から外しますか？（これまでの記録は残ります）')) return;
@@ -1024,7 +1038,7 @@ function imImport(){
   var st = staff(), pts = patients(), wk = weekly(), addS = 0, addP = 0, addW = 0, same = 0;
   p.ok.forEach(function(v){
     var s = st.filter(function(x){ return x.name === v.staff; })[0];
-    if(!s){ s = { id:uid(), name:v.staff, role:'看護師' }; st.push(s); addS++; }
+    if(!s){ s = { id:uid(), name:v.staff, job:'看護師（正看）', emp:'', mgr:false }; st.push(s); addS++; }
     var pt = pts.filter(function(x){ return x.no === v.no; })[0];
     if(!pt){ pts.push({ no:v.no, area:v.area, instDate:'' }); addP++; } else if(v.area && !pt.area){ pt.area = v.area; }
     if(wk.some(function(x){ return String(x.dow) === v.dow && x.time === v.time && x.no === v.no; })){ same++; return; }
@@ -1039,7 +1053,7 @@ function imImport(){
 function refreshAll(){
   setShareNote(); renderAlerts();
   refreshSelects();
-  fillSelect('dv_me', staff().map(function(s){ return { v:s.id, t:s.name + '（' + s.role + '）' }; }), '選んでください');
+  fillSelect('dv_me', staff().map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
   if(!$('dv_me').value && dev().me) $('dv_me').value = dev().me;
   $('dv_share').checked = dev().share;
   renderSetup(); renderPlan(); renderIntakeList(); renderCourse(); renderReport(); renderAdmin();
@@ -1102,9 +1116,15 @@ $('pt_add').addEventListener('click', function(){
   else a.push({ no:no, area:$('pt_area').value.trim(), instDate:$('pt_inst').value });
   saveCol('patients', a); $('pt_no').value = ''; $('pt_area').value = ''; $('pt_inst').value = ''; refreshAll();
 });
+function stFormReset(){ $('st_id').value = ''; $('st_name').value = ''; $('st_mgr').checked = false; $('st_add').textContent = '追加する'; $('st_cancel').style.display = 'none'; }
+$('st_cancel').addEventListener('click', stFormReset);
 $('st_add').addEventListener('click', function(){
   var n = $('st_name').value.trim(); if(!n){ $('st_name').focus(); return; }
-  var a = staff(); a.push({ id:uid(), name:n, role:$('st_role').value }); saveCol('staff', a); $('st_name').value = ''; refreshAll();
+  var a = staff(), id = $('st_id').value;
+  var rec = { name:n, job:$('st_job').value, emp:$('st_emp').value, mgr:$('st_mgr').checked };
+  var cur = id ? a.filter(function(x){ return x.id === id; })[0] : null;
+  if(cur){ delete cur.role; Object.assign(cur, rec); } else { a.push(Object.assign({ id:uid() }, rec)); }
+  saveCol('staff', a); stFormReset(); refreshAll();
 });
 $('wk_add').addEventListener('click', function(){
   if(!$('wk_time').value || !$('wk_no').value || !$('wk_staff').value){ alert('時刻・契約書番号・担当を入れてください。'); return; }

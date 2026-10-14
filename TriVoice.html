@@ -89,9 +89,9 @@ button.action.mic{
   background:var(--surface);color:var(--ink);border:1.5px solid var(--teal);
   display:inline-flex;align-items:center;gap:9px;
 }
-button.action.mic.live{background:var(--danger);color:#fff;border-color:var(--danger);}
+button.action.mic.listening,button.action.mic.live{background:var(--danger);color:#fff;border-color:var(--danger);}
 .mic-dot{width:10px;height:10px;border-radius:50%;background:var(--teal);flex:0 0 auto;}
-button.action.mic.live .mic-dot{background:#fff;animation:pulse 1s ease-in-out infinite;}
+button.action.mic.listening .mic-dot,button.action.mic.live .mic-dot{background:#fff;animation:pulse 1s ease-in-out infinite;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.25;}}
 .mic-status{font-size:14px;color:var(--ink-soft);}
 .mic-status.live{color:var(--danger);font-weight:600;}
@@ -170,6 +170,21 @@ details.registry>summary .chev{color:var(--ink-soft);font-weight:400;font-size:1
 </style>
 </head>
 <body>
+<!-- 2026-10-15：前のページに戻るボタン（全画面共通・マウスの「戻る」と同じ動き。前のページが無いときは表札へ） -->
+<div id="tsBackBar" data-guard="0" style="padding:8px 16px 4px;box-sizing:border-box;text-align:left;width:100%;align-self:stretch"><button type="button" onclick="tsGoBack()" title="ひとつ前に開いていた画面へ戻ります" style="font-family:inherit;font-size:13px;line-height:1.4;color:#1f2328;background:#ffffff;border:1px solid #afb8c1;border-radius:999px;padding:4px 14px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.12)">‹ 前のページに戻る</button></div>
+<style>@media print{#tsBackBar{display:none !important}}</style>
+<script>
+function tsGoBack(){
+  var b=document.getElementById("tsBackBar");
+  if(b&&b.getAttribute("data-guard")==="1"){
+    var typed=[].some.call(document.querySelectorAll("textarea,input[type=text],input:not([type])"),function(e){return e.value&&e.value.trim();});
+    if(typed&&!confirm("この画面に入力した内容は保存されていません。前のページに戻ると消えます。戻りますか？"))return;
+  }
+  var r="";try{r=document.referrer?new URL(document.referrer).origin:"";}catch(e){}
+  if(history.length>1&&r===location.origin){history.back();}else{location.href="index.html";}
+}
+</script>
+
 <div class="wrap">
 
   <header>
@@ -206,7 +221,7 @@ details.registry>summary .chev{color:var(--ink-soft);font-weight:400;font-size:1
     <div class="step-head"><div class="step-num">1</div><div class="step-title">話す</div></div>
     <div class="step-hint" id="step1hint">下の「話す」ボタンを押すと音声入力が始まります。もう一度押すと止まります。手で打ち込んでも構いません。</div>
     <div class="mic-row">
-      <button class="action mic" id="micBtn" type="button" onclick="toggleMic()">
+      <button class="action mic" id="micBtn" type="button">
         <span class="mic-dot"></span><span id="micLabel">🎤 話す</span>
       </button>
       <span class="mic-status" id="micStatus"></span>
@@ -255,6 +270,7 @@ details.registry>summary .chev{color:var(--ink-soft);font-weight:400;font-size:1
 
 </div>
 
+<script src="TriVoiceEngine.js"></script>
 <script>
 /* ====== 設定 ====== */
 var RELAY_URL = "https://trisight-relay.vercel.app/api/anthropic"; // なぎさ中継（Anthropic）
@@ -465,113 +481,33 @@ function clearAll(){
   document.getElementById("raw").focus();
 }
 
-/* ====== 音声入力（Web Speech API／会話・会議の文字起こし用） ======
-   注意：Chrome/Edgeでは音声を提供元サーバーに送って文字化する。
-   看護記録の医療情報には使わず、会話の文字起こし用途に用いる。 */
-var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-var rec = null, listening = false, userStopped = false;
-
-function micSupported(){ return !!SR; }
-
+/* ====== 音声入力（2026-10-15：共通エンジン TriVoiceEngine.js へ一本化） ======
+   旧版はブラウザ付属の音声認識（音声を Google/Microsoft へ送る・iPad Safari で使えない）だった。
+   看護部でトライケアを使うため、看護記録と同じ共通エンジン（録音 → リレー → 文字起こし）にそろえた。
+   話し終えてマイクを押すと、聞き取った文字が口述欄の末尾に足される（素通しモード）。 */
 function initMic(){
-  var btn = document.getElementById("micBtn");
+  var ms = document.getElementById("micStatus");
   var note = document.getElementById("micNote");
-  if(!micSupported()){
-    // 非対応（iPad Safari等）：ボタンを隠し、OS音声入力を案内
-    btn.style.display = "none";
-    document.getElementById("step1hint").textContent =
-      "下の欄をタップし、お使いの端末の音声入力で口述します（iPadはキーボードの🎤、Windowsは Win+H）。手で打ち込んでも構いません。";
-    note.className = "mic-note";
-    note.textContent = "この環境ではアプリ内マイクが使えないため、端末標準の音声入力をお使いください。";
+  if(!window.TriVoice){
+    document.getElementById("micBtn").style.display = "none";
+    ms.textContent = "音声エンジン（TriVoiceEngine.js）を読み込めませんでした。手で入力してください。";
     return;
   }
-  note.className = "mic-note warn";
-  note.textContent = "※アプリ内マイクは音声を提供元（Google/Microsoft）に送って文字化します。会話・会議の文字起こし向けです。利用者の医療情報を含む声には使わないでください。";
-
-  rec = new SR();
-  rec.lang = "ja-JP";
-  rec.continuous = true;
-  rec.interimResults = true;
-
-  rec.onresult = function(e){
-    var interim = "";
-    var ta = document.getElementById("raw");
-    for(var i=e.resultIndex; i<e.results.length; i++){
-      var tr = e.results[i][0].transcript;
-      if(e.results[i].isFinal){
-        // 確定分を口述欄に追記（末尾が改行・空でなければ区切りを足す）
-        var cur = ta.value;
-        if(cur.length>0 && !/\s$/.test(cur)) cur += "\n";
-        ta.value = cur + tr;
-      }else{
-        interim += tr;
-      }
+  note.className = "mic-note";
+  note.textContent = "話し終えたら、もう一度「話す」を押してください。聞き取った文字が上の欄に入ります（音声は文字起こしのため、当社のリレーを通して送られます）。";
+  TriVoice.init({
+    micButton: "#micBtn",
+    status: function(t){ ms.className = /^録音中/.test(t) ? "mic-status live" : "mic-status"; ms.textContent = t; },
+    recordingMessage: "録音中… 話してください。終わったらもう一度「話す」を押します。",
+    readyMessage: "",
+    onText: function(txt){
+      var ta = document.getElementById("raw");
+      var cur = ta.value;
+      if(cur.length > 0 && !/\s$/.test(cur)) cur += "\n";
+      ta.value = cur + txt;
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
     }
-    document.getElementById("interim").textContent = interim ? "（認識中）"+interim : "";
-  };
-
-  rec.onerror = function(e){
-    var ms = document.getElementById("micStatus");
-    if(e.error === "not-allowed" || e.error === "service-not-allowed"){
-      ms.className="mic-status"; ms.textContent="マイクが許可されていません。ブラウザのマイク許可を確認してください。";
-      stopMic(true);
-    }else if(e.error === "no-speech"){
-      // 無音：自動再開に任せる（onendで処理）
-    }else if(e.error === "audio-capture"){
-      ms.className="mic-status"; ms.textContent="マイクが見つかりません。接続と入力デバイスを確認してください。";
-      stopMic(true);
-    }else if(e.error === "network"){
-      ms.className="mic-status"; ms.textContent="通信エラーで音声認識できませんでした。電波を確認してください。";
-      stopMic(true);
-    }else{
-      ms.className="mic-status"; ms.textContent="音声認識エラー（"+e.error+"）。もう一度お試しください。";
-    }
-  };
-
-  rec.onend = function(){
-    // continuousでも無音等で止まる。ユーザーが止めていなければ自動再開
-    document.getElementById("interim").textContent = "";
-    if(listening && !userStopped){
-      try{ rec.start(); }catch(err){ /* 連続start例外は無視 */ }
-    }else{
-      setMicUI(false);
-    }
-  };
-}
-
-function setMicUI(on){
-  var btn=document.getElementById("micBtn");
-  var lbl=document.getElementById("micLabel");
-  var ms=document.getElementById("micStatus");
-  if(on){
-    btn.classList.add("live"); lbl.textContent="■ 停止";
-    ms.className="mic-status live"; ms.textContent="録音中…話してください";
-  }else{
-    btn.classList.remove("live"); lbl.textContent="🎤 話す";
-    if(ms.textContent==="録音中…話してください"){ ms.className="mic-status"; ms.textContent=""; }
-  }
-}
-
-function toggleMic(){
-  if(!micSupported()) return;
-  if(listening){ stopMic(false); }
-  else{ startMic(); }
-}
-function startMic(){
-  try{
-    userStopped=false; listening=true;
-    setMicUI(true);
-    rec.start();
-  }catch(err){
-    // 既にstart済み等
-    document.getElementById("micStatus").textContent="";
-  }
-}
-function stopMic(fromError){
-  userStopped=true; listening=false;
-  try{ rec.stop(); }catch(err){}
-  setMicUI(false);
-  document.getElementById("interim").textContent="";
+  });
 }
 
 /* 起動時 */

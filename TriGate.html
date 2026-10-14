@@ -351,6 +351,21 @@ body.presenMode table{font-size:1.02em}
 </style>
 </head>
 <body>
+<!-- 2026-10-15：前のページに戻るボタン（全画面共通・マウスの「戻る」と同じ動き。前のページが無いときは表札へ） -->
+<div id="tsBackBar" data-guard="0" style="padding:8px 16px 4px;box-sizing:border-box;text-align:left;width:100%;align-self:stretch"><button type="button" onclick="tsGoBack()" title="ひとつ前に開いていた画面へ戻ります" style="font-family:inherit;font-size:13px;line-height:1.4;color:#1f2328;background:#ffffff;border:1px solid #afb8c1;border-radius:999px;padding:4px 14px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.12)">‹ 前のページに戻る</button></div>
+<style>@media print{#tsBackBar{display:none !important}}</style>
+<script>
+function tsGoBack(){
+  var b=document.getElementById("tsBackBar");
+  if(b&&b.getAttribute("data-guard")==="1"){
+    var typed=[].some.call(document.querySelectorAll("textarea,input[type=text],input:not([type])"),function(e){return e.value&&e.value.trim();});
+    if(typed&&!confirm("この画面に入力した内容は保存されていません。前のページに戻ると消えます。戻りますか？"))return;
+  }
+  var r="";try{r=document.referrer?new URL(document.referrer).origin:"";}catch(e){}
+  if(history.length>1&&r===location.origin){history.back();}else{location.href="index.html";}
+}
+</script>
+
 <div class="wrap">
 
   <header>
@@ -8172,7 +8187,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-10-15-01';
+  const TRIGATE_VERSION = '2026-10-15-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -9055,5 +9070,8 @@ window.TSB_HOST = "gate";
 })();
 </script>
 
+<!-- 2026-10-15：共通の音声入力（右下のマイク。押した欄へ話した文字を入れる） -->
+<script src="TriVoiceEngine.js"></script>
+<script>if(window.TriVoice)TriVoice.dictation();</script>
 </body>
 </html>

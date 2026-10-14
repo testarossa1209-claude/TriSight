@@ -69,11 +69,26 @@ footer{margin-top:26px;font-size:12px;color:var(--muted);text-align:center}
 </style>
 </head>
 <body>
+<!-- 2026-10-15：前のページに戻るボタン（全画面共通・マウスの「戻る」と同じ動き。前のページが無いときは表札へ） -->
+<div id="tsBackBar" data-guard="0" style="padding:8px 16px 4px;box-sizing:border-box;text-align:left;width:100%;align-self:stretch"><button type="button" onclick="tsGoBack()" title="ひとつ前に開いていた画面へ戻ります" style="font-family:inherit;font-size:13px;line-height:1.4;color:#1f2328;background:#ffffff;border:1px solid #afb8c1;border-radius:999px;padding:4px 14px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.12)">‹ 前のページに戻る</button></div>
+<style>@media print{#tsBackBar{display:none !important}}</style>
+<script>
+function tsGoBack(){
+  var b=document.getElementById("tsBackBar");
+  if(b&&b.getAttribute("data-guard")==="1"){
+    var typed=[].some.call(document.querySelectorAll("textarea,input[type=text],input:not([type])"),function(e){return e.value&&e.value.trim();});
+    if(typed&&!confirm("この画面に入力した内容は保存されていません。前のページに戻ると消えます。戻りますか？"))return;
+  }
+  var r="";try{r=document.referrer?new URL(document.referrer).origin:"";}catch(e){}
+  if(history.length>1&&r===location.origin){history.back();}else{location.href="index.html";}
+}
+</script>
+
 <div class="wrap">
   <div class="lh">
     <img src="TriSight_logo_registered_trimmed.png" alt="TriSight®">
     <h1>トライサイトロボ<small>使い方の案内</small></h1>
-    <span class="ver">版 <span id="verLabel">2026-09-29-01</span></span>
+    <span class="ver">版 <span id="verLabel">2026-10-15-01</span></span>
   </div>
   <div class="co">合同会社トライサイト</div>
   <hr class="rule">
@@ -154,7 +169,7 @@ footer{margin-top:26px;font-size:12px;color:var(--muted);text-align:center}
 <script>
 (function(){
 'use strict';
-var ROBO_VERSION = '2026-09-29-01';
+var ROBO_VERSION = '2026-10-15-01';
 var RELAY = 'https://trisight-relay.vercel.app/api/anthropic';
 
 /* 案内の対象。ready の画面だけを選択窓に出す（まずトライゲイト）。
@@ -510,5 +525,8 @@ window.__robo = {exists:exists, MAP:MAP, SRC:SRC, mapText:mapText, quotedNames:q
 boot();
 })();
 </script>
+<!-- 2026-10-15：共通の音声入力（右下のマイク。押した欄へ話した文字を入れる） -->
+<script src="TriVoiceEngine.js"></script>
+<script>if(window.TriVoice)TriVoice.dictation();</script>
 </body>
 </html>

@@ -40,7 +40,7 @@
     Object.freeze({ id: 'trisheet', name: '基本情報シート', kind: '画面', status: '稼働',
       role: '会社と事業所の基本情報を登録・更新し、各システムが同じ内容を読む（初回登録／更新登録）',
       page: 'TriSheet.html', script: null, outKey: 'trisight_office_master_v1', inKey: null,
-      calledBy: 'トライリワード（元帳を読む）・トライゲイト（「シートから読み込む」）・トライサイトシステム本体（起動画面の入口）' }),
+      calledBy: 'トライリワード・トライタイム（元帳の自社を読む）・トライゲイト（「シートから読み込む」）。登録・更新の入口は表札の共通基盤だけ（2026-10-14）' }),
     Object.freeze({ id: 'triform', name: 'TriForm', kind: '画面', status: '稼働',
       role: '制度の言葉を、手の動く工程へ開く（必要書類・手順・期限を用意する）',
       page: 'TriForm.html', script: 'triform-send.js', outKey: 'tritask_inbox', inKey: 'tritask_inbox',

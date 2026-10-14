@@ -1,0 +1,299 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>トライケア アセスメント</title>
+<style>
+:root{--bg:#ffffff;--text:#1f2328;--text-secondary:#57606a;--text-muted:#8c959f;--border:#d8dee4;--border-strong:#afb8c1;
+--bg-accent:#ddf4ff;--text-accent:#0550ae;--border-accent:#54aeff;--text-danger:#cf222e;--text-success:#1a7f37;--text-warning:#9a6700;
+--surface-1:#f6f8fa;--radius:8px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1117;--text:#e6edf3;--text-secondary:#9da7b3;--text-muted:#7d8590;--border:#30363d;--border-strong:#484f58;
+--bg-accent:#0c2d6b;--text-accent:#79c0ff;--border-accent:#1f6feb;--text-danger:#ff7b72;--text-success:#3fb950;--text-warning:#d29922;--surface-1:#161b22}}
+:root[data-theme="dark"]{--bg:#0d1117;--text:#e6edf3;--text-secondary:#9da7b3;--text-muted:#7d8590;--border:#30363d;--border-strong:#484f58;
+--bg-accent:#0c2d6b;--text-accent:#79c0ff;--border-accent:#1f6feb;--text-danger:#ff7b72;--text-success:#3fb950;--text-warning:#d29922;--surface-1:#161b22}
+body{background:var(--bg);color:var(--text);font-family:"Hiragino Sans","Yu Gothic UI","Meiryo","Noto Sans JP",sans-serif;font-size:14px;margin:0;padding:16px}
+.wrap{max-width:1000px;margin:0 auto}
+input,select,textarea,button{font:inherit;color:var(--text);background:var(--bg);border:0.5px solid var(--border-strong);border-radius:6px;padding:5px 8px;box-sizing:border-box}
+button{cursor:pointer;background:var(--surface-1)}button:hover{border-color:var(--border-accent)}
+a{color:var(--text-accent)}
+.grp{margin:12px 0 2px;font-size:13px;font-weight:500;color:var(--text-secondary)}
+.it{display:grid;grid-template-columns:200px minmax(0,1fr);gap:10px;align-items:start;padding:5px 0}
+@media (max-width:640px){.it{grid-template-columns:1fr;gap:2px}}
+.lb{font-size:13px;color:var(--text-secondary);padding-top:8px}
+.nt{font-size:12px;color:var(--text-muted);margin-top:3px}
+.ops{display:flex;flex-wrap:wrap;gap:6px;font-size:13px;padding-top:6px}
+.ops label{display:flex;align-items:center;gap:4px;border:0.5px solid var(--border-strong);border-radius:var(--radius);padding:5px 10px;cursor:pointer;user-select:none}
+.ops label:has(input:checked){background:var(--bg-accent);color:var(--text-accent);border-color:var(--border-accent)}
+.ops input{width:auto;margin:0;cursor:pointer}
+.ofc{border:0.5px solid var(--border);border-radius:12px;padding:10px 14px;margin:8px 0;background:var(--bg)}
+.usr{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:0.5px solid var(--border);border-radius:var(--radius);padding:8px 12px;margin:6px 0;background:var(--surface-1)}
+.usr .nm{flex:1;min-width:200px}
+.usr button.on{background:var(--bg-accent);color:var(--text-accent);border-color:var(--border-accent)}
+.notice{margin:10px 0 14px;padding:10px 12px;border:0.5px solid var(--border-accent);border-radius:var(--radius);background:var(--surface-1);font-size:13px;line-height:1.7}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px;font-size:13px}
+.empty-guide{font-size:14px;color:var(--text-secondary);padding:14px;margin-top:12px;border:0.5px dashed var(--border-strong);border-radius:var(--radius)}
+</style></head><body><div class="wrap">
+<div style="padding:0.5rem 0">
+  <div style="display:flex;align-items:center;gap:12px">
+    <img src="data:image/png;base64,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" alt="TriSight" style="width:40px;height:40px">
+    <div style="font-size:20px;font-weight:500">トライケア　アセスメント・モニタリング</div>
+  </div>
+  <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">発行：合同会社トライサイト</div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-15-01</span> <span id="verMsg"></span></div>
+  <div style="border-top:1px solid var(--border-strong);margin:8px 0 12px"></div>
+  <div style="font-size:13px"><a href="index.html">トライサイト ファミリー（表札）へ戻る</a>　<a href="TriSight_Report_CarePlan.html">ケアプランの帳票へ</a></div>
+
+  <div class="notice">
+    <b>利用者の情報の置き場所</b>　この画面に入れた利用者の情報は、<b>この端末（このブラウザ）の中だけ</b>に保存されます。当社のサーバーにもAIにも送りません。会社の基本情報シートとも分けてあり、他のシステムからは読めません。<br>
+    控えを残すときは、下の「控えをファイルに保存」で、事業所のパソコンの決まった場所へ保存してください。
+  </div>
+  <div id="migMsg"></div>
+
+  <div class="grp">利用者</div>
+  <div id="list"></div>
+  <div style="margin-top:6px"><button type="button" id="addUser">利用者を追加</button></div>
+  <div id="sheet"></div>
+
+  <div class="bar">
+    <button type="button" id="dl">控えをファイルに保存（.json）</button>
+    <label style="display:flex;align-items:center;gap:6px">控えから戻す <input type="file" id="load" accept=".json,application/json" style="font-size:12px"></label>
+    <span id="res"></span>
+  </div>
+</div>
+</div>
+<script>
+/* ============================================================
+   トライケア アセスメント・モニタリング（2026-10-14）
+   ・2026-10-14の決定：アセスメントは利用者の要配慮個人情報を含むため、会社の基本情報シート（TriSheet）から外し、
+     トライケアの中に移す。保存先は この端末の tricare_assessment_v1 だけ。通信は版の照合（version.json）以外に行わない。
+   ・項目の出所：ノア・コーポレーション合同会社が使用している「アセスメントシート.xls」（全5シート）、
+     「モニタリングシート_縦書用_.xls」、「モニタリング表_纏め半年分_.xls」（2026-09-18 提供）。居宅介護支援の様式。
+   ・基本情報シートに入っていた利用者は、この画面か基本情報シートを開いたときに、ここへ移して元帳から消す。
+   ============================================================ */
+var CARE_KEY='tricare_assessment_v1', MASTER_KEY='trisight_office_master_v1';
+/* ---- 利用者の記録をトライケアへ移す（2026-10-14・基本情報シートとトライケアの両方に同じ処理を置く。何度動いても同じ結果になる） ---- */
+function careId(){return 'u'+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36);}
+function careLoad(){var d=null;try{d=JSON.parse(localStorage.getItem(CARE_KEY)||'null');}catch(e){d=null;}if(!d||!Array.isArray(d.users))d={version:1,users:[]};return d;}
+function careSave(d){try{localStorage.setItem(CARE_KEY,JSON.stringify(d));return true;}catch(e){return false;}}
+function careFromJson(u){return {name:u['氏名または契約書番号']||'',office:u['事業所']||'',asm:u['アセスメント']||{},moni:[].concat(u['モニタリング']||[])};}
+function careAdd(d,list,company){
+  var sig=function(x){return JSON.stringify([x.company||'',x.name||'',x.office||'',x.asm||{},x.moni||[]]);};
+  var seen={};d.users.forEach(function(u){seen[sig(u)]=1;});
+  var n=0;
+  (list||[]).forEach(function(u){
+    if(!u)return;
+    var x={id:careId(),company:company||'',name:String(u.name||'').trim(),office:u.office||'',asm:(u.asm&&typeof u.asm==='object')?u.asm:{},moni:Array.isArray(u.moni)?u.moni:[]};
+    if(!x.name&&!Object.keys(x.asm).length&&!x.moni.length)return;
+    var s=sig(x);if(seen[s])return;seen[s]=1;d.users.push(x);n++;
+  });
+  return n;
+}
+function careStripJson(j,d,company){
+  /* 書き出し（.json の形）から利用者の記録を抜き出して d へ移し、元からは消す。触ったら true */
+  if(!j||typeof j!=='object')return false;
+  var t=false,K='アセスメント対象の利用者';
+  if(Array.isArray(j[K])){careAdd(d,j[K].map(careFromJson),company);delete j[K];t=true;}
+  else if(K in j){delete j[K];t=true;}
+  if(Array.isArray(j['追加利用システム'])&&j['追加利用システム'].indexOf('トライケア')>=0){j['追加利用システム']=j['追加利用システム'].filter(function(x){return x!=='トライケア';});t=true;}
+  return t;
+}
+function careMigrate(){
+  /* 戻り値：移した人数（0＝移すものなし）、-1＝トライケア側へ保存できなかった（元帳は書き換えない） */
+  var m=null;try{m=JSON.parse(localStorage.getItem(MASTER_KEY)||'null');}catch(e){m=null;}
+  if(!m||!Array.isArray(m.orgs))return 0;
+  var d=careLoad(),before=d.users.length,touched=false;
+  m.orgs.forEach(function(o){
+    if(!o)return;
+    var nm=(o.corp&&o.corp.name)||(o.sheet&&o.sheet.val&&o.sheet.val['法人名'])||'';
+    var sh=o.sheet;
+    if(sh){
+      if(Array.isArray(sh.users)&&sh.users.length){careAdd(d,sh.users,nm);sh.users=[];touched=true;}
+      if(sh.useCare){sh.useCare=false;touched=true;}
+      if(careStripJson(sh.BASE,d,nm))touched=true;
+      (sh.offices||[]).forEach(function(of){if(of&&('asm' in of)){delete of.asm;touched=true;}});
+    }
+    if(careStripJson(o.gateJSON,d,nm))touched=true;
+  });
+  if(!touched)return 0;
+  if(!careSave(d))return -1;
+  try{localStorage.setItem(MASTER_KEY,JSON.stringify(m));}catch(e){}
+  return d.users.length-before;
+}
+
+
+var ADL='自立|見守り|一部介助|全介助';
+var IADL='できる|一部できる|できない';
+function A(l,t,o,n){return {k:'asm_'+l,l:l,t:t,o:o,n:n};}
+var ASM=[
+ {g:'基本情報'},
+ A('作成年月日','date'),A('実施場所','rad','自宅|病院|その他'),A('記入者','text'),
+ A('アセスメント理由','rad','初回|更新|区変|変化（悪化）|変化（改善）|退院・退所|その他'),
+ A('利用者氏名','text'),A('ふりがな','text'),A('生年月日','text',null,'例：昭和10年3月5日'),A('性別','rad','男|女'),
+ A('住所','text'),A('電話番号','text'),A('世帯区分','rad','単身|高齢者のみ|その他'),
+ A('家族構成','area',null,'氏名・続柄・年齢・健康状態を1行に1人ずつ'),A('家族構成図・同居別居','area',null,'続柄と同居・別居の別'),
+ A('緊急連絡先','area',null,'氏名・続柄・住所・電話番号'),A('主治医','text',null,'医師名・電話'),
+ A('初回相談内容','area'),A('初回相談受付月日','date'),A('受付方法','rad','訪問|来所|電話|その他'),A('依頼者・相談経路','text'),
+ A('生活歴','area',null,'これまでの職業・家庭生活・趣味・習慣など'),A('現在の生活状況','area',null,'生活・介護の状況など'),
+ {g:'認定・保険'},
+ A('障害高齢者の日常生活自立度','sel','自立|J1|J2|A1|A2|B1|B2|C1|C2'),
+ A('認知症高齢者の日常生活自立度','sel','自立|Ⅰ|Ⅱa|Ⅱb|Ⅲa|Ⅲb|Ⅳ|Ｍ'),
+ A('要介護度','sel','申請中|区分変更|要支援1|要支援2|要介護1|要介護2|要介護3|要介護4|要介護5'),
+ A('認定年月日','date'),A('認定期間（開始）','date'),A('認定期間（終了）','date'),
+ A('介護保険 被保険者番号','text'),A('医療保険','text',null,'保険の種類・記号番号'),A('身体障害者手帳','text',null,'種別・等級'),
+ {g:'望む生活・介護力'},
+ A('利用者の望む生活','area',null,'なるべく本人の言葉で'),A('家族の望む生活','area',null,'複数の家族がいる場合は、それぞれの希望を'),
+ A('介護力','rad','有|無'),A('主な介護者','text',null,'氏名・続柄'),A('その他の介護者','text',null,'氏名・続柄'),
+ A('介護に対する考え','area',null,'就労状況・関係性・健康状態・介護の負担・困りごとなど'),A('一月に使える介護費用','text'),
+ A('1日の生活','area',null,'起床・食事・日中の過ごし方・入浴・就寝など'),
+ A('日中の過ごし方','rad','よく動いている|座っていることが多い|横になっていることが多い|一日中ベッドで過ごす'),
+ A('外出の頻度','rad','1日1回以上|週1回以上|月1回以上|月1回未満'),
+ {g:'健康状態'},
+ A('受診病院','area',null,'病院名・医師名・診療科目・電話番号・受診状況'),A('傷病名・症状・既往歴・治療・処置','area'),
+ A('麻痺・関節の拘縮','rad','ない|ある'),A('身長（cm）','num'),A('体重（kg）','num'),
+ A('皮膚疾患','rad','ない|ある'),A('じょく瘡','rad','ない|ある'),A('痛み','rad','ない|ある'),
+ {g:'ADL（本人の身体能力）'},
+ A('寝返り','rad',ADL),A('起き上がり','rad',ADL),A('移乗','rad',ADL),A('屋内歩行','rad',ADL),A('屋外歩行','rad',ADL),A('座位','rad',ADL),
+ A('更衣','rad',ADL,'上半身更衣・下半身更衣・靴下などの状況'),A('身だしなみ','rad',ADL,'洗面・歯磨き・整髪・髭剃り・爪切り等の状況'),
+ A('入浴','rad',ADL,'入浴場所・浴槽の出入り・洗身・洗髪などの状況'),A('食事','rad',ADL),
+ A('嚥下','rad','問題なし|むせることがある|とろみが必要|経管栄養'),A('食事形態','rad','常食|きざみ|軟菜|ミキサー|その他'),
+ A('食事の制限','chk','糖尿食|減塩食|カロリー制限|制限なし'),A('栄養状態','rad','良好|やや不良|不良'),A('水分摂取','rad','問題なし|不足しがち|制限あり'),
+ A('口腔状態','chk','自歯|義歯あり|総義歯|不潔|炎症|痛み'),
+ A('排尿・排便','rad',ADL),A('排泄行為','rad',ADL),A('尿意','rad','あり|時々あり|なし'),A('便意','rad','あり|時々あり|なし'),
+ A('尿失禁','rad','なし|時々|常時'),A('便失禁','rad','なし|時々|常時'),
+ A('使用している用具','chk','介護用ベッド（保険）|介護用ベッド（自費）|パイプベッド|布団|車イス|杖|歩行器|シルバーカー|補装具|紙おむつ（リハパン）|紙おむつ（テープ式）|尿取りパッド|人工肛門|バルーンカテーテル|箸|スプーン|経管|ＩＶＨ'),
+ A('ADLの状況・課題','area',null,'本人の状況・意欲・介護の状況・日常生活への影響・困りごと'),
+ {g:'IADL'},
+ A('調理','rad',IADL),A('掃除','rad',IADL,'ごみの後始末の状況も'),A('洗濯','rad',IADL),A('買い物','rad',IADL),
+ A('金銭管理','rad',IADL),A('薬の管理','rad',IADL),A('電話の利用','rad',IADL),
+ A('交通機関の利用','text',null,'利用している移動手段（自家用車・自転車・電動車いす等）'),A('IADLの状況・課題','area'),
+ {g:'コミュニケーション・社会との関わり'},
+ A('視力','rad','問題なし|眼鏡使用|見えにくい|ほとんど見えない'),A('聴力','rad','問題なし|補聴器使用|聞こえにくい|ほとんど聞こえない'),
+ A('意思の疎通','rad','問題なし|言語障害あり|困難'),A('社会活動への参加意欲','area'),
+ {g:'認知'},
+ A('物忘れ','rad','ない|時々ある|よくある'),A('日常の意思決定','rad','できる|一部できる|できない'),
+ A('問題行動','chk','被害的|作話|感情が不安定|昼夜が逆転|同じ話をする|大声を出す|介護に抵抗|落ち着きなし|一人で出たがる|収集癖|物や衣類を壊す|独り言・一人笑い|自分勝手に行動する|話がまとまらない'),
+ A('認知の状況・課題','area',null,'日常生活への影響・介護の状況・課題等'),A('特別な状況','area',null,'虐待・ターミナル等の具体的な状況')
+];
+var MONI=[
+ A('記入日','date'),A('担当者名','text'),A('サービス内容','text'),A('計画の目的の達成状況','area'),A('現在の生活で困っていること','area'),
+ A('計画に沿って行われているか','area'),A('事業所に対する要望','area'),A('病気について新たに注目すること','area'),A('介護者の状況の変化','area'),
+ A('状況変化','chk','生活状況の変化|身体状況の変化|気持ちの変化|ADL・IADLの変化'),A('状況変化の程度','rad','やや良い変化|変化なし|やや悪化|悪化'),
+ A('本人・家族の満足度','rad','満足|不満|苦情あり|わからない'),A('短期目標の達成度','rad','ほぼ達成|未達成|わからない'),
+ A('新しい課題の有無','rad','なし|あり'),A('プラン変更の必要性','rad','なし|修正|中止・終結'),A('苦情・要望','area'),A('備考','area')
+];
+
+var D=careLoad(), open=null, tab='asm';
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function save(){ if(!careSave(D)) say('この端末に保存できませんでした。ブラウザの保存が止められているか、容量を超えています','var(--text-danger)'); }
+function say(t,c){var r=document.getElementById('res');r.style.color=c;r.textContent=t;}
+/* 事業所の選択肢は、基本情報シートの「自社」の事業所名を読むだけ（書き換えない） */
+function officeNames(){
+  var m=null;try{m=JSON.parse(localStorage.getItem(MASTER_KEY)||'null');}catch(e){m=null;}
+  if(!m||!Array.isArray(m.orgs))return [];
+  var o=m.orgs.filter(function(x){return x&&x.id===m.activeOrg;})[0];if(!o)return [];
+  var s={};(o.offices||[]).forEach(function(r){if(r&&r.name)s[r.name]=1;});
+  return Object.keys(s);
+}
+function opts(o,cur){return '<option value="">選んでください</option>'+o.split('|').map(function(x){return '<option'+(x===cur?' selected':'')+'>'+esc(x)+'</option>';}).join('');}
+function field(f,store,uid){
+  var v=store[f.k],cur=v==null?'':v;
+  if(f.t==='area')return '<textarea data-uk="'+esc(f.k)+'" rows="2" style="width:100%">'+esc(cur)+'</textarea>';
+  if(f.t==='date')return '<input type="date" data-uk="'+esc(f.k)+'" value="'+esc(cur)+'" style="max-width:180px">';
+  if(f.t==='num')return '<input type="number" min="0" data-uk="'+esc(f.k)+'" value="'+esc(cur)+'" style="max-width:140px">';
+  if(f.t==='sel')return '<select data-uk="'+esc(f.k)+'">'+opts(f.o,cur)+'</select>';
+  if(f.t==='rad'||f.t==='chk'){
+    var ty=f.t==='chk'?'checkbox':'radio',sel=[].concat(cur||[]);
+    return '<div class="ops" data-ug="'+esc(f.k)+'" data-uty="'+ty+'">'+f.o.split('|').map(function(x){return '<label><input type="'+ty+'" name="'+esc(uid+'_'+f.k)+'" value="'+esc(x)+'"'+(sel.indexOf(x)>=0?' checked':'')+'>'+esc(x)+'</label>';}).join('')+'</div>';
+  }
+  return '<input type="text" data-uk="'+esc(f.k)+'" value="'+esc(cur)+'" style="width:100%">';
+}
+function row(l,c,n){return '<div class="it"><div class="lb">'+l+'</div><div>'+c+(n?'<div class="nt">'+n+'</div>':'')+'</div></div>';}
+function draw(){
+  var names=officeNames();
+  var h='';
+  if(!D.users.length)h='<div class="empty-guide">まだ利用者がいません。「利用者を追加」で一人ずつ入れてください。</div>';
+  D.users.forEach(function(u,i){
+    var ofs=names.slice();if(u.office&&ofs.indexOf(u.office)<0)ofs.push(u.office);
+    h+='<div class="usr" data-u="'+i+'"><input class="nm" type="text" placeholder="利用者の氏名または契約書番号" value="'+esc(u.name)+'" data-uf="name" aria-label="利用者の氏名または契約書番号">'
+      +(ofs.length?'<select data-uf="office" aria-label="事業所">'+'<option value="">事業所を選ぶ</option>'+ofs.map(function(x){return '<option'+(x===u.office?' selected':'')+'>'+esc(x)+'</option>';}).join('')+'</select>'
+                  :'<input type="text" data-uf="office" placeholder="事業所名" value="'+esc(u.office||'')+'" style="width:180px" aria-label="事業所名">')
+      +(u.company?'<span class="nt" style="margin:0">（'+esc(u.company)+' から移した記録）</span>':'')
+      +'<button type="button" data-tab="asm"'+(open===i&&tab==='asm'?' class="on"':'')+'>アセスメント</button>'
+      +'<button type="button" data-tab="moni"'+(open===i&&tab==='moni'?' class="on"':'')+'>モニタリング</button>'
+      +'<button type="button" data-del="1">外す</button></div>';
+  });
+  document.getElementById('list').innerHTML=h;
+  var s='';
+  if(open!=null&&D.users[open]){
+    var u=D.users[open];u.asm=u.asm||{};u.moni=u.moni||[];
+    s+='<div class="ofc" id="sh">';
+    s+='<div class="grp" style="font-size:15px;color:var(--text)">'+(tab==='asm'?'アセスメントシート':'モニタリング')+'：'+esc(u.name||'（氏名未入力）')+'</div>';
+    if(tab==='asm'){
+      ASM.forEach(function(f){ if(f.g){s+='<div class="grp" style="margin-top:10px">'+esc(f.g)+'</div>';return;} s+='<div data-mi="-1">'+row(esc(f.l),field(f,u.asm,'u'+open),f.n?esc(f.n):'')+'</div>'; });
+    }else{
+      u.moni.forEach(function(m,mi){
+        s+='<div class="grp" style="margin-top:10px">'+(mi+1)+'回目 <button type="button" data-mdel="'+mi+'" style="margin-left:8px">この回を外す</button></div>';
+        MONI.forEach(function(f){ s+='<div data-mi="'+mi+'">'+row(esc(f.l),field(f,m,'u'+open+'_'+mi),f.n?esc(f.n):'')+'</div>'; });
+      });
+      if(!u.moni.length)s+='<div class="nt">まだ記録がありません。「回を追加」で1回目を入れてください。</div>';
+      s+='<div style="margin-top:6px"><button type="button" id="madd">回を追加</button></div>';
+    }
+    s+='<div style="margin-top:8px"><button type="button" id="close">閉じる</button></div></div>';
+  }
+  document.getElementById('sheet').innerHTML=s;
+  hook();
+}
+function hook(){
+  document.querySelectorAll('#list .usr').forEach(function(box){
+    var i=+box.dataset.u,u=D.users[i];
+    box.querySelectorAll('[data-uf]').forEach(function(e){e.oninput=e.onchange=function(){u[e.dataset.uf]=e.value;save();};});
+    box.querySelectorAll('[data-tab]').forEach(function(b){b.onclick=function(){var t=b.dataset.tab;open=(open===i&&tab===t)?null:i;tab=t;draw();var sh=document.getElementById('sh');if(sh)sh.scrollIntoView({block:'start'});};});
+    box.querySelector('[data-del]').onclick=function(){
+      if(!confirm('「'+(u.name||'氏名未入力の利用者')+'」を一覧から外します。アセスメントとモニタリングの記録も消えます。よろしいですか？'))return;
+      D.users.splice(i,1);if(open===i)open=null;else if(open!=null&&open>i)open--;save();draw();
+    };
+  });
+  var sh=document.getElementById('sh');if(!sh)return;
+  var u=D.users[open];
+  var store=function(mi){return mi<0?u.asm:(u.moni[mi]||(u.moni[mi]={}));};
+  sh.querySelectorAll('[data-uk]').forEach(function(e){var mi=+e.closest('[data-mi]').dataset.mi;e.oninput=e.onchange=function(){store(mi)[e.dataset.uk]=e.value;save();};});
+  sh.querySelectorAll('[data-ug]').forEach(function(g){var mi=+g.closest('[data-mi]').dataset.mi;
+    g.querySelectorAll('input').forEach(function(x){x.onchange=function(){
+      var list=[].slice.call(g.querySelectorAll('input:checked')).map(function(y){return y.value;});
+      store(mi)[g.dataset.ug]=g.dataset.uty==='radio'?(list[0]||''):list;save();};});});
+  sh.querySelectorAll('[data-mdel]').forEach(function(b){b.onclick=function(){if(!confirm((+b.dataset.mdel+1)+'回目の記録を外します。よろしいですか？'))return;u.moni.splice(+b.dataset.mdel,1);save();draw();};});
+  var ma=document.getElementById('madd');if(ma)ma.onclick=function(){u.moni.push({});save();draw();};
+  document.getElementById('close').onclick=function(){open=null;draw();};
+}
+document.getElementById('addUser').onclick=function(){D.users.push({id:careId(),company:'',name:'',office:'',asm:{},moni:[]});save();draw();var n=document.querySelectorAll('#list [data-uf=name]');if(n.length)n[n.length-1].focus();};
+document.getElementById('dl').onclick=function(){
+  var d=new Date(),ymd=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+  var name=ymd+'_トライケア_アセスメント控え.json';
+  try{
+    var b=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});var a=document.createElement('a');
+    a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);
+    say(name+' を保存しました（ブラウザの「ダウンロード」に入ります）','var(--text-success)');
+  }catch(e){say('保存できませんでした（'+(e&&e.message||e)+'）','var(--text-danger)');}
+};
+document.getElementById('load').onchange=function(ev){
+  var f=ev.target.files[0];if(!f)return;var r=new FileReader();
+  r.onload=function(){
+    try{
+      var j=JSON.parse(r.result);if(!j||!Array.isArray(j.users))throw new Error('形');
+      if(D.users.length&&!confirm('今この画面にある '+D.users.length+' 人分が、控えの内容（'+j.users.length+' 人分）に置き換わります。よろしいですか？')){ev.target.value='';return;}
+      D={version:1,users:j.users};save();open=null;draw();say(f.name+' から '+j.users.length+' 人分を戻しました','var(--text-success)');
+    }catch(e){say('読み込めませんでした。この画面で保存した控えのファイルか確かめてください','var(--text-danger)');}
+    ev.target.value='';
+  };
+  r.readAsText(f,'utf-8');
+};
+(function(){
+  var n=careMigrate();
+  if(n>0){D=careLoad();document.getElementById('migMsg').innerHTML='<div class="notice" style="border-color:var(--text-success)">基本情報シートに入っていた利用者 <b>'+n+'人分</b> のアセスメント・モニタリングを、この画面へ移しました。基本情報シートからは消してあります。</div>';}
+  if(n<0){document.getElementById('migMsg').innerHTML='<div class="notice" style="border-color:var(--text-danger);color:var(--text-danger)">基本情報シートに残っている利用者の記録を、この画面へ移せませんでした（この端末に保存できません）。基本情報シートの記録はそのまま残してあります。</div>';}
+  draw();
+})();
+fetch('version.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(j){
+  var lab=document.getElementById('verLabel'),msg=document.getElementById('verMsg');
+  if(j&&j.tricare_asm&&lab&&j.tricare_asm!==lab.textContent)msg.innerHTML='<span style="color:var(--text-danger)">この画面は古い版です。Ctrl＋Shift＋R で読み直してください（最新：'+j.tricare_asm+'）</span>';
+}).catch(function(){});
+</script>
+</body></html>

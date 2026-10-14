@@ -461,7 +461,7 @@ body.presenMode table{font-size:1.02em}
     </div>
     <div class="digrow" style="margin-top:8px">
       <label class="digfile">企業基礎情報を追加：<input type="file" id="digCompanyFile" accept=".json,application/json"></label>
-        <span class="digfile" id="digSheetWrap">基本情報シート：<button type="button" class="rc-toggle" id="digFromSheet" title="基本情報シートに登録した会社を、この画面の会社の一覧へ取り込みます">シートから読み込む</button> <a class="rc-toggle" href="TriSheet.html?mode=new" target="_blank" rel="noopener" style="text-decoration:none">初回登録</a> <a class="rc-toggle" href="TriSheet.html?mode=update" target="_blank" rel="noopener" style="text-decoration:none">更新登録</a></span>
+        <span class="digfile" id="digSheetWrap">基本情報シート：<button type="button" class="rc-toggle" id="digFromSheet" title="基本情報シートに登録した会社を、この画面の会社の一覧へ取り込みます。会社の登録・更新は、表札の「共通基盤・横串」にある基本情報シートで行います">シートから読み込む</button></span>
         <label class="digfile" id="digCompanySelWrap">診断する会社：<select id="digCompanySel"></select></label>
         <button type="button" class="rc-toggle" id="digCompanyDel" title="選んでいる会社の基礎情報を、この端末から消します">この会社を消す</button>
       <span class="digstatus" id="digCompanyStatus" style="margin-top:0">未読み込み（機械足切りに必要です）</span>
@@ -3684,8 +3684,40 @@ window.tsSyncBanner = function(msg){
       try{ m = JSON.parse(localStorage.getItem(TS_LIB_KEY) || "{}"); }catch(e){ m = {}; }
       return (m && typeof m === "object" && !Array.isArray(m)) ? m : {};
     }
+    /* 2026-10-14：利用者のアセスメントは会社の基礎情報に入れない。
+       古い書き出しに「アセスメント対象の利用者」が入っていたら、トライケアの保管場所（この端末の tricare_assessment_v1）へ移し、
+       ここからは消す。会社の基礎情報は判定AIへ丸ごと渡すため、利用者の情報を混ぜたままにしない。 */
+    window.tgStripCare = function(obj){
+      const K = "アセスメント対象の利用者";
+      if(!obj || typeof obj !== "object") return false;
+      let t = false;
+      if(K in obj){
+        if(Array.isArray(obj[K]) && obj[K].length){
+          try{
+            const raw = localStorage.getItem("tricare_assessment_v1"); const d = raw ? JSON.parse(raw) : null;
+            const st = (d && Array.isArray(d.users)) ? d : {version:1, users:[]};
+            const nm = String(((obj["会社"]||{})["名称"]) || "");
+            const sig = x=>JSON.stringify([x.company||"", x.name||"", x.office||"", x.asm||{}, x.moni||[]]);
+            const seen = {}; st.users.forEach(u=>{ seen[sig(u)] = 1; });
+            obj[K].forEach(u=>{
+              if(!u) return;
+              const x = {id:"u"+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36), company:nm, name:String(u["氏名または契約書番号"]||"").trim(), office:u["事業所"]||"", asm:u["アセスメント"]||{}, moni:[].concat(u["モニタリング"]||[])};
+              if(!x.name && !Object.keys(x.asm).length && !x.moni.length) return;
+              if(seen[sig(x)]) return; seen[sig(x)] = 1; st.users.push(x);
+            });
+            localStorage.setItem("tricare_assessment_v1", JSON.stringify(st));
+          }catch(_){}
+        }
+        delete obj[K]; t = true;
+      }
+      if(Array.isArray(obj["追加利用システム"]) && obj["追加利用システム"].indexOf("トライケア") >= 0){
+        obj["追加利用システム"] = obj["追加利用システム"].filter(x=>x !== "トライケア"); t = true;
+      }
+      return t;
+    };
     function tsLibSave(name, obj){
       if(!name) return;
+      window.tgStripCare(obj);
       const m = tsLib(); m[name] = obj;
       try{ localStorage.setItem(TS_LIB_KEY, JSON.stringify(m)); }catch(e){
         alert("この端末に保存できる容量を超えました。使わない会社を「この会社を消す」で整理してください。");
@@ -3695,6 +3727,13 @@ window.tsSyncBanner = function(msg){
       const m = tsLib(); delete m[name];
       try{ localStorage.setItem(TS_LIB_KEY, JSON.stringify(m)); }catch(e){}
     }
+    /* 起動時：この端末に残っている会社の基礎情報から、利用者の記録を外す（2026-10-14） */
+    (function(){
+      if(window.tgStripCare(company)){ try{ localStorage.setItem("trisight_dig_company", JSON.stringify(company)); }catch(_){} }
+      const m = tsLib(); let mc = false;
+      Object.keys(m).forEach(n=>{ if(window.tgStripCare(m[n])) mc = true; });
+      if(mc){ try{ localStorage.setItem(TS_LIB_KEY, JSON.stringify(m)); }catch(_){} }
+    })();
     function tsRenderCompanySel(){
       const sel = document.getElementById("digCompanySel");
       if(!sel) return;
@@ -3738,6 +3777,7 @@ window.tsSyncBanner = function(msg){
         r.onload = ()=>{
           try{
             company = JSON.parse(r.result);
+            window.tgStripCare(company);
             localStorage.setItem("trisight_dig_company", JSON.stringify(company));
             const nm0 = tsCompanyName();
             if(!nm0){
@@ -3763,7 +3803,7 @@ window.tsSyncBanner = function(msg){
         try{ doc = JSON.parse(localStorage.getItem("trisight_office_master_v1") || "null"); }catch(_){ doc = null; }
         const orgs = (doc && Array.isArray(doc.orgs)) ? doc.orgs.filter(o=>o && o.gateJSON && o.gateJSON["会社"] && String(o.gateJSON["会社"]["名称"]||"").trim()) : [];
         if(!orgs.length){
-          compSt.textContent = "基本情報シートに、読み込める会社がまだありません。横の「初回登録」から会社を入れてください（ご利用の契約と法人名が入っていれば読み込めます）。";
+          compSt.textContent = "基本情報シートに、読み込める会社がまだありません。表札（トライサイト ファミリー）の下の方にある「Common Engines　共通基盤・横串」の枠の中の「基本情報シート」を開いて、会社を登録してください（ご利用の契約と法人名が入っていれば読み込めます）。";
           return;
         }
         orgs.forEach(o=>{ tsLibSave(String(o.gateJSON["会社"]["名称"]).trim(), o.gateJSON); });
@@ -3917,6 +3957,7 @@ window.tsSyncBanner = function(msg){
       return a.pref ? ("\u0002shinchi:" + a.pref + "/" + a.city) : "";
     }
     function digCompanyForJudge(){
+      if(company && window.tgStripCare && window.tgStripCare(company)){ try{ localStorage.setItem("trisight_dig_company", JSON.stringify(company)); }catch(_){} }
       if(!company || !digShinchiOn()) return company;
       const a = digShinchiArea();
       if(!a.pref) return company;
@@ -8131,7 +8172,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-10-05-04';
+  const TRIGATE_VERSION = '2026-10-15-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

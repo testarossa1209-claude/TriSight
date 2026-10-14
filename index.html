@@ -153,10 +153,10 @@ footer{text-align:center;color:#7e8499;font-size:11px;margin-top:14px;line-heigh
 
 <!-- 2026-09-26：コモンエンジンは本体と同じ横長の1枚にまとめ、中で開くものを選ぶ。
      中身は TriEngines.js の一覧から組み立てる（表札と台帳が同じ元を見る。部品を足したら一覧に1行足すだけで表札にも出る）。
-     基本情報シートは、使う子の画面（本体・トライゲイト・トライリワード）から開くので、ここには並べない。 -->
+     2026-10-14：基本情報シートは全部の子が読む共通基盤なので、ここに並べる。登録・更新の入口はここだけにし、子の画面は読み込むだけにする。 -->
 <section class="eng" aria-labelledby="engTitle">
   <div class="e-nm" id="engTitle">Common Engines<span>共通基盤・横串</span></div>
-  <div class="e-jp">各システムが中で呼び出す部品です。ここから単独で開くこともできます。</div>
+  <div class="e-jp">各システムが中で呼び出す部品です。ここから単独で開くこともできます。<br>会社の基本情報（基本情報シート）の登録・更新は、ここから行います。</div>
   <div class="e-list" id="engList"><span class="e-jp">部品の一覧を読み込めませんでした。下の台帳から開いてください。</span></div>
   <div class="e-foot"><a href="TriEngines.html">コモンエンジン台帳を開く</a></div>
 </section>
@@ -168,8 +168,8 @@ footer{text-align:center;color:#7e8499;font-size:11px;margin-top:14px;line-heigh
 (function(){
   var box=document.getElementById('engList');
   if(!box||!window.TriEngines)return;
-  var SHORT={triform:'制度の言葉を、手の動く工程へ',tritask:'理論を、現場の行動へ',trivoice:'声を、記録へ',numeric:'試算表から数値を正確に抜き出す',patriot:'理論に、外から撃ち込む'};
-  var HIDE={trisheet:1};
+  var SHORT={trisheet:'会社の情報を一か所で登録し、各システムへ渡す',triform:'制度の言葉を、手の動く工程へ',tritask:'理論を、現場の行動へ',trivoice:'声を、記録へ',numeric:'試算表から数値を正確に抜き出す',patriot:'理論に、外から撃ち込む'};
+  var HIDE={};
   function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
   var items=TriEngines.list().filter(function(e){return !HIDE[e.id];}).map(function(e){
     var href=e.page||((/([\w.-]+\.html)/.exec(e.usedIn||'')||[])[1]);

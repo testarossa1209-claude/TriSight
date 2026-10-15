@@ -1,6 +1,8 @@
-# トライサイト 関所（2026-10-15）
+# トライサイト 関所（2026-10-15 作成／同日 改め：一行をやめて印だけ・理由を画面に出す・通ったときだけ知らせる）
 # 本番（main）へ入れる申請ごとに動く。ここが1つでも通らないと Merge は押せない（ブランチの保護で必須にする）。
-# 二の関所＝機械の点検　／　三の関所＝宏史さんの確認（印3つと一行。本文を最後に保存したのが宏史さんであること）
+# 二の関所＝機械の点検　／　三の関所＝宏史さんの確認（印3つ。本文を最後に保存したのが宏史さんであること）
+# 止まった理由は、申請の画面の点検一覧に「関所の理由（…）」として日本語で出す（メールは出さない）。
+# 二と三がそろって通ったときだけ、申請に「通りました」と書き込む（これが宏史さんのメールに届く）。
 name: sekisho
 on:
   pull_request:
@@ -8,6 +10,9 @@ on:
     types: [opened, edited, synchronize, reopened]
 permissions:
   contents: read
+  checks: write
+  issues: write
+  pull-requests: write
 jobs:
   machine:
     name: kikai-tenken
@@ -17,14 +22,26 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: python3 .github/scripts/sekisho_check.py machine
+      - env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python3 .github/scripts/sekisho_check.py machine
   approval:
     name: hiroshi-kakunin
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
       - env:
           PR_BODY: ${{ github.event.pull_request.body }}
           ACTOR: ${{ github.actor }}
           OWNER: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: python3 .github/scripts/sekisho_check.py approval

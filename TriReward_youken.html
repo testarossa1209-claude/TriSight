@@ -917,5 +917,8 @@ document.getElementById('imp').addEventListener('change', function(e){
 if(NEEDSAVE) save();
 render();
 </script>
+<!-- 口述マイク（2026-10-15：共通エンジン TriVoiceEngine.js・小さい表示） -->
+<script src="TriVoiceEngine.js"></script>
+<script>try{ if(window.TriVoice) TriVoice.dictation({ small:true }); }catch(e){}</script>
 </body>
 </html>

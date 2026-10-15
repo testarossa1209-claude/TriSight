@@ -1,0 +1,30 @@
+# トライサイト 関所（2026-10-15）
+# 本番（main）へ入れる申請ごとに動く。ここが1つでも通らないと Merge は押せない（ブランチの保護で必須にする）。
+# 二の関所＝機械の点検　／　三の関所＝宏史さんの確認（印3つと一行。本文を最後に保存したのが宏史さんであること）
+name: sekisho
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]
+permissions:
+  contents: read
+jobs:
+  machine:
+    name: kikai-tenken
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: python3 .github/scripts/sekisho_check.py machine
+  approval:
+    name: hiroshi-kakunin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+        run: python3 .github/scripts/sekisho_check.py approval

@@ -800,7 +800,7 @@ function tsGoBack(){
           <div onclick="openBusiness()" style="padding:12px 20px; cursor:pointer; color:#f5f0e8; font-size:0.85rem; border-bottom:1px solid rgba(201,168,76,0.2);">📋 ビジネスレポート</div>
     </div>      
      </div>  
-  <div class="wf-footer">© 2026 合同会社トライサイト　TriSight® is a registered trademark.<div class="verline" style="margin-top:6px;font-size:14px;color:#f5f0e8">版 <span id="verLabel">2026-10-18-01</span>（AI連携オプション）</div></div>
+  <div class="wf-footer">© 2026 合同会社トライサイト　TriSight® is a registered trademark.<div class="verline" style="margin-top:6px;font-size:14px;color:#f5f0e8">版 <span id="verLabel">2026-10-18-02</span>（AI連携オプション）</div></div>
 </div>
 
 <script>
@@ -876,6 +876,8 @@ function tsModelLine(){
     return TS_ROLE_LABEL[k] + ' ' + m + (u && u.fellBack ? '（新しいモデルが使えず前のモデルで実行）' : '');
   }).join(' ／ ') + '（' + TS_MODELS.checked + ' 確認）';
 }
+/* 今日の日付：AIは今日の日付を知らないため、すべての呼び出しの先頭に添える（期間の数え違いを防ぐ） */
+function tsToday(){ const d = new Date(); return '【今日の日付】' + d.getFullYear() + '年' + (d.getMonth()+1) + '月' + d.getDate() + '日（期間や残り月数は、この日付を基準に数えること）\n\n'; }
 /* OpenAIの口：新しいモデルは max_completion_tokens、前のモデルは max_tokens で呼ぶ。失敗・空の答えなら前のモデルで呼び直す */
 async function tsCallOpenAI(role, messages, errLabel){
   const cfg = TS_MODELS[role];
@@ -883,15 +885,16 @@ async function tsCallOpenAI(role, messages, errLabel){
   let lastErr = null;
   for (let i = 0; i < tries.length; i++){
     const model = tries[i];
-    const body = { model: model, messages: messages };
-    if (/^gpt-4/.test(model)) body.max_tokens = 4000; else body.max_completion_tokens = 16000;
+    const msgs = messages.map(function(m, k){ return (k === 0) ? { role: m.role, content: tsToday() + m.content } : m; });
+    const body = { model: model, messages: msgs };
+    if (/^gpt-4/.test(model)) body.max_tokens = 16000; else body.max_completion_tokens = 16000;
     const r = await fetch('https://trisight-relay.vercel.app/api/openai', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'x-trisight-code': tsCode() }, body: JSON.stringify(body)
     });
     if (r.status === 401){ tsAuthFail(401); throw new Error(errLabel + '認証コードが合いません'); }
     if (r.ok){
       let t = '';
-      try{ const j = await r.json(); t = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || ''; }catch(_){ t = ''; }
+      try{ const j = await r.json(); t = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || ''; if (t && j.choices[0].finish_reason === 'length') t += '\n\n（出力が上限で途切れました。この先は表示されていません）'; }catch(_){ t = ''; }
       if (t && String(t).trim()){ window.TS_AI_USED[role] = { model: model, fellBack: i > 0 }; tsModelLine(); return t; }
       lastErr = new Error(errLabel + '空の答えが返りました（' + model + '）');
     } else {
@@ -908,7 +911,7 @@ async function tsCallAnthropic(role, system, user, temperature){
   let lastErr = null;
   for (let i = 0; i < tries.length; i++){
     const model = tries[i];
-    const body = { model: model, max_tokens: 4000, system: system, messages: [{ role: 'user', content: user }] };
+    const body = { model: model, max_tokens: 16000, system: tsToday() + system, messages: [{ role: 'user', content: user }] };
     if (typeof temperature === 'number') body.temperature = temperature;
     const r = await fetch('https://trisight-relay.vercel.app/api/anthropic', {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'x-trisight-code': tsCode() }, body: JSON.stringify(body)
@@ -916,7 +919,7 @@ async function tsCallAnthropic(role, system, user, temperature){
     if (r.status === 401){ tsAuthFail(401); throw new Error('認証コードが合いません'); }
     if (r.ok){
       let t = '';
-      try{ const j = await r.json(); t = (j.content || []).map(function(c){ return c && c.text || ''; }).join(''); }catch(_){ t = ''; }
+      try{ const j = await r.json(); t = (j.content || []).map(function(c){ return c && c.text || ''; }).join(''); if (t && j.stop_reason === 'max_tokens') t += '\n\n（出力が上限で途切れました。この先は表示されていません）'; }catch(_){ t = ''; }
       if (t && t.trim()){ window.TS_AI_USED[role] = { model: model, fellBack: i > 0 }; tsModelLine(); return t; }
       lastErr = new Error('空の答えが返りました（' + model + '）');
     } else {
@@ -1838,6 +1841,10 @@ function openStandard() {
 window.addEventListener('DOMContentLoaded', function() {
   try {
     var parserOutput = localStorage.getItem('trisight_parser_output');
+    var parserAt = Number(localStorage.getItem('trisight_parser_output_at') || 0);
+    /* 受け渡しは一度きり。読み取りから30分を過ぎたもの・時刻の記録が無い古いものは流し込まずに消す（別の会社の数字が混ざるのを防ぐ） */
+    localStorage.removeItem('trisight_parser_output'); localStorage.removeItem('trisight_parser_output_at');
+    if (!(parserAt && Date.now() - parserAt < 30 * 60 * 1000)) parserOutput = '';
     if (parserOutput && parserOutput.length > 0) {
       var refInput = document.getElementById('referenceInput');
       var refSection = document.getElementById('referenceSection');

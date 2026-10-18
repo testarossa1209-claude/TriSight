@@ -65,6 +65,27 @@ textarea{width:100%;min-height:84px;font:inherit;padding:10px 12px;border:1px so
 .note{font-size:12.5px;color:var(--muted);margin-top:10px}
 footer{margin-top:26px;font-size:12px;color:var(--muted);text-align:center}
 #probe{position:absolute;left:-12000px;top:0;width:1200px;height:900px;border:0;visibility:hidden}
+/* 2026-10-19：システムの紹介 */
+.grp{margin:4px 0 22px}
+.grp>h3{margin:0 0 4px;font-size:16px;color:#fff;background:var(--navy);border-radius:6px;padding:5px 12px}
+.grp>.gl{margin:6px 0 10px;font-size:13px;color:var(--muted)}
+.flow{margin:0 0 20px;padding:10px 14px;border:1px solid var(--gold-soft);border-radius:8px;background:#fffaf0;font-size:13.5px}
+.flow b{color:var(--navy)}
+.sys{border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:8px;padding:12px 14px;margin:0 0 12px;background:#fff}
+.sys .hd{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.sys .hd b{font-size:17px;color:var(--navy)}
+.sys .hd .yo{font-size:12.5px;color:var(--muted)}
+.sys .hd .acts{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.sys .hd .acts a,.sys .hd .acts button{font:inherit;font-size:12.5px;font-weight:700;color:var(--navy);background:#fff;border:1.5px solid var(--line);border-radius:7px;padding:3px 10px;text-decoration:none;cursor:pointer;white-space:nowrap}
+.sys .hd .acts a:hover,.sys .hd .acts button:hover{border-color:var(--navy)}
+.sys .one{margin:4px 0 8px;font-weight:700;font-size:14px}
+.sys dl{display:grid;grid-template-columns:7.5em 1fr;gap:4px 10px;margin:0;font-size:13.5px}
+.sys dt{font-weight:700;color:var(--navy2)}
+.sys dd{margin:0}
+.sys .subs{margin:8px 0 0;padding:8px 10px;background:var(--wash);border-radius:6px;font-size:13px}
+.sys .subs div{margin:2px 0}
+.sys .subs a{color:var(--navy);font-weight:700}
+@media (max-width:560px){.sys dl{grid-template-columns:1fr}.sys dt{margin-top:4px}.sys .hd .acts{margin-left:0}}
 @media (max-width:560px){.co{margin-left:0}.lh .ver{display:none}}
 </style>
 </head>
@@ -88,7 +109,7 @@ function tsGoBack(){
   <div class="lh">
     <img src="TriSight_logo_registered_trimmed.png" alt="TriSight®">
     <h1>トライサイトロボ<small>使い方の案内</small></h1>
-    <span class="ver">版 <span id="verLabel">2026-10-18-01</span></span>
+    <span class="ver">版 <span id="verLabel">2026-10-19-01</span></span>
   </div>
   <div class="co">合同会社トライサイト</div>
   <hr class="rule">
@@ -102,14 +123,20 @@ function tsGoBack(){
   </div>
 
   <div class="tabs" role="tablist">
-    <button role="tab" aria-selected="true" data-tab="map">画面の案内</button>
+    <button role="tab" aria-selected="true" data-tab="intro">システムの紹介</button>
+    <button role="tab" aria-selected="false" data-tab="map">画面の案内</button>
     <button role="tab" aria-selected="false" data-tab="scene">場面別の使い方</button>
     <button role="tab" aria-selected="false" data-tab="ask">質問する</button>
     <button role="tab" aria-selected="false" data-tab="tip">便利な使い方</button>
     <button role="tab" aria-selected="false" data-tab="ai">AIの選び方</button>
   </div>
 
-  <section class="panel" id="p_map" role="tabpanel">
+  <section class="panel" id="p_intro" role="tabpanel">
+    <p class="lead">トライサイトの各システムが、何をするものか・いつ使うか・何を入れて何が出てくるかの説明です。書いてある内容は各画面に書かれている説明から取っています。「」で囲んだボタンや欄の名前は、開くたびに今の画面と照合しています（✓は今の画面にある名前、✕は見当たらない名前です）。</p>
+    <div id="introOut"></div>
+  </section>
+
+  <section class="panel" id="p_map" role="tabpanel" hidden>
     <p class="lead">いま公開されている画面そのものから読み取った、見出しごとのボタン・リンク・入力欄の並びです。画面の版が上がると、ここも自動で変わります。</p>
     <div id="mapOut"></div>
   </section>
@@ -169,7 +196,7 @@ function tsGoBack(){
 <script>
 (function(){
 'use strict';
-var ROBO_VERSION = '2026-10-18-01';
+var ROBO_VERSION = '2026-10-19-01';
 var RELAY = 'https://trisight-relay.vercel.app/api/anthropic';
 
 /* 案内の対象。ready の画面だけを選択窓に出す（まずトライゲイト）。
@@ -178,13 +205,154 @@ var SCREENS = {
   index:     {name:'表札（TriSight ファミリー）', file:'index.html', ready:true, scripts:true},
   trisight:  {name:'トライサイトシステム本体', file:'TriSight_v5.html', ready:true, verKey:'trisight', verRe:/id="verLabel">([\d-]+)</},
   trigate:   {name:'トライゲイト',   file:'TriGate.html',  ready:true,  verKey:'trigate',  verRe:/TRIGATE_VERSION\s*=\s*'([\d-]+)'/},
+  trirule:   {name:'トライルール',   file:'TriOffice_redesign_v0.6.html', ready:true},
   trireward: {name:'トライリワード', file:'TriReward.html', ready:true},
-  triform:   {name:'トライフォーム', file:'TriForm.html'},
-  tritask:   {name:'トライタスク',   file:'TriTask.html'},
-  trisheet:  {name:'基本情報シート', file:'TriSheet.html', ready:true, verKey:'trisheet', verRe:/id="verLabel">([\d-]+)</},
+  trigrant:  {name:'トライグラント', file:'TriGrantSupport_sample_v7_public.html', ready:true},
+  tricare:   {name:'トライケア（ケアプラン出力）', file:'TriSight_Report_CarePlan.html', ready:true},
+  tricare_asm:{name:'トライケア（アセスメント・モニタリング）', file:'TriCare_Assessment.html', ready:true},
+  tricare_nr:{name:'トライケア（訪問看護記録）', file:'TriCare_NursingRecord.html', ready:true},
+  tricare_memo:{name:'トライケア（看護メモ）', file:'TriVoice.html', ready:true},
   tritime:   {name:'トライタイム', file:'TriTime.html', ready:true, verKey:'tritime', verRe:/id="verLabel">([\d-]+)</},
+  trisheet:  {name:'基本情報シート', file:'TriSheet.html', ready:true, verKey:'trisheet', verRe:/id="verLabel">([\d-]+)</},
+  triform:   {name:'トライフォーム', file:'TriForm.html', ready:true},
+  tritask:   {name:'トライタスク',   file:'TriTask.html', ready:true},
+  numeric:   {name:'数値解析ロボ',   file:'TriSight_NumericParser_v3.html', ready:true},
+  patriot:   {name:'H&Nパトリオット', file:'HN_Patriot.html', ready:true},
   youken:    {name:'要件の申告',     file:'TriReward_youken.html'}
 };
+
+/* 2026-10-19：システムの紹介。各画面に書かれている説明から書き起こした。L は照合する名前（scr の画面で照合） */
+var FLOW = '子システム（トライルール・トライリワード・トライグラント）やトライゲイトで見つけた案件は、「TriFormへ送る」でトライフォームへ届きます → トライフォームで必要書類・手順・期限の工程に開き、「この内容でトライタスクへ渡す」を押します → トライタスクが完遂まで伴走します。事務局の期限は「トライタイムに載せる」でトライタイムにも並びます。';
+var FLOW_L = [['trirule','この先の段取りをTriFormへ送る'],['trigate','TriFormへ送る'],['triform','この内容でトライタスクへ渡す'],['tritask','トライタイムに載せる']];
+var INTRO = [
+  {grp:'親（本体）', gl:'表札のいちばん上の大きな枠です。', items:[
+    {scr:'trisight', name:'トライサイトシステム', yomi:'TriSight System',
+     one:'起案者が決めるための、責任を持てる水準の判断材料を出す本体です。',
+     what:'考えてほしいこと（起案）を入れると、3人のAIが順に考えます。あずさ（理論AI）が理論に組み立て、なぎさ（検証AI）が筋道と懸念を点検し、つかさ（評価AI）が実現できるか・改善点を判定します。最後に判断するのは起案者です。',
+     when:'経営の課題や新しい取り組みについて、決める前に材料を揃えたいとき。コンサルとしてクライアントへの提案を作るとき。',
+     inp:'「達成したい目的」（何がどうなれば終わりか）、「起案者の立ち位置」、「起案者インプット」（何を考えさせたいか）。関係する資料は「ベース資料」に貼り付けます。顧問税理士の月次推移PDFは、「数値解析ロボを起動」で数字を抜き出して流し込めます。',
+     out:'3人のAIの理論・検証・評価。起案者は、それを読んで判断します。',
+     note:'会社の基本情報の登録・更新は、本体ではなく表札の「共通基盤・横串」にある基本情報シートで行います。',
+     L:['ワークフロー開始','達成したい目的','起案者の立ち位置','起案者インプット','ベース資料','数値解析ロボを起動']},
+    {scr:'index', name:'AI連携オプション', yomi:'ショートカット', file:'TriSight_v5_auto.html',
+     one:'本体の三段を続けて動かし、最後に一度だけ読んで採否を決めたいときに使います。',
+     what:'本体は、あずさ・なぎさ・つかさの各段で止まり、人が読んでから次へ渡します。このオプションは、その三段を続けて動かします。',
+     when:'段ごとに確かめる必要がなく、最後の結果だけを読んで決めたいとき。',
+     how:'表札の「本体の見方」の枠の中にある、「AI連携オプション（ショートカット）」を押します（金色の枠の小さなボタン）。',
+     L:['本体の見方','AI連携オプション（ショートカット）']}
+  ]},
+  {grp:'子システム（トライオフィスファミリー）', gl:'表札の「TriOffice System ファミリー」の段に並ぶカードです。それぞれが、一つの出口（書類の作成や記録）を受け持ちます。', items:[
+    {scr:'trirule', name:'トライルール', yomi:'TriRule',
+     one:'運営規定・契約書・重要事項説明書・社内規程など、事務文書の更新を支援します。',
+     what:'今ある運営規定と改正の内容を入れると、改正を反映した書類を作ります。判断や解釈はせず、改正条項を機械的に反映します。処理は 生成 → ルールチェック → 検証 → 判定 の順です。',
+     when:'法改正や報酬改定などで、運営規定などを直す必要が出たとき。',
+     inp:'「文書の種類」を選び、「運営規定ファイル」（docx か PDF）、「改正条項の内容」「改正根拠」、事業所名・市区町村などを入れます。',
+     out:'修正版の運営規定・「変更インデックス」（どこがどう変わったかを新旧で突き合わせた一覧）・変更届の3点です。',
+     next:'「この先の段取りをTriFormへ送る」で、提出までの段取りをトライフォームへ渡せます。',
+     note:'表札のカードの名前は TriRule ですが、開いた画面の表題は「TriOffice ─ 事務文書の更新支援」と出ます。自治体独自の条例がある場合は、別に確かめる必要があります（画面の注記）。',
+     L:['文書の種類','運営規定ファイル','改正条項の内容','改正根拠','この内容で書類を作成する','変更インデックス','この先の段取りをTriFormへ送る']},
+    {scr:'trireward', name:'トライリワード', yomi:'TriReward',
+     one:'処遇改善加算の計画書（様式2）と実績報告（様式3）を、システムが計算します。',
+     what:'○×の判定と、様式のどこに何を書くか（転記先）まで示します。入口には5枚のカードがあります。「はじめに」の基本情報シート、「年に1回」の要件の申告、高齢版（介護保険サービス）、障害版（障害福祉サービス）、按分・配分（処遇改善加算・訪問看護ベースアップ評価料を部門へ按分し、職員一人ずつの月額支給まで計算）です。',
+     when:'処遇改善加算の計画書・実績報告を作るとき。加算を職員一人ずつの月額に配るとき。',
+     inp:'高齢版・障害版では、事業所ごとのサービス名・報酬総単位数・単価・加算区分・算定月数だけを入れます。加算率と見込額はシステムが計算します。法人・事業所・加算区分は基本情報シートから読みます。',
+     out:'加算見込額、賃金改善の判定（○×）、別紙様式2の転記ガイド。按分・配分では、部門ごとの按分と職員ごとの月額です。',
+     next:'高齢版・障害版の結果から、「この先の段取りをTriFormへ送る」でトライフォームへ渡せます。',
+     note:'基本情報シートが空だと、計画書も実績報告も作れません（入口の注記）。',
+     L:['はじめに','基本情報シート','要件の申告','高齢版','障害版','按分・配分']},
+    {scr:'trigrant', name:'トライグラント', yomi:'TriGrant',
+     one:'助成金・補助金ナビです。会員（事業者）と助成金を突き合わせます。',
+     what:'会員のデータと助成金のデータを突き合わせ、適合する組み合わせ（適合A）と除外を出します。業界別のまとめ・必要情報のチェックリスト・マッチングの根拠も見られます。',
+     when:'協会などで、多くの会員に当てはまる助成金をまとめて探したいとき。',
+     inp:'会員データ・助成金データ（CSV形式で入れ替えます）。試すときは「①サンプルデータで開始」を押します。',
+     out:'登録会員数・助成金情報数・適合A件数・除外件数と、その内訳です。',
+     next:'「TriFormへ送る」で、申請までの段取りをトライフォームへ渡せます。',
+     note:'いまの画面は見本のデータで動く版です（画面の右上に「MODE: MOCK」と出ます）。',
+     L:['①サンプルデータで開始','②マッチング実行','③業界別サマリー','④必要情報チェックリスト','⑤マッチング根拠','会員データを入れ替える','助成金データを入れ替える','TriFormへ送る']},
+    {scr:'tricare', name:'トライケア', yomi:'TriCare',
+     one:'ケアマネ帳票・訪問看護の記録など、介護・看護の現場の記録を支援します。',
+     what:'表札のカードから開くのは「ケアプラン出力」の画面です。トライサイトシステム本体のワークフローで作ったTXTの中身を貼り付けると、3人のAIの出力を分けて整えます。トライケアには、下の画面もあります。',
+     when:'ケアプランを作るとき、利用者のアセスメント・モニタリングを残すとき、訪問看護の記録を付けるとき。',
+     inp:'ケアプラン出力では、本体のTXTを「TXT出力を貼り付け」の欄へ貼り付けて「ケアプランを生成」を押します。',
+     out:'社内検討用のケアプランの出力。印刷やPDFでの保存もできます。',
+     note:'画面の第1票〜第3票のタブは、行政指定の書式が決まりしだい入力欄を付ける場所で、いまは中身がありません（画面の表示のとおり）。訪問看護記録と看護メモは表札にカードがないため、下の「開く」から開いてください。',
+     subs:[
+       {scr:'tricare_asm', name:'アセスメント・モニタリング', t:'利用者の情報を入れる画面です。入れた情報はこの端末の中だけに保存され、当社のサーバーにもAIにも送りません。ケアプラン出力の画面の「アセスメント・モニタリングを開く」からも開けます。'},
+       {scr:'tricare_nr', name:'訪問看護記録', t:'右上のマイクを押して、観察したこと・バイタル・実施したケアを続けて話すと、AIが各欄へ振り分けて下書きします。確定は必ず人の目で確かめます。「印刷（紙提出用）」で、これまでどおり紙で提出できます。'},
+       {scr:'tricare_memo', name:'看護メモ（簡易版）', t:'話して、整えて、コピーするだけの画面です。登録した利用者名・医師名は、送る前にこの端末の中で伏字に置き換えます。整えた文をいつもの記録先へ貼り付けます。'}
+     ],
+     L:['TXT出力を貼り付け','ケアプランを生成','アセスメント・モニタリングを開く']},
+    {scr:'tritime', name:'トライタイム', yomi:'TriTime',
+     one:'訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持ちます。',
+     what:'上の並びに6つの切り替えがあります。「予定」（今週の訪問予定と、事務局から看護部への連絡板）、「キャンセル受付」、「患者さんの経過」、「報告書の下書き」（主治医への報告書に載せるキャンセルの欄）、「管理者の窓」、「名簿・設定」です。',
+     when:'事務局が訪問予定を組む・キャンセルの電話を受ける・看護部へ連絡や会議の案内を出すとき。看護師が訪問の後に経過を残すとき。',
+     inp:'職員は、基本情報シートの職員名簿から「トライシートから読み込む」で入れます。患者さんは氏名を入れず、契約書番号で扱います。キャンセルの電話は「話して入力」で話して入れられます。',
+     out:'今週の訪問予定、キャンセルの記録、患者さんごとの経過、主治医への報告書に写すキャンセル欄の下書きです。',
+     next:'トライタスクの案件一覧で「トライタイムに載せる」を押した案件が、事務局の期限として並びます（看護師さんの予定には入りません）。',
+     L:['予定','キャンセル受付','患者さんの経過','報告書の下書き','管理者の窓','名簿・設定','トライシートから読み込む','話して入力']}
+  ]},
+  {grp:'コモンエンジン（共通基盤・横串）', gl:'表札の下の「Common Engines 共通基盤・横串」の枠に並ぶ部品です。どの子システムにも属さず、同じ一つのものを各システムが中で呼び出して使います。ここから単独で開くこともできます。', items:[
+    {scr:'trisheet', name:'基本情報シート', yomi:'TriSheet',
+     one:'会社の情報を一か所で登録し、各システムへ渡します。',
+     what:'法人・事業所などの基本情報を登録・更新し、各システムが同じ内容を読みます。登録・更新の入口は表札のこの枠だけで、子システムの画面は読み込むだけです。',
+     when:'最初に使い始めるとき（初回登録）。職員の入退職や事業所の変更など、会社の情報が変わったとき（更新登録）。',
+     inp:'「初回登録（新しい会社）」を押し、「この登録は」で自社か起案の相手（顧客）かを選びます。「ご利用の契約」を選ぶと入力欄が出ます。入力は自動で保存されます。変わったときは「登録している会社」で会社を選んで「更新登録」を押します。',
+     out:'各システムが読む会社の情報です。「ファイルに保存（.json）」で控えを残せます。',
+     next:'トライリワード・トライタイムが自社の情報を読み、トライゲイトは「シートから読み込む」で読みます。',
+     note:'利用者のアセスメント・モニタリングは、このシートでは入れません。トライケアのアセスメント画面で入れます（会社の情報と利用者の情報を分けて持つため）。',
+     L:['初回登録（新しい会社）','更新登録','この登録は','ご利用の契約','空欄を確認','ファイルに保存（.json）']},
+    {scr:'triform', name:'トライフォーム', yomi:'TriForm',
+     one:'制度の言葉を、手の動く工程へ開きます。',
+     what:'各システムから届いた案件を、必要書類・手順・期限の工程に開きます。工程ごとに「手元に要るもの」「この工程でできるもの」「持っていく先」「持ち帰るもの」を並べます。要領に根拠のあるもの・法令で決まっているものは確かめる対象から外し、御社の現物を見ないと決まらないことだけを、確かめる点として残します。',
+     when:'補助金の申請や書類の提出など、「何を、どの順で用意するか」を決めたいとき。',
+     inp:'トライルール・トライリワード・トライグラント・トライゲイトから「TriFormへ送る」で届いた案件です。画面の上の「各システムから届いた案件」の枠に並びます。',
+     out:'手を動かす順に並んだ工程です。',
+     next:'内容を確かめて「この内容でトライタスクへ渡す」を押すと、トライタスクへ渡ります。',
+     note:'トライフォームが示すのは、どの順で手を動かすかまでです。内容が正しいか、この工程で足りるかは、ご自身で確かめます（画面の注記）。',
+     L:['各システムから届いた案件','分解する案件','確かめる点を作る','この内容でトライタスクへ渡す','手続きの型を見る']},
+    {scr:'tritask', name:'トライタスク', yomi:'TriTask',
+     one:'理論を、現場の行動へ。完走まで、となりで伴走します。',
+     what:'理論や目標を、現場で動かせる作業に分けます。いまどこまで進んだか（0kmから完走まで）を示しながら、完遂まで見届けます。案件を初めて開くと、AIが済ませられる工程を済ませ、下書きできるものには下書きを付けます。購入・支払い・署名押印・従業員への表明・提出は、人の工程として残します。',
+     when:'トライフォームで工程に開いた案件を、実際に最後までやり切るとき。本体が出した経営理論を、現場の作業に落とすとき。',
+     inp:'トライフォームから渡された案件（「各システムから届いた案件」の枠）。または、本体の経営理論などを貼り付けて「行動プランを作成する」を押します。',
+     out:'作業の手順と進み具合です。完走したら「実績として記録する」で、「TriTask 完遂実績」に載ります。',
+     next:'事務局の期限になる案件は、「トライタイムに載せる」でトライタイムにも並びます。',
+     note:'トライタスクが案内するのは、やり方と、いまどこかだけです。やるかどうか・どう判断するかは、利用者が決めます（画面の注記）。',
+     L:['各システムから届いた案件','行動プランを作成する','実績として記録する','TriTask 完遂実績','トライタイムに載せる']},
+    {scr:null, name:'トライボイス', yomi:'TriVoice ／ 画面を持たない部品',
+     one:'声を、記録へ。話した内容を文字に起こし、画面の欄へ入れます。',
+     what:'使い方は3つです。①様式の各欄へAIが振り分ける（訪問看護記録・トライタイム）。②1つの欄へそのまま入れる（本体・看護メモ）。③画面の右下のマイクを押し、押した欄へ入れる（その他の画面）。録音と文字起こしの仕組みは、この部品ひとつだけです。',
+     when:'キーボードで打つ代わりに、話して入力したいとき。',
+     note:'自分の画面を持たない部品のため、表札のコモンエンジンの枠にはカードが出ません。各画面の中で使います。'},
+    {scr:'numeric', name:'数値解析ロボ', yomi:'Numeric Parser',
+     one:'試算表から数値を、判断を入れずに正確に抜き出します。',
+     what:'顧問税理士から届く月次推移損益計算書のPDFを入れると、数値を抜き出して整え、トライサイトシステム本体のベース資料欄へ流し込みます。',
+     when:'本体で経営の起案をするとき、会社の数字を正確に渡したいとき。',
+     inp:'月次推移PDFを画面の枠へドラッグ＆ドロップし、「処理実行」を押します。',
+     out:'整えた数値の文（AIに渡す形）と、抜き出したデータの一覧です。',
+     next:'「TriSight本体に戻る」で本体へ戻ります。本体の「数値解析ロボを起動」からも開けます。',
+     note:'いま使えるのは月次推移の形だけです。期間累計・三期比較・部門別は準備中です（画面の表示のとおり）。',
+     L:['処理実行','TriSight本体に戻る']},
+    {scr:'patriot', name:'H&Nパトリオット', yomi:'H&N Patriot ／ 実験機（版R1）',
+     one:'理論に、外から撃ち込みます。',
+     what:'AIとのやりとりを貼り付けると、言葉の中身ではなく「何をした後に何をしたか」という運びの形を照合します。決めてある7つの型（記録を当たらずに人へ資料を求める型、現物を取らずに操作を案内する型など）に当たった大きさ（逸脱量D）に応じて、その理論の効力を削る割合を出します。',
+     when:'AIが出した理論を、そのまま信じてよいかを外側から確かめたいとき。',
+     inp:'発話の頭に「H:」「A:」などを付けて話者を区切った、AIとのやりとりです。貼り付けて「撃つ」を押します。',
+     out:'逸脱量D・効力を削る割合・取り出した工程の形です。結果に「当たっていた（止めた）」「見逃しがあった」「止めすぎた」の評価を付けて記録できます。',
+     note:'判定の規則は版R1で固定してあり、画面から書き換えることはできません。実験機です。',
+     L:['撃つ','当たっていた（止めた）','見逃しがあった','止めすぎた','対比する']}
+  ]},
+  {grp:'別枠（トライゲイト）', gl:'表札のファミリーの段には並ばず、単独の画面として開くシステムです。', items:[
+    {scr:'trigate', name:'トライゲイト', yomi:'TriGate',
+     one:'補助金・助成金の門です（受付・仕分け）。',
+     what:'使い方は2つです。①「新着補助金探索」：Jグランツ・国土交通省・厚生労働省に加え、選んだ都道府県・市区町村の独自制度を探し、診断する会社の条件に合うものまで絞ります。②「文書を入れる」：行政から来た案内（PDF）を入れると、対象になりそうか、絶対の締切、締切から逆算した工程、必要書類を並べ直します。',
+     when:'自社や顧客が取れる補助金・助成金を探したいとき。持ち込まれた制度が取れるかを確かめたいとき。',
+     inp:'診断する会社の情報（基本情報シートから「シートから読み込む」で読み込みます）。②では公募要領のPDFかZIPです。',
+     out:'条件に合う制度の一覧と見込み額。②では対象になりそうか・締切・工程・必要書類です。',
+     next:'判定が「見送り」でなければ「TriFormへ送る」が出て、トライフォームへ渡せます。',
+     L:['新着補助金探索','新着探索','文書を入れる','読み取る','シートから読み込む','TriFormへ送る']}
+  ]}
+];
 
 /* 場面別の使い方（2026-09-26 に現物のボタン名で書き起こし）。L は照合する名前 */
 var SCENES = [
@@ -308,7 +476,9 @@ function labelOf(el, doc){
   if(tag==='BUTTON') return norm(el.textContent);
   var lb = el.id ? doc.querySelector('label[for="'+el.id.replace(/"/g,'')+'"]') : null;
   if(!lb) lb = el.closest('label');
-  if(lb){ var c=lb.cloneNode(true); c.querySelectorAll('select,input,textarea').forEach(function(x){x.remove();}); var t=norm(c.textContent); if(t) return t; }
+  /* 2026-10-19：名前（label）が欄を包まず、欄の直前に並べて置かれている作り（トライルール等）にも対応する */
+  if(!lb){ for(var pv=el.previousElementSibling; pv; pv=pv.previousElementSibling){ if(pv.tagName==='LABEL' && !pv.querySelector('select,input,textarea')){ lb=pv; break; } if(pv.matches('select,input,textarea')) break; } }
+  if(lb){ var c=lb.cloneNode(true); c.querySelectorAll('select,input,textarea').forEach(function(x){x.remove();}); var t=norm(c.textContent).replace(/\s*[*＊]$/,''); if(t) return t; }
   return norm(el.getAttribute('placeholder')||el.getAttribute('title')||el.getAttribute('aria-label')||'');
 }
 function isHidden(el, win){
@@ -428,6 +598,43 @@ function drawScenes(){
   });
   $('sceneOut').innerHTML = h;
 }
+function drawIntro(){
+  var h = '<div class="flow"><b>つながり方</b>　'+esc(FLOW)+'<div>'+FLOW_L.map(function(p){ return chips(p[0],[p[1]]); }).join('')+'</div></div>';
+  var ROWS = [['what','何をするか'],['when','こんなときに'],['how','開き方'],['inp','入れるもの'],['out','出てくるもの'],['next','次へのつながり'],['note','ご注意']];
+  INTRO.forEach(function(g){
+    h += '<div class="grp"><h3>'+esc(g.grp)+'</h3><p class="gl">'+esc(g.gl)+'</p>';
+    g.items.forEach(function(it){
+      var sc = it.scr ? SCREENS[it.scr] : null, file = it.file || (sc && sc.file);
+      h += '<div class="sys"><div class="hd"><b>'+esc(it.name)+'</b><span class="yo">'+esc(it.yomi)+'</span><span class="acts">';
+      if(file) h += '<a href="'+esc(file)+'">開く ›</a>';
+      if(!it.file && sc && sc.ready) h += '<button type="button" data-map="'+esc(it.scr)+'">ボタンの並びを見る ›</button>';
+      h += '</span></div><div class="one">'+esc(it.one)+'</div><dl>';
+      ROWS.forEach(function(r){ if(it[r[0]]) h += '<dt>'+r[1]+'</dt><dd>'+esc(it[r[0]])+'</dd>'; });
+      h += '</dl>';
+      if(it.subs){
+        h += '<div class="subs">';
+        it.subs.forEach(function(sb){ var s2=SCREENS[sb.scr]; h += '<div><a href="'+esc(s2.file)+'">'+esc(sb.name)+'を開く ›</a>　'+esc(sb.t)+'</div>'; });
+        h += '</div>';
+      }
+      if(it.scr && it.L) h += '<div>'+chips(it.scr, it.L)+'</div>';
+      h += '</div>';
+    });
+    h += '</div>';
+  });
+  $('introOut').innerHTML = h;
+  $('introOut').querySelectorAll('button[data-map]').forEach(function(b){
+    b.onclick = function(){ var k=b.getAttribute('data-map'); $('scr').value=k; showTab('map'); choose(k); window.scrollTo(0,0); };
+  });
+}
+function introText(){
+  return INTRO.map(function(g){
+    return '■ '+g.grp+'\n'+g.items.map(function(it){
+      var t = '・'+it.name+'：'+it.one+(it.what?' '+it.what:'')+(it.when?' 使う場面：'+it.when:'')+(it.inp?' 入れるもの：'+it.inp:'')+(it.out?' 出てくるもの：'+it.out:'')+(it.next?' 次へ：'+it.next:'')+(it.note?' 注意：'+it.note:'');
+      if(it.subs) t += it.subs.map(function(sb){ return '\n　・'+it.name+'の'+sb.name+'：'+sb.t; }).join('');
+      return t;
+    }).join('\n');
+  }).join('\n\n');
+}
 function drawTips(){
   var h='<ol class="steps">';
   TIPS.forEach(function(tp){ h += '<li><span class="where">'+esc(SCREENS[tp.s].name)+'</span>'+esc(tp.t)+'<div>'+chips(tp.s,tp.L)+'</div></li>'; });
@@ -457,7 +664,8 @@ var SYSTEM = [
   '4. 最初は隠れているもの・操作の途中で出るものは、出る条件が地図や手順に書かれていればそれを書き、無ければ、操作の途中で出ます、とだけ書く。',
   '5. 地図と手順から答えられないときは、この画面の現物からは分かりません、とだけ書き、関係しそうな見出しの名前を挙げる。',
   '6. 料金・所要時間・件数などの数字は書かない。',
-  '7. 質問が別の画面にまたがるときは、確かめ済みの場面別の手順を使って、その画面の操作まで書く。'
+  '7. 質問が別の画面にまたがるときは、確かめ済みの場面別の手順を使って、その画面の操作まで書く。',
+  '8. 「このシステムは何をするものか」「どれを使えばよいか」と聞かれたときは、下に渡す「各システムの説明」に書かれていることだけで答える。説明に無い機能は書かない。'
 ].join('\n');
 function quotedNames(t){ var out=[], re=/「([^「」]{1,80})」/g, m; while((m=re.exec(t))) out.push(m[1]); return out; }
 function tsCode(){
@@ -479,7 +687,7 @@ async function ask(){
   $('askBtn').disabled = true; $('ans').textContent=''; $('ansSt').textContent='今の画面の地図を渡して、答えを作っています…';
   if(ALL_LOADED) await ALL_LOADED;
   try{
-    var user = '【画面の現物から読み取った地図】\n'+mapText(cur)+'\n\n【確かめ済みの場面別の手順】\n'+sceneText()+'\n\n【利用者の質問】\n'+q;
+    var user = '【画面の現物から読み取った地図】\n'+mapText(cur)+'\n\n【確かめ済みの場面別の手順】\n'+sceneText()+'\n\n【各システムの説明】\n'+introText()+'\n\n【利用者の質問】\n'+q;
     var r = await fetch(RELAY, {method:'POST', headers:{'Content-Type':'application/json','x-trisight-code':code},
       body: JSON.stringify({model:'claude-sonnet-4-6', max_tokens:1500, temperature:0, system:SYSTEM, messages:[{role:'user', content:user}]})});
     if(r.status===401){ try{ localStorage.removeItem('trisight_access_code'); }catch(_){} throw new Error('認証コードが合いません。もう一度「質問する」を押して、正しいコードを入れ直してください。'); }
@@ -515,7 +723,11 @@ async function choose(key){
   }catch(e){
     $('readSt').textContent = sc.name + ' の画面を読み取れませんでした。この案内はトライサイトの画面と同じ場所から開いてください（' + (e.message||e) + '）。';
   }
-  drawMap(); drawScenes(); drawTips();
+  drawMap(); drawScenes(); drawTips(); drawIntro();
+}
+function showTab(t){
+  document.querySelectorAll('.tabs button').forEach(function(x){ x.setAttribute('aria-selected', x.dataset.tab===t?'true':'false'); });
+  ['intro','map','scene','ask','tip','ai'].forEach(function(k){ $('p_'+k).hidden = (k!==t); });
 }
 
 async function boot(){
@@ -523,6 +735,9 @@ async function boot(){
   sel.innerHTML = Object.keys(SCREENS).filter(function(k){return SCREENS[k].ready;}).map(function(k){ return '<option value="'+k+'">'+esc(SCREENS[k].name)+'</option>'; }).join('');
   var want = new URLSearchParams(location.search).get('s');
   if(want && SCREENS[want] && SCREENS[want].ready) sel.value = want;
+  /* 他の画面から開いたとき（?s=）は、これまでどおり画面の案内から見せる。表札から開いたときはシステムの紹介から */
+  showTab(want && SCREENS[want] && SCREENS[want].ready ? 'map' : 'intro');
+  drawIntro();
   /* 他の画面から開いたときは、左上に戻る道を出す。別のタブで開いていればタブを閉じて戻り、閉じられなければその画面を開く */
   if(want && SCREENS[want]){
     var bk = $('backLink'), dest = SCREENS[want];
@@ -536,13 +751,10 @@ async function boot(){
   await choose(sel.value);
   /* 場面別の使い方で照合する画面は、案内する画面を出した後で読む（基本情報シートは大きいため） */
   ALL_LOADED = Promise.all(Object.keys(SCREENS).map(function(k){ return loadSrc(k).catch(function(){}); }));
-  await ALL_LOADED; drawScenes(); drawTips();
+  await ALL_LOADED; drawScenes(); drawTips(); drawIntro();
 }
 document.querySelectorAll('.tabs button').forEach(function(b){
-  b.onclick = function(){
-    document.querySelectorAll('.tabs button').forEach(function(x){ x.setAttribute('aria-selected', x===b?'true':'false'); });
-    ['map','scene','ask','tip','ai'].forEach(function(t){ $('p_'+t).hidden = (t!==b.dataset.tab); });
-  };
+  b.onclick = function(){ showTab(b.dataset.tab); };
 });
 $('askBtn').onclick = ask;
 window.__robo = {exists:exists, MAP:MAP, SRC:SRC, mapText:mapText, quotedNames:quotedNames};

@@ -221,6 +221,7 @@ clearBtn.addEventListener('click', () => {
   returnSection.classList.remove('show');
   status.classList.remove('show');
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(STORAGE_KEY + '_at');
 });
 
 parseBtn.addEventListener('click', async () => {
@@ -251,6 +252,7 @@ parseBtn.addEventListener('click', async () => {
 
     // localStorage書き込み（自動連携）
     localStorage.setItem(STORAGE_KEY, formatted);
+    localStorage.setItem(STORAGE_KEY + '_at', String(Date.now()));
 
     // 戻るボタン表示
     returnSection.classList.add('show');

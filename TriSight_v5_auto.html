@@ -745,10 +745,11 @@ function tsGoBack(){
         <div class="kb-bar">
           <button type="button" class="blast-btn" onclick="revBlast()">💥 この起案を白紙に戻す（爆破）</button>
           <button type="button" onclick="revBlastLog()">自爆提案フォルダを見る</button>
+          <button type="button" onclick="handoffLogShow()">受け渡しの記録を見る</button>
         </div>
         <div class="kb-note">爆破は、起案が的外れだったときに使います。このクライアントの保存済みの提案と、入力欄・出力をすべて消して白紙に戻します。起案基礎情報は残ります。元には戻せません。</div>
       </div>
-      <div class="kb-note" style="border:1px solid #c9a84c;border-radius:6px;padding:8px 12px;margin:8px 0">この画面は<b>AI連携オプション</b>です。あずさ→なぎさ→つかさを人の手を挟まず続けて動かし、下書きを速く回すための道具です。段ごとに人が確かめて確定するのは<a href="TriSight_v5.html" style="color:#c9a84c">本体</a>、他のシステムは<a href="index.html" style="color:#c9a84c">表札</a>から開けます。出力はTXTで持ち出せます。</div>
+      <div class="kb-note" style="border:1px solid #c9a84c;border-radius:6px;padding:8px 12px;margin:8px 0">この画面は<b>AI連携オプション</b>です。あずさ→なぎさ→つかさを途中で止めずに続けて動かし、三段を通した後に、起案者が一度だけ読んで採用・差し戻し・爆破を決めます。段ごとに読んで渡したいときは<a href="TriSight_v5.html" style="color:#c9a84c">本体</a>、他のシステムは<a href="index.html" style="color:#c9a84c">表札</a>から開けます。出力はTXTで持ち出せます。</div>
       <button class="run-btn" id="btn" onclick="run()">ワークフロー実行</button>
     </div>
 
@@ -800,7 +801,7 @@ function tsGoBack(){
           <div onclick="openBusiness()" style="padding:12px 20px; cursor:pointer; color:#f5f0e8; font-size:0.85rem; border-bottom:1px solid rgba(201,168,76,0.2);">📋 ビジネスレポート</div>
     </div>      
      </div>  
-  <div class="wf-footer">© 2026 合同会社トライサイト　TriSight® is a registered trademark.<div class="verline" style="margin-top:6px;font-size:14px;color:#f5f0e8">版 <span id="verLabel">2026-10-18-02</span>（AI連携オプション）</div></div>
+  <div class="wf-footer">© 2026 合同会社トライサイト　TriSight® is a registered trademark.<div class="verline" style="margin-top:6px;font-size:14px;color:#f5f0e8">版 <span id="verLabel">2026-10-18-03</span>（AI連携オプション）</div></div>
 </div>
 
 <script>
@@ -1647,6 +1648,57 @@ const TSUKASA_PROMPT = 'あなたはTriSight®のつかさです。起案者の�
  + '■ 懸念点の評価\n'
  + '（深刻度：高／中／低／懸念なし で判定し、理由を記載）';
 
+/* ===== 受け渡しの部品（本体から移植・2026-10-18）。オプションでは三段を通した後の最終確認に一度だけ使う ===== */
+/* ===== 段の間の受け渡し（2026-09-18） =====
+   出力の下に「渡す／差し戻す」を出し、押されるまで次のAIを動かさない。
+   押した事実は端末内の受け渡し記録（trisight_handoff_log）に残し、実行の記録（revSave）にも同じものを載せる。 */
+const HANDOFF_KEY = 'trisight_handoff_log';
+function handoffLogAll(){ try { return JSON.parse(localStorage.getItem(HANDOFF_KEY) || '[]') || []; } catch(e){ return []; } }
+function handoffLogPut(rec){
+  let a = handoffLogAll(); a.push(rec); if (a.length > 300) a = a.slice(-300);
+  try { localStorage.setItem(HANDOFF_KEY, JSON.stringify(a)); } catch(e){}
+}
+function tsHandoff(runId, fromId, toId, fromName, toName){
+  return new Promise(function(resolve){
+    const host = document.getElementById('stage' + fromId);
+    const old = host.querySelector('.handoff'); if (old) old.remove();
+    const box = document.createElement('div');
+    box.className = 'handoff';
+    box.style.cssText = 'margin:10px 0 4px;padding:10px 12px;border:1px solid #c9a84c;border-radius:6px;background:#0f2236';
+    const lab = toId
+      ? fromName + 'の出力を読み、次へ渡すかを決めてください。渡すまで' + toName + 'は動きません。'
+      : (fromName === '三段' ? 'あずさ・なぎさ・つかさの出力を読み、この提案を採用するか決めてください。採用するまで確定しません。' : fromName + 'の評価を読み、この提案を採用するか決めてください。');
+    box.innerHTML = '<div class="kb-note" style="margin-bottom:6px">' + lab + '</div>'
+      + '<div class="kb-bar">'
+      + '<button type="button" class="ho-go">' + (toId ? ('✔ ' + toName + 'へ渡す') : '✔ 採用（確定）') + '</button>'
+      + '<button type="button" class="ho-back">↩ 差し戻す</button>'
+      + '<button type="button" class="ho-blast blast-btn">💥 爆破（起案ごと白紙に戻す）</button>'
+      + '<input type="text" class="ho-reason" placeholder="差し戻す理由（一行）" style="flex:1;min-width:200px;background:#0d1b2a;color:#f5f0e8;border:1px solid #c9a84c66;border-radius:4px;padding:6px 8px;font-size:0.8rem">'
+      + '</div>';
+    host.appendChild(box);
+    const finish = function(decision){
+      const rec = { run: runId, client: revClientKey(), from: fromName, to: toName || '（最終）', decision: decision,
+                    reason: (box.querySelector('.ho-reason').value || '').trim(), time: kbNow() };
+      handoffLogPut(rec);
+      box.innerHTML = '<div class="kb-note">' + (decision === '渡す' ? '✔ ' + rec.time + '　' + fromName + ' → ' + rec.to + '（渡しました）'
+                       : decision === '爆破' ? '💥 ' + rec.time + '　' + fromName + 'の段で爆破'
+                       : '↩ ' + rec.time + '　' + fromName + '：差し戻し' + (rec.reason ? '（' + rec.reason + '）' : '')) + '</div>';
+      resolve(rec);
+    };
+    box.querySelector('.ho-go').addEventListener('click', function(){ finish('渡す'); });
+    box.querySelector('.ho-back').addEventListener('click', function(){ finish('差し戻し'); });
+    box.querySelector('.ho-blast').addEventListener('click', function(){ finish('爆破'); });
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+}
+function handoffLogShow(){
+  const a = handoffLogAll().slice().reverse();
+  if (!a.length) { alert('受け渡しの記録はまだありません。'); return; }
+  alert('受け渡しの記録（新しい順・最大300件）\n\n' + a.slice(0, 60).map(function(r){
+    return r.time + '　' + (r.client || '') + '　' + r.from + ' → ' + r.to + '　' + r.decision + (r.reason ? '（' + r.reason + '）' : '');
+  }).join('\n'));
+}
+
 async function run() {
   const aKey = '';  // Anthropicキーはリレー(Vercel)が保持するため入力不要
   const oKey = '';  // OpenAIキーはリレー(Vercel)が保持するため入力不要
@@ -1742,16 +1794,37 @@ async function run() {
     setStage('T', 'running', '評価中...');
     const tukasa = await callTsukasa(TSUKASA_PROMPT + (rev ? TSUKASA_REVISE_ADD : ''), origin + '\n\n【なぎさの出力】\n' + nagisa);
     showOutput('T', tukasa);
-    setStage('T', 'done', '完了');
+    setStage('T', 'done', '三段を通しました。内容を読んで、最終の採否を決めてください');
 
-    revSave({
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      time: kbNow(), client: revClientKey(), mode: mode,
-      purpose: purpose, situation: situation, input: input, reference: String(reference || '').slice(0, 30000),
-      outputs: { G: gateOut, A: azusa, N: nagisa, T: tukasa },
-      parent: rev ? rev.base.id : null, seq: rev ? ((rev.base.seq || 0) + 1) : 0,
-      revision: rev ? { who: rev.who, part: rev.part, text: rev.text } : null
-    });
+    /* 最終確認（2026-10-18）：三段を続けて動かした後、起案者が一度だけ読んで採用・差し戻し・爆破を決める。
+       決めた事実は本体と同じ受け渡し記録（trisight_handoff_log）と実行の記録に残す。 */
+    const runId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const handoffs = [];
+    const saveRun = function(final){
+      revSave({
+        id: runId,
+        time: kbNow(), client: revClientKey(), mode: mode,
+        purpose: purpose, situation: situation, input: input, reference: String(reference || '').slice(0, 30000),
+        outputs: { G: gateOut, A: azusa, N: nagisa, T: tukasa },
+        handoffs: handoffs.slice(), final: final,
+        parent: rev ? rev.base.id : null, seq: rev ? ((rev.base.seq || 0) + 1) : 0,
+        revision: rev ? { who: rev.who, part: rev.part, text: rev.text } : null
+      });
+    };
+    const hF = await tsHandoff(runId, 'T', '', '三段', '');
+    handoffs.push(hF);
+    if (hF.decision === '爆破') {
+      saveRun('爆破（最終確認）');
+      const k = revClientKey(); const before = (revAll()[k] || []).length;
+      revBlast();
+      if (!(before > 0 && (revAll()[k] || []).length === 0)) setStage('T', 'error', '爆破は取り消されました（この起案は保存済み）');
+    } else if (hF.decision !== '渡す') {
+      setStage('T', 'error', '差し戻し（' + (hF.reason || '理由なし') + '）');
+      saveRun('差し戻し（最終確認）');
+    } else {
+      setStage('T', 'done', '完了・採用（' + hF.time + '）');
+      saveRun('採用');
+    }
 
   } catch(e) {
     alert(e.message);

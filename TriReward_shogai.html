@@ -1847,5 +1847,11 @@ render();
 })();
 </script>
 
+<script src="TriSheetSync.js"></script>
+<script>
+/* 2026-10-19：基本情報シートの共有（この端末で基本情報シートの「この端末と共有」に印を付けたときだけ動く）。
+   この画面は開いたときに元帳を読むので、他の端末で直した会社の情報が届いたら「読み込み直す」の帯を出す。 */
+if(window.TriSheetSync) TriSheetSync.init({ notify:true });
+</script>
 </body>
 </html>

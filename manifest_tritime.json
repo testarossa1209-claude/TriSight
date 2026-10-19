@@ -1,0 +1,17 @@
+{
+  "id": "/TriSight/tritime",
+  "name": "TriTime ― 部署ごとの予定と記録",
+  "short_name": "TriTime",
+  "description": "訪問・モニタリングの予定、キャンセルの記録、利用者さんの経過を、部署ごとに時間の流れで持つ。同じ認証コードの端末どうしで記録を共有できる。",
+  "lang": "ja",
+  "start_url": "./TriTime.html",
+  "scope": "./TriTime.html",
+  "display": "standalone",
+  "background_color": "#f3f2ef",
+  "theme_color": "#10243b",
+  "icons": [
+    { "src": "TriTime_icon_192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "TriTime_icon_512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "TriTime_icon_512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

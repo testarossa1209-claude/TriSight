@@ -1835,7 +1835,10 @@ window.tsSyncBanner = function(msg){
     /* web- は、その場でウェブを検索して拾ったもの。当社が確認した固定情報とは別物として扱う。
        読み違えが混じりうるため、画面上でも必ず区別する。 */
     { prefix: "web-", short: "検索", full: "ウェブ検索（当社未確認）", open: "掲載元のページを開く",
-      bg: "#fdeaea", fg: "#8a2b2b" }
+      bg: "#fdeaea", fg: "#8a2b2b" },
+    /* 2026-10-19：手元の助成金一覧（トライグラントの働きを移したもの）。利用者が入れた一覧のため、当社は確かめていない */
+    { prefix: "list-", short: "手元の一覧", full: "手元の助成金一覧（利用者が入れたもの・当社未確認）", open: "掲載元のページを開く",
+      bg: "#f3eefc", fg: "#5a3a8a" }
   ];
   /* 出所を追加する口（2026-08-22）。ここに1行足せば、一覧のラベルも詳細の文言も揃う。
      リレー側は同じ形（action:list/detail、jGrantsと同じ項目名）で返すこと。 */
@@ -3990,7 +3993,9 @@ window.tsSyncBanner = function(msg){
     }
     function mechKey(d){
       d = d || {};
-      return [d.id||"", d.title||d.name||"", d.industry||"",
+      /* 2026-10-19：会社の名前も鍵に入れる。入れていなかったため、会社を切り替えて掘り直すと、
+         前の会社の足切りの答えがそのまま使われていた（まとめて探す試験で見つかった） */
+      return [(typeof tsCompanyKey === "function" ? tsCompanyKey() : ""), d.id||"", d.title||d.name||"", d.industry||"",
               d.target_area_search||"", d.target_area_detail||"",
               d.target_number_of_employees||"",
               (d.subsidy_max_limit==null?"":d.subsidy_max_limit)].join("\u0001")
@@ -4743,7 +4748,17 @@ window.tsSyncBanner = function(msg){
          0件の出所も「当たったが該当が無かった」として必ず残す。
          どこを調べたかが見えることが、人手では届かない範囲を当たっている証拠になる。 */
       const srcTally = [];
+      /* 2026-10-19：手元の助成金一覧（トライグラントの働きを移したもの）。
+         「手元の一覧だけ」のときは、Jグランツ・国・自治体へは探しに行かない。
+         どの入口から入った制度も、このあとの足切り・仕分け・判定は同じものを通す（2026-07-21の原則）。 */
+      const __tl = (window.TriGateList && typeof window.TriGateList.items === "function") ? window.TriGateList.items() : [];
+      const __tlOnly = !!(__tl.length && window.TriGateList.only());
+      /* まとめて探すとき、同じ地域を直前に検索した会社があれば、二社目からは台帳の分を使う（検索し直さない） */
+      const __tsSkip = !!(window.__tsSkipWeb && window.__tsSkipWeb === ((prefSel ? prefSel.value : "") + ((citySel && !citySel.disabled) ? citySel.value : "")));
       try{
+        let list = [];
+        let mlNote = "";
+        if(!__tlOnly){
         const res = await fetch(JG_RELAY, {
           method:"POST",
           headers:{"Content-Type":"application/json","x-trisight-code":code},
@@ -4756,12 +4771,11 @@ window.tsSyncBanner = function(msg){
           throw new Error("取得エラー（"+res.status+"）"+(detail ? "："+detail : ""));
         }
         const data = await res.json();
-        let list = Array.isArray(data.result) ? data.result : [];
+        list = Array.isArray(data.result) ? data.result : [];
         srcTally.push({ label: "Jグランツ", n: list.length, ok: true });
         /* 国土交通省の制度を合流させる（2026-08-22）。
            キーワードでは絞らない。業種による絞り込みは機械足切りの役目であり、
            運送3業種以外の会社では業種照合で自動的に落ちるため。 */
-        let mlNote = "";
         for(const src of TS_EXTRA_SOURCES){
           try{
             const mres = await fetch(src.url, {
@@ -4789,6 +4803,13 @@ window.tsSyncBanner = function(msg){
             mlNote += "（" + src.label + "の取得に失敗：" + String(err && err.message ? err.message : err).slice(0,30) + "）";
           }
         }
+        }
+        if(__tl.length){
+          const seen = {};
+          list.forEach(it => { if(it && it.id) seen[it.id] = true; });
+          list = list.concat(__tl.filter(it => it && it.id && !seen[it.id]));
+          srcTally.push({ label: "手元の一覧", n: __tl.length, ok: true });
+        }
         if(mlNote) st.textContent = mlNote;
         /* 検査の入力（2026-09-16）：Jグランツ・国・自治体の受付中の制度。ウェブ検索や外した案件を混ぜる前に控える */
         const extIds = list.map(function(it){ return String((it && it.id) || ""); }).filter(Boolean).sort();
@@ -4803,7 +4824,7 @@ window.tsSyncBanner = function(msg){
         let webNote = "";
         let webEntries = [];
         let ledgerNote = "";
-        if(selPref){
+        if(selPref && !__tlOnly){
           /* 台帳（年度×都道府県）を保管庫から取る。取れなければ端末の写しで進める */
           const ld = await tsLedgerLoad(selPref);
           if(!ld.ok){
@@ -4813,7 +4834,7 @@ window.tsSyncBanner = function(msg){
           const shu = document.getElementById("digShunushi");
           const wantShunushi = !!(shu && shu.checked);
           let webFresh = 0, webFailed = false;
-          if(!checkMode){
+          if(!checkMode && !__tsSkip){
             st.textContent = selArea + "の独自制度を検索しています…（もう少しかかります）";
             try{
               /* 施主（個人）向けを探すときは、業種の代わりに受給者の別を伝える。
@@ -4862,8 +4883,8 @@ window.tsSyncBanner = function(msg){
           }
           const webItems2 = tsLedgerList(selPref, selCity);
           if(!webFailed){
-            srcTally.push({ label: selArea + (checkMode ? "（台帳・検査のため検索せず）" : "（ウェブ検索）"),
-                            n: checkMode ? webItems2.length : webFresh, ok: true, entries: webEntries.length });
+            srcTally.push({ label: selArea + (checkMode ? "（台帳・検査のため検索せず）" : (__tsSkip ? "（台帳・まとめて探す中で直前に検索した結果）" : "（ウェブ検索）")),
+                            n: (checkMode || __tsSkip) ? webItems2.length : webFresh, ok: true, entries: webEntries.length });
           }
           if(webItems2.length){
             const seen = {};
@@ -4871,7 +4892,7 @@ window.tsSyncBanner = function(msg){
             list = list.concat(webItems2.filter(it => !seen[it.id]));
             try{ tsWebCacheSave(webItems2); }catch(_){}
             const newN = webItems2.filter(it => it.ts_new).length;
-            webNote += "／" + selArea + (checkMode ? "の台帳から " : "の検索で " + webFresh + "件・台帳から ")
+            webNote += "／" + selArea + ((checkMode || __tsSkip) ? "の台帳から " : "の検索で " + webFresh + "件・台帳から ")
                      + webItems2.length + "件を表示" + (newN ? "（うち新着 " + newN + "件）" : "")
                      + (webEntries.length ? "（ほかに探す手がかり" + webEntries.length + "件）" : "");
           }else if(!webFailed){
@@ -5452,10 +5473,10 @@ window.tsSyncBanner = function(msg){
             const it = itemById[id];
             const d = digDetails[id] || {};
             const g = { "判定": "要確認", "給付方式": resultMap[id]["給付方式"], "除外条件抵触": !!resultMap[id]["除外条件抵触"] };
-            if(!cands.some(c => c.id === id)){
+            if(!cands.some(c => c.id === id && String(c["会社"] || "") === tsCompanyKey())){
               cands.push({ id: id, title: (it && (it.title || it.name)) || "", "会社": tsCompanyKey(), saved: new Date().toISOString() });
             }
-            cands = cands.map(c => c.id === id
+            cands = cands.map(c => (c.id === id && String(c["会社"] || "") === tsCompanyKey())
               ? Object.assign(c, { gate: g, amount_max: (d.subsidy_max_limit != null ? d.subsidy_max_limit : null), gated: new Date().toISOString(), gate_lite: true })
               : c);
             setDigRowBadge(id, pjBadgeHtml(g, d.subsidy_max_limit, false));
@@ -5476,10 +5497,10 @@ window.tsSyncBanner = function(msg){
             const it = itemById[id];
             const d = digDetails[id] || {};
             const g = { "判定": "要確認", "給付方式": resultMap[id]["給付方式"], "除外条件抵触": !!resultMap[id]["除外条件抵触"] };
-            if(!cands.some(c => c.id === id)){
+            if(!cands.some(c => c.id === id && String(c["会社"] || "") === tsCompanyKey())){
               cands.push({ id: id, title: (it && (it.title || it.name)) || "", "会社": tsCompanyKey(), saved: new Date().toISOString() });
             }
-            cands = cands.map(c => c.id === id
+            cands = cands.map(c => (c.id === id && String(c["会社"] || "") === tsCompanyKey())
               ? Object.assign(c, { gate: g, amount_max: (d.subsidy_max_limit != null ? d.subsidy_max_limit : null), gated: new Date().toISOString(), gate_lite: true })
               : c);
             setDigRowBadge(id, pjBadgeHtml(g, d.subsidy_max_limit, false));
@@ -5510,7 +5531,7 @@ window.tsSyncBanner = function(msg){
     let gate = null;
     try{
       const cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]");
-      const hit = (cands || []).find(c => c && c.id === id);
+      const hit = (cands || []).find(c => c && c.id === id && String(c["会社"] || "") === tsCompanyKey());
       gate = hit && hit.gate ? hit.gate : null;
     }catch(e){ gate = null; }
 
@@ -5754,7 +5775,8 @@ window.tsSyncBanner = function(msg){
 
     async function fetchDetail(id){
       /* 検索分は手元の控えから返す */
-      if(String(id || "").indexOf("web-") === 0){
+      if(String(id || "").indexOf("web-") === 0 || String(id || "").indexOf("list-") === 0){
+        /* 2026-10-19：手元の助成金一覧（list-）も、利用者が入れた中身を手元の控えから返す */
         /* 2026-09-06：画面を開き直したあと、lastShow には控えから戻した「軽い行」が
            入っている。そこには公式ページのURLも要領のリンクも入っていないため、
            詳細を開いても公式ページの行が出ず、要領へ行く道が一つも無くなっていた。
@@ -5998,10 +6020,10 @@ window.tsSyncBanner = function(msg){
               const g = await aiGateCheck(d);
               try{
                 let cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]");
-                if(!cands.some(c => c.id === it.id)){
+                if(!cands.some(c => c.id === it.id && String(c["会社"] || "") === tsCompanyKey())){
                   cands.push({ id: it.id, title: (it.title || it.name || ""), "会社": tsCompanyKey(), saved: new Date().toISOString() });
                 }
-                cands = cands.map(c => c.id === it.id
+                cands = cands.map(c => (c.id === it.id && String(c["会社"] || "") === tsCompanyKey())
                   ? Object.assign(c, { gate: g, amount_max: (d.subsidy_max_limit != null ? d.subsidy_max_limit : null), gated: new Date().toISOString(), gate_lite: false })
                   : c);
                 localStorage.setItem("trisight_dig_candidates", JSON.stringify(cands));
@@ -6194,7 +6216,7 @@ window.tsSyncBanner = function(msg){
         const item = { id: id, title: baseRow.dataset.title, "会社": tsCompanyKey(), saved: new Date().toISOString() };
         let cands = [];
         try{ cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]"); }catch(_){ cands = []; }
-        if(!cands.some(c => c.id === item.id)) cands.push(item);
+        if(!cands.some(c => c.id === item.id && String(c["会社"] || "") === tsCompanyKey())) cands.push(item);
         localStorage.setItem("trisight_dig_candidates", JSON.stringify(cands));
         const msg = b.parentElement.querySelector(".digpicked");
         if(msg) msg.textContent = "候補に登録しました。";
@@ -6212,11 +6234,11 @@ window.tsSyncBanner = function(msg){
           if(box) box.innerHTML = gateHtml(g, id);
           try{
             let cands = JSON.parse(localStorage.getItem("trisight_dig_candidates") || "[]");
-            if(!cands.some(c => c.id === id)){
+            if(!cands.some(c => c.id === id && String(c["会社"] || "") === tsCompanyKey())){
               // 「候補に登録」を押していなくても、ゲート判定した以上は見込み額の対象にできるよう自動登録する
               cands.push({ id: id, title: (baseRow && baseRow.dataset.title) || "", "会社": tsCompanyKey(), saved: new Date().toISOString() });
             }
-            cands = cands.map(c => c.id === id
+            cands = cands.map(c => (c.id === id && String(c["会社"] || "") === tsCompanyKey())
               ? Object.assign(c, { gate: g, amount_max: (d && d.subsidy_max_limit != null ? d.subsidy_max_limit : null), gated: new Date().toISOString() })
               : c);
             localStorage.setItem("trisight_dig_candidates", JSON.stringify(cands));
@@ -8187,7 +8209,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-10-15-02';
+  const TRIGATE_VERSION = '2026-10-19-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -9071,6 +9093,8 @@ window.TSB_HOST = "gate";
 </script>
 
 <!-- 2026-10-15：共通の音声入力（右下のマイク。押した欄へ話した文字を入れる） -->
+<!-- 2026-10-19：まとめて探す・手元の助成金一覧（トライグラントの働きを移したもの） -->
+<script src="TriGateBulk.js"></script>
 <script src="TriVoiceEngine.js"></script>
 <script>if(window.TriVoice)TriVoice.dictation();</script>
 </body>

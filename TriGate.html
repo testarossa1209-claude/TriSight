@@ -8209,7 +8209,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-10-19-01';
+  const TRIGATE_VERSION = '2026-10-19-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -9095,6 +9095,8 @@ window.TSB_HOST = "gate";
 <!-- 2026-10-15：共通の音声入力（右下のマイク。押した欄へ話した文字を入れる） -->
 <!-- 2026-10-19：まとめて探す・手元の助成金一覧（トライグラントの働きを移したもの） -->
 <script src="TriGateBulk.js"></script>
+<!-- 2026-10-19：印の付いた案件を隠す・目安の効き方の説明・規模大の額を確かめる -->
+<script src="TriGateMarks.js"></script>
 <script src="TriVoiceEngine.js"></script>
 <script>if(window.TriVoice)TriVoice.dictation();</script>
 </body>

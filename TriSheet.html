@@ -83,7 +83,7 @@ pre.out{white-space:pre-wrap;font-size:12px;font-family:var(--font-mono);backgro
     <div style="font-size:20px;font-weight:500">基本情報シート</div>
   </div>
   <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">発行：合同会社トライサイト</div>
-  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-15-02</span> <span id="verMsg"></span></div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-19-01</span> <span id="verMsg"></span></div>
   <div style="border-top:1px solid var(--border-strong);margin:8px 0 12px"></div>
   <div id="orgBar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px">
     <label for="orgSel">登録している会社</label>
@@ -318,7 +318,7 @@ function ctl(f){
    1人＝{id, name, job, emp, mgr}。id はトライタイム側の職員と結び付けるための番号。
    名簿があるときは、従業員数（合計・正社員・非常勤）を名簿から数える。 */
 const RO_JOB='看護師（正看）|准看護師|介護職|相談員・ケアマネジャー|事務局|その他';
-const RO_EMP='常勤・正社員|常勤・正社員以外|非常勤';
+const RO_EMP='常勤・正社員|常勤・正社員以外|非常勤',RO_DEPT='訪問看護部|訪問介護部|特定障害相談部|居宅介護支援部|経営企画事務職';
 const RO_COUNT=['従業員数（合計）','うち正社員','うち非常勤'];
 function roList(){if(!Array.isArray(val['職員名簿']))val['職員名簿']=[];return val['職員名簿'];}
 function roId(){return 'R'+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36);}
@@ -344,6 +344,7 @@ function rosterHTML(){
     h+='<div class="ro" data-ro="'+i+'"><input type="text" data-rf="name" value="'+esc(r.name||'')+'" placeholder="呼び名" aria-label="呼び名">'
       +'<select data-rf="job" aria-label="職種">'+sel(RO_JOB,r.job||'','職種を選ぶ')+'</select>'
       +'<select data-rf="emp" aria-label="雇用形態">'+sel(RO_EMP,r.emp||'','雇用形態を選ぶ')+'</select>'
+      +'<select data-rf="dept" aria-label="所属部門">'+sel(RO_DEPT,r.dept||'','所属部門を選ぶ')+'</select>'
       +'<label><input type="checkbox" data-rf="mgr"'+(r.mgr?' checked':'')+'>管理者</label>'
       +'<button type="button" data-rodel="1">外す</button></div>';
   });
@@ -351,6 +352,7 @@ function rosterHTML(){
   h+='</div><div style="margin-top:6px"><button type="button" id="roAdd">職員を追加</button></div>';
   h+='<div class="nt" id="roCountNote"></div>';
   h+='<div class="nt">「管理者」は、事業所の管理者（訪問看護ステーションの管理者など）に付ける印です。</div>';
+  h+='<div class="nt">「所属部門」は、トライタイムで部署ごとに予定を組むときの担当の分け方になります（2026-10-19）。選んでいない人は、職種から部署を当てます。</div>';
   return h;
 }
 function hookRoster(){
@@ -367,7 +369,7 @@ function hookRoster(){
     };
   });
   const ad=document.getElementById('roAdd');
-  if(ad)ad.onclick=()=>{roList().push({id:roId(),name:'',job:'',emp:'',mgr:false});draw();const ins=document.querySelectorAll('#roTbl .ro[data-ro] [data-rf=name]');if(ins.length)ins[ins.length-1].focus();};
+  if(ad)ad.onclick=()=>{roList().push({id:roId(),name:'',job:'',emp:'',dept:'',mgr:false});draw();const ins=document.querySelectorAll('#roTbl .ro[data-ro] [data-rf=name]');if(ins.length)ins[ins.length-1].focus();};
   roRecount();
 }
 /* ---- 電話・FAX・メール（2026-10-14・9/25のご指摘：（　）－の形、＠の形） ---- */

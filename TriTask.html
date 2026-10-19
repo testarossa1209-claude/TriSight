@@ -350,10 +350,10 @@ function tsGoBack(){
   <!-- 入力 -->
   <section class="card" id="inputCard">
     <div class="card-label">親システムの理論・目標を入れてください</div>
-    <div class="card-hint">TriSight® が出した経営理論、TriGrantSupport® の採択要件、TriCare® の加算要件などを、そのまま貼り付けてください。</div>
+    <div class="card-hint">TriSight® が出した経営理論、トライゲイトで見つけた補助金・助成金の要件、TriCare® の加算要件などを、そのまま貼り付けてください。</div>
     <div class="src-row" id="srcRow">
       <span class="src-chip on" data-src="TriSight®（経営理論）">TriSight®（経営理論）</span>
-      <span class="src-chip" data-src="TriGrantSupport®（助成金要件）">TriGrantSupport®（助成金）</span>
+      <span class="src-chip" data-src="トライゲイト（補助金・助成金の要件）">トライゲイト（補助金・助成金）</span>
       <span class="src-chip" data-src="TriCare®／TriReward®（加算要件）">TriCare®／TriReward®（加算）</span>
       <span class="src-chip" data-src="その他">その他</span>
     </div>
@@ -427,7 +427,7 @@ function tsGoBack(){
     <div style="text-align:center"><button class="reset" id="resetBtn">別の理論で、最初からやり直す</button></div>
   </section>
 
-  <footer>TriTask® v0.3（版 2026-10-15-01） ／ TriSight® Family 共通基盤エンジン</footer>
+  <footer>TriTask® v0.3（版 2026-10-19-01） ／ TriSight® Family 共通基盤エンジン</footer>
 </div>
 
 <script>
@@ -637,7 +637,9 @@ function tsGoBack(){
 
   /* 2026-09-03：契約していない製品の入口を出さない。
      トライゲイト＋トライフォーム＋トライタスクの利用者に TriSight®・
-     TriGrantSupport®・TriCare® の名前を出しても、貼る中身が無い。 */
+     TriCare® の名前を出しても、貼る中身が無い。
+     2026-10-19：トライグラントをトライゲイトへ集約したため、補助金・助成金の選択肢は
+     「トライゲイト」とし、トライゲイトの契約の方にも出す（親システムだけの名前ではない）。 */
   function tsTrimSrcChips(){
     const row = $("srcRow");
     if(!row) return;
@@ -646,7 +648,6 @@ function tsGoBack(){
     row.querySelectorAll(".src-chip").forEach(c=>{
       const label = String(c.dataset.src || "");
       const parentOnly = label.indexOf("TriSight®") === 0
-        || label.indexOf("TriGrantSupport®") === 0
         || label.indexOf("TriCare®") === 0;
       const hide = parentOnly && !family;
       c.style.display = hide ? "none" : "";
@@ -1045,7 +1046,7 @@ function tsGoBack(){
       $("loading").classList.add("show");
       try{
         const theory = (g.program_name || "") + "\n" + (g.summary || "");
-        const plan = await decompose(theory, g.source_product || "TriGrantSupport®（助成金要件）");
+        const plan = await decompose(theory, g.source_product || "トライゲイト（補助金・助成金の要件）");
         renderPlan(plan);
         $("grantListCard").style.display = "none";
         $("inputCard").style.display = "none";

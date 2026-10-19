@@ -1,6 +1,6 @@
 /*! ===========================================================================
  *  TriEngines.js — TriSight® コモンエンジンの窓口（台帳と呼び出し口）
- *  版：2026-09-26-01
+ *  版：2026-10-19-01
  *  ---------------------------------------------------------------------------
  *  どの子システムからも、6つのコモンエンジンを同じ口で呼ぶための共通部品。
  *
@@ -23,7 +23,7 @@
 (function (global) {
   'use strict';
 
-  var VERSION = '2026-09-26-01';
+  var VERSION = '2026-10-19-01';
 
   /* ---- 保存領域（file:// 等で localStorage が使えなくても止めない） ---- */
   var store;
@@ -44,7 +44,7 @@
     Object.freeze({ id: 'triform', name: 'TriForm', kind: '画面', status: '稼働',
       role: '制度の言葉を、手の動く工程へ開く（必要書類・手順・期限を用意する）',
       page: 'TriForm.html', script: 'triform-send.js', outKey: 'tritask_inbox', inKey: 'tritask_inbox',
-      calledBy: 'トライグラント・トライゲイト・トライリワード' }),
+      calledBy: 'トライゲイト・トライリワード・トライルール（2026-10-19：トライグラントはトライゲイトへ集約）' }),
     Object.freeze({ id: 'tritask', name: 'TriTask', kind: '画面', status: '稼働',
       role: '理論を現場の作業に分け、AIが伴走して完遂まで見届ける',
       page: 'TriTask.html', script: 'triform-send.js', outKey: 'tritask_results', inKey: 'tritask_inbox',

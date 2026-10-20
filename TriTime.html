@@ -5,7 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TriTime（トライタイム） — 部署ごとの予定と記録</title>
 <link rel="icon" href="favicon.ico?v=2" sizes="any">
-<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="TriTime_icon_192.png">
+<!-- 2026-10-19：トライゲイトと同じく、タブレット・パソコンにトライタイムだけを「アプリとして入れる」ための設定 -->
+<link rel="manifest" href="manifest_tritime.json">
+<meta name="theme-color" content="#10243b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="TriTime">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
@@ -126,7 +132,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-19-01</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-19-02</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <div id="verNotice"></div>
@@ -1260,7 +1266,8 @@ function syncNow(){
   }
   return chain.then(function(){
     var s = lj(SYNC_KEY, {});
-    return relayCall('pull', { since: s.since || 0 });
+    /* 2026-10-19：基本情報シートの会社（種類 sheet）は受け取らない（タブレットに会社の情報を降ろさないため） */
+    return relayCall('pull', { since: s.since || 0, cols:['patients','staff','weekly','events','settings'] });
   }).then(function(j){
     var n = mergeIncoming(Array.isArray(j.items) ? j.items : []);
     var s = lj(SYNC_KEY, {}); s.since = j.now || s.since || 0; s.last = Date.now(); s.err = ''; sj(SYNC_KEY, s);
@@ -1581,6 +1588,23 @@ fetch('version.json', { cache:'no-store' }).then(function(r){ return r.ok ? r.js
 }).catch(function(){});
 
 })();
+</script>
+<script>
+/* 2026-10-19：共通の音声入力（右下のマイク）。押した欄へ、話した言葉をそのまま入れる。
+   経過の記録（今日やったこと・次回の約束）や連絡板の本文など、どの欄でも使える。
+   キャンセル受付の「話して入力」（AIが各欄へ振り分ける方）はこれまでどおり。
+   職員の呼び名の欄には入れない（基本情報シートの職員名簿と同じ扱い）。 */
+if(window.TriVoice && TriVoice.dictation) TriVoice.dictation({ exclude:'#st_name' });
+</script>
+<script src="TriSheetSync.js"></script>
+<script>
+/* 2026-10-19：基本情報シートの共有（この端末で基本情報シートの「この端末と共有」に印を付けたときだけ動く）。
+   トライタイムは「トライシートから読み込む」を押したときに元帳を読むので、届いても帯は出さない。 */
+if(window.TriSheetSync) TriSheetSync.init({ notify:false });
+/* 2026-10-19：アプリとして入れられるようにする（トライゲイトと同じ sw.js。中身は素通しで、キャッシュは持たない） */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').then(function(r){ r.update().catch(function(){}); }).catch(function(){}); });
+}
 </script>
 </body>
 </html>

@@ -83,8 +83,18 @@ pre.out{white-space:pre-wrap;font-size:12px;font-family:var(--font-mono);backgro
     <div style="font-size:20px;font-weight:500">基本情報シート</div>
   </div>
   <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">発行：合同会社トライサイト</div>
-  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-19-01</span> <span id="verMsg"></span></div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-19-02</span> <span id="verMsg"></span></div>
   <div style="border-top:1px solid var(--border-strong);margin:8px 0 12px"></div>
+  <!-- 2026-10-19：認証コードで端末どうし共有する（宏史さんの指示）。印を付けた端末だけが共有する。部品は TriSheetSync.js -->
+  <div id="tssBox" style="margin:0 0 12px;padding:10px 12px;border:0.5px solid var(--border-accent);border-radius:var(--radius);background:var(--surface-1);font-size:13px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <b style="font-size:14px">この端末と共有</b>
+      <label class="addsys"><input type="checkbox" id="tssOn"> 同じ認証コードの端末と、登録した会社の情報を共有する</label>
+      <button type="button" id="tssNow">今すぐ共有する</button>
+      <span id="tssMsg" style="font-size:12px"></span>
+    </div>
+    <div style="margin-top:6px;color:var(--text-secondary);line-height:1.7">印を付けると、ここに登録した会社（自社・顧客）と職員名簿が、当社の中継（保存先）を通って、同じ認証コードを入れた端末に届きます。事務局のパソコンで一度入れれば、ほかのパソコンでも同じ中身が出ます。印を付けない端末は、これまでどおりこの端末の中だけに置きます。利用者のアセスメント・モニタリングは送りません。</div>
+  </div>
   <div id="orgBar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px">
     <label for="orgSel">登録している会社</label>
     <select id="orgSel" style="min-width:260px"></select>
@@ -993,9 +1003,28 @@ function curOrg(){
   if(!DOC)return null;
   return DOC.orgs.find(o=>o.id===(DOC.sheetOrg||DOC.activeOrg))||DOC.orgs[0]||null;
 }
+/* 2026-10-19：元帳を書くとき、読み込んだ後に「他の画面・他の端末」が書き換えた会社を消さない。
+   この画面で直していない会社は、元帳にある新しい方を残す（共有で届いた会社・トライタイムで直した名簿を守る）。 */
+var DOC_BASE=null;
+function takeBase(d){const b={orgs:{},active:d?d.activeOrg:''};(d?d.orgs:[]).forEach(o=>{if(o&&o.id)b.orgs[o.id]=JSON.stringify(o);});DOC_BASE=b;}
+function mergeStored(){
+  if(!DOC||!DOC_BASE)return;
+  let st=null;try{st=JSON.parse(localStorage.getItem(MKEY)||'null');}catch(e){st=null;}
+  if(!st||!Array.isArray(st.orgs))return;
+  const mine=new Map(DOC.orgs.map((o,i)=>[o.id,i]));
+  st.orgs.forEach(so=>{
+    if(!so||!so.id)return;
+    const i=mine.get(so.id),js=JSON.stringify(so);
+    if(i==null){if(!(so.id in DOC_BASE.orgs))DOC.orgs.push(so);return;}          /* 後から届いた会社は足す */
+    const cur=JSON.stringify(DOC.orgs[i]);
+    if(cur===DOC_BASE.orgs[so.id]&&js!==cur)DOC.orgs[i]=so;                       /* この画面で直していない会社は、新しい方へ */
+  });
+  if(DOC.activeOrg===DOC_BASE.active&&st.activeOrg&&DOC.orgs.some(o=>o.id===st.activeOrg))DOC.activeOrg=st.activeOrg;
+}
 function writeDoc(){
+  mergeStored();
   DOC.updated=new Date().toLocaleString('ja-JP');
-  try{localStorage.setItem(MKEY,JSON.stringify(DOC));}
+  try{localStorage.setItem(MKEY,JSON.stringify(DOC));takeBase(DOC);if(window.TriSheetSync)TriSheetSync.soon();}
   catch(e){const r=document.getElementById('res');if(r){r.style.color='var(--text-danger)';r.textContent='この端末に保存できませんでした。ブラウザの保存が止められているか、保存できる容量を超えています';}}
 }
 function orgName(o){return (o&&o.corp&&o.corp.name)||(o&&o.sheet&&o.sheet.val&&o.sheet.val['法人名'])||'（名称未入力の会社）';}
@@ -1377,7 +1406,7 @@ function careMigrate(){
 /* ---- 起動 ---- */
 function boot(){
   const movedCare=careMigrate();
-  DOC=loadDoc();
+  DOC=loadDoc();takeBase(DOC);
   /* この版より前のシート（1社分だけの保存）を、会社の台帳へ引き継ぐ */
   let legacy=null;try{legacy=localStorage.getItem(SKEY);}catch(e){}
   if(legacy&&!DOC.orgs.some(o=>o.sheet)){
@@ -1409,7 +1438,7 @@ window.addEventListener('storage',e=>{
   const o2=d&&Array.isArray(d.orgs)?d.orgs.find(x=>x.id===org.id):null;
   const ro2=o2&&o2.sheet&&o2.sheet.val?o2.sheet.val['職員名簿']:null;
   if(!Array.isArray(ro2)||JSON.stringify(ro2)===JSON.stringify(val['職員名簿']||[]))return;
-  val['職員名簿']=ro2;DOC=loadDoc();draw();
+  val['職員名簿']=ro2;DOC=loadDoc();takeBase(DOC);draw();
   const m=document.getElementById('loadMsg');if(m){m.style.color='var(--text-secondary)';m.textContent='トライタイムで直した職員名簿を、この画面にも映しました';}
 });
 
@@ -1483,6 +1512,42 @@ window.addEventListener('storage',e=>{
   try{ mark(); }catch(_){}
 })();
 
+</script>
+<script src="TriSheetSync.js"></script>
+<script>
+/* 2026-10-19：この端末と共有（認証コードで、登録した会社の情報を端末どうし同じにする） */
+(function(){
+  if(!window.TriSheetSync)return;
+  var on=document.getElementById('tssOn'),now=document.getElementById('tssNow'),msg=document.getElementById('tssMsg');
+  function hm(t){var d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+  function show(i){
+    i=i||TriSheetSync.info();on.checked=i.enabled;
+    if(!i.enabled){msg.style.color='var(--text-secondary)';msg.textContent='共有していません（この端末の中だけに置いています）';return;}
+    if(i.err){msg.style.color='var(--text-danger)';msg.textContent='共有できませんでした：'+i.err;return;}
+    msg.style.color='var(--text-success)';msg.textContent=i.last?'共有しています（最後に共有した時刻 '+hm(i.last)+'）':'共有を始めます…';
+  }
+  /* 届いたとき：新しい会社を入れている途中・欄に入力している途中なら帯で知らせ、そうでなければその場で映し直す */
+  function reflect(){
+    const a=document.activeElement,typing=a&&a.closest&&a.closest('#form')&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
+    if(pending||typing)return false;
+    DOC=loadDoc();takeBase(DOC);
+    const org=curOrg();if(org)loadIntoView(org);
+    renderOrgBar();draw();
+    const m=document.getElementById('loadMsg');if(m){m.style.color='var(--text-secondary)';m.textContent='他の端末で直した会社の情報を、この画面に映しました';}
+    return true;
+  }
+  TriSheetSync.init({notify:false,onStatus:show,onPulled:function(){if(!reflect())TriSheetSync.showBar();}});
+  on.addEventListener('change',function(){
+    msg.style.color='var(--text-secondary)';msg.textContent=on.checked?'共有しています…':'';
+    TriSheetSync.setEnabled(on.checked).then(function(){show();});
+  });
+  now.addEventListener('click',function(){
+    if(!TriSheetSync.enabled()){msg.style.color='var(--text-warning)';msg.textContent='先に「共有する」に印を付けてください';return;}
+    msg.style.color='var(--text-secondary)';msg.textContent='共有しています…';
+    TriSheetSync.syncNow(true).then(function(){show();});
+  });
+  show();
+})();
 </script>
 <!-- 2026-10-15：共通の音声入力（右下のマイク。押した欄へ話した文字を入れる） -->
 <script src="TriVoiceEngine.js"></script>

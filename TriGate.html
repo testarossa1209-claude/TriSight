@@ -8209,7 +8209,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-10-19-02';
+  const TRIGATE_VERSION = '2026-10-19-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -9099,5 +9099,11 @@ window.TSB_HOST = "gate";
 <script src="TriGateMarks.js"></script>
 <script src="TriVoiceEngine.js"></script>
 <script>if(window.TriVoice)TriVoice.dictation();</script>
+<script src="TriSheetSync.js"></script>
+<script>
+/* 2026-10-19：基本情報シートの共有（この端末で基本情報シートの「この端末と共有」に印を付けたときだけ動く）。
+   トライゲイトは「シートから読み込む」を押したときに元帳を読むので、届いても帯は出さない。 */
+if(window.TriSheetSync) TriSheetSync.init({ notify:false });
+</script>
 </body>
 </html>

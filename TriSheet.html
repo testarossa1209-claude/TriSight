@@ -83,7 +83,7 @@ pre.out{white-space:pre-wrap;font-size:12px;font-family:var(--font-mono);backgro
     <div style="font-size:20px;font-weight:500">基本情報シート</div>
   </div>
   <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">発行：合同会社トライサイト</div>
-  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-19-02</span> <span id="verMsg"></span></div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-22-01</span> <span id="verMsg"></span></div>
   <div style="border-top:1px solid var(--border-strong);margin:8px 0 12px"></div>
   <!-- 2026-10-19：認証コードで端末どうし共有する（宏史さんの指示）。印を付けた端末だけが共有する。部品は TriSheetSync.js -->
   <div id="tssBox" style="margin:0 0 12px;padding:10px 12px;border:0.5px solid var(--border-accent);border-radius:var(--radius);background:var(--surface-1);font-size:13px">
@@ -795,6 +795,16 @@ document.getElementById('dl').onclick=async()=>{
     }
     return;
   }
+  // 2026-10-22：普通のブラウザ（GitHubから開いた画面）では、ブラウザのダウンロードで保存する
+  try{
+    const blob=new Blob([data],{type:'application/json;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=name;a.style.display='none';
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1500);
+    say(name+' を保存しました（パソコンの「ダウンロード」フォルダに入っています）','var(--text-success)');
+    return;
+  }catch(e){}
   // 保存の仕組みが使えないとき：中身を表示し、写して保存できるようにする
   const o=document.getElementById('out');o.textContent=data;o.style.display='block';
   document.getElementById('exp').textContent='書き出す内容を閉じる';

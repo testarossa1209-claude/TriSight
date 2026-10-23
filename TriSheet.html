@@ -83,7 +83,7 @@ pre.out{white-space:pre-wrap;font-size:12px;font-family:var(--font-mono);backgro
     <div style="font-size:20px;font-weight:500">基本情報シート</div>
   </div>
   <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">発行：合同会社トライサイト</div>
-  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-23-01</span> <span id="verMsg"></span></div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-23-02</span> <span id="verMsg"></span></div>
   <div style="border-top:1px solid var(--border-strong);margin:8px 0 12px"></div>
   <!-- 2026-10-19：認証コードで端末どうし共有する（宏史さんの指示）。印を付けた端末だけが共有する。部品は TriSheetSync.js -->
   <div id="tssBox" style="margin:0 0 12px;padding:10px 12px;border:0.5px solid var(--border-accent);border-radius:var(--radius);background:var(--surface-1);font-size:13px">
@@ -1498,7 +1498,7 @@ window.addEventListener('storage',e=>{
     if(document.getElementById('reqCss')) return;
     var s = document.createElement('style'); s.id = 'reqCss';
     s.textContent = '.req-badge{display:inline-block;margin-right:6px;padding:0 6px;border-radius:4px;background:#b3261e;color:#fff;font-size:11px;font-weight:600;line-height:1.6;vertical-align:1px}'
-      + '.req-note{margin:6px 0 10px;padding:8px 10px;border:1px solid #b3261e;border-radius:6px;color:#b3261e;font-size:12.5px;line-height:1.7}';
+      + '.req-note{grid-column:1/-1;margin:6px 0 10px;padding:8px 10px;border:1px solid #b3261e;border-radius:6px;color:#b3261e;font-size:12.5px;line-height:1.7}';
     document.head.appendChild(s);
   }
   function isSelf(){ try{ return (val.self || []).indexOf('自社の問題') !== -1 || (plan === 'S' && !!document.getElementById('r_q2') && !document.getElementById('r_q6')); }catch(_){ return false; } }
@@ -1516,7 +1516,9 @@ window.addEventListener('storage',e=>{
     });
     if(!document.getElementById('reqNote')){
       var first = document.getElementById('r_q2') || document.getElementById('r_' + ks[0]);
-      if(first && first.parentNode){ var n = document.createElement('div'); n.id = 'reqNote'; n.className = 'req-note'; n.textContent = NOTE; first.parentNode.insertBefore(n, first); }
+      /* 2026-10-23：設問を横に並べる行の中に入れると、12分の1の幅に押し込まれて縦に伸びるため、行の手前に置く */
+      var at = first && first.closest ? (first.closest('.row') || first) : first;
+      if(at && at.parentNode){ var n = document.createElement('div'); n.id = 'reqNote'; n.className = 'req-note'; n.textContent = NOTE; at.parentNode.insertBefore(n, at); }
     }
   }
   function emptyVal(k){ var x = (typeof val === 'object' && val) ? val[k] : undefined; return Array.isArray(x) ? !x.length : (x === undefined || x === null || x === ''); }

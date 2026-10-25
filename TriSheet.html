@@ -83,7 +83,7 @@ pre.out{white-space:pre-wrap;font-size:12px;font-family:var(--font-mono);backgro
     <div style="font-size:20px;font-weight:500">基本情報シート</div>
   </div>
   <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">発行：合同会社トライサイト</div>
-  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-25-01</span> <span id="verMsg"></span></div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-25-02</span> <span id="verMsg"></span></div>
   <div style="border-top:1px solid var(--border-strong);margin:8px 0 12px"></div>
   <!-- 2026-10-19：認証コードで端末どうし共有する（宏史さんの指示）。印を付けた端末だけが共有する。部品は TriSheetSync.js -->
   <div id="tssBox" style="margin:0 0 12px;padding:10px 12px;border:0.5px solid var(--border-accent);border-radius:var(--radius);background:var(--surface-1);font-size:13px">
@@ -334,7 +334,9 @@ function ctl(f){
    会社の職員を一人ずつ持つ。トライタイムなど子システムはここを読み、ここへ書き戻す。
    1人＝{id, name, job, emp, mgr}。id はトライタイム側の職員と結び付けるための番号。
    名簿があるときは、従業員数（合計・正社員・非常勤）を名簿から数える。 */
-const RO_JOB='看護師（正看）|准看護師|介護職|相談員・ケアマネジャー|事務局|その他';
+/* 2026-10-25：介護職を資格ごとに分けた（看護師・准看護師と同じ形。加算の条件・処遇改善加算の分配で使う）。
+   これより前に「介護職」で入れた人はそのまま残し、資格の入った職種を選び直すよう知らせる */
+const RO_JOB='看護師（正看）|准看護師|介護福祉士|介護職（実務者研修修了）|介護職（初任者研修修了）|介護職（資格なし）|相談員・ケアマネジャー|事務局|その他';
 const RO_EMP='常勤・正社員|常勤・正社員以外|非常勤',RO_DEPT='訪問看護部|訪問介護部|特定障害相談部|居宅介護支援部|経営企画事務職';
 const RO_COUNT=['従業員数（合計）','うち正社員','うち非常勤'];
 function roList(){if(!Array.isArray(val['職員名簿']))val['職員名簿']=[];return val['職員名簿'];}
@@ -352,7 +354,7 @@ function roRecount(){
 }
 function rosterHTML(){
   const a=roList();
-  const sel=(o,cur,ph)=>'<option value="">'+ph+'</option>'+o.split('|').map(x=>'<option'+(x===cur?' selected':'')+'>'+esc(x)+'</option>').join('');
+  const sel=(o,cur,ph)=>'<option value="">'+ph+'</option>'+o.split('|').map(x=>'<option'+(x===cur?' selected':'')+'>'+esc(x)+'</option>').join('')+(cur&&o.split('|').indexOf(cur)<0?'<option selected>'+esc(cur)+'</option>':'');
   let h='<style>#roTbl .ro{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border)}'
     +'#roTbl .ro input[type=text]{flex:2 1 180px;width:auto}#roTbl .ro select{flex:1 1 150px;width:auto}'
     +'#roTbl .ro label{display:flex;align-items:center;gap:4px;font-size:13px;white-space:nowrap}#roTbl .ro label input{width:auto}</style>';
@@ -368,6 +370,8 @@ function rosterHTML(){
   if(!a.length)h+='<div class="nt">まだ登録がありません。「職員を追加」で一人ずつ入れてください。</div>';
   h+='</div><div style="margin-top:6px"><button type="button" id="roAdd">職員を追加</button></div>';
   h+='<div class="nt" id="roCountNote"></div>';
+  const oldK=a.filter(r=>r&&r.job==='介護職').length;
+  h+='<div class="nt">介護職は資格ごとに選びます（介護福祉士・実務者研修修了・初任者研修修了・資格なし）。加算の条件や処遇改善加算の分配で使います（2026-10-25）。'+(oldK?'<span style="color:var(--text-warning)">資格の入っていない「介護職」のままの人が '+oldK+'人います。資格の入った職種を選び直してください。</span>':'')+'</div>';
   h+='<div class="nt">「管理者」は、事業所の管理者（訪問看護ステーションの管理者など）に付ける印です。</div>';
   h+='<div class="nt">「所属部門」は、トライタイムで部署ごとに予定を組むときの担当の分け方になります（2026-10-19）。選んでいない人は、職種から部署を当てます。</div>';
   return h;

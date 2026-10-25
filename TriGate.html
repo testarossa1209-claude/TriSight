@@ -1091,6 +1091,23 @@ window.tsSyncBanner = function(msg){
     tsCheckRelay(data);
     return (data && typeof data.text === "string") ? data.text.trim() : "";
   }
+  /* 2026-10-26：新着探索のボタンを押した直後に、中継で今月の発掘回数を数える。
+     { ok:true, dig } で進む。{ ok:false, why } で止める。中継が古い版（この仕組みが無い）なら数えずに進む。 */
+  async function tsDigStart(night){
+    const code = tsCode();
+    if(!code) return { ok:false, why:"認証コードが未入力のため中止しました。" };
+    let res;
+    try{
+      res = await fetch(GATE_RELAY, { method:"POST", headers:{"Content-Type":"application/json","x-trisight-code":code},
+        body: JSON.stringify({ task:"dig_start", payload:{ night: !!night } }) });
+    }catch(_){ return { ok:false, why: await window.tsNetWhy("判定エンジン", 0) }; }
+    if(tsAuthFail(res.status)) return { ok:false, why:"認証エラー（401）：認証コードを確認してください。" };
+    let j = null; try{ j = await res.json(); }catch(_){}
+    if(res.ok) return { ok:true, dig: (j && j.dig) || null };
+    const msg = (j && j.error) || ("判定エンジンの応答 " + res.status);
+    if(res.status === 400 && msg.indexOf("未知のtask") >= 0) return { ok:true, dig:null };
+    return { ok:false, why: msg };
+  }
   function tsCheckRelay(data){
     const ex = window.TS_EXPECT || {};
     const got = (data && data.relay_version) || "";
@@ -4724,6 +4741,12 @@ window.tsSyncBanner = function(msg){
       }
       btn.disabled = true;
       const checkMode = !!window.__tsCheckMode;   /* 検査のときは、ウェブ検索・台帳への書き込み・掲載元の見直しをしない */
+      /* 2026-10-26：今月の発掘回数を中継で数える（宏史さんの決定＝お客様は月1回、代理店・コンサルは月10回、追加は当社で足す）。
+         上限を超えていれば、ここで止めて理由を出す。中継がまだこの仕組みを持たない版なら、数えずに進む。 */
+      st.textContent = "今月の発掘回数を確かめています…";
+      const __dg = await tsDigStart(!!window.__tsNightRun);
+      if(!__dg.ok){ st.textContent = __dg.why; btn.disabled = false; return; }
+      window.__tsDigInfo = __dg.dig || null;
       window.__tsLedgerFresh = {};
       window.__tsLedgerNew = {};
       /* 2026-09-16：掘る前に、保管庫から最新（判定の記憶・消した印など）を取りに行く。
@@ -8209,7 +8232,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-10-19-03';
+  const TRIGATE_VERSION = '2026-10-26-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

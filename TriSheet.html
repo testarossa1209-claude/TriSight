@@ -83,17 +83,16 @@ pre.out{white-space:pre-wrap;font-size:12px;font-family:var(--font-mono);backgro
     <div style="font-size:20px;font-weight:500">基本情報シート</div>
   </div>
   <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">発行：合同会社トライサイト</div>
-  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-23-02</span> <span id="verMsg"></span></div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-25-01</span> <span id="verMsg"></span></div>
   <div style="border-top:1px solid var(--border-strong);margin:8px 0 12px"></div>
   <!-- 2026-10-19：認証コードで端末どうし共有する（宏史さんの指示）。印を付けた端末だけが共有する。部品は TriSheetSync.js -->
   <div id="tssBox" style="margin:0 0 12px;padding:10px 12px;border:0.5px solid var(--border-accent);border-radius:var(--radius);background:var(--surface-1);font-size:13px">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <b style="font-size:14px">この端末と共有</b>
       <label class="addsys"><input type="checkbox" id="tssOn"> 同じ認証コードの端末と、登録した会社の情報を共有する</label>
-      <button type="button" id="tssNow">今すぐ共有する</button>
       <span id="tssMsg" style="font-size:12px"></span>
     </div>
-    <div style="margin-top:6px;color:var(--text-secondary);line-height:1.7">印を付けると、ここに登録した会社（自社・顧客）と職員名簿が、当社の中継（保存先）を通って、同じ認証コードを入れた端末に届きます。事務局のパソコンで一度入れれば、ほかのパソコンでも同じ中身が出ます。印を付けない端末は、これまでどおりこの端末の中だけに置きます。利用者のアセスメント・モニタリングは送りません。</div>
+    <div style="margin-top:6px;color:var(--text-secondary);line-height:1.7">印を付けると、ここに登録した会社（自社・顧客）と職員名簿が、当社の中継（保存先）を通って、同じ認証コードを入れた端末に届きます。事務局のパソコンで一度入れれば、ほかのパソコンでも同じ中身が出ます。印を付けない端末は、これまでどおりこの端末の中だけに置きます。利用者のアセスメント・モニタリングは送りません。共有は自動です（保存するたびに送り、画面を開いている間は1分ごとに他の端末の変更を受け取ります）。</div>
   </div>
   <div id="orgBar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px">
     <label for="orgSel">登録している会社</label>
@@ -1555,7 +1554,7 @@ window.addEventListener('storage',e=>{
 /* 2026-10-19：この端末と共有（認証コードで、登録した会社の情報を端末どうし同じにする） */
 (function(){
   if(!window.TriSheetSync)return;
-  var on=document.getElementById('tssOn'),now=document.getElementById('tssNow'),msg=document.getElementById('tssMsg');
+  var on=document.getElementById('tssOn'),msg=document.getElementById('tssMsg');
   function hm(t){var d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
   function show(i){
     i=i||TriSheetSync.info();on.checked=i.enabled;
@@ -1577,11 +1576,6 @@ window.addEventListener('storage',e=>{
   on.addEventListener('change',function(){
     msg.style.color='var(--text-secondary)';msg.textContent=on.checked?'共有しています…':'';
     TriSheetSync.setEnabled(on.checked).then(function(){show();});
-  });
-  now.addEventListener('click',function(){
-    if(!TriSheetSync.enabled()){msg.style.color='var(--text-warning)';msg.textContent='先に「共有する」に印を付けてください';return;}
-    msg.style.color='var(--text-secondary)';msg.textContent='共有しています…';
-    TriSheetSync.syncNow(true).then(function(){show();});
   });
   show();
 })();

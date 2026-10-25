@@ -132,7 +132,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-19-02</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-25-01</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <div id="verNotice"></div>
@@ -348,7 +348,7 @@ function tsGoBack(){
     <p class="muted" id="st_pullMsg" style="margin:6px 0 10px"></p>
     <div class="row">
       <div><label class="f" for="st_name">呼び名</label><input type="text" id="st_name"></div>
-      <div><label class="f" for="st_job">職種</label><select id="st_job"><option>看護師（正看）</option><option>准看護師</option><option>介護職</option><option>相談員・ケアマネジャー</option><option>事務局</option><option>その他</option></select></div>
+      <div><label class="f" for="st_job">職種</label><select id="st_job"><option>看護師（正看）</option><option>准看護師</option><option>介護福祉士</option><option>介護職（実務者研修修了）</option><option>介護職（初任者研修修了）</option><option>介護職（資格なし）</option><option>相談員・ケアマネジャー</option><option>事務局</option><option>その他</option></select></div>
       <div><label class="f" for="st_dept">所属部門</label><select id="st_dept"><option value="">（職種から当てる）</option><option>訪問看護部</option><option>訪問介護部</option><option>特定障害相談部</option><option>居宅介護支援部</option><option>経営企画事務職</option></select></div>
       <div><label class="f" for="st_emp">雇用形態</label><select id="st_emp"><option>常勤</option><option>非常勤</option></select></div>
       <div><label class="f">&nbsp;</label><label><input type="checkbox" id="st_mgr"> 管理者</label></div>
@@ -482,7 +482,7 @@ function saveSettings(o){ o.upd = Date.now(); sj(K.settings, o); markDirty('sett
    部署ごとに自然に分かれる。共有（リレー）の作りは変えない。連絡板は全部署で共通。 */
 var DEPTS = [
   { k:'nurse',  name:'訪問看護部',     kind:'visit',   pfx:'',        client:'患者さん', worker:'看護師', workerSan:'看護師さん', jobs:['看護師（正看）','准看護師'], doctor:true,  report:true,  refusal:true },
-  { k:'kaigo',  name:'訪問介護部',     kind:'visit',   pfx:'kaigo:',  client:'利用者さん', worker:'ヘルパー', workerSan:'ヘルパーさん', jobs:['介護職'], doctor:false, report:false, refusal:true },
+  { k:'kaigo',  name:'訪問介護部',     kind:'visit',   pfx:'kaigo:',  client:'利用者さん', worker:'ヘルパー', workerSan:'ヘルパーさん', jobs:['介護職','介護福祉士','介護職（実務者研修修了）','介護職（初任者研修修了）','介護職（資格なし）'], doctor:false, report:false, refusal:true },
   { k:'soudan', name:'特定障害相談部', kind:'monitor', pfx:'soudan:', client:'利用者さん', worker:'相談員', workerSan:'相談員', jobs:['相談員・ケアマネジャー'] },
   { k:'kyotaku',name:'居宅介護支援部', kind:'monitor', pfx:'kyotaku:',client:'利用者さん', worker:'ケアマネジャー', workerSan:'ケアマネジャー', jobs:['相談員・ケアマネジャー'], paused:true },
   { k:'office', name:'経営企画事務職', kind:'office',  pfx:'office:', client:'利用者さん', worker:'職員', workerSan:'職員', jobs:['事務局'] }
@@ -508,7 +508,7 @@ function patient(no){ return patients().filter(function(p){ return p.no === no; 
 var NURSE_JOBS = ['看護師（正看）', '准看護師'];
 function jobOf(s){ if(s.job) return s.job; if(s.role === '看護師') return '看護師（正看）'; if(s.role === '事務局') return '事務局'; return ''; }
 function isMgr(s){ return !!s.mgr || s.role === '管理者'; }
-var JOB_SHORT = { '看護師（正看）':'正看', '准看護師':'准看' };
+var JOB_SHORT = { '看護師（正看）':'正看', '准看護師':'准看', '介護福祉士':'介福', '介護職（実務者研修修了）':'実務者', '介護職（初任者研修修了）':'初任者', '介護職（資格なし）':'資格なし' };
 function staffLabel(s){ var j = jobOf(s); var p = [JOB_SHORT[j] || j, s.emp || '', isMgr(s) ? '管理者' : ''].filter(Boolean); return s.name + (p.length ? '（' + p.join('・') + '）' : ''); }
 function nurses(){ return staff().filter(function(s){ return NURSE_JOBS.indexOf(jobOf(s)) >= 0; }); }
 /* 部署の職員：名簿の「所属部門」で分ける。所属部門が無い人は職種から当てる */
@@ -1117,7 +1117,7 @@ function renderSetup(){
   }); });
   $('stList').querySelectorAll('[data-stedit]').forEach(function(b){ b.addEventListener('click', function(){
     var s = staff().filter(function(x){ return x.id === b.getAttribute('data-stedit'); })[0]; if(!s) return;
-    $('st_id').value = s.id; $('st_name').value = s.name; $('st_job').value = jobOf(s) || 'その他'; $('st_dept').value = s.dept || ''; $('st_emp').value = s.emp || '常勤'; $('st_mgr').checked = isMgr(s);
+    $('st_id').value = s.id; $('st_name').value = s.name; (function(){ var sj = $('st_job'), jv = jobOf(s) || 'その他'; [].slice.call(sj.querySelectorAll('option[data-old]')).forEach(function(o){ o.remove(); }); if(![].some.call(sj.options, function(o){ return o.value === jv; })){ var op = document.createElement('option'); op.textContent = jv; op.dataset.old = '1'; sj.appendChild(op); } sj.value = jv; })(); $('st_dept').value = s.dept || ''; $('st_emp').value = s.emp || '常勤'; $('st_mgr').checked = isMgr(s);
     $('st_add').textContent = 'この内容で直す'; $('st_cancel').style.display = ''; $('st_name').focus();
   }); });
   $('stList').querySelectorAll('[data-stdel]').forEach(function(b){ b.addEventListener('click', function(){

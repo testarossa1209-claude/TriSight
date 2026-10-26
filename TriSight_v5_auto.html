@@ -726,6 +726,7 @@ function tsGoBack(){
         <div class="reference-title">▌ベース資料</div>
         <div class="reference-note">既存の運営規定・契約書・会員情報など、起案に関連するベース資料をコピペで貼付してください。AIの処理時に起案文と統合してAIに送信されます。</div>
         <textarea id="referenceInput" placeholder="ベース資料をここに貼り付けてください。"></textarea>
+        <div class="reference-note" style="margin-top:6px"><label class="kb-file">トライタイムの売上資料を読み込む<input type="file" accept=".json,application/json" style="display:none" onchange="trTimeImport(this)"></label> <span id="trTimeMsg"></span></div>
       </div>
       <div class="rev-box" id="revSection">
         <div class="input-title" style="margin-bottom:4px">▌修正（前回の提案をもとに作り直す）</div>
@@ -801,7 +802,7 @@ function tsGoBack(){
           <div onclick="openBusiness()" style="padding:12px 20px; cursor:pointer; color:#f5f0e8; font-size:0.85rem; border-bottom:1px solid rgba(201,168,76,0.2);">📋 ビジネスレポート</div>
     </div>      
      </div>  
-  <div class="wf-footer">© 2026 合同会社トライサイト　TriSight® is a registered trademark.<div class="verline" style="margin-top:6px;font-size:14px;color:#f5f0e8">版 <span id="verLabel">2026-10-18-03</span>（AI連携オプション）</div></div>
+  <div class="wf-footer">© 2026 合同会社トライサイト　TriSight® is a registered trademark.<div class="verline" style="margin-top:6px;font-size:14px;color:#f5f0e8">版 <span id="verLabel">2026-10-27-01</span>（AI連携オプション）</div></div>
 </div>
 
 <script>
@@ -1915,6 +1916,8 @@ window.addEventListener('DOMContentLoaded', function() {
   try {
     var parserOutput = localStorage.getItem('trisight_parser_output');
     var parserAt = Number(localStorage.getItem('trisight_parser_output_at') || 0);
+    var parserSrc = localStorage.getItem('trisight_parser_output_src') || '';
+    localStorage.removeItem('trisight_parser_output_src');
     /* 受け渡しは一度きり。読み取りから30分を過ぎたもの・時刻の記録が無い古いものは流し込まずに消す（別の会社の数字が混ざるのを防ぐ） */
     localStorage.removeItem('trisight_parser_output'); localStorage.removeItem('trisight_parser_output_at');
     if (!(parserAt && Date.now() - parserAt < 30 * 60 * 1000)) parserOutput = '';
@@ -1924,11 +1927,11 @@ window.addEventListener('DOMContentLoaded', function() {
       var refToggleBtn = document.getElementById('referenceToggleBtn');
       if (refInput) {
         refInput.value = parserOutput;
-        if (refSection) refSection.style.display = 'block';
-        if (refToggleBtn) refToggleBtn.textContent = '📎 ベース資料（数値解析ロボから自動流し込み済み）';
+        if (refSection) { refSection.style.display = 'block'; refSection.classList.add('visible'); }
+        if (refToggleBtn) refToggleBtn.textContent = '📎 ベース資料（' + (parserSrc || '数値解析ロボ') + 'から自動流し込み済み）';
         var banner = document.createElement('div');
         banner.style.cssText = 'position:fixed;top:20px;right:20px;background:#2d6a4f;color:white;padding:14px 20px;border-radius:0;z-index:9999;font-family:inherit;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,0.2)';
-        banner.textContent = '✓ 数値解析ロボから数値データを流し込みました';
+        banner.textContent = '✓ ' + (parserSrc || '数値解析ロボ') + 'から数値データを流し込みました';
         document.body.appendChild(banner);
         setTimeout(function() { banner.remove(); }, 5000);
       }
@@ -1937,6 +1940,26 @@ window.addEventListener('DOMContentLoaded', function() {
     console.error('数値解析ロボ連携エラー:', e);
   }
 });
+</script>
+      <script>
+/* ---- トライタイムの売上資料を読み込む（2026-10-27・宏史さんの指示「トライサイト側に資料が入るとより具体的な施策立案が可能になります」）----
+   トライタイムの「数字を書き出す」で出したファイル（app=TriTime・kind=salesReport）の文章を、ベース資料の欄の末尾に足す */
+function trTimeImport(inp){
+  var f = inp.files && inp.files[0]; if(!f) return;
+  var r = new FileReader();
+  r.onload = function(){
+    try{
+      var d = JSON.parse(r.result);
+      if(!d || d.app !== 'TriTime' || d.kind !== 'salesReport'){ alert('トライタイムの「数字を書き出す」で出したファイルではありません。'); return; }
+      if(!d.text){ alert('このファイルには文章が入っていません。トライタイムを新しい版にして、書き出し直してください。'); return; }
+      var ref = document.getElementById('referenceInput'), sec = document.getElementById('referenceSection');
+      ref.value = (ref.value.trim() ? ref.value.replace(/\s+$/, '') + '\n\n' : '') + d.text;
+      if(sec && !sec.classList.contains('visible')) toggleReference();
+      var m = document.getElementById('trTimeMsg'); if(m) m.textContent = '読み込みました（' + (d.dept || '') + '・' + String(d.made || '').replace('T', ' ') + ' に書き出したもの' + (d.hidden ? '・職員の名前は伏せてあります' : '・職員の名前が入っています') + '）。';
+    }catch(e){ alert('ファイルを読めませんでした。'); }
+  };
+  r.readAsText(f); inp.value = '';
+}
 </script>
       <!-- ===== ② TriVoice 音声入力（本体あずさ欄・素通しモード）ここから ===== -->
 <script src="TriVoiceEngine.js"></script>

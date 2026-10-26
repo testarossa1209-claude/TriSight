@@ -132,7 +132,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-26-04</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-26-05</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <div id="verNotice"></div>
@@ -535,8 +535,8 @@ function tsGoBack(){
   </div>
   <div class="card" id="cardFolder">
     <h2>記録の保管フォルダ（事業所のSSDなど）</h2>
-    <p class="lead">事業所のPCで一度フォルダを選ぶと、この端末の記録（患者さんの登録・予定・キャンセル・経過・看護記録・職員・決まりごと）を、そのフォルダへ自動で書き込みます。中は認証コードごとに分けて置き、別の認証コードの記録は読み込めません。記録は事業所のフォルダにだけ置かれ、トライサイト社は預かりません。</p>
-    <p class="muted">フォルダの中には「TriTime記録_（認証コードの印）」というフォルダができ、その中に「TriTime_最新.json」（いちばん新しい記録）と、「日別」フォルダの中に日ごとの控え（TriTime_記録_年-月-日.json）が残ります。新しい端末へ記録を戻すときは「このフォルダから読み込む」を押します。</p>
+    <p class="lead">事業所のPCで、認証コードごとに一度フォルダを選ぶと、この端末の記録（患者さんの登録・予定・キャンセル・経過・看護記録・職員・決まりごと）を、そのフォルダへ自動で書き込みます。中は認証コードごとに分けて置き、別の認証コードの記録は読み込めません。記録は事業所のフォルダにだけ置かれ、トライサイト社は預かりません。</p>
+    <p class="muted">フォルダの中には「TriTime_（認証コードの印）」というフォルダができ、その中に「TriTime_latest.json」（いちばん新しい記録）と、「daily」フォルダの中に日ごとの控え（TriTime_年-月-日.json）が残ります。新しい端末へ記録を戻すときは「このフォルダから読み込む」を押します。同じPCで別の会社の認証コードに切り替えたときは、その会社の保管フォルダを選び直します（会社ごとに別の場所へ置けます）。</p>
     <div class="btns"><button class="btn" type="button" id="fd_pick">フォルダを選ぶ</button><button class="btn sub" type="button" id="fd_now">いま書き込む</button><button class="btn sub" type="button" id="fd_load">このフォルダから読み込む</button></div>
     <p class="muted" id="fd_msg"></p>
   </div>
@@ -2187,11 +2187,13 @@ document.addEventListener('visibilitychange', function(){ if(document.visibility
    事業所のPC（Edge・Chrome）で選んだフォルダへ、この端末の記録を自動で書き込む。
    トライゲイトの保管庫（共有フォルダ）の仕組みを流用（一粒で二度おいしい）。
    フォルダの中は認証コードの指紋（コードそのものは書かない）ごとに分け、別のコードの記録は読み込まない。
+   保管フォルダそのものも認証コードごとに覚える（2026-10-26・宏史さんの決め：ノアの記録はトライサイト社のSSD、
+   ノア事務局がコンサルする会社の記録はノア事務局専用の保存先、と同じPCでも分けて置けるようにするため）。
    記録は事業所のフォルダにだけ置き、中継にもトライサイト社にも渡さない。 */
 var FD = { db:'tritime_folder', store:'h', key:'dir', handle:null, on:false, timer:null, last:0 };
 function fdIdb(){ return new Promise(function(ok, ng){ var q = indexedDB.open(FD.db, 1); q.onupgradeneeded = function(){ q.result.createObjectStore(FD.store); }; q.onsuccess = function(){ ok(q.result); }; q.onerror = function(){ ng(q.error); }; }); }
-function fdGetH(){ return fdIdb().then(function(db){ return new Promise(function(ok){ var q = db.transaction(FD.store, 'readonly').objectStore(FD.store).get(FD.key); q.onsuccess = function(){ ok(q.result || null); }; q.onerror = function(){ ok(null); }; }); }).catch(function(){ return null; }); }
-function fdSetH(h){ return fdIdb().then(function(db){ return new Promise(function(ok){ var t = db.transaction(FD.store, 'readwrite'); t.objectStore(FD.store).put(h, FD.key); t.oncomplete = ok; t.onerror = ok; }); }).catch(function(){}); }
+function fdGetH(){ return fdFp().then(function(fp){ return fdIdb().then(function(db){ return new Promise(function(ok){ var q = db.transaction(FD.store, 'readonly').objectStore(FD.store).get(FD.key + ':' + fp); q.onsuccess = function(){ ok(q.result || null); }; q.onerror = function(){ ok(null); }; }); }); }).catch(function(){ return null; }); }
+function fdSetH(h){ return fdFp().then(function(fp){ return fdIdb().then(function(db){ return new Promise(function(ok){ var t = db.transaction(FD.store, 'readwrite'); t.objectStore(FD.store).put(h, FD.key + ':' + fp); t.oncomplete = ok; t.onerror = ok; }); }); }).catch(function(){}); }
 function fdFp(){
   var c = tsCode(); if(!c) return Promise.resolve('');
   return crypto.subtle.digest('SHA-256', new TextEncoder().encode('tritime-folder:' + c)).then(function(b){ return Array.prototype.map.call(new Uint8Array(b).slice(0, 4), function(x){ return ('0' + x.toString(16)).slice(-2); }).join(''); });
@@ -2203,10 +2205,10 @@ function fdWrite(){
   if(!FD.on || !FD.handle) return Promise.resolve();
   return fdFp().then(function(fp){
     if(!fp){ fdMsg('認証コードが入っていないため、書き込みません。'); return; }
-    return FD.handle.getDirectoryHandle('TriTime記録_' + fp, { create:true }).then(function(sub){
+    return FD.handle.getDirectoryHandle('TriTime_' + fp, { create:true }).then(function(sub){
       var text = JSON.stringify(fdSnapshot(fp), null, 1);
-      return fdWriteFile(sub, 'TriTime_最新.json', text).then(function(){ return sub.getDirectoryHandle('日別', { create:true }); })
-        .then(function(day){ return fdWriteFile(day, 'TriTime_記録_' + ymd(new Date()) + '.json', text); });
+      return fdWriteFile(sub, 'TriTime_latest.json', text).then(function(){ return sub.getDirectoryHandle('daily', { create:true }); })
+        .then(function(day){ return fdWriteFile(day, 'TriTime_' + ymd(new Date()) + '.json', text); });
     }).then(function(){ FD.last = Date.now(); var t = new Date(FD.last); fdMsg('保管フォルダ：' + (FD.handle.name || '') + '（最後に書き込んだ時刻 ' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + '）'); });
   }).catch(function(e){ fdMsg('保管フォルダへ書き込めませんでした（この端末の中には残っています）：' + (e && e.message || e)); });
 }
@@ -2214,13 +2216,14 @@ function fdSoon(){ if(!FD.on) return; clearTimeout(FD.timer); FD.timer = setTime
 function fdActivate(h){ FD.handle = h; FD.on = true; $('fd_pick').textContent = 'フォルダを変える'; return fdWrite(); }
 function fdRestore(){
   if(!$('cardFolder')) return;
+  FD.handle = null; FD.on = false; $('fd_pick').textContent = 'フォルダを選ぶ';
   if(!('showDirectoryPicker' in window)){
     fdMsg('この端末のブラウザでは使えません（タブレットなど）。事業所のPC（Edge・Chrome）で設定してください。この端末の記録は、共有でPCへ届きます。');
     ['fd_pick','fd_now','fd_load'].forEach(function(id){ $(id).disabled = true; });
     return;
   }
   fdGetH().then(function(h){
-    if(!h){ fdMsg('保管フォルダはまだ選ばれていません。'); return; }
+    if(!h){ fdMsg('この認証コードの保管フォルダは、まだ選ばれていません。'); return; }
     return h.queryPermission({ mode:'readwrite' }).then(function(p){
       if(p === 'granted') return fdActivate(h);
       FD.handle = h; $('fd_pick').textContent = 'フォルダの利用を許可する';
@@ -2235,12 +2238,14 @@ $('fd_pick').addEventListener('click', function(){
   }
   window.showDirectoryPicker({ id:'tritime-folder', mode:'readwrite' }).then(function(h){ return fdSetH(h).then(function(){ return fdActivate(h); }); }).catch(function(){});
 });
+var fdCodeSeen = tsCode();
+window.addEventListener('focus', function(){ var c = tsCode(); if(c !== fdCodeSeen){ fdCodeSeen = c; fdRestore(); } });
 $('fd_now').addEventListener('click', function(){ if(!FD.on){ fdMsg('先に「フォルダを選ぶ」を押してください。'); return; } fdWrite(); });
 $('fd_load').addEventListener('click', function(){
   if(!FD.on || !FD.handle){ fdMsg('先に「フォルダを選ぶ」を押してください。'); return; }
   fdFp().then(function(fp){
     if(!fp){ fdMsg('認証コードが入っていないため、読み込めません。'); return; }
-    return FD.handle.getDirectoryHandle('TriTime記録_' + fp).then(function(sub){ return sub.getFileHandle('TriTime_最新.json'); }).then(function(fh){ return fh.getFile(); }).then(function(f){ return f.text(); })
+    return FD.handle.getDirectoryHandle('TriTime_' + fp).then(function(sub){ return sub.getFileHandle('TriTime_latest.json'); }).then(function(fh){ return fh.getFile(); }).then(function(f){ return f.text(); })
       .then(function(t){
         var d = JSON.parse(t);
         if(!d || d.app !== 'TriTime' || d.codeMark !== fp){ fdMsg('この認証コードの記録ではないため、読み込みませんでした。'); return; }

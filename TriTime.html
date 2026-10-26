@@ -169,7 +169,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-05</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-06</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -184,6 +184,7 @@ function tsGoBack(){
 <div id="verNotice"></div>
 <div id="alertBox"></div>
 <div class="note" id="shareNote"></div>
+<div class="note" id="roleNote" style="display:none"></div>
 
 <nav class="tabs" id="tabs">
   <button data-tab="plan" class="on">予定</button>
@@ -199,6 +200,10 @@ function tsGoBack(){
 
 <!-- ===== 予定係 ===== -->
 <section class="tab on" id="tab-plan">
+  <div class="card" id="cardMine" style="display:none">
+    <h2>あなたの今月の稼働率</h2>
+    <div id="mineBody"></div>
+  </div>
   <div class="card" id="cardSummary" style="display:none">
     <h2>各部署のようす</h2>
     <p class="lead">部署ごとの、今週の訪問・今週のキャンセル・期限の過ぎたモニタリングの件数です。中身を見るときは、上の「使う部署」で部署を選んでください。</p>
@@ -537,6 +542,15 @@ function tsGoBack(){
     <div id="md_judge"></div>
   </div>
 
+  <div class="card" id="cardPg">
+    <h2>この月の施策と、実績の売上</h2>
+    <p class="lead">上の「計算する月」の施策を書いておく欄です。「集計する」を押すと、その月に取り込んだ看護記録を訪問の消化として数え（看護記録1件＝訪問1件）、実績の売上と、上の「目標の売上」に対する達成率を出します。施策と集計の結果は、下の月次の売上資料と、親機トライサイトへ送る文章にも入ります。</p>
+    <label class="f" for="pg_text">この月の施策（目標に届かせるために何をするか）</label>
+    <textarea id="pg_text" placeholder="例：空き枠の多い木曜の午後に、新しい患者さんを入れる"></textarea>
+    <div class="btns"><button class="btn sub" id="pg_save">施策を保存する</button><button class="btn" id="pg_calc">集計する</button><span class="muted" id="pg_msg"></span></div>
+    <div class="tbl-scroll" id="pg_out"></div>
+  </div>
+
   <div class="card">
     <h2>稼働率（職員ごと）</h2>
     <p class="lead">モデルコースの件数を100%として、いまの週間予定と、実際に訪問した件数が何%かを出します。実際の件数は、取り込んだ看護記録から数えます。看護記録がまだ無いときは、右の欄に今月ここまでの件数を手で入れると、それで数えます。</p>
@@ -579,7 +593,7 @@ function tsGoBack(){
 
 <!-- ===== 名簿・設定 ===== -->
 <section class="tab" id="tab-setup">
-  <div class="card">
+  <div class="card" id="cardStaff">
     <h2>職員</h2>
     <p class="lead">職員は、トライシート（基本情報シート）の会社カード「人員」の「職員名簿」に入れたものを、この画面を開いたときと、ほかの端末から名簿が届いたときに自動で読み込みます。会社の基本情報と同じ名簿を使うので、二か所で入れ直す必要はありません。ここで足したり直したりした職員も、この端末のトライシートの名簿へ書き戻します。</p>
     <div class="btns"><button class="btn" id="st_pull">トライシートから読み込む</button><a class="btn sub" href="TriSheet.html?focus=roster" target="_blank" rel="noopener" style="text-decoration:none">トライシートの職員名簿を開く</a></div>
@@ -649,9 +663,10 @@ function tsGoBack(){
     <div class="btns"><button class="btn sub" id="im_read">読み取る</button></div>
     <div id="im_map"></div>
   </div>
-  <div class="card">
+  <div class="card" id="cardDev">
     <h2>この端末と共有</h2>
     <p class="lead">事務局のパソコンと看護師さんの端末で、同じ記録を見るための設定です。この端末を主に使う人を選ぶと、その人が担当する訪問にキャンセルが入ったとき、画面の上に知らせが出ます。</p>
+    <p class="muted">共有している端末では、ここで選んだ人によって見える範囲が変わります。職員は自分の予定と稼働率、部署の管理者は自分の部署の売上・稼働率・評価シート、経営企画事務職の職員は全部署の予定、経営企画事務職の管理者は全部署の売上と予定が見えます（管理者として見るには、下の「管理者の合言葉」も入れます）。使う人を選ぶまでは、このタブだけが出ます。</p>
     <div class="row">
       <div><label class="f" for="dv_me">この端末を主に使う人</label><select id="dv_me"></select></div>
       <div><label class="f">&nbsp;</label><label><input type="checkbox" id="dv_share"> 記録を共有する</label></div>
@@ -669,6 +684,16 @@ function tsGoBack(){
     </div>
     <p class="muted" id="ky_msg"></p>
   </div>
+  <div class="card" id="cardMgrKey">
+    <h2>管理者の合言葉（売上・評価を見る端末）</h2>
+    <p class="lead">売上・稼働率・評価シート・施策と目標は、管理者の端末だけに出します。この合言葉を入れた端末で、上の「この端末を使う人」が職員名簿で管理者になっている人のときに、管理者の画面が出ます。部署の管理者は自分の部署の分、経営企画事務職の管理者は全部署の分が見えます。目標・施策・保存した月の売上の数字は、この合言葉で鍵をかけてから共有するので、合言葉の無い端末には読める形で届きません。</p>
+    <p class="muted">上の「記録の鍵」とは別の合言葉を決めてください（8文字以上）。管理者の人だけに伝え、紙に書いて経営企画事務局で保管してください。忘れると、鍵をかけた売上の数字は誰にも読めなくなります。管理者の端末を職員に渡すときは、「この端末から外す」を押してください。</p>
+    <div class="row">
+      <div><label class="f" for="mk_pass">管理者の合言葉</label><input type="password" id="mk_pass" autocomplete="off"></div>
+      <div><label class="f">&nbsp;</label><button class="btn" id="mk_set">この端末に入れる</button> <button class="btn sub" id="mk_clear">この端末から外す</button></div>
+    </div>
+    <p class="muted" id="mk_msg"></p>
+  </div>
   <div class="card" id="cardRules">
     <h2>決まりごと <small class="muted" id="rulesDept"></small></h2>
     <div class="row">
@@ -680,7 +705,7 @@ function tsGoBack(){
     </div>
     <div class="btns"><button class="btn" id="s_save">保存する</button><span class="muted" id="s_msg"></span></div>
   </div>
-  <div class="card">
+  <div class="card" id="cardBackup">
     <h2>記録の書き出し・読み込み</h2>
     <p class="lead">この端末の記録を1つのファイルに書き出したり、書き出したファイルを読み込んだりします。読み込むと、この端末の記録は読み込んだ内容に置き換わります。</p>
     <div class="btns"><button class="btn sub" id="bk_out">記録を書き出す</button><label class="btn sub" for="bk_in" style="display:inline-block">記録を読み込む</label><input type="file" id="bk_in" accept=".json,application/json" style="display:none"></div>
@@ -709,7 +734,7 @@ function tsGoBack(){
    看護の中身の評価はしない。事実と、本人の言葉だけを持つ。
    ============================================================ */
 
-var K = { settings:'tritime_settings', patients:'tritime_patients', staff:'tritime_staff', weekly:'tritime_weekly', events:'tritime_events', records:'tritime_records' };
+var K = { settings:'tritime_settings', patients:'tritime_patients', staff:'tritime_staff', weekly:'tritime_weekly', events:'tritime_events', records:'tritime_records', mgmt:'tritime_mgmt' };
 var DOW = ['日','月','火','水','木','金','土'];
 var $ = function(id){ return document.getElementById(id); };
 
@@ -733,7 +758,7 @@ function yen(n){ return Number(n).toLocaleString('ja-JP') + '円'; }
    名簿・予定・記録は「1件ずつ」持つ。変えた件には時刻（upd）を付け、消した件は
    消さずに「消した印（del）」を付けて残す。共有のとき、どの端末の変更が新しいかを
    1件ずつ見分けるため。画面に出すときは消した印の付いた件を除く。 */
-var KEYF = { patients:'no', staff:'id', weekly:'id', events:'id', records:'id' };
+var KEYF = { patients:'no', staff:'id', weekly:'id', events:'id', records:'id', mgmt:'id' };
 var SYNC_KEY = 'tritime_sync', DEV_KEY = 'tritime_device', ALERT_KEY = 'tritime_alerts';
 function raw(col){ var a = lj(K[col], []); return Array.isArray(a) ? a : []; }
 function live(col){ return raw(col).filter(function(x){ return x && !x.del; }); }
@@ -834,6 +859,8 @@ function refreshSelects(){
   $('rq_fromList').innerHTML = staff().map(function(x){ return '<option value="' + esc(x.name) + '">'; }).join('');
   fillSelect('planStaff', ns, '全員');
   fillSelect('monStaff', ns, '全員');
+  var R = role(), lock = R.lv === 'staff' && !!R.s;
+  ['planStaff','monStaff'].forEach(function(id){ if(lock) $(id).value = R.s.id; $(id).disabled = lock; });
 }
 
 /* ---- 判定：キャンセル料 ---- */
@@ -1885,7 +1912,7 @@ function setShareNote(){
   if(!d.share){ n.innerHTML = 'この画面の記録は、いま開いている端末の中に保存されています。事務局と各部署の職員の端末で同じ記録を見るには、「名簿・設定」の「この端末と共有」で設定します。'; return; }
   var t = s.last ? new Date(s.last) : null;
   n.innerHTML = '記録を共有しています' + (t ? '（最後に共有した時刻 ' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + '）' : '') + '。' +
-    (d.me ? 'この端末を使う人：' + esc(staffName(d.me)) + '。' : '') + (s.err ? '<br><b style="color:var(--red)">' + esc(s.err) + '</b>' : '');
+    (d.me ? 'この端末を使う人：' + esc(staffName(d.me)) + '。' : '') + (s.mg ? '<br>' + esc(s.mg) : '') + (s.err ? '<br><b style="color:var(--red)">' + esc(s.err) + '</b>' : '');
 }
 function collectDirty(){
   var s = lj(SYNC_KEY, {}), dirty = s.dirty || {}, items = [];
@@ -1914,7 +1941,12 @@ function mergeIncoming(items){
   Object.keys(byCol).forEach(function(col){
     if(col === 'settings'){
       var it = byCol[col][byCol[col].length - 1], loc = lj(K.settings, {});
-      if(!(dirty.settings && dirty.settings.main && (loc.upd || 0) > (it.data.upd || 0)) && (it.data.upd || 0) >= (loc.upd || 0)){ sj(K.settings, it.data); changed++; }
+      if(!(dirty.settings && dirty.settings.main && (loc.upd || 0) > (it.data.upd || 0)) && (it.data.upd || 0) >= (loc.upd || 0)){
+        var nd = it.data;
+        /* 2026-10-27：古い設定のまま保存した端末から、確かめ用（kchk）の無い設定が届いても、手元のものを残して送り直す */
+        if(loc.kchk && !nd.kchk){ nd = Object.assign({}, nd, { kchk:loc.kchk, upd:Date.now() }); markDirty('settings', 'main'); }
+        sj(K.settings, nd); changed++;
+      }
       return;
     }
     var kf = KEYF[col]; if(!kf) return;
@@ -1984,23 +2016,26 @@ function loadKey(){
   if(!r || !window.crypto || !crypto.subtle) return Promise.resolve(null);
   return crypto.subtle.importKey('raw', unb64(r), 'AES-GCM', false, ['encrypt','decrypt']).then(function(k){ cryptoKey = k; return k; }, function(){ return null; });
 }
-function deriveRaw(phrase){
+function deriveRaw(phrase, salt){
   return crypto.subtle.importKey('raw', TE.encode(String(phrase).normalize('NFKC')), 'PBKDF2', false, ['deriveBits'])
-    .then(function(base){ return crypto.subtle.deriveBits({ name:'PBKDF2', salt:TE.encode('TriTime-records-v1'), iterations:210000, hash:'SHA-256' }, base, 256); });
+    .then(function(base){ return crypto.subtle.deriveBits({ name:'PBKDF2', salt:TE.encode(salt || 'TriTime-records-v1'), iterations:210000, hash:'SHA-256' }, base, 256); });
 }
 function encStr(key, s){ var iv = crypto.getRandomValues(new Uint8Array(12)); return crypto.subtle.encrypt({ name:'AES-GCM', iv:iv }, key, TE.encode(s)).then(function(ct){ return b64(iv) + '.' + b64(ct); }); }
 function decStr(key, t){ var p = String(t).split('.'); return crypto.subtle.decrypt({ name:'AES-GCM', iv:unb64(p[0]) }, key, unb64(p[1])).then(function(pt){ return TD.decode(pt); }); }
-function sealItem(key, it){
-  if(!ENC_COLS[it.col]) return Promise.resolve(it);
+function sealItem(key, it, mk){
+  if(it.col === 'mgmt' && String(it.id) === '_chk') return Promise.resolve(it);
+  if(it.col === 'mgmt') key = mk;
+  else if(!ENC_COLS[it.col]) return Promise.resolve(it);
   var kf = KEYF[it.col];
   return encStr(key, JSON.stringify(it.data)).then(function(c){ var d = { upd:it.data.upd || 0, enc:c }; d[kf] = it.data[kf]; return { col:it.col, id:it.id, data:d }; });
 }
-function openItems(items, key){
+function openItems(items, key, mk){
   var locked = lj(LOCK_KEY, []), out = [];
   return Promise.all(items.map(function(it){
     if(!it || !it.data || !it.data.enc){ out.push(it); return null; }
-    if(!key){ locked.push(it); return null; }
-    return decStr(key, it.data.enc).then(function(t){ var d = JSON.parse(t); if(it.data.srv) d.srv = it.data.srv; out.push({ col:it.col, id:it.id, data:d }); }, function(){ locked.push(it); });
+    var k = it.col === 'mgmt' ? mk : key;
+    if(!k){ if(it.col !== 'mgmt') locked.push(it); return null; }   /* 管理者の数字は、合言葉の無い端末には取っておかない */
+    return decStr(k, it.data.enc).then(function(t){ var d = JSON.parse(t); if(it.data.srv) d.srv = it.data.srv; out.push({ col:it.col, id:it.id, data:d }); }, function(){ locked.push(it); });
   })).then(function(){
     var m = {}; locked.forEach(function(it){ var k = it.col + '|' + it.id; if(!m[k] || (m[k].data.upd || 0) <= (it.data.upd || 0)) m[k] = it; });
     sj(LOCK_KEY, Object.keys(m).map(function(k){ return m[k]; }));
@@ -2032,12 +2067,62 @@ function keySet(){
     localStorage.setItem(EKEY, b64(raw)); cryptoKey = key; $('ky_pass').value = '';
     ['patients','events','records'].forEach(function(c){ raw2(c); });
     var locked = lj(LOCK_KEY, []); sj(LOCK_KEY, []);
-    return openItems(locked, key).then(function(items){ if(items.length) mergeIncoming(items); });
+    return loadMKey().then(function(mk){ return openItems(locked, key, mk); }).then(function(items){ if(items.length) mergeIncoming(items); });
   }).then(function(){ keyStatus(); refreshAll(); return syncNow(); }).then(function(){ $('ky_msg').insertAdjacentHTML('beforeend', '<br>合言葉を入れました。これまでの記録にも鍵をかけて送り直しました。'); })
   .catch(function(e){ $('ky_msg').textContent = e.message || '設定できませんでした。'; });
   function raw2(c){ raw_(c).forEach(function(x){ if(x && x[KEYF[c]] != null) markDirty(c, String(x[KEYF[c]])); }); }
 }
 function raw_(c){ return raw(c); }
+/* ---- 管理者の合言葉（2026-10-27・宏史さんの決め：見る範囲を職員／部署の管理者／事務局に分ける）----
+   mgmt（目標・施策・保存した月の数字・手入力の件数）は、この合言葉から作った鍵で鍵をかけて送る。
+   合言葉が合っているかは mgmt の「_chk」（確かめ用の暗号文。中身がもともと暗号文なので、そのまま送る）で見る。
+   settings は端末から1件まるごと上書きされるため、確かめ用を置くと消えることがある（2026-10-27 の確かめで見つけた）。記録の鍵とは別の鍵（作り方の塩を変えている）。 */
+var MKEY = 'tritime_mkey', mgrKey = null;
+function hasMgrKey(){ try{ return !!localStorage.getItem(MKEY); }catch(e){ return false; } }
+function loadMKey(){
+  if(mgrKey) return Promise.resolve(mgrKey);
+  var r = null; try{ r = localStorage.getItem(MKEY); }catch(e){}
+  if(!r || !window.crypto || !crypto.subtle) return Promise.resolve(null);
+  return crypto.subtle.importKey('raw', unb64(r), 'AES-GCM', false, ['encrypt','decrypt']).then(function(k){ mgrKey = k; return k; }, function(){ return null; });
+}
+function mkStatus(){
+  var el = $('mk_msg'); if(!el) return;
+  el.innerHTML = hasMgrKey() ? '<span class="tag green">この端末には管理者の合言葉が入っています</span> この端末を使う人が管理者のとき、売上・評価の画面が出ます。'
+    : '<span class="tag gray">この端末には管理者の合言葉が入っていません</span> 売上・評価の画面は出ません。';
+}
+function mkSet(){
+  var ph = $('mk_pass').value;
+  if(!window.crypto || !crypto.subtle){ $('mk_msg').textContent = 'この端末のブラウザでは鍵をかけられません。'; return; }
+  if(String(ph).length < 8){ alert('管理者の合言葉は8文字以上にしてください。'); return; }
+  if(!dev().share){ alert('先に「この端末と共有」で「記録を共有する」に印を付けて保存してください（共有していない端末は、合言葉が無くてもすべて見えます）。'); return; }
+  $('mk_msg').textContent = '確かめています…';
+  var rk, key;
+  deriveRaw(ph, 'TriTime-mgmt-v1').then(function(r){ rk = r; return crypto.subtle.importKey('raw', r, 'AES-GCM', false, ['encrypt','decrypt']); }).then(function(k){
+    key = k;
+    return relayCall('pull', { since:0, cols:['mgmt'] }).then(function(j){ return Array.isArray(j.items) ? j.items : []; }, function(e){ if(/種類/.test(e.message || '')) throw new Error('中継の更新がまだ済んでいないため、管理者の合言葉を確かめられません。中継の更新が済んでから、もう一度入れてください。'); throw e; });
+  }).then(function(items){
+    var ck = items.filter(function(x){ return String(x.id) === '_chk'; }).pop(), loc = live('mgmt').filter(function(x){ return x.id === '_chk'; })[0];
+    var chk = (ck && ck.data && ck.data.chk) || (loc && loc.chk);
+    var rest = items.filter(function(x){ return String(x.id) !== '_chk'; });
+    var test = chk ? decStr(key, chk).then(function(t){ if(t !== 'TriTime-MGR-OK') throw new Error('x'); }, function(){ throw new Error('管理者の合言葉が、決めたものと違います。入れ直してください。'); })
+      : encStr(key, 'TriTime-MGR-OK').then(function(c){ var all = live('mgmt').filter(function(x){ return x.id !== '_chk'; }); all.push({ id:'_chk', chk:c }); saveCol('mgmt', all); });
+    return test.then(function(){ return rest; });
+  }).then(function(rest){
+    localStorage.setItem(MKEY, b64(rk)); mgrKey = key; $('mk_pass').value = '';
+    live('mgmt').forEach(function(x){ markDirty('mgmt', String(x.id)); });
+    /* ほかの管理者の端末が送った数字を、はじめから受け取る */
+    return openItems(rest, null, key).then(function(items){ if(items.length) mergeIncoming(items); });
+  }).then(function(){ refreshAll(); return syncNow(); }).then(function(){ mkStatus(); $('mk_msg').insertAdjacentHTML('beforeend', '<br>管理者の合言葉を入れました。'); })
+  .catch(function(e){ $('mk_msg').textContent = e.message || '設定できませんでした。'; });
+}
+function mkClear(){
+  if(!hasMgrKey()){ mkStatus(); return; }
+  if(!confirm('この端末から管理者の合言葉を外します。この端末では売上・評価の画面が出なくなり、この端末にある管理者の数字も消します（ほかの管理者の端末と中継には残ります）。よろしいですか？')) return;
+  try{ localStorage.removeItem(MKEY); localStorage.removeItem(K.mgmt); }catch(e){}
+  mgrKey = null;
+  var s = lj(SYNC_KEY, {}); if(s.dirty) delete s.dirty.mgmt; sj(SYNC_KEY, s);
+  refreshAll(); mkStatus();
+}
 function pushChunks(items){
   var out = [], cur = [], size = 0;
   items.forEach(function(it){ var n = JSON.stringify(it).length; if(cur.length && (cur.length >= 200 || size + n > 300000)){ out.push(cur); cur = []; size = 0; } cur.push(it); size += n; });
@@ -2048,26 +2133,32 @@ function syncNow(){
   nrScanLocal();
   if(!dev().share || syncing) return Promise.resolve();
   syncing = true;
-  var key0 = null;
-  return loadKey().then(function(key){
-    key0 = key;
-    var pushed = collectDirty().filter(function(it){ return key || !ENC_COLS[it.col]; });
-    return Promise.all(pushed.map(function(it){ return sealItem(key, it).then(function(sealed){ return { o:it, s:sealed }; }); })).then(function(pairs){
+  var key0 = null, mk0 = null, mgNote = '';
+  return loadKey().then(function(key){ key0 = key; return loadMKey(); }).then(function(mk){
+    mk0 = mk;
+    var key = key0;
+    var pushed = collectDirty().filter(function(it){ return it.col === 'mgmt' ? !!mk : (key || !ENC_COLS[it.col]); });
+    return Promise.all(pushed.map(function(it){ return sealItem(key, it, mk).then(function(sealed){ return { o:it, s:sealed }; }); })).then(function(pairs){
       var chain = Promise.resolve();
-      pushChunks(pairs).forEach(function(chunk){
+      var main = pairs.filter(function(p){ return p.o.col !== 'mgmt'; }), mg = pairs.filter(function(p){ return p.o.col === 'mgmt'; });
+      pushChunks(main).forEach(function(chunk){
         chain = chain.then(function(){ return relayCall('push', { items:chunk.map(function(p){ return p.s; }) }).then(function(){ clearDirty(chunk.map(function(p){ return p.o; })); }); });
+      });
+      /* 管理者の数字は1部署ずつ送る。中継に受け口がまだ無いときは、ほかの記録の共有を止めずに手元に残す */
+      mg.forEach(function(p){
+        chain = chain.then(function(){ return relayCall('push', { items:[p.s] }).then(function(){ clearDirty([p.o]); }, function(e){ if(/種類/.test(e.message || '')) mgNote = '管理者の数字（目標・施策・保存した月）は、中継の更新が済むまでこの端末に置いています。'; else throw e; }); });
       });
       return chain;
     });
   }).then(function(){
     var s = lj(SYNC_KEY, {});
     /* 2026-10-19：基本情報シートの会社（種類 sheet）は受け取らない（タブレットに会社の情報を降ろさないため） */
-    return relayCall('pull', { since: s.since || 0, cols:['patients','staff','weekly','events','settings','records'] });
+    return relayCall('pull', { since: s.since || 0, cols:['patients','staff','weekly','events','settings','records'].concat(mk0 ? ['mgmt'] : []) });
   }).then(function(j){
-    return openItems(Array.isArray(j.items) ? j.items : [], key0).then(function(items){ return { j:j, items:items }; });
+    return openItems(Array.isArray(j.items) ? j.items : [], key0, mk0).then(function(items){ return { j:j, items:items }; });
   }).then(function(r){
     var n = mergeIncoming(r.items); if(n) fdSoon();
-    var s = lj(SYNC_KEY, {}); s.since = r.j.now || s.since || 0; s.last = Date.now(); s.err = ''; sj(SYNC_KEY, s);
+    var s = lj(SYNC_KEY, {}); s.since = r.j.now || s.since || 0; s.last = Date.now(); s.err = ''; s.mg = mgNote; sj(SYNC_KEY, s);
     if(n) refreshAll(); else { setShareNote(); keyStatus(); }
     renderAlerts();
   }).catch(function(e){
@@ -2186,7 +2277,26 @@ function renderSummary(){
       return '<tr><td>' + esc(d.name) + (d.paused ? ' <span class="tag">休止中</span>' : '') + '</td><td>' + deptStaff(d).length + '人</td><td>' + pts.length + '人</td><td>' +
         (d.kind === 'visit' ? wk.filter(function(v){ return inDept(v.no, d); }).length + '件' : '―') + '</td><td>' +
         cx.filter(function(e){ return inDept(e.patientNo, d); }).length + '件</td><td>' + (late == null ? '―' : late + '件') + '</td></tr>';
-    }).join('') + '</table>';
+    }).join('') + '</table>' + (canMoney() ? sumMoney() : '');
+}
+/* 経営企画事務職の管理者だけ：部署ごとの今月の売上と稼働率（各部署のモデルコースの計算と同じ数字） */
+function sumMoney(){
+  var m = ymd(new Date()).slice(0, 7), tot = { goal:0, sModel:0, sPlan:0, sFc:0, act:0, model:0, plan:0, actN:0, actModel:0 }, any = false;
+  var rows = DEPTS.filter(function(d){ return d.kind === 'visit' && !d.paused; }).map(function(d){
+    return withDept(d.k, function(){
+      var X = mdTotals(m);
+      if(!X) return '<tr><td>' + esc(d.name) + '</td><td colspan="8" class="muted">職員がいないため数えていません</td></tr>';
+      var A = mdActual(m, { F:X.F, rows:X.rows, avg:X.avg }), T = X.T, actModel = X.rows.filter(function(r){ return r.act != null; }).reduce(function(a, r){ return a + r.modelPast; }, 0);   /* 月次の売上資料と同じく、実績のある職員のモデルに対して */
+      any = true;
+      tot.goal += X.goal; tot.sModel += T.sModel; tot.sPlan += T.sPlan; tot.sFc += T.sFc; tot.act += A.yen; tot.model += T.model; tot.plan += T.plan; tot.actN += T.act; tot.actModel += actModel;
+      return '<tr><td>' + esc(d.name) + '</td><td class="num">' + (X.goal ? mdYen(X.goal) : '—') + '</td><td class="num">' + mdYen(T.sModel) + '</td><td class="num">' + mdYen(T.sPlan) + '</td><td class="num">' + mdYen(T.sFc) + '</td>' +
+        '<td class="num"><b>' + mdYen(A.yen) + '</b></td><td class="num">' + (X.goal ? mdPct(A.yen, X.goal) : '—') + '</td><td class="num">' + mdPct(T.plan, T.model) + '</td><td class="num">' + mdPct(T.act, actModel) + '</td></tr>';
+    });
+  }).join('');
+  return '<h3 style="margin-top:12px">各部署の今月の売上と稼働率（' + esc(jpMonth(m)) + '）</h3>' +
+    '<table><tr><th>部署</th><th class="num">目標</th><th class="num">モデルの売上</th><th class="num">予定の売上</th><th class="num">見込みの売上</th><th class="num">実績の売上<br><small>（看護記録）</small></th><th class="num">目標の達成率<br><small>（実績）</small></th><th class="num">予定の稼働率</th><th class="num">実績の稼働率</th></tr>' + rows +
+    (any ? '<tr><td><b>合計</b></td><td class="num">' + (tot.goal ? mdYen(tot.goal) : '—') + '</td><td class="num">' + mdYen(tot.sModel) + '</td><td class="num">' + mdYen(tot.sPlan) + '</td><td class="num">' + mdYen(tot.sFc) + '</td><td class="num"><b>' + mdYen(tot.act) + '</b></td><td class="num">' + (tot.goal ? mdPct(tot.act, tot.goal) : '—') + '</td><td class="num">' + mdPct(tot.plan, tot.model) + '</td><td class="num">' + mdPct(tot.actN, tot.actModel) + '</td></tr>' : '') + '</table>' +
+    '<p class="muted">各部署の「モデルコース」タブと同じ計算です。実績の売上は、今日までに取り込んだ看護記録を訪問の消化として数えたものです（看護記録の無い部署は、手で入れた件数があればその件数で数えます）。部署ごとの中身は、上の「使う部署」で部署を選び、「モデルコース」タブで見ます。</p>';
 }
 var DEPT_T = {
   nurse:  null,   /* 訪問看護部は画面に書いてある文のまま */
@@ -2199,8 +2309,8 @@ var DEPT_T = {
   office: { board:'連絡板（事務局から各部署へ）' }
 };
 function applyDept(){
-  var d = D();
-  $('deptBar').innerHTML = '<b>使う部署</b>' + DEPTS.map(function(x){
+  var R = roleFix(), d = D(), free = (R.lv === 'all' || R.lv === 'office');
+  $('deptBar').innerHTML = '<b>使う部署</b>' + DEPTS.filter(function(x){ return free || R.depts.indexOf(x) >= 0; }).map(function(x){
     return '<button type="button" data-dept="' + x.k + '" class="' + (x === d ? 'on' : '') + '">' + esc(x.name) + (x.paused ? ' <small>（休止中）</small>' : '') + '</button>';
   }).join('') + '<span class="dn">' + (d.paused ? d.name + 'は休止中です。名簿と記録は残せます。' :
     d.kind === 'office' ? '各部署の件数と連絡板を見ます。中身は部署を選んで見てください。' :
@@ -2221,17 +2331,80 @@ function applyDept(){
     '各部署の予定のようすと、事務局からの連絡（' + d.name + '）';
   var show = function(id, on){ var el = $(id); if(el) el.style.display = on ? '' : 'none'; };
   var tabOn = { plan:true, pt: d.kind !== 'office', intake: d.kind === 'visit', course: d.kind !== 'office', report: !!d.report, admin: d.kind === 'visit', model: d.kind === 'visit', req:true, setup:true };
+  /* 見る範囲（2026-10-27）：職員には管理者の窓とモデルコースを出さない。モデルコース（売上・評価）は管理者の端末だけ */
+  if(R.lv === 'none') Object.keys(tabOn).forEach(function(k){ tabOn[k] = (k === 'setup'); });
+  if(R.lv === 'staff') tabOn.admin = false;
+  if(!canMoney(d)) tabOn.model = false;
   document.querySelectorAll('#tabs button').forEach(function(b){ b.style.display = tabOn[b.getAttribute('data-tab')] ? '' : 'none'; });
   var cur = document.querySelector('#tabs button.on');
-  if(cur && !tabOn[cur.getAttribute('data-tab')]) document.querySelector('#tabs button[data-tab=plan]').click();
+  if(cur && !tabOn[cur.getAttribute('data-tab')]){ var first = [].filter.call(document.querySelectorAll('#tabs button'), function(b){ return tabOn[b.getAttribute('data-tab')]; })[0]; if(first) first.click(); }
   show('cardSummary', d.kind === 'office'); show('cardMonitor', d.kind === 'monitor'); show('cardPlan', d.kind === 'visit');
   show('cardAdDoctor', !!d.doctor); show('cardPt', d.kind !== 'office'); show('ptInstWrap', !!d.doctor); show('ptMon', d.kind === 'monitor');
   show('ptsInst', !!d.doctor); show('ptsRep', !!d.report); show('ptsPlan', d.kind === 'visit'); show('cardHard', d.kind === 'visit');
   show('cardWk', d.kind === 'visit'); show('cardIm', d.kind === 'visit'); show('cardRules', d.kind === 'visit');
   show('dDoctor', !!d.doctor);
+  /* 職員の端末：名簿・設定は、共有と合言葉の枠だけを出す。仮スケジュール表（予定を組む人の道具）も出さない */
+  var stf = (R.lv === 'staff');
+  ['cardStaff','cardLeave','cardWorkRule','cardBackup','cardFolder'].forEach(function(id){ show(id, !stf); });
+  if(stf){ ['cardWk','cardIm','cardRules'].forEach(function(id){ show(id, false); }); }
+  var ssHide = (R.lv === 'staff' || R.lv === 'none'); show('ssTab', !ssHide); if(ssHide && document.body.classList.contains('ssOpen')) ssOpen(false);
+  roleNote(R);
 }
 
+/* ---- 見る範囲（2026-10-27・宏史さんの決め）----
+   共有している端末では、「この端末を使う人」と、その人の職員名簿の印（部署・管理者）で見える範囲を決める。
+   ・職員：自分の部署の、自分の予定と自分の稼働率（売上は出さない）
+   ・部署の管理者：自分の部署の売上と稼働率（全体・職員ごと）・評価シート・施策と目標・実績の売上
+   ・経営企画事務職の職員：全部署の予定（売上は出さない）
+   ・経営企画事務職の管理者：全部署の売上と予定のすべて
+   管理者として見るには、その端末に「管理者の合言葉」が入っていること（看護師さんの端末で管理者を選んでも、合言葉が無ければ出ない）。
+   共有していない端末（1台だけで使う場合）は、これまでどおりすべて見える。 */
+function meStaff(){ var id = dev().me; if(!id) return null; return staff().filter(function(s){ return s.id === id; })[0] || null; }
+function myDepts(s){ var a = DEPTS.filter(function(x){ return deptStaff(x).some(function(y){ return y.id === s.id; }); }); if(!a.length){ var sd = staffDept(s); if(sd) a = [sd]; } return a; }
+function role(){
+  if(!dev().share) return { lv:'all', solo:true, depts:DEPTS };
+  var s = meStaff(); if(!s) return { lv:'none', depts:[] };
+  var ds = myDepts(s), office = ds.some(function(x){ return x.kind === 'office'; });
+  if(isMgr(s) && hasMgrKey()) return office ? { lv:'all', s:s, depts:DEPTS } : { lv:'dept', s:s, depts:ds };
+  if(office) return { lv:'office', s:s, depts:DEPTS, noKey:isMgr(s) };
+  return { lv:'staff', s:s, depts:ds, noKey:isMgr(s) };
+}
+function canMoney(d){ var r = role(); d = d || D(); return r.lv === 'all' || (r.lv === 'dept' && r.depts.indexOf(d) >= 0); }
+function roleFix(){
+  var r = role();
+  if(r.lv === 'all' || r.lv === 'office' || !r.depts.length) return r;
+  if(r.depts.indexOf(D()) < 0){ try{ localStorage.setItem(DEPT_KEY, r.depts[0].k); }catch(e){} }
+  return r;
+}
+function roleNote(R){
+  var el = $('roleNote'); if(!el) return;
+  var t = '', key = '「名簿・設定」タブの「管理者の合言葉」を入れると、管理者の画面が出ます。';
+  if(R.lv === 'none') t = '<b>この端末を使う人が、まだ選ばれていません。</b>「名簿・設定」タブの「この端末と共有」で、この端末を使う人を選んで「保存する」を押してください。選ぶまでは、このタブだけを出します。';
+  else if(R.lv === 'staff') t = '見える範囲：' + esc(R.s.name) + 'さんの予定と稼働率（' + esc(R.depts.map(function(x){ return x.name; }).join('・')) + '）。' + (R.noKey ? key : '');
+  else if(R.lv === 'dept') t = '見える範囲：' + esc(R.depts.map(function(x){ return x.name; }).join('・')) + 'の管理者（予定・売上・稼働率・評価シート・施策と目標）。';
+  else if(R.lv === 'office') t = '見える範囲：全部署の予定（売上は出しません）。' + (R.noKey ? key : '');
+  else if(!R.solo) t = '見える範囲：経営企画事務職の管理者（全部署の売上と予定）。';
+  el.innerHTML = t; el.style.display = t ? '' : 'none';
+}
+function withDept(k, fn){
+  var o = null; try{ o = localStorage.getItem(DEPT_KEY); localStorage.setItem(DEPT_KEY, k); }catch(e){}
+  try{ return fn(); } finally { try{ if(o == null) localStorage.removeItem(DEPT_KEY); else localStorage.setItem(DEPT_KEY, o); }catch(e){} }
+}
+/* 職員の端末：予定のタブの上に、自分の今月の稼働率だけを出す（売上は出さない） */
+function renderMine(){
+  var R = role(), card = $('cardMine'); if(!card) return;
+  var on = R.lv === 'staff' && R.s && D().kind === 'visit';
+  card.style.display = on ? '' : 'none'; if(!on) return;
+  var m = ymd(new Date()).slice(0, 7), r = mdStats(R.s, m);
+  if(!r.c.n){ $('mineBody').innerHTML = '<p class="empty">今月のモデルコース（1日の件数・出る曜日）がまだ決まっていません。管理者が決めると、ここに稼働率が出ます。</p>'; return; }
+  $('mineBody').innerHTML = '<p class="lead">' + esc(jpMonth(m)) + '：1日 ' + r.c.n + '件・' + esc(r.c.days.map(function(d){ return DOW[+d]; }).join('・')) + 'のモデルコースを100%として数えています。</p>' +
+    '<table><tr><th></th><th class="num">件数</th><th class="num">稼働率</th></tr>' +
+    '<tr><td>モデルコース（この月）</td><td class="num">' + r.model + '件</td><td class="num">100%</td></tr>' +
+    '<tr><td>いまの予定（キャンセル・休みの日を除く）</td><td class="num">' + r.plan + '件</td><td class="num"><b>' + mdPct(r.plan, r.model) + '</b></td></tr>' +
+    '<tr><td>実績（今日まで・' + (r.act != null ? esc(r.actSrc) : '記録なし') + '）</td><td class="num">' + (r.act != null ? r.act + '件' : '—') + '</td><td class="num">' + (r.act != null ? '<b>' + mdPct(r.act, r.modelPast) + '</b><br><small class="muted">今日までのモデル ' + r.modelPast + '件に対して</small>' : '—') + '</td></tr></table>';
+}
 function refreshAll(){
+  mgMigrate(); applyDept();
   setShareNote(); renderAlerts();
   refreshSelects(); nbRefreshForm();
   fillSelect('dv_me', staff().map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
@@ -2239,8 +2412,8 @@ function refreshAll(){
   $('dv_share').checked = dev().share;
   renderSetup(); renderPlan(); renderIntakeList(); renderCourse(); renderReport(); renderAdmin();
   renderMonitor(); renderSummary();
-  ptForm(); rdKinds(); renderPtList(); nrRender(); renderReq(); keyStatus();
-  if(typeof renderModel === 'function') renderModel();
+  ptForm(); rdKinds(); renderPtList(); nrRender(); renderReq(); keyStatus(); mkStatus(); renderMine();
+  if(typeof renderModel === 'function' && canMoney()) renderModel();
 }
 
 /* ---- 配線 ---- */
@@ -2308,6 +2481,8 @@ $('rq_show').addEventListener('change', renderReq);
 $('rq_copy').addEventListener('click', reqCopy);
 $('adHardSend').addEventListener('click', hardSend);
 $('ky_set').addEventListener('click', keySet);
+$('mk_set').addEventListener('click', mkSet);
+$('mk_clear').addEventListener('click', mkClear);
 function stSubDraw(cur){
   cur = cur || []; var main = $('st_dept').value;
   $('st_sub').innerHTML = DEPTS.map(function(d){ var m = d.name === main; return '<label style="margin-right:12px"><input type="checkbox" data-stsub="' + esc(d.name) + '"' + (cur.indexOf(d.name) >= 0 && !m ? ' checked' : '') + (m ? ' disabled' : '') + '> ' + esc(d.name) + (m ? '（所属）' : '') + '</label>'; }).join('');
@@ -2351,7 +2526,7 @@ $('dv_save').addEventListener('click', function(){
     if(lj(K.settings, null)) markDirty('settings', 'main');
   }
   $('dv_msg').textContent = '保存しました。';
-  setShareNote();
+  setShareNote(); refreshAll();
   if(dev().share) syncNow().then(function(){ $('dv_msg').textContent = lj(SYNC_KEY, {}).err ? '保存しました。共有はまだできていません（上の知らせを見てください）。' : '保存し、共有しました。'; });
 });
 $('dv_now').addEventListener('click', function(){
@@ -2626,8 +2801,49 @@ var MD_INS = ['精神科訪問看護（医療）', '医療保険', '介護保険
 var MD_DOW = ['1','2','3','4','5','6','0'];
 var mdPick = null;   /* 週間モデルコースで押した升 { sid, dow } */
 function mdAll(){ var s = lj(K.settings, {}) || {}; return s.model || {}; }
-function mdCfg(){ var m = mdAll()[D().k] || {}; return { staff:m.staff || {}, prices:m.prices || {}, goal:(m.goal == null ? '' : m.goal), manual:m.manual || {}, kanri:m.kanri || 'other', tanka:(+m.tanka || 11.05), shogu:!!m.shogu }; }
-function mdStore(c){ var cur = lj(K.settings, {}) || {}; var all = Object.assign({}, cur.model || {}); all[D().k] = c; saveSettings(Object.assign({}, cur, { model:all })); }
+/* 2026-10-27：目標・手入力の件数・保存した月の数字・施策は、settings ではなく mgmt（部署ごとに1件）に置く。
+   mgmt は共有のとき「管理者の合言葉」で鍵をかけるため、職員の端末には読める形で届かない。
+   件数と曜日・料金の区分は、職員の稼働率を出すのに使うので settings のまま。 */
+function mgOf(dk){ dk = dk || D().k; return live('mgmt').filter(function(x){ return x.id === dk; })[0] || { id:dk }; }
+function mgPut(dk, patch){
+  dk = dk || D().k;
+  var all = live('mgmt'), i = -1; all.forEach(function(x, j){ if(x.id === dk) i = j; });
+  var nx = Object.assign({}, i >= 0 ? all[i] : {}, patch, { id:dk });
+  if(i >= 0) all[i] = nx; else all.push(nx);
+  saveCol('mgmt', all);
+}
+function mdCfg(){ var m = mdAll()[D().k] || {}, g = mgOf(); var goal = g.goal != null ? g.goal : m.goal; return { staff:m.staff || {}, prices:m.prices || {}, goal:(goal == null ? '' : goal), manual:g.manual || m.manual || {}, kanri:m.kanri || 'other', tanka:(+m.tanka || 11.05), shogu:!!m.shogu }; }
+function mdStore(c){
+  var cur = lj(K.settings, {}) || {}; var all = Object.assign({}, cur.model || {});
+  all[D().k] = { staff:c.staff, prices:c.prices, kanri:c.kanri, tanka:c.tanka, shogu:c.shogu };
+  saveSettings(Object.assign({}, cur, { model:all }));
+  mgPut(D().k, { goal:c.goal, manual:c.manual });
+}
+/* これまで settings に置いていた目標・手入力の件数・保存した月の数字を、mgmt へ移す（一度だけ。移した後は settings から外す）。
+   どの端末でも同じ中身から移すので、移した件の時刻は「もとの設定の時刻」のままにする（今の時刻にすると、
+   あとから移した端末の古い中身が、ほかの管理者が直した新しい中身を上書きしてしまう。2026-10-27 の確かめで見つけた） */
+function mgMigrate(){
+  var cur = lj(K.settings, null); if(!cur) return;
+  var mod = cur.model || {}, snap = cur.modelSnap || {};
+  var need = Object.keys(snap).length > 0 || Object.keys(mod).some(function(k){ return mod[k] && (mod[k].goal != null || mod[k].manual); });
+  if(!need) return;
+  var t0 = cur.upd || 1, arr = raw('mgmt'), idx = {}, ks = {};
+  arr.forEach(function(x, i){ if(x) idx[x.id] = i; });
+  Object.keys(mod).concat(Object.keys(snap)).forEach(function(k){ ks[k] = 1; });
+  Object.keys(ks).forEach(function(k){
+    var x = mod[k] || {}, i = idx[k], it = (i != null) ? Object.assign({}, arr[i]) : { id:k, upd:t0 }, ch = false;
+    if(it.goal == null && x.goal != null){ it.goal = x.goal; ch = true; }
+    if(!it.manual && x.manual){ it.manual = x.manual; ch = true; }
+    if(snap[k]){ it.snaps = Object.assign({}, snap[k], it.snaps || {}); ch = true; }
+    if(!ch) return;
+    if(i != null) arr[i] = it; else arr.push(it);
+    markDirty('mgmt', k);
+  });
+  sj(K.mgmt, arr);
+  var nm = {};
+  Object.keys(mod).forEach(function(k){ var x = mod[k] || {}; nm[k] = { staff:x.staff, prices:x.prices, kanri:x.kanri, tanka:x.tanka, shogu:x.shogu }; });
+  var n = Object.assign({}, cur, { model:nm }); delete n.modelSnap; saveSettings(n);
+}
 function mdPeople(){ return deptStaff().filter(function(s){ return jobOf(s) !== '事務局'; }); }
 function mdWeekOf(sid){ return weekly().filter(function(v){ return v.staffId === sid || v.withId === sid; }); }   /* 同行（2名体制）も、その職員の時間を使う訪問として数える */
 /* 初めの値：常勤＝勤務の決まりの目標件数・公休以外の曜日。非常勤＝いまの週間予定（いちばん多い日の件数・予定のある曜日） */
@@ -2764,6 +2980,40 @@ function mdStats(s, m, F){
   }
   return r;
 }
+/* 実績の売上（2026-10-27・宏史さんの決め「看護記録をもって消化とする」）
+   その月に取り込んだ看護記録1件＝訪問1件の消化。週間予定の同じ日・同じ患者さんの訪問に当て、その訪問の料金表の売上を積む。
+   ・予定に無い訪問の記録は、その職員の1件あたりの売上で数える（「予定外」として件数も出す）
+   ・2名体制で同行した職員の記録は、件数（稼働）には数えるが、売上は担当の職員の分に入っているので足さない
+   ・看護記録の無い職員で、件数を手で入れている月は、その件数 × 1件あたりの売上で数える
+   ・記録の看護師の名前が名簿に無いものは「担当の分からない記録」として件数だけ出す */
+function mdActual(m, R){
+  R = R || mdRows(m);
+  var F = R.F, all = staff(), by = {}, used = {};
+  R.rows.forEach(function(r){ by[r.s.id] = { r:r, n:0, yen:0, off:0, withN:0, manual:false }; });
+  var unknown = 0;
+  live('records').forEach(function(x){
+    if(!x.date || ym(x.date) !== m) return;
+    var no = D().pfx + String(x.patientNo || '');
+    var st = recStaff(x, all), b = st && by[st.id];
+    if(!b){ if(inDept(no)) unknown++; return; }
+    var vs = visitsOn(x.date).filter(function(v){ return !v.cx && v.no === no && (v.staffId === st.id || v.withId === st.id) && !used[x.date + '|' + v.time + '|' + v.no + '|' + st.id]; });
+    var v = vs[0];
+    b.n++;
+    if(v){
+      used[x.date + '|' + v.time + '|' + v.no + '|' + st.id] = 1;
+      if(v.staffId !== st.id){ b.withN++; return; }
+      var f = F.map[x.date + '|' + v.time + '|' + v.no]; b.yen += f ? f.fee : 0;
+    } else { b.off++; b.yen += b.r.price || R.avg || 0; }
+  });
+  var out = { n:0, yen:0, off:0, withN:0, unknown:unknown, by:by };
+  R.rows.forEach(function(r){
+    var b = by[r.s.id];
+    if(r.actSrc === '手入力'){ b.n = r.act; b.yen = r.act * (r.price || 0); b.off = 0; b.withN = 0; b.manual = true; }
+    out.n += b.n; out.yen += b.yen; out.off += b.off; out.withN += b.withN;
+  });
+  out.yen = Math.round(out.yen);
+  return out;
+}
 function mdPct(a, b){ return b ? Math.round(a / b * 1000) / 10 + '%' : '—'; }
 function mdYen(n){ return yen(Math.round(n) || 0); }
 
@@ -2800,8 +3050,36 @@ function mdCollect(){
 function renderModel(){
   if(!$('tab-model')) return;
   if(!$('md_month').value) $('md_month').value = ymd(new Date()).slice(0, 7);
-  srAuto(); mdCond(); mdResult(); mdWeek(); mdDay(); evFill(); srList();
+  srAuto(); mdCond(); mdResult(); pgRender(); mdWeek(); mdDay(); evFill(); srList();
 }
+/* この月の施策と、実績の売上（集計ボタンで計算し、結果を mgmt に残す） */
+function pgRender(){
+  var m = $('md_month').value, pl = ((mgOf().plans || {})[m]) || {};
+  if(document.activeElement !== $('pg_text')) $('pg_text').value = pl.text || '';
+  var c = pl.calc;
+  if(!c){ $('pg_out').innerHTML = '<p class="empty">まだ集計していません。「集計する」を押すと、' + esc(m ? jpMonth(m) : 'この月') + 'の看護記録から実績の売上を出します。</p>'; return; }
+  var goal = +mdCfg().goal || 0;
+  $('pg_out').innerHTML = '<table><tr><th></th><th class="num">件数</th><th class="num">売上</th><th class="num">目標の達成率</th></tr>' +
+    '<tr><td><b>実績（看護記録で消化した訪問）</b><br><small class="muted">' + esc(String(c.at || '').replace('T', ' ')) + ' に集計</small></td><td class="num">' + c.n + '件</td><td class="num"><b>' + mdYen(c.yen) + '</b></td><td class="num"><b>' + (goal ? mdPct(c.yen, goal) : '—') + '</b></td></tr>' +
+    '<tr><td>今月の見込み（上の表と同じ）</td><td class="num">' + (c.fcN != null ? c.fcN + '件' : '—') + '</td><td class="num">' + (c.fc != null ? mdYen(c.fc) : '—') + '</td><td class="num">' + (goal && c.fc != null ? mdPct(c.fc, goal) : '—') + '</td></tr>' +
+    (goal ? '<tr><td>目標</td><td></td><td class="num">' + mdYen(goal) + '</td><td></td></tr>' : '') + '</table>' +
+    '<table style="margin-top:8px"><tr><th>職員</th><th class="num">消化した訪問</th><th class="num">うち予定外</th><th class="num">うち同行</th><th class="num">実績の売上</th></tr>' +
+    (c.rows || []).map(function(r){ return '<tr><td>' + esc(r.name) + (r.manual ? ' <small class="muted">（手入力の件数）</small>' : '') + '</td><td class="num">' + r.n + '件</td><td class="num">' + (r.off || 0) + '件</td><td class="num">' + (r.withN || 0) + '件</td><td class="num">' + mdYen(r.yen) + '</td></tr>'; }).join('') + '</table>' +
+    '<p class="muted" style="margin-top:6px">予定外の訪問は、その職員の1件あたりの売上で数えています。同行した職員の記録は件数だけ数え、売上は担当の職員の分に入れています。' + (c.unknown ? '<br><b style="color:var(--red)">記録の看護師の名前が職員名簿に見つからない看護記録が ' + c.unknown + '件あり、数えていません。</b>' : '') + '</p>';
+}
+$('pg_save').addEventListener('click', function(){
+  var m = $('md_month').value; if(!m){ $('pg_msg').textContent = '計算する月を選んでください。'; return; }
+  var pls = Object.assign({}, mgOf().plans || {}); pls[m] = Object.assign({}, pls[m] || {}, { text:$('pg_text').value.trim() });
+  mgPut(D().k, { plans:pls }); $('pg_msg').textContent = jpMonth(m) + 'の施策を保存しました。';
+});
+$('pg_calc').addEventListener('click', function(){
+  var m = $('md_month').value, X = mdTotals(m); if(!X){ $('pg_msg').textContent = '職員と計算する月を入れてください。'; return; }
+  var A = mdActual(m, { F:X.F, rows:X.rows, avg:X.avg });
+  var calc = { at:nowLocal(), n:A.n, yen:A.yen, off:A.off, withN:A.withN, unknown:A.unknown, fc:Math.round(X.T.sFc), fcN:Math.round(X.T.fc),
+    rows:X.rows.map(function(r){ var b = A.by[r.s.id]; return { name:r.s.name, n:b.n, off:b.off, withN:b.withN, yen:Math.round(b.yen), manual:b.manual }; }) };
+  var pls = Object.assign({}, mgOf().plans || {}); pls[m] = Object.assign({}, pls[m] || {}, { text:$('pg_text').value.trim(), calc:calc });
+  mgPut(D().k, { plans:pls }); pgRender(); $('pg_msg').textContent = '集計しました（施策も一緒に保存しました）。';
+});
 /* 月の合計（画面・保存・印刷で同じ数字を使う） */
 function mdTotals(m){
   var c = mdCfg();
@@ -3009,23 +3287,23 @@ function evPrint(list){
 $('ev_print').addEventListener('click', function(){ var id = $('ev_staff').value; var s = mdPeople().filter(function(x){ return x.id === id; })[0]; evPrint(s ? [s] : []); });
 $('ev_all').addEventListener('click', function(){ evPrint(mdPeople()); });
 /* ---- 月次の売上資料（経営陣向け）（2026-10-27・宏史さんの決め「8でよい」）----
-   月ごとの数字を settings.modelSnap[部署][年-月] に保存し、月ごとに並べて見る・印刷する・書き出す。
+   月ごとの数字を mgmt（部署ごとの1件）の snaps[年-月] に保存し（2026-10-27 までは settings.modelSnap）、月ごとに並べて見る・印刷する・書き出す。
    ・月が替わって最初にモデルコースを開いたとき、前の月の数字を自動で保存する（保存済みなら何もしない）
    ・「この月の数字を保存する」で、選んでいる月を保存（上書き）する
    ・書き出したファイルは、親機トライサイトへ施策の材料として渡すためのもの */
-function srAll(){ var s = lj(K.settings, {}) || {}; return s.modelSnap || {}; }
-function srOf(){ return srAll()[D().k] || {}; }
+function srOf(){ return mgOf().snaps || {}; }
 function srPut(m, snap){
-  var cur = lj(K.settings, {}) || {}, all = Object.assign({}, cur.modelSnap || {}), mine = Object.assign({}, all[D().k] || {});
+  var mine = Object.assign({}, srOf());
   if(snap) mine[m] = snap; else delete mine[m];
-  all[D().k] = mine; saveSettings(Object.assign({}, cur, { modelSnap:all }));
+  var ks = Object.keys(mine).sort(); while(ks.length > 36){ delete mine[ks.shift()]; }   /* 共有の1件の大きさに収めるため、3年分まで */
+  mgPut(D().k, { snaps:mine });
 }
 function srMake(m, auto){
   var X = mdTotals(m); if(!X) return null;
   var T = X.T, w = workRule(), solo = 0, soloN = 0;
   Object.keys(X.F.map).forEach(function(k){ var f = X.F.map[k]; if(!f.w && !f.ng && f.fee > 0){ solo += f.fee; soloN++; } });
-  var sAct = 0; X.rows.forEach(function(r){ if(r.act != null) sAct += r.act * r.price; });
-  return { saved:nowLocal(), auto:!!auto, month:m, dept:D().name, goal:X.goal, kanri:X.c.kanri,
+  var A = mdActual(m, { F:X.F, rows:X.rows, avg:X.avg }), sAct = A.yen, pl = (mgOf().plans || {})[m] || {};
+  return { saved:nowLocal(), auto:!!auto, month:m, dept:D().name, goal:X.goal, kanri:X.c.kanri, shisaku:pl.text || '', actDone:A.n, actOff:A.off, actUnknown:A.unknown,
     model:T.model, plan:T.plan, act:(T.actN ? T.act : null), actModel:X.rows.filter(function(r){ return r.act != null; }).reduce(function(a, r){ return a + r.modelPast; }, 0),
     fc:Math.round(T.fc), sModel:Math.round(T.sModel), sPlan:Math.round(T.sPlan), sFc:Math.round(T.sFc), sAct:Math.round(sAct),
     empty:T.empty, cxEff:T.cxEff, leave:T.leave, clash:T.clash, clashFix:T.clashFix, withN:T.withN, withMin:T.withN * w.visit,
@@ -3045,11 +3323,12 @@ function srRow(x, cls){
   var p = function(a, b){ return mdPct(a, b); };
   return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + esc(jpMonth(x.month)) + (x.live ? '<br><small class="muted">保存前</small>' : '') + '</td>' +
     '<td class="num">' + (x.goal ? mdYen(x.goal) : '—') + '</td><td class="num">' + mdYen(x.sModel) + '</td><td class="num">' + mdYen(x.sPlan) + '</td><td class="num">' + mdYen(x.sFc) + '</td>' +
-    '<td class="num"><b>' + (x.goal ? p(x.sFc, x.goal) : '—') + '</b></td><td class="num">' + p(x.plan, x.model) + '</td><td class="num">' + (x.act != null ? p(x.act, x.actModel) : '—') + '</td>' +
+    '<td class="num"><b>' + (x.goal ? p(x.sFc, x.goal) : '—') + '</b></td>' +
+    '<td class="num">' + (x.sAct != null ? mdYen(x.sAct) + (x.goal ? '<br><small class="muted">目標の ' + p(x.sAct, x.goal) + '</small>' : '') : '—') + '</td><td class="num">' + p(x.plan, x.model) + '</td><td class="num">' + (x.act != null ? p(x.act, x.actModel) : '—') + '</td>' +
     '<td class="num">' + mdYen(x.empty * x.avg) + '<br><small class="muted">' + x.empty + '件</small></td><td class="num">' + mdYen(x.cxEff * x.avg) + '<br><small class="muted">' + x.cxEff + '件</small></td><td class="num">' + mdYen(x.leave * x.avg) + '<br><small class="muted">' + x.leave + '件</small></td>' +
     '<td class="num">' + x.withN + '件<br><small class="muted">' + minLabel(x.withMin) + '</small></td>';
 }
-var SR_HEAD = '<tr><th>月</th><th class="num">目標</th><th class="num">モデルの売上</th><th class="num">予定の売上</th><th class="num">見込みの売上<br><small>（実績込み）</small></th><th class="num">目標の達成率<br><small>（見込み）</small></th><th class="num">予定の稼働率</th><th class="num">実績の稼働率</th><th class="num">空き枠</th><th class="num">キャンセル</th><th class="num">休みの届け</th><th class="num">2名体制の同行</th>';
+var SR_HEAD = '<tr><th>月</th><th class="num">目標</th><th class="num">モデルの売上</th><th class="num">予定の売上</th><th class="num">見込みの売上<br><small>（実績込み）</small></th><th class="num">目標の達成率<br><small>（見込み）</small></th><th class="num">実績の売上<br><small>（看護記録）</small></th><th class="num">予定の稼働率</th><th class="num">実績の稼働率</th><th class="num">空き枠</th><th class="num">キャンセル</th><th class="num">休みの届け</th><th class="num">2名体制の同行</th>';
 function srList(){
   var box = $('sr_list'); if(!box) return;
   var S = srOf(), ms = Object.keys(S).sort().reverse();
@@ -3115,11 +3394,14 @@ function srText(hide){
     (hide ? '職員の名前は伏せています。' : '') + '\n\n【月ごとの推移】\n';
   list.forEach(function(x){
     t += jpMonth(x.month) + (x.live ? '（保存前の計算）' : '') + '：目標 ' + (x.goal ? y(x.goal) : 'なし') + '／モデル ' + y(x.sModel) + '（' + x.model + '件）／予定 ' + y(x.sPlan) + '（' + x.plan + '件）／見込み ' + y(x.sFc) + (x.goal ? '（目標の達成率 ' + p(x.sFc, x.goal) + '）' : '') +
+      (x.sAct != null ? '／実績の売上（看護記録で消化した訪問）' + y(x.sAct) + (x.goal ? '（目標の達成率 ' + p(x.sAct, x.goal) + '）' : '') : '') +
       '／予定の稼働率 ' + p(x.plan, x.model) + '／実績の稼働率 ' + (x.act != null ? p(x.act, x.actModel) : '記録なし') +
       '／空き枠 ' + x.empty + '件（' + y(x.empty * x.avg) + '）／キャンセル ' + x.cxEff + '件（' + y(x.cxEff * x.avg) + '）／休みの届け ' + x.leave + '件（' + y(x.leave * x.avg) + '）' +
       '／2名体制の同行 ' + x.withN + '件（' + minLabel(x.withMin) + '）' + (x.soloAvg ? '／単独の訪問の平均 ' + y(x.soloAvg) : '') + (x.w4ng ? '／週4日目以降で算定できない訪問 ' + x.w4ng + '件' : '') +
       '／要調整（休みの日の予定）：届け ' + x.clash + '件・公休と祝日 ' + x.clashFix + '件\n';
   });
+  var pls = list.filter(function(x){ return x.shisaku; });
+  if(pls.length){ t += '\n【管理者が立てた施策】\n'; pls.forEach(function(x){ t += jpMonth(x.month) + '：' + String(x.shisaku).replace(/\s*\n\s*/g, '／') + '\n'; }); }
   t += '\n【職員ごとの数字（直近3か月）】\n';
   list.slice(-3).forEach(function(x){
     t += jpMonth(x.month) + '\n';

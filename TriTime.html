@@ -135,6 +135,14 @@
   .ssChip.cx{background:#fbecea;color:var(--red);text-decoration:line-through}
   .ssChip.meet{background:#fbf3e4}
   .ssFoot{font-size:12px;color:var(--muted);padding:8px 84px 14px 16px;border-top:1px solid var(--paper-deep)}
+  .ssBody th small.hol{display:block;color:var(--red);font-weight:400;font-size:10.5px;line-height:1.2}
+  .ssBody td.off{background:repeating-linear-gradient(135deg,#f1eee7 0 6px,#e9e5dc 6px 12px)}
+  .ssOff{display:block;font-size:11px;color:var(--muted);font-weight:700;margin-bottom:3px}
+  .ssChip.warn{background:#fbecea;color:var(--red);outline:1.5px solid var(--red)}
+  .ssGap{display:block;font-size:10.5px;line-height:1.3;margin:-1px 0 3px;color:var(--muted)}
+  .ssGap.short{color:var(--red);font-weight:700}
+  .ssCnt{display:block;font-size:10.5px;color:var(--muted);text-align:right}
+  .ssCnt.ok{color:var(--ok);font-weight:700}
   @media print{ .ssTab,.ssPanel{display:none} }
   @media print{ nav.tabs,.note,.btns,.mic{display:none} section.tab{display:none} section.tab.on{display:block} .card{box-shadow:none} }
 </style>
@@ -161,7 +169,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-26-09</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-26-10</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -170,7 +178,7 @@ function tsGoBack(){
   <div class="ssHead"><h2 id="ssTitle">仮スケジュール表</h2><button type="button" class="ssClose" id="ssClose" title="閉じる" aria-label="閉じる">×</button></div>
   <div class="ssNav"><b id="ssWeek"></b><button type="button" class="btn sub small" id="ssPrev">前の週</button><button type="button" class="btn sub small" id="ssThis">今週</button><button type="button" class="btn sub small" id="ssNext">次の週</button></div>
   <div class="ssBody" id="ssBody"></div>
-  <div class="ssFoot">週間予定をもとに、職員ごと・曜日ごとに並べた仮の表です。キャンセルの入った訪問は赤の取り消し線で出ます。週間予定を入れたり直したりすると、その場でこの表に映ります。</div>
+  <div class="ssFoot">週間予定をもとに、職員ごと・曜日ごとに並べた仮の表です。キャンセルの入った訪問は赤の取り消し線、休みの升は灰色の斜線、休みの日の訪問は赤枠の「要調整」で出ます。訪問の間が移動の目安より短いと赤字で、長いと「空き」で出ます。升の右下は、その日の件数です（目標に届くと緑）。週間予定を入れたり直したりすると、その場でこの表に映ります。</div>
 </aside>
 
 <div id="verNotice"></div>
@@ -476,6 +484,12 @@ function tsGoBack(){
     <label class="f" for="ad_month">月</label><input type="month" id="ad_month" style="max-width:220px">
     <div class="tbl-scroll" id="adCancel"></div>
   </div>
+  <div class="card" id="cardAttend">
+    <h2>出勤と実績（月）</h2>
+    <p class="lead">上で選んだ月の、職員ごとの出勤とサービスの実績です。実績は、取り込んだ看護記録（訪問の開始・終了の時刻と看護師名）から数えます。予定は週間予定から、休みは公休の曜日・祝日・休みの届けから数えます。</p>
+    <div class="tbl-scroll" id="adAttend"></div>
+    <div id="adAttendNote" class="muted"></div>
+  </div>
   <div class="card" id="cardHard">
     <h2>看護部への月の報告（困難患者）</h2>
     <p class="lead">上で選んだ月に、キャンセル・変更が決まった回数以上あった患者さんと、困難事例の印が付いている患者さんを並べます。「連絡板で看護部へ出す」を押すと、看護部の全員あてに連絡板へ出ます。</p>
@@ -512,8 +526,41 @@ function tsGoBack(){
       <div><label class="f">&nbsp;</label><label><input type="checkbox" id="st_mgr"> 管理者</label></div>
     </div>
     <div style="margin-top:8px"><label class="f">兼務する部署（所属部門のほかに横断して入る部署に印を付けます）</label><div id="st_sub" class="btns" style="margin-top:2px"></div></div>
+    <div style="margin-top:8px"><label class="f">公休の曜日（毎週決まって休む曜日に印を付けます）</label><div id="st_off" class="btns" style="margin-top:2px"></div>
+      <label style="display:inline-flex;align-items:center;gap:6px;margin-top:4px"><input type="checkbox" id="st_hol"> 祝日は休み（祝日に訪問が入ると「要調整」の印が出ます）</label></div>
     <input type="hidden" id="st_id"><div class="btns"><button class="btn" id="st_add">追加する</button><button class="btn sub" id="st_cancel" style="display:none">直すのをやめる</button></div>
     <div class="tbl-scroll" id="stList"></div>
+  </div>
+  <div class="card" id="cardLeave">
+    <h2>休みの届け</h2>
+    <p class="lead">公休の曜日のほかに休む日（有休・希望休・急な休み・振替休日など）を、日付で入れます。仮スケジュール表では休みの升が灰色になり、休みの日に訪問が入っていれば「要調整」の印が出ます。管理者の窓の「出勤と実績」でも、休みの日として数えます。</p>
+    <div class="row">
+      <div><label class="f" for="lv_staff">職員</label><select id="lv_staff"></select></div>
+      <div><label class="f" for="lv_date">休む日</label><input type="date" id="lv_date"></div>
+      <div><label class="f" for="lv_kind">種類</label><select id="lv_kind"><option>有休</option><option>希望休</option><option>急な休み</option><option>振替休日</option><option>その他</option></select></div>
+      <div><label class="f" for="lv_memo">メモ（なくても可）</label><input type="text" id="lv_memo"></div>
+    </div>
+    <div class="btns"><button class="btn" id="lv_add">休みを入れる</button><span class="muted" id="lv_msg"></span></div>
+    <div class="row"><div><label class="f" for="lv_month">表示する月</label><input type="month" id="lv_month" style="max-width:220px"></div></div>
+    <div class="tbl-scroll" id="lvList"></div>
+  </div>
+  <div class="card" id="cardWorkRule">
+    <h2>勤務の決まり</h2>
+    <p class="lead">仮スケジュール表の印と、管理者の窓の「出勤と実績」の計算に使います。常勤の所定の勤務時間から、サービス時間・移動の見積もり・休憩を引いた残りを、内勤と予備の時間として出します。</p>
+    <div class="row">
+      <div><label class="f" for="wr_target">1日の目標件数</label><input type="number" id="wr_target" min="1" max="20"></div>
+      <div><label class="f" for="wr_mvmin">訪問の間の移動の目安・最短（分）</label><input type="number" id="wr_mvmin" min="0" max="60"></div>
+      <div><label class="f" for="wr_mvmax">移動の目安・最長（分）</label><input type="number" id="wr_mvmax" min="1" max="120"></div>
+      <div><label class="f" for="wr_visit">1回の訪問の決まりの長さ（分）</label><input type="number" id="wr_visit" min="10" max="120" step="5"></div>
+    </div>
+    <div class="row">
+      <div><label class="f" for="wr_start">常勤の出勤時刻</label><input type="time" id="wr_start"></div>
+      <div><label class="f" for="wr_end">常勤の退勤時刻</label><input type="time" id="wr_end"></div>
+      <div><label class="f" for="wr_brk">休憩（分）</label><input type="number" id="wr_brk" min="0" max="180" step="5"></div>
+      <div><label class="f" for="wr_inner">内勤の目安（分／日）</label><input type="number" id="wr_inner" min="0" max="480" step="5"></div>
+    </div>
+    <div class="btns"><button class="btn" id="wr_save">保存する</button><span class="muted" id="wr_msg"></span></div>
+    <p class="muted" id="wr_calc"></p>
   </div>
   <div class="card" id="cardWk">
     <h2>週間予定</h2>
@@ -773,6 +820,7 @@ function renderPlan(){
       var ds = doctorStatus(v.no);
       if(D().doctor && !ds.ok) tags += '<span class="tag amber">主治医への確認：未</span>';
       if(hardInfo(v.no, ym(date)).on) tags += '<span class="tag red">困難患者</span>';
+      var offw = v.cx ? '' : offWhy(v.staffId, v.date); if(offw) tags += '<span class="tag red">要調整：担当が休み（' + esc(offw) + '）</span>';
       var key = v.date + '|' + v.time + '|' + v.no;
       html += '<div class="visit' + (v.cx ? ' cx' : '') + '"><div class="t">' + esc(v.time) + '</div>' +
         '<div class="who">' + esc(dn(v.no)) + ' <small>' + esc(v.area) + '・' + esc(staffName(v.staffId)) + '</small><br>' + tags + '</div>' +
@@ -1651,7 +1699,7 @@ function sheetPush(){
       if(!r){ r = { id:'R' + Date.now().toString(36) + Math.random().toString(36).slice(2,6), name:'', job:'', emp:'', mgr:false }; ro.push(r); }
       st.sheetId = r.id; linked = true;
     }
-    r.name = st.name; if(jobOf(st)) r.job = jobOf(st); r.emp = empToSheet(r.emp, st.emp); r.mgr = isMgr(st); r.dept = st.dept || r.dept || ''; r.sub = staffSub(st);
+    r.name = st.name; if(jobOf(st)) r.job = jobOf(st); r.emp = empToSheet(r.emp, st.emp); r.mgr = isMgr(st); r.dept = st.dept || r.dept || ''; r.sub = staffSub(st); r.off = staffOff(st); r.holOff = !!st.holOff;
   });
   o.sheet.val['職員名簿'] = ro;
   sheetRecount(o, ro);
@@ -1681,6 +1729,8 @@ function sheetPull(opt){
     st.mgr = !!r.mgr;
     st.dept = r.dept || '';
     st.sub = Array.isArray(r.sub) ? r.sub.filter(function(x){ return x && x !== st.dept; }) : [];
+    if(Array.isArray(r.off)) st.off = r.off.map(String);
+    if(r.holOff != null) st.holOff = !!r.holOff; else if(st.holOff == null) st.holOff = (st.emp === '常勤');
   });
   var keep = tt.filter(function(x){ return !x.sheetId || ro.some(function(r){ return r.id === x.sheetId; }); });
   var rem = tt.length - keep.length;
@@ -1697,9 +1747,9 @@ function sheetPull(opt){
 /* ---- 名簿・設定 ---- */
 function renderSetup(){
   var st = staff();
-  $('stList').innerHTML = st.length ? '<table><tr><th>呼び名</th><th>職種</th><th>所属部門</th><th>兼務する部署</th><th>雇用形態</th><th>管理者</th><th></th></tr>' + st.map(function(s){
+  $('stList').innerHTML = st.length ? '<table><tr><th>呼び名</th><th>職種</th><th>所属部門</th><th>兼務する部署</th><th>公休</th><th>雇用形態</th><th>管理者</th><th></th></tr>' + st.map(function(s){
     var sd = staffDept(s);
-    return '<tr><td>' + esc(s.name) + '</td><td>' + esc(jobOf(s) || '未設定') + '</td><td>' + esc(s.dept || (sd ? sd.name + '（職種から）' : '未設定')) + '</td><td>' + esc(staffSub(s).join('・')) + '</td><td>' + esc(s.emp || '未設定') + '</td><td>' + (isMgr(s) ? '管理者' : '') + '</td><td><button class="btn small sub" data-stedit="' + esc(s.id) + '">直す</button> <button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
+    return '<tr><td>' + esc(s.name) + '</td><td>' + esc(jobOf(s) || '未設定') + '</td><td>' + esc(s.dept || (sd ? sd.name + '（職種から）' : '未設定')) + '</td><td>' + esc(staffSub(s).join('・')) + '</td><td>' + esc([1,2,3,4,5,6,0].filter(function(w){ return staffOff(s).indexOf(String(w)) >= 0; }).map(function(w){ return DOW[w]; }).join('・') + (s.holOff ? (staffOff(s).length ? '・' : '') + '祝日' : '')) + '</td><td>' + esc(s.emp || '未設定') + '</td><td>' + (isMgr(s) ? '管理者' : '') + '</td><td><button class="btn small sub" data-stedit="' + esc(s.id) + '">直す</button> <button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
   }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var wk = weekly().slice().sort(function(a,b){ var da = (+a.dow + 6) % 7, db = (+b.dow + 6) % 7; return da - db || (a.time < b.time ? -1 : 1); });
   $('wkList').innerHTML = wk.length ? '<table><tr><th>曜日</th><th>時刻</th><th>契約書番号</th><th>担当</th><th></th></tr>' + wk.map(function(v){
@@ -1711,7 +1761,7 @@ function renderSetup(){
 
   $('stList').querySelectorAll('[data-stedit]').forEach(function(b){ b.addEventListener('click', function(){
     var s = staff().filter(function(x){ return x.id === b.getAttribute('data-stedit'); })[0]; if(!s) return;
-    $('st_id').value = s.id; $('st_name').value = s.name; (function(){ var sj = $('st_job'), jv = jobOf(s) || 'その他'; [].slice.call(sj.querySelectorAll('option[data-old]')).forEach(function(o){ o.remove(); }); if(![].some.call(sj.options, function(o){ return o.value === jv; })){ var op = document.createElement('option'); op.textContent = jv; op.dataset.old = '1'; sj.appendChild(op); } sj.value = jv; })(); $('st_dept').value = s.dept || ''; stSubDraw(staffSub(s)); $('st_emp').value = s.emp || '常勤'; $('st_mgr').checked = isMgr(s);
+    $('st_id').value = s.id; $('st_name').value = s.name; (function(){ var sj = $('st_job'), jv = jobOf(s) || 'その他'; [].slice.call(sj.querySelectorAll('option[data-old]')).forEach(function(o){ o.remove(); }); if(![].some.call(sj.options, function(o){ return o.value === jv; })){ var op = document.createElement('option'); op.textContent = jv; op.dataset.old = '1'; sj.appendChild(op); } sj.value = jv; })(); $('st_dept').value = s.dept || ''; stSubDraw(staffSub(s)); stOffDraw(staffOff(s)); $('st_hol').checked = !!s.holOff; $('st_emp').value = s.emp || '常勤'; $('st_mgr').checked = isMgr(s);
     $('st_add').textContent = 'この内容で直す'; $('st_cancel').style.display = ''; $('st_name').focus();
   }); });
   $('stList').querySelectorAll('[data-stdel]').forEach(function(b){ b.addEventListener('click', function(){
@@ -2170,7 +2220,7 @@ $('r_save').addEventListener('click', function(){
 var mNow = ymd(new Date()).slice(0,7);
 $('rp_month').value = mNow; $('ad_month').value = mNow;
 $('rp_month').addEventListener('change', renderReport); $('rp_no').addEventListener('change', renderReport);
-$('ad_month').addEventListener('change', renderAdmin);
+$('ad_month').addEventListener('change', function(){ renderAdmin(); renderAttend(); });
 $('rp_copy').addEventListener('click', function(){
   var t = $('rp_out').textContent;
   (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function(){ $('rp_msg').textContent = '写しました。報告書の欄に貼り付けてください。'; })
@@ -2195,12 +2245,12 @@ function stSubDraw(cur){
 function stSubVal(){ var main = $('st_dept').value; return [].slice.call($('st_sub').querySelectorAll('[data-stsub]:checked')).map(function(c){ return c.getAttribute('data-stsub'); }).filter(function(x){ return x !== main; }); }
 $('st_dept').addEventListener('change', function(){ stSubDraw(stSubVal()); });
 stSubDraw([]);
-function stFormReset(){ $('st_id').value = ''; $('st_name').value = ''; $('st_mgr').checked = false; stSubDraw([]); $('st_add').textContent = '追加する'; $('st_cancel').style.display = 'none'; }
+function stFormReset(){ $('st_id').value = ''; $('st_name').value = ''; $('st_mgr').checked = false; stSubDraw([]); if($('st_off')) stOffDraw([]); if($('st_hol')) $('st_hol').checked = $('st_emp').value === '常勤'; $('st_add').textContent = '追加する'; $('st_cancel').style.display = 'none'; }
 $('st_cancel').addEventListener('click', stFormReset);
 $('st_add').addEventListener('click', function(){
   var n = $('st_name').value.trim(); if(!n){ $('st_name').focus(); return; }
   var a = staff(), id = $('st_id').value;
-  var rec = { name:n, job:$('st_job').value, dept:$('st_dept').value, sub:stSubVal(), emp:$('st_emp').value, mgr:$('st_mgr').checked };
+  var rec = { name:n, job:$('st_job').value, dept:$('st_dept').value, sub:stSubVal(), off:stOffVal(), holOff:$('st_hol').checked, emp:$('st_emp').value, mgr:$('st_mgr').checked };
   var cur = id ? a.filter(function(x){ return x.id === id; })[0] : null;
   if(cur){ delete cur.role; Object.assign(cur, rec); } else { a.push(Object.assign({ id:uid() }, rec)); }
   saveCol('staff', a); sheetPush(); stFormReset(); refreshAll();
@@ -2348,6 +2398,152 @@ $('bk_in').addEventListener('change', function(){
 });
 
 
+
+/* ---- 勤務の決まり・公休・休み・祝日（2026-10-26・宏史さんの指示）----
+   常勤の所定は 9:00〜18:00・休憩60分。1日の目標8件、移動の目安5〜15分、訪問の決まりの長さ30分（精神訪問看護）。
+   祝日は内閣府「国民の祝日について」（令和8年・9年の一覧、2026-10-26確認）の決まりで計算する：
+   日付の決まった祝日・第n月曜の祝日・春分日と秋分日（国立天文台の公表に一致する近似式）・振替休日（第3条第2項）・国民の休日（同第3項）。 */
+function workRule(){
+  var w = (lj(K.settings, {}) || {}).work || {};
+  return { target: +w.target || 8, mvMin: (w.mvMin == null ? 5 : +w.mvMin), mvMax: +w.mvMax || 15, visit: +w.visit || 30,
+    start: w.start || '09:00', end: w.end || '18:00', brk: (w.brk == null ? 60 : +w.brk), inner: (w.inner == null ? 60 : +w.inner) };
+}
+function toMin(t){ var m = String(t || '').match(/^(\d{1,2}):(\d{2})/); return m ? (+m[1]) * 60 + (+m[2]) : null; }
+function minLabel(n){ n = Math.round(n || 0); var neg = n < 0; n = Math.abs(n); var h = Math.floor(n / 60), m = n % 60; return (neg ? '−' : '') + (h ? h + '時間' : '') + (m || !h ? m + '分' : ''); }
+var HOL_CACHE = {};
+function jpHolidays(y){
+  if(HOL_CACHE[y]) return HOL_CACHE[y];
+  var h = {}, put = function(m, d, n){ h[y + '-' + pad(m) + '-' + pad(d)] = n; };
+  var nthMon = function(m, n){ var d = new Date(y, m - 1, 1), first = (8 - d.getDay()) % 7 + 1; return first + (n - 1) * 7; };
+  put(1, 1, '元日'); put(1, nthMon(1, 2), '成人の日'); put(2, 11, '建国記念の日'); put(2, 23, '天皇誕生日');
+  put(3, Math.floor(20.8431 + 0.242194 * (y - 1980) - Math.floor((y - 1980) / 4)), '春分の日');
+  put(4, 29, '昭和の日'); put(5, 3, '憲法記念日'); put(5, 4, 'みどりの日'); put(5, 5, 'こどもの日');
+  put(7, nthMon(7, 3), '海の日'); put(8, 11, '山の日'); put(9, nthMon(9, 3), '敬老の日');
+  put(9, Math.floor(23.2488 + 0.242194 * (y - 1980) - Math.floor((y - 1980) / 4)), '秋分の日');
+  put(10, nthMon(10, 2), 'スポーツの日'); put(11, 3, '文化の日'); put(11, 23, '勤労感謝の日');
+  var base = Object.keys(h).sort();
+  base.forEach(function(k){                       /* 振替休日 */
+    if(parseYmd(k).getDay() !== 0) return;
+    var d = addDays(parseYmd(k), 1); while(h[ymd(d)]) d = addDays(d, 1); h[ymd(d)] = '休日（振替休日）';
+  });
+  for(var m = 1; m <= 12; m++) for(var d = 2; d <= 30; d++){   /* 国民の休日 */
+    var k = y + '-' + pad(m) + '-' + pad(d), dt = parseYmd(k); if(!dt || dt.getMonth() !== m - 1 || h[k] || dt.getDay() === 0) continue;
+    if(h[ymd(addDays(dt, -1))] && h[ymd(addDays(dt, 1))] && h[ymd(addDays(dt, -1))].indexOf('振替') < 0 && h[ymd(addDays(dt, 1))].indexOf('振替') < 0) h[k] = '休日（国民の休日）';
+  }
+  return (HOL_CACHE[y] = h);
+}
+function holidayName(date){ var d = parseYmd(date); return d ? (jpHolidays(d.getFullYear())[date] || '') : ''; }
+function staffOff(s){ return Array.isArray(s && s.off) ? s.off.map(String) : []; }
+function leaves(){ return events().filter(function(e){ return e.type === 'leave'; }); }
+/* その日、その職員が休みか。休みなら理由（公休／祝日／届けの種類）を返す */
+function offWhy(staffId, date){
+  var s = staff().filter(function(x){ return x.id === staffId; })[0]; if(!s) return '';
+  var lv = leaves().filter(function(e){ return e.staffId === staffId && e.date === date; })[0]; if(lv) return lv.kind || '休み';
+  var d = parseYmd(date); if(d && staffOff(s).indexOf(String(d.getDay())) >= 0) return '公休';
+  if(s.holOff && holidayName(date)) return '祝日';
+  return '';
+}
+function stOffDraw(cur){
+  cur = (cur || []).map(String);
+  $('st_off').innerHTML = [1,2,3,4,5,6,0].map(function(w){ return '<label style="margin-right:10px"><input type="checkbox" data-stoff="' + w + '"' + (cur.indexOf(String(w)) >= 0 ? ' checked' : '') + '> ' + DOW[w] + '</label>'; }).join('');
+}
+function stOffVal(){ return [].slice.call($('st_off').querySelectorAll('[data-stoff]:checked')).map(function(c){ return c.getAttribute('data-stoff'); }); }
+stOffDraw([]);
+$('st_emp').addEventListener('change', function(){ if(!$('st_id').value) $('st_hol').checked = $('st_emp').value === '常勤'; });
+$('st_hol').checked = true;
+/* 休みの届け */
+function renderLeave(){
+  fillSelect('lv_staff', staff().map(function(x){ return { v:x.id, t:staffLabel(x) }; }), '選んでください');
+  if(!$('lv_month').value) $('lv_month').value = ymd(new Date()).slice(0, 7);
+  var m = $('lv_month').value;
+  var a = leaves().filter(function(e){ return ym(e.date) === m; }).sort(function(x, y){ return x.date < y.date ? -1 : 1; });
+  $('lvList').innerHTML = a.length ? '<table><tr><th>休む日</th><th>職員</th><th>種類</th><th>メモ</th><th></th></tr>' + a.map(function(e){
+    return '<tr><td>' + esc(jpDate(e.date)) + '</td><td>' + esc(staffName(e.staffId)) + '</td><td>' + esc(e.kind || '') + '</td><td>' + esc(e.memo || '') + '</td><td><button class="btn small danger" data-lvdel="' + esc(e.id) + '">外す</button></td></tr>';
+  }).join('') + '</table>' : '<p class="empty">この月の休みの届けはありません。</p>';
+  $('lvList').querySelectorAll('[data-lvdel]').forEach(function(b){ b.addEventListener('click', function(){
+    if(!confirm('この休みの届けを外しますか？')) return;
+    saveEvents(events().filter(function(e){ return e.id !== b.getAttribute('data-lvdel'); })); refreshAll();
+  }); });
+}
+$('lv_add').addEventListener('click', function(){
+  var sid = $('lv_staff').value, date = $('lv_date').value;
+  if(!sid || !date){ $('lv_msg').textContent = '職員と休む日を入れてください。'; return; }
+  if(leaves().some(function(e){ return e.staffId === sid && e.date === date; })){ $('lv_msg').textContent = 'その日の休みはもう入っています。'; return; }
+  var a = events(); a.push({ id:uid(), type:'leave', staffId:sid, date:date, kind:$('lv_kind').value, memo:$('lv_memo').value.trim(), by:dev().me || '', created:nowLocal() });
+  saveEvents(a); $('lv_memo').value = ''; $('lv_month').value = date.slice(0, 7);
+  var n = visitsOn(date).filter(function(v){ return v.staffId === sid && !v.cx; }).length;
+  $('lv_msg').textContent = '入れました。' + (n ? 'この日、' + staffName(sid) + 'さんには訪問が ' + n + '件 入っています。仮スケジュール表で「要調整」の印が付きます。' : '');
+  refreshAll();
+});
+$('lv_month').addEventListener('change', renderLeave);
+/* 勤務の決まり */
+function renderWorkRule(){
+  var w = workRule();
+  $('wr_target').value = w.target; $('wr_mvmin').value = w.mvMin; $('wr_mvmax').value = w.mvMax; $('wr_visit').value = w.visit;
+  $('wr_start').value = w.start; $('wr_end').value = w.end; $('wr_brk').value = w.brk; $('wr_inner').value = w.inner;
+  var span = (toMin(w.end) - toMin(w.start)) - w.brk, svc = w.target * w.visit, mv = w.target * w.mvMax, rest = span - svc - mv - w.inner;
+  $('wr_calc').textContent = '常勤の1日：勤務 ' + minLabel(span) + '（' + w.start + '〜' + w.end + '、休憩 ' + w.brk + '分を除く）＝ サービス ' + minLabel(svc) + '（' + w.target + '件×' + w.visit + '分）＋ 移動 ' + minLabel(mv) + '（' + w.target + '件×' + w.mvMax + '分）＋ 内勤 ' + minLabel(w.inner) + '＋ 予備 ' + minLabel(rest) + '。';
+}
+$('wr_save').addEventListener('click', function(){
+  var cur = lj(K.settings, {}) || {};
+  var w = { target:Math.max(1, +$('wr_target').value || 8), mvMin:Math.max(0, +$('wr_mvmin').value || 0), mvMax:Math.max(1, +$('wr_mvmax').value || 15), visit:Math.max(10, +$('wr_visit').value || 30),
+    start:$('wr_start').value || '09:00', end:$('wr_end').value || '18:00', brk:Math.max(0, +$('wr_brk').value || 0), inner:Math.max(0, +$('wr_inner').value || 0) };
+  if(w.mvMin > w.mvMax){ $('wr_msg').textContent = '移動の目安は、最短を最長より小さくしてください。'; return; }
+  saveSettings(Object.assign({}, cur, { work:w })); $('wr_msg').textContent = '保存しました。'; refreshAll();
+});
+/* 出勤と実績（月）：管理者の窓 */
+function normName(t){ return String(t || '').replace(/[\s　]/g, ''); }
+function recStaff(rec, list){
+  var n = normName(rec.nurse); if(!n) return null;
+  return list.filter(function(s){ return normName(s.name) === n; })[0] || list.filter(function(s){ var k = normName(s.name); return k && n.indexOf(k) === 0; })[0] || null;
+}
+function renderAttend(){
+  var box = $('adAttend'); if(!box) return;
+  if(D().k !== 'nurse'){ $('cardAttend').style.display = 'none'; return; }
+  $('cardAttend').style.display = '';
+  var m = $('ad_month').value; if(!m) return;
+  var w = workRule(), people = deptStaff(), all = staff();
+  var y = +m.slice(0, 4), mo = +m.slice(5, 7), days = [];
+  for(var d = 1; d <= 31; d++){ var dt = new Date(y, mo - 1, d); if(dt.getMonth() !== mo - 1) break; days.push(ymd(dt)); }
+  var recs = live('records').filter(function(r){ return r.date && ym(r.date) === m; });
+  var odd = {}, byS = {};
+  recs.forEach(function(r){ var s = recStaff(r, all); if(!s){ odd[r.nurse || '（看護師名なし）'] = (odd[r.nurse || '（看護師名なし）'] || 0) + 1; return; } (byS[s.id] = byS[s.id] || []).push(r); });
+  var rows = people.map(function(s){
+    var rs = byS[s.id] || [], workDays = {}, svc = 0, over = 0, overMin = 0, bad = 0;
+    rs.forEach(function(r){
+      workDays[r.date] = 1;
+      var a = toMin(r.start), b = toMin(r.end);
+      if(a == null || b == null || b < a){ bad++; return; }
+      var len = b - a; svc += len; if(len > w.visit){ over++; overMin += len - w.visit; }
+    });
+    var plan = 0, clash = 0, offN = { 公休:0, 祝日:0, 届け:0 }, miss = [];
+    days.forEach(function(date){
+      var why = offWhy(s.id, date);
+      if(why){ if(why === '公休' || why === '祝日') offN[why]++; else offN['届け']++; }
+      var pv = visitsOn(date).filter(function(v){ return v.staffId === s.id && !v.cx; }).length;
+      if(pv && why) clash++;
+      if(pv && !why){ plan++; if(!workDays[date] && date <= ymd(new Date())) miss.push((parseYmd(date).getMonth()+1) + '/' + parseYmd(date).getDate()); }
+    });
+    var wd = Object.keys(workDays).length, full = s.emp === '常勤';
+    var span = (toMin(w.end) - toMin(w.start)) - w.brk;
+    var inner = full ? wd * span - svc - rs.length * w.mvMax : null;
+    return '<tr><td>' + esc(s.name) + (s.dept && s.dept !== D().name ? '<br><small class="muted">兼務</small>' : '') + '<br><small class="muted">' + esc(s.emp || '') + '</small></td>' +
+      '<td>' + wd + '日<br><small class="muted">予定 ' + plan + '日</small>' + (clash ? '<br><small style="color:var(--red)">休みの日の予定 ' + clash + '日</small>' : '') + '</td>' +
+      '<td>' + rs.length + '件<br><small class="muted">1日平均 ' + (wd ? (rs.length / wd).toFixed(1) : '0') + '件（目標 ' + w.target + '件）</small></td>' +
+      '<td>' + minLabel(svc) + (bad ? '<br><small class="muted">時刻の無い記録 ' + bad + '件</small>' : '') + '</td>' +
+      '<td>' + (over ? '<b style="color:var(--red)">' + over + '件</b><br><small class="muted">超過 計' + minLabel(overMin) + '</small>' : '0件') + '</td>' +
+      '<td><small>公休 ' + offN['公休'] + '日・祝日 ' + offN['祝日'] + '日・届け ' + offN['届け'] + '日</small></td>' +
+      '<td>' + (miss.length ? '<b style="color:var(--red)">' + miss.length + '日</b><br><small class="muted">' + esc(miss.join('、')) + '</small>' : '0日') + '</td>' +
+      '<td>' + (full ? minLabel(inner) + '<br><small class="muted">勤務 ' + minLabel(wd * span) + '−サービス−移動 ' + minLabel(rs.length * w.mvMax) + '</small>' : '<small class="muted">常勤のみ</small>') + '</td></tr>';
+  });
+  box.innerHTML = people.length ? '<table><tr><th>職員</th><th>出勤日数<br><small>（看護記録のある日）</small></th><th>訪問の件数</th><th>サービス時間</th><th>' + w.visit + '分を超えた訪問</th><th>休み</th><th>予定があって記録の無い日</th><th>内勤と予備の見積もり<br><small>（常勤）</small></th></tr>' + rows.join('') + '</table>'
+    : '<p class="empty">この部署の職員がまだいません。</p>';
+  var ok = Object.keys(odd);
+  $('adAttendNote').innerHTML = (recs.length ? '' : 'この月の看護記録はまだ取り込まれていません。') +
+    (ok.length ? '<br><b style="color:var(--red)">職員名簿の呼び名と合わない看護師名の記録</b>：' + ok.map(function(k){ return esc(k) + '（' + odd[k] + '件）'; }).join('、') + '。名簿の呼び名か、看護記録の看護師名の書き方をそろえてください。' : '') +
+    '<br>移動は「勤務の決まり」の最長の目安（' + w.mvMax + '分）×件数で見積もっています。予定があって記録の無い日は、今日までの日で、休みでない日だけを数えます。';
+}
+
 /* ---- 仮スケジュール表（2026-10-26・宏史さんの指示）----
    予定を組む人（管理する人）が、部署の1週間を「職員ごとの行 × 曜日の列」で見渡すための右のサブ画面。
    どのタブを開いていても横に出しておける。中身は週間予定・キャンセル・会議の案内から組み立て、書き込みはしない。 */
@@ -2380,15 +2576,24 @@ function ssRender(){
   var rows = people.map(function(p){ return { id:p.id, name:p.name, sub: p.dept && p.dept !== d.name ? '兼務' : '' }; });
   if(extra) rows.push({ id:'_none', name:'担当が名簿にない', sub:'' });
   if(!rows.length){ $('ssBody').innerHTML = '<p class="empty">この部署の職員がまだいません。「名簿・設定」の「職員」で所属部門か兼務する部署を付けると、ここに行が並びます。</p>'; return; }
-  var h = '<table><thead><tr><th class="who">担当</th>' + days.map(function(x){ var w = parseYmd(x).getDay(); return '<th class="' + (w === 0 || w === 6 ? 'we' : '') + '">' + DOW[w] + '<br><small>' + (parseYmd(x).getMonth()+1) + '/' + parseYmd(x).getDate() + '</small></th>'; }).join('') + '</tr></thead><tbody>';
+  var h = '<table><thead><tr><th class="who">担当</th>' + days.map(function(x){ var w = parseYmd(x).getDay(); var hn = holidayName(x); return '<th class="' + (w === 0 || w === 6 || hn ? 'we' : '') + '">' + DOW[w] + '<br><small>' + (parseYmd(x).getMonth()+1) + '/' + parseYmd(x).getDate() + '</small>' + (hn ? '<small class="hol">' + esc(hn) + '</small>' : '') + '</th>'; }).join('') + '</tr></thead><tbody>';
   rows.forEach(function(r){
-    h += '<tr><th class="who">' + esc(r.name) + '<small>' + (r.sub ? r.sub + '・' : '') + '週 ' + (cnt[r.id] || 0) + '件</small></th>';
+    var wk = 0; days.forEach(function(date){ ((cells[r.id] || {})[date] || []).forEach(function(v){ if(!v.cx) wk += (+v.min || 30); }); });
+    h += '<tr><th class="who">' + esc(r.name) + '<small>' + (r.sub ? r.sub + '・' : '') + '週 ' + (cnt[r.id] || 0) + '件・' + minLabel(wk) + '</small></th>';
     days.forEach(function(date){
       var vs = (cells[r.id] || {})[date] || [];
       var ms = r.id === '_none' ? [] : events().filter(function(e){ return e.type === 'note' && e.kind === '会議の案内' && e.mDate === date && isNoteFor(e, r.id); });
-      h += '<td' + (date === today ? ' class="today"' : '') + '>' +
+      var why = r.id === '_none' ? '' : offWhy(r.id, date), wr = workRule(), prev = null, live2 = vs.filter(function(v){ return !v.cx; }).length;
+      var cls = [date === today ? 'today' : '', why ? 'off' : ''].filter(Boolean).join(' ');
+      h += '<td' + (cls ? ' class="' + cls + '"' : '') + '>' + (why ? '<span class="ssOff">休（' + esc(why) + '）</span>' : '') +
         ms.map(function(m){ return '<span class="ssChip meet">' + esc(m.mTime || '') + ' 会議</span>'; }).join('') +
-        vs.map(function(v){ return '<span class="ssChip' + (v.cx ? ' cx' : '') + '" title="' + esc(v.time + ' ' + dn(v.no) + '（' + v.min + '分）' + (v.area ? '・' + v.area : '') + (v.cx ? '・キャンセル' : '')) + '">' + esc(v.time) + '<br>' + esc(ssShortNo(v.no)) + '</span>'; }).join('') + '</td>';
+        vs.map(function(v){
+          var gap = '';
+          if(!v.cx && prev){ var g = toMin(v.time) - (toMin(prev.time) + (+prev.min || 30)); if(g < wr.mvMin) gap = '<span class="ssGap short">間 ' + g + '分（短い）</span>'; else if(g > wr.mvMax) gap = '<span class="ssGap">空き ' + minLabel(g) + '</span>'; }
+          if(!v.cx) prev = v;
+          var warn = why && !v.cx;
+          return gap + '<span class="ssChip' + (v.cx ? ' cx' : '') + (warn ? ' warn' : '') + '" title="' + esc(v.time + ' ' + dn(v.no) + '（' + v.min + '分）' + (v.area ? '・' + v.area : '') + (v.cx ? '・キャンセル' : '') + (warn ? '・休みの日の訪問' : '')) + '">' + esc(v.time) + '<br>' + esc(ssShortNo(v.no)) + (warn ? '<br>要調整' : '') + '</span>';
+        }).join('') + (live2 ? '<span class="ssCnt' + (live2 >= wr.target ? ' ok' : '') + '">' + live2 + '件</span>' : '') + '</td>';
     });
     h += '</tr>';
   });
@@ -2400,7 +2605,7 @@ $('ssPrev').addEventListener('click', function(){ ssStart = addDays(ssStart || m
 $('ssNext').addEventListener('click', function(){ ssStart = addDays(ssStart || mondayOf(new Date()), 7); ssRender(); });
 $('ssThis').addEventListener('click', function(){ ssStart = mondayOf(new Date()); ssRender(); });
 var refreshAll0 = refreshAll;
-refreshAll = function(){ refreshAll0(); ssRender(); };
+refreshAll = function(){ refreshAll0(); renderLeave(); renderWorkRule(); renderAttend(); ssRender(); };
 (function(){ var on = false; try{ on = localStorage.getItem(SS_KEY) === '1'; }catch(e){} if(on) ssOpen(true); })();
 
 nrScanLocal();

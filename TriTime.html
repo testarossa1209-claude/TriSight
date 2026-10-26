@@ -107,6 +107,35 @@
   .deptbar small{font-weight:400;font-size:11.5px}
   .deptbar .dn{flex-basis:100%;font-size:12px;color:var(--muted)}
   @media (max-width:560px){ header h1{font-size:20px} .visit{grid-template-columns:52px 1fr} .visit .act{grid-column:1 / -1} }
+  /* 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面・宏史さんの指示） */
+  .ssTab{position:fixed;right:0;top:40%;z-index:60;font:inherit;font-size:14px;font-weight:700;line-height:1.25;background:var(--ink);color:#fff;border:0;border-radius:10px 0 0 10px;padding:12px 9px;cursor:pointer;box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center}
+  .ssTab span{display:block}
+  .ssTab span.bar{transform:rotate(90deg)}
+  .ssTab:hover{background:var(--ink-soft)}
+  body.ssOpen .ssTab{display:none}
+  .ssPanel{position:fixed;top:0;right:0;bottom:0;width:min(600px,100vw);z-index:70;background:var(--white);border-left:1px solid var(--line);box-shadow:-8px 0 28px rgba(16,36,59,.14);transform:translateX(105%);transition:transform .22s ease;display:flex;flex-direction:column}
+  body.ssOpen .ssPanel{transform:none}
+  @media (min-width:1240px){ body.ssOpen{padding-right:600px} }
+  .ssHead{display:flex;align-items:center;gap:10px;padding:14px 16px 10px;border-bottom:1px solid var(--paper-deep)}
+  .ssHead h2{margin:0;font-size:17px;flex:1}
+  .ssHead h2 small{display:block;font-size:12px;font-weight:400;color:var(--muted)}
+  .ssClose{font:inherit;font-size:20px;line-height:1;border:1px solid var(--line);background:#fffdf9;color:var(--ink);border-radius:8px;width:36px;height:36px;cursor:pointer}
+  .ssNav{display:flex;align-items:center;gap:6px;padding:10px 16px;flex-wrap:wrap}
+  .ssNav b{font-size:14px;margin-right:auto}
+  .ssBody{flex:1;overflow:auto;padding:0 16px 16px}
+  .ssBody table{border-collapse:collapse;width:100%;min-width:560px;font-size:12.5px;table-layout:fixed}
+  .ssChip{white-space:nowrap}
+  .ssBody th,.ssBody td{border:1px solid var(--paper-deep);padding:4px;vertical-align:top}
+  .ssBody thead th{position:sticky;top:0;background:var(--paper);font-weight:700;z-index:1}
+  .ssBody thead th.we{color:var(--red)}
+  .ssBody th.who{width:88px;text-align:left;background:#fbf8f2;font-weight:700}
+  .ssBody th.who small{display:block;font-weight:400;color:var(--muted)}
+  .ssBody td.today{background:#fffaf2}
+  .ssChip{display:block;border-radius:5px;background:#eef3f8;margin:0 0 3px;padding:2px 4px;line-height:1.35;font-size:11.5px;overflow:hidden;text-overflow:ellipsis}
+  .ssChip.cx{background:#fbecea;color:var(--red);text-decoration:line-through}
+  .ssChip.meet{background:#fbf3e4}
+  .ssFoot{font-size:12px;color:var(--muted);padding:8px 84px 14px 16px;border-top:1px solid var(--paper-deep)}
+  @media print{ .ssTab,.ssPanel{display:none} }
   @media print{ nav.tabs,.note,.btns,.mic{display:none} section.tab{display:none} section.tab.on{display:block} .card{box-shadow:none} }
 </style>
 </head>
@@ -132,9 +161,18 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-26-08</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-26-09</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
+<!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
+<button type="button" class="ssTab" id="ssTab" title="仮スケジュール表を右に開きます" aria-label="仮スケジュール表"><span>仮</span><span>ス</span><span>ケ</span><span>ジ</span><span>ュ</span><span class="bar">ー</span><span>ル</span><span>表</span></button>
+<aside class="ssPanel" id="ssPanel" aria-label="仮スケジュール表">
+  <div class="ssHead"><h2 id="ssTitle">仮スケジュール表</h2><button type="button" class="ssClose" id="ssClose" title="閉じる" aria-label="閉じる">×</button></div>
+  <div class="ssNav"><b id="ssWeek"></b><button type="button" class="btn sub small" id="ssPrev">前の週</button><button type="button" class="btn sub small" id="ssThis">今週</button><button type="button" class="btn sub small" id="ssNext">次の週</button></div>
+  <div class="ssBody" id="ssBody"></div>
+  <div class="ssFoot">週間予定をもとに、職員ごと・曜日ごとに並べた仮の表です。キャンセルの入った訪問は赤の取り消し線で出ます。週間予定を入れたり直したりすると、その場でこの表に映ります。</div>
+</aside>
+
 <div id="verNotice"></div>
 <div id="alertBox"></div>
 <div class="note" id="shareNote"></div>
@@ -2308,6 +2346,62 @@ $('bk_in').addEventListener('change', function(){
   r.readAsText(f);
   this.value = '';
 });
+
+
+/* ---- 仮スケジュール表（2026-10-26・宏史さんの指示）----
+   予定を組む人（管理する人）が、部署の1週間を「職員ごとの行 × 曜日の列」で見渡すための右のサブ画面。
+   どのタブを開いていても横に出しておける。中身は週間予定・キャンセル・会議の案内から組み立て、書き込みはしない。 */
+var SS_KEY = 'tritime_ss_open';
+var ssStart = null;
+function ssOpen(on){
+  document.body.classList.toggle('ssOpen', !!on);
+  try{ localStorage.setItem(SS_KEY, on ? '1' : '0'); }catch(e){}
+  if(on){ if(!ssStart) ssStart = parseYmd($('planWeek').value) || mondayOf(new Date()); ssRender(); }
+}
+/* 表の中では契約書番号の末尾（部門と利用者番号。例 看-0061）だけを出す。全部の番号は印の上に出る説明（title）に入れる */
+function ssShortNo(no){ var t = dn(no), m = t.match(/([^-]+-[^-]+)(-重)?$/); return m && t.split('-').length >= 4 ? m[1] : t; }
+function ssRender(){
+  if(!document.body.classList.contains('ssOpen')) return;
+  var d = D(); if(!ssStart) ssStart = mondayOf(new Date());
+  $('ssTitle').innerHTML = '仮スケジュール表<small>' + esc(d.name) + '・1週間の見渡し</small>';
+  var days = []; for(var i = 0; i < 7; i++) days.push(ymd(addDays(ssStart, i)));
+  $('ssWeek').textContent = jpDate(days[0]) + ' 〜 ' + jpDate(days[6]);
+  if(d.kind === 'office'){ $('ssBody').innerHTML = '<p class="empty">経営企画事務職には訪問の週間予定がありません。訪問のある部署を上の「使う部署」で選ぶと、その部署の表が出ます。</p>'; return; }
+  var people = deptStaff(), ids = {}, cnt = {}, today = ymd(new Date());
+  people.forEach(function(p){ ids[p.id] = 1; cnt[p.id] = 0; });
+  var cells = {}, extra = false;
+  days.forEach(function(date){
+    visitsOn(date).forEach(function(v){
+      var k = ids[v.staffId] ? v.staffId : '_none'; if(k === '_none') extra = true;
+      ((cells[k] = cells[k] || {})[date] = cells[k][date] || []).push(v);
+      if(!v.cx) cnt[k] = (cnt[k] || 0) + 1;
+    });
+  });
+  var rows = people.map(function(p){ return { id:p.id, name:p.name, sub: p.dept && p.dept !== d.name ? '兼務' : '' }; });
+  if(extra) rows.push({ id:'_none', name:'担当が名簿にない', sub:'' });
+  if(!rows.length){ $('ssBody').innerHTML = '<p class="empty">この部署の職員がまだいません。「名簿・設定」の「職員」で所属部門か兼務する部署を付けると、ここに行が並びます。</p>'; return; }
+  var h = '<table><thead><tr><th class="who">担当</th>' + days.map(function(x){ var w = parseYmd(x).getDay(); return '<th class="' + (w === 0 || w === 6 ? 'we' : '') + '">' + DOW[w] + '<br><small>' + (parseYmd(x).getMonth()+1) + '/' + parseYmd(x).getDate() + '</small></th>'; }).join('') + '</tr></thead><tbody>';
+  rows.forEach(function(r){
+    h += '<tr><th class="who">' + esc(r.name) + '<small>' + (r.sub ? r.sub + '・' : '') + '週 ' + (cnt[r.id] || 0) + '件</small></th>';
+    days.forEach(function(date){
+      var vs = (cells[r.id] || {})[date] || [];
+      var ms = r.id === '_none' ? [] : events().filter(function(e){ return e.type === 'note' && e.kind === '会議の案内' && e.mDate === date && isNoteFor(e, r.id); });
+      h += '<td' + (date === today ? ' class="today"' : '') + '>' +
+        ms.map(function(m){ return '<span class="ssChip meet">' + esc(m.mTime || '') + ' 会議</span>'; }).join('') +
+        vs.map(function(v){ return '<span class="ssChip' + (v.cx ? ' cx' : '') + '" title="' + esc(v.time + ' ' + dn(v.no) + '（' + v.min + '分）' + (v.area ? '・' + v.area : '') + (v.cx ? '・キャンセル' : '')) + '">' + esc(v.time) + '<br>' + esc(ssShortNo(v.no)) + '</span>'; }).join('') + '</td>';
+    });
+    h += '</tr>';
+  });
+  $('ssBody').innerHTML = h + '</tbody></table>';
+}
+$('ssTab').addEventListener('click', function(){ ssOpen(true); });
+$('ssClose').addEventListener('click', function(){ ssOpen(false); });
+$('ssPrev').addEventListener('click', function(){ ssStart = addDays(ssStart || mondayOf(new Date()), -7); ssRender(); });
+$('ssNext').addEventListener('click', function(){ ssStart = addDays(ssStart || mondayOf(new Date()), 7); ssRender(); });
+$('ssThis').addEventListener('click', function(){ ssStart = mondayOf(new Date()); ssRender(); });
+var refreshAll0 = refreshAll;
+refreshAll = function(){ refreshAll0(); ssRender(); };
+(function(){ var on = false; try{ on = localStorage.getItem(SS_KEY) === '1'; }catch(e){} if(on) ssOpen(true); })();
 
 nrScanLocal();
 $('rd_go').onclick = rdGo;

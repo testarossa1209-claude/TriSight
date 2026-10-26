@@ -83,7 +83,7 @@ pre.out{white-space:pre-wrap;font-size:12px;font-family:var(--font-mono);backgro
     <div style="font-size:20px;font-weight:500">基本情報シート</div>
   </div>
   <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">発行：合同会社トライサイト</div>
-  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-26-01</span> <span id="verMsg"></span></div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-26-02</span> <span id="verMsg"></span></div>
   <div style="border-top:1px solid var(--border-strong);margin:8px 0 12px"></div>
   <!-- 2026-10-19：認証コードで端末どうし共有する（宏史さんの指示）。印を付けた端末だけが共有する。部品は TriSheetSync.js -->
   <div id="tssBox" style="margin:0 0 12px;padding:10px 12px;border:0.5px solid var(--border-accent);border-radius:var(--radius);background:var(--surface-1);font-size:13px">
@@ -352,18 +352,32 @@ function roRecount(){
   const no=a.filter(r=>!r.emp).length;
   if(nt)nt.innerHTML='上の従業員数は、この名簿から数えています（合計 '+a.length+'人）。'+(no?'<span style="color:var(--text-warning)">雇用形態が未設定の人が '+no+'人います。正社員・非常勤の人数に入らないので、選んでください。</span>':'');
 }
+/* 2026-10-26：兼務する部署（宏史さんの指示）。所属部門はそのまま、ほかの部署にも横断して入る職員に、兼務先を選べるようにする。
+   トライタイムは、兼務先の部署の画面でも、この職員を担当として選べる。 */
+function roSub(r){return Array.isArray(r.sub)?r.sub.filter(x=>x&&x!==r.dept):[];}
+function roKjLabel(r){const a=roSub(r);return a.length?'兼務：'+a.join('・'):'兼務する部署：なし';}
+function roKjHTML(r){
+  const a=roSub(r);
+  return '<details class="kj"><summary data-kjsum="1">'+esc(roKjLabel(r))+' ▾</summary><div class="kjbox">'
+    +RO_DEPT.split('|').map(x=>{const main=x===r.dept;return '<label'+(main?' class="off" title="所属部門です"':'')+'><input type="checkbox" data-kj="'+esc(x)+'"'+(a.indexOf(x)>=0?' checked':'')+(main?' disabled':'')+'>'+esc(x)+(main?'（所属）':'')+'</label>';}).join('')
+    +'</div></details>';
+}
 function rosterHTML(){
   const a=roList();
   const sel=(o,cur,ph)=>'<option value="">'+ph+'</option>'+o.split('|').map(x=>'<option'+(x===cur?' selected':'')+'>'+esc(x)+'</option>').join('')+(cur&&o.split('|').indexOf(cur)<0?'<option selected>'+esc(cur)+'</option>':'');
   let h='<style>#roTbl .ro{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border)}'
     +'#roTbl .ro input[type=text]{flex:2 1 180px;width:auto}#roTbl .ro select{flex:1 1 150px;width:auto}'
-    +'#roTbl .ro label{display:flex;align-items:center;gap:4px;font-size:13px;white-space:nowrap}#roTbl .ro label input{width:auto}</style>';
+    +'#roTbl .ro label{display:flex;align-items:center;gap:4px;font-size:13px;white-space:nowrap}#roTbl .ro label input{width:auto}'
+    +'#roTbl .ro details.kj{flex:1 1 170px;position:relative}#roTbl .ro details.kj summary{cursor:pointer;font-size:13px;padding:6px 10px;border:0.5px solid var(--border);border-radius:8px;list-style:none;background:var(--bg-primary,#fff)}'
+    +'#roTbl .ro details.kj summary::-webkit-details-marker{display:none}#roTbl .ro details.kj .kjbox{display:flex;flex-direction:column;gap:4px;padding:8px 10px;margin-top:4px;border:0.5px solid var(--border);border-radius:8px;background:var(--bg-primary,#fff)}'
+    +'#roTbl .ro details.kj .kjbox label.off{opacity:.45}</style>';
   h+='<div id="roTbl">';
   a.forEach((r,i)=>{
     h+='<div class="ro" data-ro="'+i+'"><input type="text" data-rf="name" value="'+esc(r.name||'')+'" placeholder="呼び名" aria-label="呼び名">'
       +'<select data-rf="job" aria-label="職種">'+sel(RO_JOB,r.job||'','職種を選ぶ')+'</select>'
       +'<select data-rf="emp" aria-label="雇用形態">'+sel(RO_EMP,r.emp||'','雇用形態を選ぶ')+'</select>'
       +'<select data-rf="dept" aria-label="所属部門">'+sel(RO_DEPT,r.dept||'','所属部門を選ぶ')+'</select>'
+      +roKjHTML(r)
       +'<label><input type="checkbox" data-rf="mgr"'+(r.mgr?' checked':'')+'>管理者</label>'
       +'<button type="button" data-rodel="1">外す</button></div>';
   });
@@ -374,6 +388,7 @@ function rosterHTML(){
   h+='<div class="nt">介護職は資格ごとに選びます（介護福祉士・実務者研修修了・初任者研修修了・資格なし）。加算の条件や処遇改善加算の分配で使います（2026-10-25）。'+(oldK?'<span style="color:var(--text-warning)">資格の入っていない「介護職」のままの人が '+oldK+'人います。資格の入った職種を選び直してください。</span>':'')+'</div>';
   h+='<div class="nt">「管理者」は、事業所の管理者（訪問看護ステーションの管理者など）に付ける印です。</div>';
   h+='<div class="nt">「所属部門」は、トライタイムで部署ごとに予定を組むときの担当の分け方になります（2026-10-19）。選んでいない人は、職種から部署を当てます。</div>';
+  h+='<div class="nt">「兼務する部署」は、所属部門のほかに横断して入る部署です。押すと部署の一覧が開くので、入る部署に印を付けてください。トライタイムでは、兼務先の部署の画面でも、この職員を担当として選べます（2026-10-26）。</div>';
   return h;
 }
 function hookRoster(){
@@ -382,7 +397,12 @@ function hookRoster(){
     const r=roList()[+tr.dataset.ro];
     tr.querySelectorAll('[data-rf]').forEach(e=>{
       const f=e.dataset.rf;
-      e.oninput=e.onchange=()=>{r[f]=f==='mgr'?e.checked:e.value;roRecount();};
+      e.oninput=e.onchange=()=>{r[f]=f==='mgr'?e.checked:e.value;
+        if(f==='dept'){r.sub=roSub(r);tr.querySelectorAll('[data-kj]').forEach(c=>{const main=c.dataset.kj===r.dept;c.disabled=main;if(main)c.checked=false;c.parentNode.classList.toggle('off',main);c.parentNode.lastChild.textContent=c.dataset.kj+(main?'（所属）':'');});const sm=tr.querySelector('[data-kjsum]');if(sm)sm.textContent=roKjLabel(r)+' ▾';}
+        roRecount();};
+    });
+    tr.querySelectorAll('[data-kj]').forEach(c=>{
+      c.onchange=()=>{r.sub=[].slice.call(tr.querySelectorAll('[data-kj]:checked')).map(x=>x.dataset.kj).filter(x=>x!==r.dept);const sm=tr.querySelector('[data-kjsum]');if(sm)sm.textContent=roKjLabel(r)+' ▾';roRecount();};
     });
     tr.querySelector('[data-rodel]').onclick=()=>{
       if(String(r.name||'').trim()&&!confirm('「'+r.name+'」を職員名簿から外しますか？（トライタイムで読み込むと、トライタイムの名簿からも外れます。これまでの記録は残ります）'))return;

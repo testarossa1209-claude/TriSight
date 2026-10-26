@@ -169,7 +169,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-26-10</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-02</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -192,6 +192,7 @@ function tsGoBack(){
   <button data-tab="course" data-t="{client}の経過">患者さんの経過</button>
   <button data-tab="report">報告書の下書き</button>
   <button data-tab="admin">管理者の窓</button>
+  <button data-tab="model">モデルコース</button>
   <button data-tab="req">ご要望</button>
   <button data-tab="setup">名簿・設定</button>
 </nav>
@@ -508,6 +509,61 @@ function tsGoBack(){
   <div class="card">
     <h2>見直しの時期が来た拒否の記録</h2>
     <div id="adReview"></div>
+  </div>
+</section>
+
+<!-- ===== モデルコース（2026-10-27・宏史さんの発案。試作）=====
+     1日の件数を決めると、職員ごと・曜日ごとのモデルコースを組み、それをこなしたときの月の売上を出す。
+     いまの週間予定・キャンセル・看護記録（または手で入れた件数）と比べて稼働率を出し、目標売上に届くかを示す。 -->
+<section class="tab" id="tab-model">
+  <div class="card">
+    <h2>モデルコースの条件</h2>
+    <p class="lead">職員ごとに「1日に何件」「どの曜日に出るか」を決めると、その件数で組んだモデルコースと、それをこなしたときの月の売上を出します。最初は、常勤は「勤務の決まり」の1日の目標件数と公休の曜日から、非常勤はいまの週間予定から入れてあります。</p>
+    <div class="row">
+      <div><label class="f" for="md_month">計算する月</label><input type="month" id="md_month"></div>
+      <div><label class="f" for="md_goal">目標の売上（月・円）</label><input type="number" id="md_goal" min="0" step="10000" placeholder="例：3000000"></div>
+    </div>
+    <h3>1回の訪問の単価（保険の種類ごと）</h3>
+    <p class="muted">患者さんの登録の「保険」ごとに単価を入れます。空欄の種類は、「名簿・設定」の決まりごとの単価で数えます。どちらも入っていないと、売上は出さずに件数だけを出します。単価はノアの請求の実績から入れてください（ここに入れた数字だけで計算します）。</p>
+    <div class="row" id="md_prices"></div>
+    <h3>職員ごとの件数と出る曜日</h3>
+    <div class="tbl-scroll" id="md_staff"></div>
+    <div class="btns"><button class="btn" id="md_save">この条件で計算する</button><button class="btn sub" id="md_reset">初めの値に戻す</button><span class="muted" id="md_msg"></span></div>
+  </div>
+
+  <div class="card">
+    <h2>目標の売上に届くか</h2>
+    <div id="md_judge"></div>
+  </div>
+
+  <div class="card">
+    <h2>稼働率（職員ごと）</h2>
+    <p class="lead">モデルコースの件数を100%として、いまの週間予定と、実際に訪問した件数が何%かを出します。実際の件数は、取り込んだ看護記録から数えます。看護記録がまだ無いときは、右の欄に今月ここまでの件数を手で入れると、それで数えます。</p>
+    <div class="tbl-scroll" id="md_rate"></div>
+    <div id="md_rateNote" class="muted"></div>
+  </div>
+
+  <div class="card">
+    <h2>モデルコースに届かない理由</h2>
+    <p class="lead">モデルコースの件数と、いまの予定・実績の差を、理由ごとに分けて出します。</p>
+    <div class="tbl-scroll" id="md_loss"></div>
+  </div>
+
+  <div class="card">
+    <h2>週間モデルコース</h2>
+    <p class="lead">升の数字は「いまの週間予定の件数／モデルの件数」です。足りない升は橙、モデルどおりの升は緑で出ます。升を押すと、その日のモデルコース（何時に何をするか）と、いまの予定の当てはまり方が下に出ます。</p>
+    <div class="tbl-scroll" id="md_week"></div>
+    <div id="md_day"></div>
+  </div>
+  <div class="card" id="cardEval">
+    <h2>評価シート（職員ごと・印刷）</h2>
+    <p class="lead">上の「計算する月」の数字で、職員ごとの評価シートを印刷します。「本人向け」は面談で本人と一緒に見るもので、件数だけを載せます。「管理者向け」は売上の金額と配置の課題まで載せた、管理者・経営陣だけで見るものです。</p>
+    <p class="muted">差の内訳は「予定を組む側で埋めるもの（空き枠）」「患者さんの都合（キャンセル）」「本人に関わるもの（休みの届け・決まりの長さを超えた訪問）」の三つに分けて載せます。空き枠は予定を組む側の課題なので、本人に関わるものとは分けてあります。</p>
+    <div class="row">
+      <div><label class="f" for="ev_staff">職員</label><select id="ev_staff"></select></div>
+      <div><label class="f" for="ev_kind">種類</label><select id="ev_kind"><option value="self">本人向け</option><option value="mgr">管理者向け</option></select></div>
+    </div>
+    <div class="btns"><button class="btn" id="ev_print">この職員の分を印刷する</button><button class="btn sub" id="ev_all">全員分をまとめて印刷する</button><span class="muted" id="ev_msg"></span></div>
   </div>
 </section>
 
@@ -2152,7 +2208,7 @@ function applyDept(){
     d.kind === 'monitor' ? 'モニタリングの予定・面談の記録・' + d.client + 'の経過を、時間の流れで持つ（' + d.name + '）' :
     '各部署の予定のようすと、事務局からの連絡（' + d.name + '）';
   var show = function(id, on){ var el = $(id); if(el) el.style.display = on ? '' : 'none'; };
-  var tabOn = { plan:true, pt: d.kind !== 'office', intake: d.kind === 'visit', course: d.kind !== 'office', report: !!d.report, admin: d.kind === 'visit', req:true, setup:true };
+  var tabOn = { plan:true, pt: d.kind !== 'office', intake: d.kind === 'visit', course: d.kind !== 'office', report: !!d.report, admin: d.kind === 'visit', model: d.kind === 'visit', req:true, setup:true };
   document.querySelectorAll('#tabs button').forEach(function(b){ b.style.display = tabOn[b.getAttribute('data-tab')] ? '' : 'none'; });
   var cur = document.querySelector('#tabs button.on');
   if(cur && !tabOn[cur.getAttribute('data-tab')]) document.querySelector('#tabs button[data-tab=plan]').click();
@@ -2172,6 +2228,7 @@ function refreshAll(){
   renderSetup(); renderPlan(); renderIntakeList(); renderCourse(); renderReport(); renderAdmin();
   renderMonitor(); renderSummary();
   ptForm(); rdKinds(); renderPtList(); nrRender(); renderReq(); keyStatus();
+  if(typeof renderModel === 'function') renderModel();
 }
 
 /* ---- 配線 ---- */
@@ -2185,6 +2242,7 @@ document.querySelectorAll('#tabs button').forEach(function(b){
     if(t === 'course') renderCourse();
     if(t === 'report') renderReport();
     if(t === 'admin') renderAdmin();
+    if(t === 'model') renderModel();
     if(t === 'pt'){ nrScanLocal(); renderPtList(); nrRender(); }
     if(t === 'req') renderReq();
   });
@@ -2543,6 +2601,296 @@ function renderAttend(){
     (ok.length ? '<br><b style="color:var(--red)">職員名簿の呼び名と合わない看護師名の記録</b>：' + ok.map(function(k){ return esc(k) + '（' + odd[k] + '件）'; }).join('、') + '。名簿の呼び名か、看護記録の看護師名の書き方をそろえてください。' : '') +
     '<br>移動は「勤務の決まり」の最長の目安（' + w.mvMax + '分）×件数で見積もっています。予定があって記録の無い日は、今日までの日で、休みでない日だけを数えます。';
 }
+
+/* ============================================================
+   モデルコース（2026-10-27・宏史さんの発案。試作）
+   ・条件は settings.model[部署] に持つ（共有・保管フォルダにも決まりごとと一緒に乗る）
+   ・モデル＝職員ごとの「1日の件数 × 出る曜日」。公休・祝日休みの日は数えない
+   ・予定＝週間予定からキャンセルを除いた件数。休みの届けの日の予定は「要調整」として別に数える
+   ・実績＝取り込んだ看護記録の件数。手で入れた件数があれば、そちらを使う
+   ・売上＝件数 × 単価（保険の種類ごと → 無ければ決まりごとの単価）。どちらも無ければ売上は出さない
+   ============================================================ */
+var MD_INS = ['精神科訪問看護（医療）', '医療保険', '介護保険', '障害福祉', '自費'];
+var MD_DOW = ['1','2','3','4','5','6','0'];
+var mdPick = null;   /* 週間モデルコースで押した升 { sid, dow } */
+function mdAll(){ var s = lj(K.settings, {}) || {}; return s.model || {}; }
+function mdCfg(){ var m = mdAll()[D().k] || {}; return { staff:m.staff || {}, prices:m.prices || {}, goal:(m.goal == null ? '' : m.goal), manual:m.manual || {} }; }
+function mdStore(c){ var cur = lj(K.settings, {}) || {}; var all = Object.assign({}, cur.model || {}); all[D().k] = c; saveSettings(Object.assign({}, cur, { model:all })); }
+function mdPeople(){ return deptStaff().filter(function(s){ return jobOf(s) !== '事務局'; }); }
+function mdWeekOf(sid){ return weekly().filter(function(v){ return v.staffId === sid; }); }
+/* 初めの値：常勤＝勤務の決まりの目標件数・公休以外の曜日。非常勤＝いまの週間予定（いちばん多い日の件数・予定のある曜日） */
+function mdDef(s){
+  if(s.emp === '常勤'){ var off = staffOff(s); return { n:workRule().target, days:MD_DOW.filter(function(d){ return off.indexOf(d) < 0; }) }; }
+  var per = {}; mdWeekOf(s.id).forEach(function(v){ per[String(v.dow)] = (per[String(v.dow)] || 0) + 1; });
+  var mx = 0; Object.keys(per).forEach(function(k){ if(per[k] > mx) mx = per[k]; });
+  return { n:mx, days:Object.keys(per) };
+}
+function mdOf(s){ var c = mdCfg().staff[s.id]; return c ? { n:Math.max(0, +c.n || 0), days:(c.days || []).map(String), set:true } : Object.assign(mdDef(s), { set:false }); }
+function mdPrice(ins){ var v = +mdCfg().prices[ins] || 0; return v || (+settings().price || 0); }
+function mdAvg(nos){ var sum = 0, n = 0; nos.forEach(function(no){ var p = patient(no); var v = mdPrice(p && p.ins || ''); if(v){ sum += v; n++; } }); return n ? sum / n : 0; }
+/* 職員の1件あたりの単価：その人の週間予定の患者さんの保険で重みを付ける → 部署全体 → 決まりごとの単価 */
+function mdStaffPrice(sid){ return mdAvg(mdWeekOf(sid).map(function(v){ return v.no; })) || mdAvg(weekly().map(function(v){ return v.no; })) || (+settings().price || 0); }
+function mdDays(m){ var y = +m.slice(0, 4), mo = +m.slice(5, 7), a = []; for(var d = 1; d <= 31; d++){ var dt = new Date(y, mo - 1, d); if(dt.getMonth() !== mo - 1) break; a.push(ymd(dt)); } return a; }
+/* 直前3か月のキャンセルの割合（週間予定の件数に対して） */
+function mdCxRate(m){
+  var tot = 0, cx = 0, mm = m;
+  for(var i = 0; i < 3; i++){ mm = prevYm(mm); mdDays(mm).forEach(function(date){ visitsOn(date).forEach(function(v){ tot++; if(v.cx) cx++; }); }); }
+  return { rate: tot ? cx / tot : 0, tot:tot, cx:cx };
+}
+function mdStats(s, m){
+  var c = mdOf(s), today = ymd(new Date()), w = workRule(), all = staff();
+  var r = { s:s, c:c, model:0, modelPast:0, plan:0, planPast:0, planFuture:0, empty:0, emptyFuture:0, cxEff:0, cxAll:0, leave:0, leaveDays:0, clash:0, clashFix:0, over:0, extra:0, act:null, actSrc:'', overrun:0, price:mdStaffPrice(s.id) };
+  mdDays(m).forEach(function(date){
+    var dow = String(parseYmd(date).getDay()), why = offWhy(s.id, date), fixed = (why === '公休' || why === '祝日');
+    var vs = visitsOn(date).filter(function(v){ return v.staffId === s.id; });
+    var ok = vs.filter(function(v){ return !v.cx; }).length, past = date <= today;
+    var isModel = c.n > 0 && c.days.indexOf(dow) >= 0 && !fixed;
+    if(isModel){ r.model += c.n; if(past) r.modelPast += c.n; }
+    if(fixed){ r.clashFix += ok; return; }                            /* 公休・祝日の日の予定は要調整（件数には入れない） */
+    if(why){ r.clash += ok; if(isModel){ r.leave += c.n; r.leaveDays++; } return; }     /* 休みの届けの日：予定は要調整、モデルの件数はそのまま失う */
+    r.cxAll += vs.length - ok; r.plan += ok; if(past) r.planPast += ok; else r.planFuture += ok;
+    if(isModel){
+      var emp = Math.max(0, c.n - vs.length);
+      r.empty += emp; if(!past) r.emptyFuture += emp;
+      r.cxEff += Math.max(0, c.n - ok) - emp; r.over += Math.max(0, ok - c.n);
+    } else r.extra += ok;
+  });
+  var man = (mdCfg().manual[m] || {})[s.id];
+  if(man != null && man !== ''){ r.act = Math.max(0, +man || 0); r.actSrc = '手入力'; }
+  else{
+    var recs = live('records').filter(function(x){ if(!x.date || ym(x.date) !== m) return false; var st = recStaff(x, all); return st && st.id === s.id; });
+    if(recs.length){
+      r.act = recs.length; r.actSrc = '看護記録';
+      r.overrun = recs.filter(function(x){ var a = toMin(x.start), b = toMin(x.end); return a != null && b != null && b - a > w.visit; }).length;
+    }
+  }
+  return r;
+}
+function mdPct(a, b){ return b ? Math.round(a / b * 1000) / 10 + '%' : '—'; }
+function mdYen(n){ return yen(Math.round(n) || 0); }
+
+function mdCond(){
+  var c = mdCfg(), m = $('md_month').value;
+  $('md_goal').value = c.goal;
+  $('md_prices').innerHTML = MD_INS.map(function(k, i){ return '<div><label class="f" for="md_p' + i + '">' + esc(k) + '</label><input type="number" id="md_p' + i + '" min="0" step="10" value="' + esc(c.prices[k] || '') + '" placeholder="' + (settings().price ? '空欄＝' + esc(settings().price) + '円' : '空欄') + '"></div>'; }).join('');
+  var ppl = mdPeople();
+  if(!ppl.length){ $('md_staff').innerHTML = '<p class="empty">この部署の職員がまだいません。「名簿・設定」で入れてください。</p>'; return; }
+  var man = c.manual[m] || {};
+  $('md_staff').innerHTML = '<table><tr><th>職員</th><th class="num">1日の件数</th><th>出る曜日</th><th class="num">' + esc(m ? (+m.slice(5, 7)) + '月' : '') + 'ここまでの訪問件数<br><small>（手入力・看護記録が無いとき）</small></th></tr>' + ppl.map(function(s){
+    var o = mdOf(s), off = staffOff(s);
+    return '<tr><td>' + esc(s.name) + '<br><small class="muted">' + esc(s.emp || '') + (o.set ? '' : '・初めの値') + '</small>' + (s.emp === '常勤' && !off.length ? '<br><span class="tag amber">公休の曜日が未入力</span>' : '') + '</td>' +
+      '<td class="num"><input type="number" min="0" max="20" data-mdn="' + esc(s.id) + '" value="' + o.n + '" style="max-width:80px"></td>' +
+      '<td>' + MD_DOW.map(function(d){ var isOff = off.indexOf(d) >= 0; return '<label style="margin-right:8px;white-space:nowrap' + (isOff ? ';color:var(--muted)' : '') + '"><input type="checkbox" data-mdd="' + esc(s.id) + '" value="' + d + '"' + (o.days.indexOf(d) >= 0 ? ' checked' : '') + '> ' + DOW[+d] + (isOff ? '<small>（公休）</small>' : '') + '</label>'; }).join('') + '</td>' +
+      '<td class="num"><input type="number" min="0" data-mdm="' + esc(s.id) + '" value="' + esc(man[s.id] != null ? man[s.id] : '') + '" placeholder="空欄＝看護記録" style="max-width:120px"></td></tr>';
+  }).join('') + '</table>';
+}
+function mdCollect(){
+  var c = mdCfg(), m = $('md_month').value, st = {}, man = Object.assign({}, c.manual[m] || {}), pr = {};
+  document.querySelectorAll('[data-mdn]').forEach(function(el){ var id = el.getAttribute('data-mdn'); st[id] = { n:Math.max(0, +el.value || 0), days:[] }; });
+  document.querySelectorAll('[data-mdd]:checked').forEach(function(el){ var id = el.getAttribute('data-mdd'); if(st[id]) st[id].days.push(el.value); });
+  document.querySelectorAll('[data-mdm]').forEach(function(el){ var id = el.getAttribute('data-mdm'); if(el.value === '') delete man[id]; else man[id] = Math.max(0, +el.value || 0); });
+  MD_INS.forEach(function(k, i){ var v = $('md_p' + i).value; if(v !== '' && +v > 0) pr[k] = +v; });
+  var manual = Object.assign({}, c.manual); if(m) manual[m] = man;
+  return { staff:Object.assign({}, c.staff, st), prices:pr, goal:$('md_goal').value === '' ? '' : Math.max(0, +$('md_goal').value || 0), manual:manual };
+}
+
+function renderModel(){
+  if(!$('tab-model')) return;
+  if(!$('md_month').value) $('md_month').value = ymd(new Date()).slice(0, 7);
+  mdCond(); mdResult(); mdWeek(); mdDay(); evFill();
+}
+function mdResult(){
+  var m = $('md_month').value, c = mdCfg(), ppl = mdPeople();
+  if(!m || !ppl.length){ ['md_judge','md_rate','md_loss'].forEach(function(id){ $(id).innerHTML = '<p class="empty">職員と計算する月を入れてください。</p>'; }); $('md_rateNote').innerHTML = ''; return; }
+  var rows = ppl.map(function(s){ return mdStats(s, m); });
+  var cr = mdCxRate(m), T = { model:0, modelPast:0, plan:0, planPast:0, planFuture:0, empty:0, emptyFuture:0, cxEff:0, cxAll:0, leave:0, clash:0, clashFix:0, over:0, extra:0, act:0, actN:0, overrun:0,
+    sModel:0, sPlan:0, sFc:0, fc:0, noPrice:0 };
+  rows.forEach(function(r){
+    ['model','modelPast','plan','planPast','planFuture','empty','emptyFuture','cxEff','cxAll','leave','clash','clashFix','over','extra','overrun'].forEach(function(k){ T[k] += r[k]; });
+    var done = r.act != null ? r.act : r.planPast;
+    r.fc = done + r.planFuture * (1 - cr.rate);
+    if(r.act != null){ T.act += r.act; T.actN++; }
+    T.fc += r.fc;
+    if(r.price){ T.sModel += r.model * r.price; T.sPlan += r.plan * r.price; T.sFc += r.fc * r.price; } else if(r.model || r.plan) T.noPrice++;
+  });
+  var hasPrice = T.sModel > 0 || T.sPlan > 0, goal = +c.goal || 0, avg = T.model ? T.sModel / T.model : (T.plan ? T.sPlan / T.plan : 0);
+  var src = Object.keys(c.prices).length ? '保険の種類ごとの単価（この画面で入れたもの）' : (settings().price ? '「名簿・設定」の決まりごとの単価（' + esc(settings().price) + '円）' : '');
+  /* ---- 目標の売上に届くか ---- */
+  var h = '<table><tr><th></th><th class="num">件数（月）</th>' + (hasPrice ? '<th class="num">売上（月）</th>' : '') + '<th>中身</th></tr>' +
+    '<tr><td><b>モデルコースどおり</b></td><td class="num">' + T.model + '件</td>' + (hasPrice ? '<td class="num">' + mdYen(T.sModel) + '</td>' : '') + '<td><small class="muted">全員が条件どおりの件数をこなしたとき</small></td></tr>' +
+    '<tr><td><b>いまの週間予定</b></td><td class="num">' + T.plan + '件</td>' + (hasPrice ? '<td class="num">' + mdYen(T.sPlan) + '</td>' : '') + '<td><small class="muted">キャンセル済みと、休み（公休・祝日・届け）の日の予定を除く</small></td></tr>' +
+    '<tr><td><b>今月の見込み</b></td><td class="num">' + Math.round(T.fc) + '件</td>' + (hasPrice ? '<td class="num">' + mdYen(T.sFc) + '</td>' : '') + '<td><small class="muted">今日までは' + (!T.actN ? '予定' : (T.actN < rows.length ? '実績（看護記録・手入力。実績の無い職員は予定）' : '実績（看護記録・手入力）')) + '、明日からは予定から直前3か月のキャンセルの割合（' + (cr.tot ? Math.round(cr.rate * 1000) / 10 + '%' : 'データなし＝0%') + '）を引いたもの</small></td></tr>' +
+    (goal ? '<tr><td><b>目標</b></td><td class="num">' + (avg ? '約' + Math.ceil(goal / avg) + '件' : '—') + '</td>' + (hasPrice ? '<td class="num">' + mdYen(goal) + '</td>' : '') + '<td></td></tr>' : '') + '</table>';
+  if(!hasPrice){
+    h += '<div class="judge fee">単価が入っていないため、売上と目標への届き方は出していません。上の「1回の訪問の単価」か、「名簿・設定」の決まりごとの単価を入れてください。</div>';
+  } else if(!goal){
+    h += '<div class="judge" style="background:#eef3f8;color:var(--ink-soft)">目標の売上を入れると、届くかどうかを判定します。</div>';
+  } else {
+    var rate = T.sFc / goal, gap = goal - T.sFc, need = avg ? Math.ceil(gap / avg) : 0;
+    if(T.sModel < goal){
+      var lack = avg ? Math.ceil((goal - T.sModel) / avg) : 0;
+      h += '<div class="judge fee">達成の見込み：<b>' + mdPct(T.sFc, goal) + '</b>。モデルコースどおり全員が動いても、目標に <b>' + mdYen(goal - T.sModel) + '</b> 届きません（モデルなら目標の ' + mdPct(T.sModel, goal) + '）。' +
+        (lack ? 'モデルの件数を月にあと約 <b>' + lack + '件</b> 増やす条件（1日の件数を上げる・出る人や曜日を増やす）にしない限り、目標には届きません。' : '') + '</div>';
+    } else if(gap <= 0){
+      h += '<div class="judge free">達成の見込み：<b>' + mdPct(T.sFc, goal) + '</b>。いまの予定のままで、目標に届く見込みです。</div>';
+    } else {
+      h += '<div class="judge" style="background:#fbf3e8;color:#9a5a1d">達成の見込み：<b>' + mdPct(T.sFc, goal) + '</b>。目標まであと <b>' + mdYen(gap) + '</b>（約 <b>' + need + '件</b>）です。モデルコースどおりなら届く目標です（モデルなら目標の ' + mdPct(T.sModel, goal) + '）。' +
+        (T.emptyFuture >= need ? '今月の残りの空き枠（' + T.emptyFuture + '件）を埋めれば届きます。' : '今月の残りの空き枠（' + T.emptyFuture + '件）をすべて埋めても、今月は届きません。来月の予定の組み方で取り返すことになります。') + '</div>';
+    }
+  }
+  h += '<p class="muted" style="margin-top:8px">単価：' + (src || '入っていません') + '。職員ごとの単価は、その人の週間予定に入っている' + D().client + 'の保険の種類から平均しています。' + (T.noPrice ? '<br><span style="color:var(--red)">単価の決まらない職員が ' + T.noPrice + '人 います（その人の分は売上に入っていません）。</span>' : '') + '</p>';
+  $('md_judge').innerHTML = h;
+  /* ---- 稼働率 ---- */
+  $('md_rate').innerHTML = '<table><tr><th>職員</th><th class="num">モデル</th><th class="num">いまの予定</th><th class="num">予定の稼働率</th><th class="num">実績<br><small>（今日まで）</small></th><th class="num">実績の稼働率<br><small>（今日までのモデルに対して）</small></th>' + (hasPrice ? '<th class="num">モデルの売上</th><th class="num">見込みの売上</th>' : '') + '</tr>' +
+    rows.map(function(r){
+      return '<tr><td>' + esc(r.s.name) + '<br><small class="muted">1日' + r.c.n + '件・' + (r.c.days.map(function(d){ return DOW[+d]; }).join('') || '出る曜日なし') + '</small></td>' +
+        '<td class="num">' + r.model + '件</td><td class="num">' + r.plan + '件</td><td class="num"><b>' + mdPct(r.plan, r.model) + '</b></td>' +
+        '<td class="num">' + (r.act != null ? r.act + '件<br><small class="muted">' + r.actSrc + '</small>' : '<small class="muted">記録なし</small>') + '</td>' +
+        '<td class="num">' + (r.act != null ? '<b>' + mdPct(r.act, r.modelPast) + '</b><br><small class="muted">モデル ' + r.modelPast + '件</small>' : '—') + '</td>' +
+        (hasPrice ? '<td class="num">' + (r.price ? mdYen(r.model * r.price) : '<small class="muted">単価なし</small>') + '</td><td class="num">' + (r.price ? mdYen(r.fc * r.price) : '—') + '</td>' : '') + '</tr>';
+    }).join('') +
+    '<tr><th>合計</th><th class="num">' + T.model + '件</th><th class="num">' + T.plan + '件</th><th class="num">' + mdPct(T.plan, T.model) + '</th><th class="num">' + (T.actN ? T.act + '件' : '—') + '</th><th class="num">' + (T.actN ? mdPct(T.act, rows.filter(function(r){ return r.act != null; }).reduce(function(a, r){ return a + r.modelPast; }, 0)) : '—') + '</th>' + (hasPrice ? '<th class="num">' + mdYen(T.sModel) + '</th><th class="num">' + mdYen(T.sFc) + '</th>' : '') + '</tr></table>';
+  $('md_rateNote').innerHTML = '今日（' + esc(jpDate(ymd(new Date()))) + '）までを実績、明日からを予定として数えています。公休・祝日休みの日はモデルに入れていません。';
+  /* ---- 届かない理由 ---- */
+  var L = function(lbl, n, note){ n = n || 0; return '<tr><td>' + lbl + '</td><td class="num">' + n + '件</td>' + (hasPrice ? '<td class="num">' + (avg ? mdYen(n * avg) : '—') + '</td>' : '') + '<td><small class="muted">' + note + '</small></td></tr>'; };
+  $('md_loss').innerHTML = '<table><tr><th>理由</th><th class="num">件数（月）</th>' + (hasPrice ? '<th class="num">売上にすると</th>' : '') + '<th>中身</th></tr>' +
+    L('空き枠（予定が入っていない枠）', T.empty, 'モデルの件数に、週間予定の件数が足りない分。新しい' + D().client + 'を入れる余地') +
+    L('キャンセル', T.cxEff, 'モデルの日に入っていた予定がキャンセルになった分（今月のキャンセルは全部で ' + T.cxAll + '件）') +
+    L('休みの届け（有休・急な休みなど）', T.leave, 'モデルの日に休みの届けがあった分' + (T.clash ? '。その日に入っている予定 ' + T.clash + '件は「要調整」' : '')) +
+    L('モデルを超えた予定', -(T.over + T.extra), 'モデルの件数より多く入っている分・出る曜日以外の日の予定（差し引き）') +
+    (T.clashFix ? '<tr><td>公休・祝日に入っている予定</td><td class="num"><small class="muted">数えない</small></td>' + (hasPrice ? '<td></td>' : '') + '<td><small class="muted">' + T.clashFix + '件。モデルにも予定にも入れていません。代わりの人を入れるか日を動かす「要調整」です</small></td></tr>' : '') +
+    '<tr><th>モデルといまの予定の差</th><th class="num">' + (T.model - T.plan) + '件</th>' + (hasPrice ? '<th class="num">' + (avg ? mdYen((T.model - T.plan) * avg) : '—') + '</th>' : '') + '<th></th></tr></table>' +
+    (T.overrun ? '<p class="muted" style="margin-top:8px">参考：看護記録で、' + workRule().visit + '分を超えた訪問が今月 ' + T.overrun + '件 あります（1日の件数が伸びない理由の一つ）。</p>' : '');
+}
+/* 1日のモデルコース：事業所を出て移動 → 訪問、をくり返す。お昼をまたぐ前に休憩、最後に内勤、残りは予備 */
+function mdCourse(n){
+  var w = workRule(), t = toMin(w.start), end = toMin(w.end), noon = 12 * 60, brk = !(w.brk > 0), out = [];
+  for(var i = 0; i < n; i++){
+    if(!brk && t + w.mvMax + w.visit > noon){ out.push({ k:'brk', a:t, b:t + w.brk }); t += w.brk; brk = true; }
+    out.push({ k:'mv', a:t, b:t + w.mvMax }); t += w.mvMax;
+    out.push({ k:'v', a:t, b:t + w.visit }); t += w.visit;
+  }
+  if(!brk){ out.push({ k:'brk', a:t, b:t + w.brk }); t += w.brk; }
+  if(w.inner){ out.push({ k:'in', a:t, b:t + w.inner }); t += w.inner; }
+  if(t < end) out.push({ k:'spare', a:t, b:end });
+  return { list:out, over:t - end };
+}
+function hm(n){ return pad(Math.floor(n / 60)) + ':' + pad(n % 60); }
+function mdWeek(){
+  var ppl = mdPeople();
+  if(!ppl.length){ $('md_week').innerHTML = ''; return; }
+  $('md_week').innerHTML = '<table><tr><th>職員</th>' + MD_DOW.map(function(d){ return '<th class="num">' + DOW[+d] + '</th>'; }).join('') + '<th class="num">週の計</th></tr>' + ppl.map(function(s){
+    var o = mdOf(s), tw = 0, tm = 0;
+    var cells = MD_DOW.map(function(d){
+      var vs = mdWeekOf(s.id).filter(function(v){ return String(v.dow) === d; }).length, on = o.n > 0 && o.days.indexOf(d) >= 0;
+      tw += vs; if(on) tm += o.n;
+      if(!on && !vs) return '<td class="num"><span class="muted">—</span></td>';
+      var cls = !on ? 'gray' : (vs >= o.n ? 'green' : 'amber'), sel = mdPick && mdPick.sid === s.id && mdPick.dow === d;
+      return '<td class="num"><button type="button" class="tag ' + cls + '" data-mdpick="' + esc(s.id) + '|' + d + '" style="border:' + (sel ? '2px solid var(--ink)' : '0') + ';cursor:pointer;font:inherit;font-size:12.5px;font-weight:700">' + vs + '／' + (on ? o.n : '—') + '</button></td>';
+    }).join('');
+    return '<tr><td>' + esc(s.name) + '</td>' + cells + '<td class="num"><b>' + tw + '／' + tm + '</b></td></tr>';
+  }).join('') + '</table>';
+  $('md_week').querySelectorAll('[data-mdpick]').forEach(function(b){ b.addEventListener('click', function(){ var p = b.getAttribute('data-mdpick').split('|'); mdPick = { sid:p[0], dow:p[1] }; mdWeek(); mdDay(); }); });
+}
+function mdDay(){
+  var box = $('md_day'); if(!box) return;
+  var s = mdPick ? staff().filter(function(x){ return x.id === mdPick.sid; })[0] : null;
+  if(!s){ box.innerHTML = '<p class="muted" style="margin-top:8px">上の表の升を押すと、その日のモデルコースが出ます。</p>'; return; }
+  var o = mdOf(s), w = workRule(), on = o.days.indexOf(mdPick.dow) >= 0, n = on ? o.n : 0;
+  var vs = mdWeekOf(s.id).filter(function(v){ return String(v.dow) === mdPick.dow; }).sort(function(a, b){ return a.time < b.time ? -1 : 1; });
+  var cs = mdCourse(n), slots = cs.list.filter(function(x){ return x.k === 'v'; }), used = {}, left = [];
+  vs.forEach(function(v){
+    var t = toMin(v.time), best = -1, bd = 1e9;
+    slots.forEach(function(x, i){ if(used[i] != null) return; var d = Math.abs(x.a - t); if(d < bd){ bd = d; best = i; } });
+    if(best >= 0) used[best] = v; else left.push(v);
+  });
+  var areas = {}; vs.forEach(function(v){ var p = patient(v.no); if(p && p.area) areas[p.area] = (areas[p.area] || 0) + 1; });
+  var lbl = { mv:'移動', brk:'休憩', in:'内勤', spare:'予備' }, vi = 0;
+  var h = '<div class="day"><h3>' + esc(s.name) + '・' + DOW[+mdPick.dow] + '曜日のモデルコース' + (on ? '（' + n + '件）' : '') + '</h3>';
+  if(!on) h += '<p class="muted">この曜日は、モデルコースの「出る曜日」に入っていません。いまの週間予定は ' + vs.length + '件 です。</p>';
+  else {
+    h += '<table><tr><th>時刻</th><th>モデルコース</th><th>いまの週間予定</th></tr>' + cs.list.map(function(x){
+      if(x.k !== 'v') return '<tr><td>' + hm(x.a) + '〜' + hm(x.b) + '</td><td class="muted">' + lbl[x.k] + '</td><td></td></tr>';
+      var i = vi++, v = used[i], p = v ? patient(v.no) : null;
+      return '<tr><td><b>' + hm(x.a) + '〜' + hm(x.b) + '</b></td><td>訪問 ' + (i + 1) + '件目</td><td>' + (v ? '<span class="tag green">予定あり</span> ' + esc(dn(v.no)) + (p && p.area ? '<small class="muted">（' + esc(p.area) + '）</small>' : '') + '<br><small class="muted">いまの予定の時刻 ' + esc(v.time) + '・' + esc(v.min || w.visit) + '分</small>' : '<span class="tag amber">空き枠</span>') + '</td></tr>';
+    }).join('') + '</table>';
+    if(cs.over > 0) h += '<p style="color:var(--red);font-weight:700;margin-top:6px">この件数では、退勤時刻（' + esc(w.end) + '）を ' + minLabel(cs.over) + ' 超えます。</p>';
+    var free = slots.length - Object.keys(used).length;
+    h += '<p class="muted" style="margin-top:6px">空き枠 ' + free + '件。' + (Object.keys(areas).length ? 'この日に回っている地区：' + Object.keys(areas).map(function(a){ return esc(a) + '（' + areas[a] + '件）'; }).join('、') + '。空き枠には、同じ地区の' + D().client + 'を入れると移動が短くなります。' : '') + '</p>';
+    if(left.length) h += '<p style="color:var(--red);margin-top:4px">モデルの件数を超えて入っている予定：' + left.map(function(v){ return esc(v.time) + ' ' + esc(dn(v.no)); }).join('、') + '</p>';
+  }
+  h += '<p class="muted" style="margin-top:6px">移動は「勤務の決まり」の最長の目安（' + w.mvMax + '分）で取っています。訪問先どうしの距離はまだ見ていません。お昼をまたぐ前に休憩（' + w.brk + '分）、最後に内勤（' + w.inner + '分）を入れ、退勤までの残りを予備にしています。</p></div>';
+  box.innerHTML = h;
+}
+$('md_save').addEventListener('click', function(){ mdStore(mdCollect()); $('md_msg').textContent = '保存して計算しました。'; renderModel(); });
+$('md_reset').addEventListener('click', function(){
+  if(!confirm('職員ごとの件数と出る曜日を、初めの値（勤務の決まり・公休・いまの週間予定）に戻します。単価・目標・手入力の件数はそのままです。よろしいですか？')) return;
+  var c = mdCfg(); c.staff = {}; mdStore(c); $('md_msg').textContent = '初めの値に戻しました。'; renderModel();
+});
+$('md_month').addEventListener('change', function(){ $('md_msg').textContent = ''; renderModel(); });
+/* ---- 評価シート（2026-10-27・宏史さんの指示「職員のイメージ醸成・客観的な職員貢献値の資料に」）----
+   本人向け（件数だけ・面談で一緒に見る）と管理者向け（売上・配置の課題まで）の2種類。
+   差の内訳は、予定を組む側（空き枠）／患者さんの都合（キャンセル）／本人に関わるもの（休みの届け・超過）に分ける。 */
+function evFill(){ fillSelect('ev_staff', mdPeople().map(function(s){ return { v:s.id, t:s.name }; }), null); }
+function evSheet(s, kind, m){
+  var r = mdStats(s, m), w = workRule(), cs = mdCourse(r.c.n), mgr = kind === 'mgr', today = ymd(new Date());
+  var pastMonth = m < today.slice(0, 7), upto = pastMonth ? 'この月の終わりまで' : '今日（' + jpDate(today) + '）まで';
+  var visits = cs.list.filter(function(x){ return x.k === 'v'; });
+  var yenOf = function(n){ return r.price ? mdYen(n * r.price) : '—'; };
+  var row = function(a, b, c){ return '<tr><th>' + a + '</th><td class="n">' + b + '</td>' + (c != null ? '<td class="n">' + c + '</td>' : '') + '</tr>'; };
+  var h = '<section class="sheet">' +
+    '<div class="hd"><img src="' + esc(new URL('TriSight_icon_512.png', location.href).href) + '" alt="TriSight®"><div><h1>モデルコース評価シート（' + (mgr ? '管理者向け' : '本人向け') + '）</h1><p>' + esc(D().name) + '　' + esc(jpMonth(m)) + '分</p></div></div>' +
+    '<table class="meta"><tr><th>職員</th><td>' + esc(s.name) + '（' + esc(s.emp || '') + '）</td><th>作成日</th><td>' + esc(jpDate(today)) + '</td></tr></table>' +
+    '<h2>1　この月のモデルコース</h2>' +
+    '<p>1日 <b>' + r.c.n + '件</b>・出る曜日 <b>' + (r.c.days.map(function(d){ return DOW[+d]; }).join('・') || 'なし') + '</b>（公休・祝日休みの日は除く）。この月のモデルは <b>' + r.model + '件</b> です。</p>' +
+    (r.c.n ? '<p class="sm">1日の流れ：' + esc(w.start) + ' 出発 → 訪問 ' + r.c.n + '件（1件 ' + w.visit + '分・移動は1回 ' + w.mvMax + '分まで）' + (visits.length ? '・最後の訪問の終わり ' + hm(visits[visits.length - 1].b) : '') + ' → 休憩 ' + w.brk + '分 → 内勤 ' + w.inner + '分 → ' + esc(w.end) + ' 退勤' + (cs.over > 0 ? '　<b class="red">（この件数では退勤時刻を ' + minLabel(cs.over) + ' 超えます）</b>' : '') + '</p>' : '') +
+    '<h2>2　モデルに対する数字</h2>' +
+    '<table class="nums"><tr><th></th><th class="n">件数</th>' + (mgr ? '<th class="n">売上にすると</th>' : '') + '</tr>' +
+      row('モデルコース', r.model + '件', mgr ? yenOf(r.model) : null) +
+      row('いまの週間予定（キャンセル・休みの日を除く）', r.plan + '件', mgr ? yenOf(r.plan) : null) +
+      row('予定の稼働率', '<b>' + mdPct(r.plan, r.model) + '</b>', mgr ? '' : null) +
+      row('実績（' + upto + '）', r.act != null ? r.act + '件<span class="sm">（' + r.actSrc + '）</span>' : '記録なし', mgr ? (r.act != null ? yenOf(r.act) : '—') : null) +
+      row('実績の稼働率（同じ期間のモデル ' + r.modelPast + '件に対して）', r.act != null ? '<b>' + mdPct(r.act, r.modelPast) + '</b>' : '—', mgr ? '' : null) +
+    '</table>' +
+    '<h2>3　モデルに届かない分の内訳</h2>' +
+    '<table class="nums"><tr><th>分け方</th><th>中身</th><th class="n">件数</th>' + (mgr ? '<th class="n">売上にすると</th>' : '') + '</tr>' +
+      '<tr><th>予定を組む側で埋めるもの</th><td>空き枠（モデルの件数に予定が足りない分）</td><td class="n">' + r.empty + '件</td>' + (mgr ? '<td class="n">' + yenOf(r.empty) + '</td>' : '') + '</tr>' +
+      '<tr><th>' + esc(D().client) + 'の都合</th><td>キャンセル（この月のキャンセルは全部で ' + r.cxAll + '件）</td><td class="n">' + r.cxEff + '件</td>' + (mgr ? '<td class="n">' + yenOf(r.cxEff) + '</td>' : '') + '</tr>' +
+      '<tr><th rowspan="2">本人に関わるもの</th><td>休みの届け（' + r.leaveDays + '日）</td><td class="n">' + r.leave + '件</td>' + (mgr ? '<td class="n">' + yenOf(r.leave) + '</td>' : '') + '</tr>' +
+      '<tr><td>決まりの長さ（' + w.visit + '分）を超えた訪問</td><td class="n">' + (r.actSrc === '看護記録' ? r.overrun + '件' : '<span class="sm">看護記録が無いため数えていません</span>') + '</td>' + (mgr ? '<td class="n sm">件数が伸びない理由の参考</td>' : '') + '</tr>' +
+    '</table>' +
+    '<p class="sm">空き枠は、予定を組む側（管理者・事務局）が' + esc(D().client) + 'を入れて埋めるものです。' + (mgr ? '' : 'この表の数字だけで本人の良し悪しを決めるものではありません。') + '</p>';
+  if(mgr){
+    h += '<h2>4　管理者が見ること</h2><ul class="sm">' +
+      '<li>本人に関わる差（休みの届け）：' + r.leave + '件' + (r.price ? '（' + yenOf(r.leave) + '）' : '') + '。配置に関わる差（空き枠）：' + r.empty + '件' + (r.price ? '（' + yenOf(r.empty) + '）' : '') + '。</li>' +
+      (r.clash ? '<li>休みの届けの日に入っている予定：' + r.clash + '件（要調整）</li>' : '') +
+      (r.clashFix ? '<li>公休・祝日に入っている予定：' + r.clashFix + '件（要調整）</li>' : '') +
+      ((r.over + r.extra) ? '<li>モデルを超えて入っている予定：' + (r.over + r.extra) + '件</li>' : '') +
+      '<li>単価：' + (r.price ? '1件あたり ' + mdYen(r.price) + '（この職員の週間予定の' + esc(D().client) + 'の保険の種類から平均）' : '入っていません') + '</li></ul>';
+  }
+  h += '<h2>' + (mgr ? '5　所見' : '4　面談で話したこと・来月に向けて') + '</h2><div class="memo"></div>' +
+    (mgr ? '' : '<table class="sign"><tr><th>面談日</th><td></td><th>面談者</th><td></td><th>本人</th><td></td></tr></table>') +
+    '</section>';
+  return h;
+}
+function evPrint(list){
+  var m = $('md_month').value, kind = $('ev_kind').value;
+  if(!m || !list.length){ $('ev_msg').textContent = '職員と計算する月を入れてください。'; return; }
+  var css = '@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic",sans-serif;color:#10243b;font-size:9.5pt;line-height:1.45;margin:0}' +
+    '.sheet{page-break-after:always}.sheet:last-child{page-break-after:auto}' +
+    '.hd{display:flex;align-items:center;gap:10px;border-bottom:1.5px solid #10243b;padding-bottom:6px;margin-bottom:8px}.hd img{width:30px;height:30px}.hd h1{font-size:14pt;margin:0}.hd p{margin:0;font-size:9.5pt;color:#5d6b7a}' +
+    'h2{font-size:10.5pt;margin:8px 0 3px;border-left:4px solid #c9772a;padding-left:6px}p{margin:3px 0}table{width:100%;border-collapse:collapse;margin:4px 0}th,td{border:1px solid #cfc6b4;padding:2px 6px;text-align:left;vertical-align:top}' +
+    'th{background:#f4f1ea;font-weight:700}.n{text-align:right;white-space:nowrap}.sm{font-size:9pt;color:#5d6b7a}.red{color:#b0402f}ul{margin:2px 0 0 18px;padding:0}' +
+    '.meta th{width:12%}.memo{border:1px solid #cfc6b4;height:20mm;margin-top:4px}.sign td{width:22%;height:9mm}.sign th{width:11%}';
+  var body = list.map(function(s){ return evSheet(s, kind, m); }).join('');
+  var win = window.open('', '_blank');
+  if(!win){ $('ev_msg').textContent = '印刷の画面を開けませんでした。ブラウザのポップアップの許可を確かめてください。'; return; }
+  win.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><base href="' + esc(location.href) + '"><title>モデルコース評価シート ' + esc(m) + '</title><style>' + css + '</style></head><body>' + body + '<script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script></body></html>');
+  win.document.close();
+  $('ev_msg').textContent = '印刷の画面を開きました（' + list.length + '人分）。';
+}
+$('ev_print').addEventListener('click', function(){ var id = $('ev_staff').value; var s = mdPeople().filter(function(x){ return x.id === id; })[0]; evPrint(s ? [s] : []); });
+$('ev_all').addEventListener('click', function(){ evPrint(mdPeople()); });
 
 /* ---- 仮スケジュール表（2026-10-26・宏史さんの指示）----
    予定を組む人（管理する人）が、部署の1週間を「職員ごとの行 × 曜日の列」で見渡すための右のサブ画面。

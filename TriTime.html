@@ -169,7 +169,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-04</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-05</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -569,7 +569,9 @@ function tsGoBack(){
   <div class="card" id="cardSr">
     <h2>月次の売上資料（経営陣向け）</h2>
     <p class="lead">月ごとの数字を保存して並べ、経営陣の評価と施策を立てる材料にします。月が替わって最初にこの画面を開いたとき、前の月の数字を自動で保存します（この画面を使い始める前の月は保存しません）。月の途中の数字を残したいときや、看護記録を取り込んだあとに保存し直したいときは、「この月の数字を保存する」を押します（上の「計算する月」の月を、上書きで保存します）。</p>
-    <div class="btns"><button class="btn" id="sr_save">この月の数字を保存する</button><button class="btn sub" id="sr_print">資料を印刷する</button><button class="btn sub" id="sr_out">数字を書き出す（親機トライサイトへ渡す用）</button><span class="muted" id="sr_msg"></span></div>
+    <div class="btns"><button class="btn" id="sr_save">この月の数字を保存する</button><button class="btn sub" id="sr_print">資料を印刷する</button><button class="btn amber" id="sr_send">親機トライサイトへ送る</button><button class="btn sub" id="sr_out">数字を書き出す（別の端末の親機で読み込む用）</button><span class="muted" id="sr_msg"></span></div>
+    <div class="btns" style="margin-top:4px"><label><input type="checkbox" id="sr_hide" checked> 親機へ渡すとき、職員の名前を伏せる（職員A・B…に置き換え）</label></div>
+    <p class="muted">「親機トライサイトへ送る」は、保存した月（と、まだ保存していない「計算する月」）の数字を文章にまとめ、親機の「ベース資料」の欄へ流し込みます。親機ではベース資料がAIの提供元へ送られるため、最初は職員の名前を伏せる設定にしています。別の端末の親機で使うときは「数字を書き出す」で出したファイルを、親機の「ベース資料」の「トライタイムの売上資料を読み込む」で読み込みます。</p>
     <p class="muted">「資料を印刷する」は、A4横で、保存した月の推移（12か月まで）・「計算する月」の要点・職員ごとの数字を1枚にまとめます。</p>
     <div class="tbl-scroll" id="sr_list"></div>
   </div>
@@ -3098,9 +3100,51 @@ $('sr_save').addEventListener('click', function(){
   srPut(m, snap); $('sr_msg').textContent = jpMonth(m) + 'の数字を保存しました。'; srList();
 });
 $('sr_print').addEventListener('click', srPrint);
+/* 売上資料を、親機トライサイトの「ベース資料」に入れる文章にする（2026-10-27・宏史さんの指示「6も進めて」）。
+   名前を伏せるときは、部署の職員を並び順に「職員A・B…」と置き換える（AIの提供元へ送られるため、最初は伏せる） */
+function srText(hide){
+  var S = srOf(), ms = Object.keys(S).sort(), m = $('md_month').value, list = ms.map(function(k){ return S[k]; });
+  if(m && !S[m]){ var x = srMake(m); if(x){ x.live = true; list.push(x); list.sort(function(a, b){ return a.month < b.month ? -1 : 1; }); } }
+  if(!list.length) return '';
+  var names = {}, n = 0, L = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  var who = function(nm){ if(!hide) return nm; if(names[nm] == null){ names[nm] = n < 26 ? L.charAt(n) : String(n + 1); n++; } return '職員' + names[nm]; };
+  list.forEach(function(x){ x.rows.forEach(function(r){ who(r.name); }); });
+  var y = function(v){ return mdYen(v); }, p = function(a, b){ return mdPct(a, b); };
+  var t = '■トライタイム 月次の売上資料（経営陣向け）\n部署：' + D().name + '　書き出し日時：' + nowLocal().replace('T', ' ') + '\n' +
+    '計算の決まり：売上は週間予定の訪問を1件ずつ料金表（令和8年6月1日から・令和8年厚生労働省告示第74号ほか）で計算したもの。見込みは今日までの実績（無い職員は予定）に、明日からの予定から直前3か月のキャンセルの割合を引いたものを足したもの。空き枠・キャンセル・休みの届けの金額は、件数×その月の1件あたりの売上。' +
+    (hide ? '職員の名前は伏せています。' : '') + '\n\n【月ごとの推移】\n';
+  list.forEach(function(x){
+    t += jpMonth(x.month) + (x.live ? '（保存前の計算）' : '') + '：目標 ' + (x.goal ? y(x.goal) : 'なし') + '／モデル ' + y(x.sModel) + '（' + x.model + '件）／予定 ' + y(x.sPlan) + '（' + x.plan + '件）／見込み ' + y(x.sFc) + (x.goal ? '（目標の達成率 ' + p(x.sFc, x.goal) + '）' : '') +
+      '／予定の稼働率 ' + p(x.plan, x.model) + '／実績の稼働率 ' + (x.act != null ? p(x.act, x.actModel) : '記録なし') +
+      '／空き枠 ' + x.empty + '件（' + y(x.empty * x.avg) + '）／キャンセル ' + x.cxEff + '件（' + y(x.cxEff * x.avg) + '）／休みの届け ' + x.leave + '件（' + y(x.leave * x.avg) + '）' +
+      '／2名体制の同行 ' + x.withN + '件（' + minLabel(x.withMin) + '）' + (x.soloAvg ? '／単独の訪問の平均 ' + y(x.soloAvg) : '') + (x.w4ng ? '／週4日目以降で算定できない訪問 ' + x.w4ng + '件' : '') +
+      '／要調整（休みの日の予定）：届け ' + x.clash + '件・公休と祝日 ' + x.clashFix + '件\n';
+  });
+  t += '\n【職員ごとの数字（直近3か月）】\n';
+  list.slice(-3).forEach(function(x){
+    t += jpMonth(x.month) + '\n';
+    x.rows.forEach(function(r){
+      t += '・' + who(r.name) + '（' + r.emp + '）：1日' + r.n + '件・' + (r.days.map(function(d){ return DOW[+d]; }).join('') || '出る曜日なし') + '／モデル ' + r.model + '件・予定 ' + r.plan + '件' + (r.withN ? '（うち2名体制の同行 ' + r.withN + '件）' : '') + '・予定の稼働率 ' + p(r.plan, r.model) +
+        '／実績 ' + (r.act != null ? r.act + '件（' + r.actSrc + '）・実績の稼働率 ' + p(r.act, r.actModel) : '記録なし') + '／1件あたり ' + y(r.price) + '／見込みの売上 ' + y(r.sFc) + '／空き枠 ' + r.empty + '件・キャンセル ' + r.cxEff + '件・休みの届け ' + r.leave + '件\n';
+    });
+  });
+  return t;
+}
+$('sr_send').addEventListener('click', function(){
+  var t = srText($('sr_hide').checked);
+  if(!t){ $('sr_msg').textContent = '送る数字がありません。職員と計算する月を入れてください。'; return; }
+  try{
+    localStorage.setItem('trisight_parser_output', t);
+    localStorage.setItem('trisight_parser_output_at', String(Date.now()));
+    localStorage.setItem('trisight_parser_output_src', 'トライタイム（月次の売上資料）');
+  }catch(e){ $('sr_msg').textContent = 'この端末に一時的に置けませんでした。「数字を書き出す」で出したファイルを、親機の「ベース資料」で読み込んでください。'; return; }
+  window.open('TriSight_v5.html', '_blank');
+  $('sr_msg').textContent = '親機トライサイト（本体）を開き、「ベース資料」の欄へ流し込みました。30分以内にAI連携オプションを開いた場合も、そちらに入ります（一度きり）。';
+});
+
 $('sr_out').addEventListener('click', function(){
   var S = srOf(); if(!Object.keys(S).length){ $('sr_msg').textContent = '保存した月がまだありません。'; return; }
-  var data = { app:'TriTime', kind:'salesReport', dept:D().name, made:nowLocal(), months:S };
+  var data = { app:'TriTime', kind:'salesReport', dept:D().name, made:nowLocal(), hidden:$('sr_hide').checked, text:srText($('sr_hide').checked), months:S };
   var blob = new Blob([JSON.stringify(data, null, 1)], { type:'application/json' });
   var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'TriTime_売上資料_' + D().name + '_' + ymd(new Date()).replace(/-/g, '') + '.json';
   document.body.appendChild(a); a.click(); a.remove();

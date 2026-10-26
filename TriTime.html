@@ -132,7 +132,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-26-02</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-26-03</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <div id="verNotice"></div>
@@ -219,6 +219,14 @@ function tsGoBack(){
       <div><label class="f" for="pt_area">地区（町名）</label><input type="text" id="pt_area" placeholder="例：本町二丁目"></div>
       <div><label class="f" for="pt_spot">訪問先の目印・駐車</label><input type="text" id="pt_spot" placeholder="例：青い屋根の2階・裏の駐車場"></div>
     </div>
+    <details class="ptsec" id="ptsRead" open><summary>書類を読み込ませる（PDF・写真から欄を埋める）</summary>
+      <p class="muted">カイポケの書類や契約書のPDF、または書類の写真を選ぶと、AIが読んで下の欄に下書きを入れます。氏名・生年月日・電話番号・番地などは入れません。入った内容を見て直し、「この内容で登録する」を押すと登録されます。読み込ませた書類そのものは、どこにも残しません（読み取りのため、AIの提供元へ送られます）。</p>
+      <div class="row">
+        <div><label class="f" for="rd_kind">書類の種類</label><select id="rd_kind"></select></div>
+        <div><label class="f" for="rd_file">ファイル（PDF 1つ、または写真 5枚まで）</label><input type="file" id="rd_file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple></div>
+      </div>
+      <div class="btns"><button class="btn" type="button" id="rd_go">読み込ませる</button><span class="muted" id="rd_msg"></span></div>
+    </details>
     <div class="row" id="ptMon" style="display:none">
       <div><label class="f" for="pt_cyc">モニタリングの周期</label><select id="pt_cyc"><option value="1">毎月</option><option value="2">2か月ごと</option><option value="3">3か月ごと</option><option value="6">6か月ごと</option><option value="12">12か月ごと</option></select></div>
       <div><label class="f" for="pt_staff">担当</label><select id="pt_staff"></select></div>
@@ -1153,6 +1161,78 @@ function ptForm(){
   var kc = {}; document.querySelectorAll('#pt_copied input:checked').forEach(function(c){ kc[c.value] = 1; });
   $('pt_copied').innerHTML = ptDocs().map(function(x){ return '<label style="display:inline-block;margin:2px 14px 2px 0"><input type="checkbox" value="' + x[0] + '"' + (kc[x[0]] ? ' checked' : '') + '> ' + esc(x[1]) + 'を写した</label>'; }).join('') + '<div class="muted" id="pt_copiedNote"></div>';
 }
+/* ---- 書類を読み込ませる（2026-10-26・宏史さんの指示）----
+   中継の task 'tritime_doc' に、書類の種類とファイル（PDF または写真）だけを送る。
+   読む欄と「書かないもの（氏名・電話番号など）」は中継側で決めてあり、決めた欄の値だけが返る。
+   空の欄だけを埋め、すでに入っている欄は変えずに、違う値が読めた欄を知らせる。 */
+function rdKinds(){
+  var cur = $('rd_kind').value;
+  $('rd_kind').innerHTML = ptDocs().map(function(x){ return '<option value="' + x[0] + '">' + esc(x[1]) + '</option>'; }).join('');
+  if(cur && $('rd_kind').querySelector('option[value="' + cur + '"]')) $('rd_kind').value = cur;
+}
+function rdB64(file){ return new Promise(function(ok, ng){ var r = new FileReader(); r.onload = function(){ ok(String(r.result).split(',')[1] || ''); }; r.onerror = function(){ ng(new Error('ファイルを読めませんでした。')); }; r.readAsDataURL(file); }); }
+function rdImg(file){
+  /* 写真は長い辺を1600pxまでに縮めてJPEGにする（送る量を抑える） */
+  return new Promise(function(ok, ng){
+    var url = URL.createObjectURL(file), im = new Image();
+    im.onload = function(){
+      var k = Math.min(1, 1600 / Math.max(im.width, im.height)), c = document.createElement('canvas');
+      c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      ok({ mediaType:'image/jpeg', data:c.toDataURL('image/jpeg', 0.85).split(',')[1] });
+    };
+    im.onerror = function(){ URL.revokeObjectURL(url); ng(new Error('写真を読めませんでした。')); };
+    im.src = url;
+  });
+}
+function rdApply(kind, j){
+  var filled = [], diff = [];
+  Object.keys(j.fields || {}).forEach(function(n){
+    var el = $('pt_' + n); if(!el) return;
+    var v = String(j.fields[n]);
+    if(el.tagName === 'SELECT' && !Array.prototype.some.call(el.options, function(o){ return (o.value || o.text) === v; })) return;
+    if(el.type === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+    if(el.type === 'month' && !/^\d{4}-\d{2}$/.test(v)) return;
+    var lab = document.querySelector('label[for="pt_' + n + '"]'), name = lab ? lab.textContent.replace(/（.*$/, '') : n;
+    var cur = String(el.value || '').trim(), empty = !cur || (el.tagName === 'SELECT' && el.selectedIndex === 0 && !el.options[0].value);
+    if(empty){ el.value = v; filled.push(name); var dt = el.closest('details'); if(dt) dt.open = true; }
+    else if(cur !== v) diff.push(name + '（書類では「' + v.slice(0, 40) + (v.length > 40 ? '…' : '') + '」）');
+  });
+  if(j.contractNo && !$('pt_no').value.trim()) { $('pt_no').value = j.contractNo; filled.push('契約書番号'); }
+  var cb = document.querySelector('#pt_copied input[value="' + kind + '"]');
+  if(cb && filled.length) cb.checked = true;
+  return { filled:filled, diff:diff };
+}
+function rdGo(){
+  var kind = $('rd_kind').value, files = Array.prototype.slice.call($('rd_file').files || []);
+  if(!files.length){ $('rd_msg').textContent = 'ファイルを選んでください。'; return; }
+  var code = tsCode(); if(!code){ $('rd_msg').textContent = '認証コードが入っていないため、読み込ませられません。'; return; }
+  var pdf = files.filter(function(f){ return f.type === 'application/pdf' || /\.pdf$/i.test(f.name); });
+  var imgs = files.filter(function(f){ return /^image\//.test(f.type); });
+  if(pdf.length && (pdf.length > 1 || imgs.length)){ $('rd_msg').textContent = 'PDFは1つずつ読み込ませてください（写真と一緒には送れません）。'; return; }
+  if(!pdf.length && !imgs.length){ $('rd_msg').textContent = 'PDFか写真（JPEG・PNG）を選んでください。'; return; }
+  if(imgs.length > 5){ $('rd_msg').textContent = '写真は5枚までです。'; return; }
+  if(pdf.length && pdf[0].size > 3 * 1024 * 1024){ $('rd_msg').textContent = 'PDFが3MBを超えています。ページを分けて読み込ませてください。'; return; }
+  $('rd_go').disabled = true; $('rd_msg').textContent = '読んでいます（書類の量によって少し時間がかかります）…';
+  var prep = pdf.length ? rdB64(pdf[0]).then(function(b){ return { kind:kind, pdfBase64:b }; })
+    : Promise.all(imgs.map(rdImg)).then(function(a){ return { kind:kind, images:a }; });
+  prep.then(function(payload){
+    return fetch(GATE_URL, { method:'POST', headers:{ 'Content-Type':'application/json', 'x-trisight-code':code }, body:JSON.stringify({ task:'tritime_doc', payload:payload }) })
+      .then(function(res){ return res.json().catch(function(){ return null; }).then(function(j){
+        if(res.status === 401) throw new Error('認証コードが一致しませんでした。');
+        if(res.status === 400 && j && /未知のtask/.test(j.error || '')) throw new Error('リレーに書類読み取りの受け口がまだありません（リレー側の更新が済むと使えます）。');
+        if(!res.ok || !j || !j.ok) throw new Error((j && j.error) || ('リレーの応答 ' + res.status));
+        return j;
+      }); });
+  }).then(function(j){
+    var r = rdApply(kind, j);
+    $('rd_msg').innerHTML = (r.filled.length ? '欄を埋めました：' + esc(r.filled.join('・')) + '。中身を確かめてから登録してください。' : 'この書類から埋められる欄は見つかりませんでした。書類の種類が合っているか確かめてください。') +
+      (r.diff.length ? '<br><b>すでに入っている欄は変えていません。書類と違うもの：</b>' + esc(r.diff.join('　')) : '') +
+      (j.cut ? '<br>書類が長く、途中までしか読めていない可能性があります。' : '');
+    $('rd_file').value = '';
+  }).catch(function(e){ $('rd_msg').textContent = '読み込ませられませんでした：' + (e.message || e); })
+  .then(function(){ $('rd_go').disabled = false; });
+}
 function ptClear(){
   $('pt_no').value = '';
   PT_F.forEach(function(f){ var el = $(f[0]); if(el) el.value = (el.tagName === 'SELECT') ? el.options[0].value : ''; });
@@ -1981,7 +2061,7 @@ function refreshAll(){
   $('dv_share').checked = dev().share;
   renderSetup(); renderPlan(); renderIntakeList(); renderCourse(); renderReport(); renderAdmin();
   renderMonitor(); renderSummary();
-  ptForm(); renderPtList(); nrRender(); renderReq(); keyStatus();
+  ptForm(); rdKinds(); renderPtList(); nrRender(); renderReq(); keyStatus();
 }
 
 /* ---- 配線 ---- */
@@ -2123,6 +2203,7 @@ $('bk_in').addEventListener('change', function(){
 });
 
 nrScanLocal();
+$('rd_go').onclick = rdGo;
 $('nr_pick').onclick = function(){ $('nr_file').click(); };
 $('nr_file').addEventListener('change', function(){ nrFiles(this.files); this.value = ''; });
 applyDept(); refreshAll();

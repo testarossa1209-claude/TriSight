@@ -582,6 +582,17 @@ function tsGoBack(){
 
 
 <!-- ===== ランチャー画面 ===== -->
+<!-- 2026-10-27：どちらの画面かを上で分かるようにする。固定中は期限と「固定を外す」を出す -->
+<div id="optBar" style="background:#2a2410;border-bottom:1px solid #c9a84c;color:#f5f0e8;text-align:center;padding:8px 12px;font-size:13px;letter-spacing:.04em">この画面は<b style="color:#c9a84c">AI連携オプション</b>です。三段を続けて動かし、最後に一度だけ確かめます。<span id="optBarFix"></span></div>
+<script>
+(function(){
+  var f = null; try{ f = JSON.parse(localStorage.getItem('trisight_opt_fixed') || 'null'); if(f && f.until && f.until <= Date.now()){ localStorage.removeItem('trisight_opt_fixed'); f = null; } }catch(e){}
+  if(!f) return;
+  var d = f.until ? new Date(f.until) : null;
+  var t = d ? (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + 'まで' : '期限なし';
+  document.addEventListener('DOMContentLoaded', function(){ var el = document.getElementById('optBarFix'); if(el) el.innerHTML = '　<span style="color:#f0c25a">この端末はオプションに固定中（' + t + '）</span>　<a href="index.html?stay=1&amp;unfix=1" style="color:#c9a84c">固定を外す</a>'; });
+})();
+</script>
 <div id="launcher">
   <div class="launcher-header">
     <img class="launcher-logo" src="TriSight_icon_512.png" alt="TriSight®"
@@ -750,7 +761,7 @@ function tsGoBack(){
         </div>
         <div class="kb-note">爆破は、起案が的外れだったときに使います。このクライアントの保存済みの提案と、入力欄・出力をすべて消して白紙に戻します。起案基礎情報は残ります。元には戻せません。</div>
       </div>
-      <div class="kb-note" style="border:1px solid #c9a84c;border-radius:6px;padding:8px 12px;margin:8px 0">この画面は<b>AI連携オプション</b>です。あずさ→なぎさ→つかさを途中で止めずに続けて動かし、三段を通した後に、起案者が一度だけ読んで採用・差し戻し・爆破を決めます。段ごとに読んで渡したいときは<a href="TriSight_v5.html" style="color:#c9a84c">本体</a>、他のシステムは<a href="index.html" style="color:#c9a84c">表札</a>から開けます。出力はTXTで持ち出せます。</div>
+      <div class="kb-note" style="border:1px solid #c9a84c;border-radius:6px;padding:8px 12px;margin:8px 0">この画面は<b>AI連携オプション</b>です。あずさ→なぎさ→つかさを途中で止めずに続けて動かし、三段を通した後に、起案者が一度だけ読んで採用・差し戻し・爆破を決めます。段ごとに読んで渡したいときは<a href="TriSight_v5.html" style="color:#c9a84c">本体</a>、他のシステムは<a href="index.html?stay=1" style="color:#c9a84c">表札</a>から開けます。出力はTXTで持ち出せます。</div>
       <button class="run-btn" id="btn" onclick="run()">ワークフロー実行</button>
     </div>
 
@@ -805,7 +816,7 @@ function tsGoBack(){
   <div class="wf-footer">© 2026 合同会社トライサイト　TriSight® is a registered trademark.</div>
 </div>
 <!-- 2026-10-27：版の表示は実行前の画面でも見えるよう、開いた時点で画面本体（body）のいちばん下へ移す（宏史さんの指摘「一番下にスクロールしても版は表示されていません」。結果の区画の中に閉じていない区画があり、置き場所だけでは外に出せないため） -->
-<div class="verline" style="text-align:center;padding:6px 0 22px;font-size:14px;color:#f5f0e8;font-family:'Zen Kaku Gothic New',sans-serif">版 <span id="verLabel">2026-10-27-02</span>（AI連携オプション）</div>
+<div class="verline" style="text-align:center;padding:6px 0 22px;font-size:14px;color:#f5f0e8;font-family:'Zen Kaku Gothic New',sans-serif">版 <span id="verLabel">2026-10-27-03</span>（AI連携オプション）</div>
 <script>document.addEventListener('DOMContentLoaded',function(){var v=document.getElementById('verLabel');if(v&&v.parentElement)document.body.appendChild(v.parentElement);});</script>
 
 <script>

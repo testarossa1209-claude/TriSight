@@ -132,7 +132,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-25-01</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-26-01</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <div id="verNotice"></div>
@@ -141,10 +141,12 @@ function tsGoBack(){
 
 <nav class="tabs" id="tabs">
   <button data-tab="plan" class="on">予定</button>
+  <button data-tab="pt" data-t="{client}の登録">患者さんの登録</button>
   <button data-tab="intake">キャンセル受付</button>
   <button data-tab="course" data-t="{client}の経過">患者さんの経過</button>
   <button data-tab="report">報告書の下書き</button>
   <button data-tab="admin">管理者の窓</button>
+  <button data-tab="req">ご要望</button>
   <button data-tab="setup">名簿・設定</button>
 </nav>
 
@@ -201,6 +203,121 @@ function tsGoBack(){
   </div>
 </section>
 
+<!-- ===== 患者さんの登録（2026-10-26） ===== -->
+<section class="tab" id="tab-pt">
+  <div class="card" id="cardPt">
+    <h2 data-t="{client}の登録">患者さんの登録</h2>
+    <p class="lead" data-t="{ptLead}">氏名は入れず、契約書番号で扱います。地区は町名までです。カイポケの書類（アセスメント・指示書・計画書・報告書・契約書）から、訪問に要るところだけを写します。</p>
+    <p class="muted">番号を入れて「呼び出す」を押すと、登録済みの内容が欄に出ます。写し終えた書類には印を付けてください。何人かで手分けして写すとき、誰がどこまで写したかが下の一覧で分かります。</p>
+    <div class="row">
+      <div><label class="f" for="pt_no">契約書番号</label><input type="text" id="pt_no"></div>
+      <div><label class="f">&nbsp;</label><button class="btn sub" type="button" id="pt_load">呼び出す</button></div>
+      <div><label class="f" for="pt_status">状態</label><select id="pt_status"><option>利用中</option><option>休止中</option><option>契約終了</option></select></div>
+      <div><label class="f" for="pt_ins">保険</label><select id="pt_ins"><option value="">選んでください</option><option>医療保険</option><option>介護保険</option><option>精神科訪問看護（医療）</option><option>障害福祉</option><option>自費</option></select></div>
+    </div>
+    <div class="row">
+      <div><label class="f" for="pt_area">地区（町名）</label><input type="text" id="pt_area" placeholder="例：本町二丁目"></div>
+      <div><label class="f" for="pt_spot">訪問先の目印・駐車</label><input type="text" id="pt_spot" placeholder="例：青い屋根の2階・裏の駐車場"></div>
+    </div>
+    <div class="row" id="ptMon" style="display:none">
+      <div><label class="f" for="pt_cyc">モニタリングの周期</label><select id="pt_cyc"><option value="1">毎月</option><option value="2">2か月ごと</option><option value="3">3か月ごと</option><option value="6">6か月ごと</option><option value="12">12か月ごと</option></select></div>
+      <div><label class="f" for="pt_staff">担当</label><select id="pt_staff"></select></div>
+      <div><label class="f" for="pt_plan">計画の更新期限</label><input type="date" id="pt_plan"></div>
+      <div><label class="f" for="pt_start">最初にモニタリングを行う月</label><input type="month" id="pt_start"></div>
+    </div>
+    <details class="ptsec" id="ptsInst" open><summary>指示書から</summary>
+      <div class="row">
+        <div><label class="f" for="pt_hosp">医療機関</label><input type="text" id="pt_hosp"></div>
+        <div><label class="f" for="pt_doc">主治医</label><input type="text" id="pt_doc"></div>
+        <div id="ptInstWrap"><label class="f" for="pt_inst">指示期間の始まり（指示書の日付）</label><input type="date" id="pt_inst"></div>
+        <div><label class="f" for="pt_instEnd">指示期間の終わり</label><input type="date" id="pt_instEnd"></div>
+      </div>
+      <label class="f" for="pt_instPoint">指示の内容（書かれているまま）</label><textarea id="pt_instPoint" maxlength="1500"></textarea>
+      <div class="row">
+        <div><label class="f" for="pt_special">特別指示</label><select id="pt_special"><option value="">なし</option><option>あり</option></select></div>
+        <div><label class="f" for="pt_specialEnd">特別指示の終わり</label><input type="date" id="pt_specialEnd"></div>
+      </div>
+    </details>
+    <details class="ptsec" id="ptsAsm"><summary>アセスメントから</summary>
+      <div class="row">
+        <div><label class="f" for="pt_asmDate">アセスメントの日</label><input type="date" id="pt_asmDate"></div>
+      </div>
+      <label class="f" for="pt_asmState">主な病名・いまの状態</label><textarea id="pt_asmState" maxlength="1500"></textarea>
+      <label class="f" for="pt_asmLife">暮らしの様子（一日の流れ・服薬・通院など）</label><textarea id="pt_asmLife" maxlength="1500"></textarea>
+      <label class="f" for="pt_asmFamily">家族・キーパーソン・連絡先の区分（氏名は書かない）</label><textarea id="pt_asmFamily" maxlength="800" style="min-height:48px"></textarea>
+      <label class="f" for="pt_asmRisk">訪問で気を付けること（危険・注意）</label><textarea id="pt_asmRisk" maxlength="1000" style="min-height:48px"></textarea>
+    </details>
+    <details class="ptsec" id="ptsPlan"><summary>訪問看護計画書から</summary>
+      <label class="f" for="pt_goal">計画の目標</label><textarea id="pt_goal" maxlength="1500"></textarea>
+      <div class="row">
+        <div><label class="f" for="pt_planMade">計画の作成日</label><input type="date" id="pt_planMade"></div>
+        <div><label class="f" for="pt_pdue">次の見直しの期限</label><input type="date" id="pt_pdue"></div>
+        <div><label class="f" for="pt_freq">訪問の回数・時間帯の取り決め</label><input type="text" id="pt_freq" placeholder="例：週2回・午前"></div>
+      </div>
+    </details>
+    <details class="ptsec" id="ptsRep"><summary>報告書から</summary>
+      <div class="row">
+        <div><label class="f" for="pt_repLast">最後に出した報告書の月</label><input type="month" id="pt_repLast"></div>
+        <div><label class="f" for="pt_repTo">報告先</label><input type="text" id="pt_repTo" placeholder="例：主治医・ケアマネジャー"></div>
+      </div>
+      <label class="f" for="pt_repNote">前回の報告書で伝えたこと（要点）</label><textarea id="pt_repNote" maxlength="1500" style="min-height:48px"></textarea>
+    </details>
+    <details class="ptsec" id="ptsCtr"><summary>契約書から</summary>
+      <div class="row">
+        <div><label class="f" for="pt_ctrDate">契約日</label><input type="date" id="pt_ctrDate"></div>
+        <div><label class="f" for="pt_cxRule">キャンセルの取り決め</label><select id="pt_cxRule"><option value="">決まりごとのとおり</option><option>この人だけ別の取り決め</option></select></div>
+      </div>
+      <label class="f" for="pt_ctrNote">別の取り決め・契約の特記</label><textarea id="pt_ctrNote" maxlength="800" style="min-height:48px"></textarea>
+    </details>
+    <details class="ptsec" id="ptsLike" open><summary>好き嫌い・関わり方</summary>
+      <p class="muted">本人が好むこと・嫌がることを、聞いた言葉や見た事実で書きます。特定の職員を嫌がる申し出は、ここではなく「経過」の「拒否の申し出」に本人の言葉で記録してください（記録した拒否だけが、配置の条件になります）。</p>
+      <label class="f" for="pt_like">好むこと・喜ぶこと</label><textarea id="pt_like" maxlength="800" style="min-height:48px"></textarea>
+      <label class="f" for="pt_dislike">嫌がること・避けること</label><textarea id="pt_dislike" maxlength="800" style="min-height:48px"></textarea>
+      <label class="f" for="pt_tips">関わり方のこつ（うまくいった話し方・順番など）</label><textarea id="pt_tips" maxlength="800" style="min-height:48px"></textarea>
+    </details>
+    <details class="ptsec" id="ptsHard" open><summary>困難事例</summary>
+      <p class="muted">当てはまるものに印を付け、あったことを事実だけで書きます。キャンセル・変更が月の決まった回数を超えた患者さんには、印を付けなくても自動で「困難患者」の印が付きます（回数は「名簿・設定」の決まりごとで変えられます）。</p>
+      <div id="pt_hardCats"></div>
+      <label class="f" for="pt_hardText">あったこと（日付と事実）</label><textarea id="pt_hardText" maxlength="1500" style="min-height:48px"></textarea>
+    </details>
+    <details class="ptsec" id="ptsCopy" open><summary>カイポケから写した書類</summary>
+      <div id="pt_copied"></div>
+      <div class="row">
+        <div><label class="f" for="pt_by">写した人</label><select id="pt_by"></select></div>
+      </div>
+    </details>
+    <div class="btns"><button class="btn" id="pt_add">この内容で登録する</button><button class="btn sub" type="button" id="pt_clear">欄を空にする</button><span class="muted" id="pt_msg"></span></div>
+  </div>
+  <div class="card" id="cardPtList">
+    <h2 data-t="{client}の一覧">患者さんの一覧</h2>
+    <p class="muted" id="ptProgress"></p>
+    <div class="row"><div><label class="f" for="ptFilter">表示する</label><select id="ptFilter"><option value="">利用中・休止中</option><option value="all">すべて（契約終了も）</option><option value="hard">困難患者だけ</option><option value="yet">写し終わっていない人だけ</option></select></div></div>
+    <div class="tbl-scroll" id="ptList"></div>
+    <div id="ptView"></div>
+  </div>
+</section>
+<!-- ===== ご要望（2026-10-26：使う人の声を集めて、トライタイムに取り込む） ===== -->
+<section class="tab" id="tab-req">
+  <div class="card">
+    <h2>ご要望を残す</h2>
+    <p class="lead">看護部の皆さんから聞いた「こうしてほしい」「ここが使いにくい」を、言われた言葉のまま残します。残したご要望は、まとめてトライタイムの作り直しに取り込みます。</p>
+    <div class="row">
+      <div><label class="f" for="rq_date">聞いた日</label><input type="date" id="rq_date"></div>
+      <div><label class="f" for="rq_from">言った人</label><input type="text" id="rq_from" list="rq_fromList" placeholder="例：島さん・看護部の会議で"><datalist id="rq_fromList"></datalist></div>
+      <div><label class="f" for="rq_by">聞いた人</label><select id="rq_by"></select></div>
+      <div><label class="f" for="rq_cat">どんなこと</label><select id="rq_cat"><option>画面の見やすさ・使いやすさ</option><option>入れたい項目・要らない項目</option><option>仕事の流れ・順番</option><option>いま困っていること</option><option>その他</option></select></div>
+    </div>
+    <label class="f" for="rq_words">言われたこと（言葉のまま）</label><textarea id="rq_words" maxlength="2000"></textarea>
+    <label class="f" for="rq_scene">どの場面で困ったか（分かれば）</label><input type="text" id="rq_scene" placeholder="例：訪問先でキャンセルの連絡を見たとき">
+    <div class="btns"><button class="btn" id="rq_save">残す</button><span class="muted" id="rq_msg"></span></div>
+  </div>
+  <div class="card">
+    <h2>ご要望の一覧</h2>
+    <div class="row"><div><label class="f" for="rq_show">表示する</label><select id="rq_show"><option value="open">まだ取り込んでいないもの</option><option value="all">すべて</option></select></div></div>
+    <div class="btns"><button class="btn sub" id="rq_copy">まだ取り込んでいないものを文章で写す</button><span class="muted" id="rq_copyMsg"></span></div>
+    <div id="rqList"></div>
+  </div>
+</section>
 <!-- ===== 受付係 ===== -->
 <section class="tab" id="tab-intake">
   <div class="card">
@@ -307,6 +424,12 @@ function tsGoBack(){
     <label class="f" for="ad_month">月</label><input type="month" id="ad_month" style="max-width:220px">
     <div class="tbl-scroll" id="adCancel"></div>
   </div>
+  <div class="card" id="cardHard">
+    <h2>看護部への月の報告（困難患者）</h2>
+    <p class="lead">上で選んだ月に、キャンセル・変更が決まった回数以上あった患者さんと、困難事例の印が付いている患者さんを並べます。「連絡板で看護部へ出す」を押すと、看護部の全員あてに連絡板へ出ます。</p>
+    <div class="tbl-scroll" id="adHard"></div>
+    <div class="btns"><button class="btn amber" id="adHardSend">連絡板で看護部へ出す</button><span class="muted" id="adHardMsg"></span></div>
+  </div>
   <div class="card">
     <h2>記録の無い配置不可</h2>
     <p class="lead">代わりの案を、記録された拒否が無いのに断った件です。誰がいつ断ったかを事実として並べます。</p>
@@ -324,23 +447,6 @@ function tsGoBack(){
 
 <!-- ===== 名簿・設定 ===== -->
 <section class="tab" id="tab-setup">
-  <div class="card" id="cardPt">
-    <h2 data-t="{client}">患者さん</h2>
-    <p class="lead" data-t="{ptLead}">氏名は入れず、契約書番号で扱います。地区は町名まで、指示書の日付は最新の指示書の日付です。</p>
-    <div class="row">
-      <div><label class="f" for="pt_no">契約書番号</label><input type="text" id="pt_no"></div>
-      <div><label class="f" for="pt_area">地区（町名）</label><input type="text" id="pt_area"></div>
-      <div id="ptInstWrap"><label class="f" for="pt_inst">指示書の日付</label><input type="date" id="pt_inst"></div>
-    </div>
-    <div class="row" id="ptMon" style="display:none">
-      <div><label class="f" for="pt_cyc">モニタリングの周期</label><select id="pt_cyc"><option value="1">毎月</option><option value="2">2か月ごと</option><option value="3">3か月ごと</option><option value="6">6か月ごと</option><option value="12">12か月ごと</option></select></div>
-      <div><label class="f" for="pt_staff">担当</label><select id="pt_staff"></select></div>
-      <div><label class="f" for="pt_plan">計画の更新期限</label><input type="date" id="pt_plan"></div>
-      <div><label class="f" for="pt_start">最初にモニタリングを行う月</label><input type="month" id="pt_start"></div>
-    </div>
-    <div class="btns"><button class="btn" id="pt_add">追加・更新する</button></div>
-    <div class="tbl-scroll" id="ptList"></div>
-  </div>
   <div class="card">
     <h2>職員</h2>
     <p class="lead">職員は、トライシート（基本情報シート）の会社カード「人員」の「職員名簿」に入れたものを読み込みます。会社の基本情報と同じ名簿を使うので、二か所で入れ直す必要はありません。ここで足したり直したりした職員も、この端末のトライシートの名簿へ書き戻します。</p>
@@ -386,6 +492,16 @@ function tsGoBack(){
     <div class="btns"><button class="btn" id="dv_save">保存する</button><button class="btn sub" id="dv_now">今すぐ共有する</button></div>
     <p class="muted" id="dv_msg"></p>
   </div>
+  <div class="card" id="cardKey">
+    <h2>記録の鍵（合言葉）</h2>
+    <p class="lead">患者さんの登録内容と経過の記録は、共有するとき、この合言葉で鍵をかけてから送ります。鍵をかけた記録は、合言葉を入れた端末でしか読めません（中継の保管庫にも、読めない形でしか残りません）。合言葉は事業所で一つです。最初に事務局で決め、各端末で一度だけ同じものを入れてください。</p>
+    <p class="muted">合言葉は8文字以上にしてください。紙に書いて事務局で保管し、画面の写真やメール・チャットでは送らないでください。合言葉を忘れると、鍵をかけた記録は誰にも読めなくなります。</p>
+    <div class="row">
+      <div><label class="f" for="ky_pass">合言葉</label><input type="password" id="ky_pass" autocomplete="off"></div>
+      <div><label class="f">&nbsp;</label><button class="btn" id="ky_set">この端末に入れる</button></div>
+    </div>
+    <p class="muted" id="ky_msg"></p>
+  </div>
   <div class="card" id="cardRules">
     <h2>決まりごと <small class="muted" id="rulesDept"></small></h2>
     <div class="row">
@@ -393,6 +509,7 @@ function tsGoBack(){
       <div><label class="f" for="s_price">1回の訪問の単価（円）</label><input type="number" id="s_price" min="0"></div>
       <div><label class="f" for="s_fee">キャンセル料（円）</label><input type="number" id="s_fee" min="0"></div>
       <div><label class="f" for="s_review">拒否の記録を見直すまでの日数</label><input type="number" id="s_review" min="7"></div>
+      <div><label class="f" for="s_hard">月のキャンセル・変更が何回以上で「困難患者」の印を付けるか</label><input type="number" id="s_hard" min="1"></div>
     </div>
     <div class="btns"><button class="btn" id="s_save">保存する</button><span class="muted" id="s_msg"></span></div>
   </div>
@@ -471,7 +588,7 @@ function settings(){
   /* 訪問看護部はこれまでどおり上の段の値。ほかの部署は byDept に部署ごとに持つ（無ければ訪問看護部と同じ値から始める） */
   var b = (D().k !== 'nurse' && s.byDept && s.byDept[D().k]) ? s.byDept[D().k] : null;
   var o = b ? Object.assign({}, s, b) : s;
-  return { cut: (o.cut == null ? 17 : +o.cut), price: o.price || '', fee: o.fee || '', review: (o.review == null ? 90 : +o.review) };
+  return { cut: (o.cut == null ? 17 : +o.cut), price: o.price || '', fee: o.fee || '', review: (o.review == null ? 90 : +o.review), hard: (o.hard == null ? 3 : Math.max(1, +o.hard || 3)) };
 }
 function saveSettings(o){ o.upd = Date.now(); sj(K.settings, o); markDirty('settings', 'main'); scheduleSync(); }
 /* ---- 部署（2026-10-19・宏史さんの指示）----
@@ -530,7 +647,10 @@ function refreshSelects(){
   var all = staff().map(function(s){ return { v:s.id, t:staffLabel(s) }; });
   ['c_staff','p_staff','d_staff','r_staff','wk_staff','pt_staff'].forEach(function(id){ fillSelect(id, ns, '選んでください'); });
   fillSelect('c_fwdTo', ns, '回していない');
-  ['c_by','r_by'].forEach(function(id){ fillSelect(id, all, '選んでください'); });
+  ['c_by','r_by','pt_by','rq_by'].forEach(function(id){ fillSelect(id, all, '選んでください'); });
+  if(!$('pt_by').value && dev().me) $('pt_by').value = dev().me;
+  if(!$('rq_by').value && dev().me) $('rq_by').value = dev().me;
+  $('rq_fromList').innerHTML = staff().map(function(x){ return '<option value="' + esc(x.name) + '">'; }).join('');
   fillSelect('planStaff', ns, '全員');
   fillSelect('monStaff', ns, '全員');
 }
@@ -586,6 +706,7 @@ function renderPlan(){
       }
       var ds = doctorStatus(v.no);
       if(D().doctor && !ds.ok) tags += '<span class="tag amber">主治医への確認：未</span>';
+      if(hardInfo(v.no, ym(date)).on) tags += '<span class="tag red">困難患者</span>';
       var key = v.date + '|' + v.time + '|' + v.no;
       html += '<div class="visit' + (v.cx ? ' cx' : '') + '"><div class="t">' + esc(v.time) + '</div>' +
         '<div class="who">' + esc(dn(v.no)) + ' <small>' + esc(v.area) + '・' + esc(staffName(v.staffId)) + '</small><br>' + tags + '</div>' +
@@ -891,7 +1012,8 @@ function renderCourse(){
   var h = '<div style="margin-top:10px">' + (!D().doctor ? '' :
     (ds.ok ? '<span class="tag green">主治医への確認：済み（' + esc(jpDate(ds.last)) + '）</span>' : '<span class="tag amber">主治医への確認：未' + (p.instDate ? '（指示書 ' + esc(jpDate(p.instDate)) + '）' : '') + '</span>')
     ) + refs.map(function(r){ return '<span class="tag red">拒否の記録：' + esc(staffName(r.staffId)) + '</span>'; }).join('') +
-    flagsFor(no, ym(ymd(new Date()))).map(function(t){ return '<span class="tag amber">' + esc(t) + '</span>'; }).join('') + '</div>';
+    flagsFor(no, ym(ymd(new Date()))).map(function(t){ return '<span class="tag amber">' + esc(t) + '</span>'; }).join('') +
+    (function(){ var hi = hardInfo(no, ym(ymd(new Date()))); return hi.on ? '<span class="tag red">困難患者（' + esc(hi.why.join('・')) + '）</span>' : ''; })() + '</div>' + ptBrief(p);
   h += '<div class="before"><b>訪問の前に</b><br>' +
     (lastP ? '前回の約束（' + esc(jpDate(lastP.date)) + '・' + esc(staffName(lastP.staffId)) + '）：' + esc(lastP.next || '（記載なし）') : '前回の約束：まだ記録がありません') + '<br>' +
     (!D().doctor ? '' : lastD ? '主治医の言葉（' + esc(jpDate(lastD.date)) + '）：気を付けて見ること「' + esc(lastD.a1 || '—') + '」／サイン「' + esc(lastD.a2 || '—') + '」／すぐ連絡「' + esc(lastD.a3 || '—') + '」' : '主治医の言葉：まだ記録がありません') + '</div>';
@@ -974,6 +1096,7 @@ function renderAdmin(){
     h += '<tr><th>合計</th><th class="num">' + tn + '</th><th></th><th></th><th></th><th class="num">' + tf + '回' + (fee ? '<br>' + yen(tf * fee) : '') + '</th>' + (price ? '<th class="num">' + yen(tn * price) + '</th>' : '') + '<th></th></tr></table>';
     $('adCancel').innerHTML = h;
   }
+  renderHard(m);
   var dec = events().filter(function(e){ return e.type === 'decline' && ym(e.date) === m && inDept(e.patientNo); });
   if(!dec.length) $('adDecline').innerHTML = '<p class="empty">この月はありません。</p>';
   else{
@@ -992,6 +1115,218 @@ function renderAdmin(){
   $('adReview').innerHTML = rv.length ? '<ul style="margin-left:18px">' + rv.map(function(e){
     return '<li>' + esc(dn(e.patientNo)) + '：対象 ' + esc(staffName(e.staffId)) + '（記録 ' + esc(jpDate(e.date)) + '・見直し ' + esc(jpDate(e.reviewBy)) + '）「' + esc(e.words) + '」</li>';
   }).join('') + '</ul><p class="muted">「' + D().client + 'の経過」で、今も同じか確かめた結果を残してください。</p>' : '<p class="empty">見直しの時期が来た記録はありません。</p>';
+}
+
+/* ============================================================
+   患者さんの登録（2026-10-26・宏史さんの指示）
+   カイポケの書類（アセスメント・指示書・計画書・報告書・契約書）から、訪問に要るところだけを
+   手で写す。氏名は入れず契約書番号で扱う（2026-10-12の決まり）。地区は町名まで。
+   何人かで手分けして写すため、書類ごとに「写した日・写した人」を残し、一覧で進み具合を出す。
+   特定の職員を嫌がる申し出は、ここに書かせず「経過」の拒否の申し出（本人の言葉・見直し期限つき）へ回す。
+   ============================================================ */
+var PT_F = [['pt_status','status'],['pt_ins','ins'],['pt_area','area'],['pt_spot','spot'],
+  ['pt_hosp','hosp'],['pt_doc','doc'],['pt_inst','instDate'],['pt_instEnd','instEnd'],['pt_instPoint','instPoint'],['pt_special','special'],['pt_specialEnd','specialEnd'],
+  ['pt_asmDate','asmDate'],['pt_asmState','asmState'],['pt_asmLife','asmLife'],['pt_asmFamily','asmFamily'],['pt_asmRisk','asmRisk'],
+  ['pt_goal','goal'],['pt_planMade','planMade'],['pt_freq','freq'],
+  ['pt_repLast','repLast'],['pt_repTo','repTo'],['pt_repNote','repNote'],
+  ['pt_ctrDate','ctrDate'],['pt_cxRule','cxRule'],['pt_ctrNote','ctrNote'],
+  ['pt_like','like'],['pt_dislike','dislike'],['pt_tips','tips'],['pt_hardText','hardText']];
+var HARD_CATS = ['キャンセル・変更が多い','訪問の拒否が多い','連絡がつかないことが多い','強い言葉・威圧がある','家族との調整が難しい','金銭・物の問題','服薬が守られない','その他'];
+function ptDocs(){
+  var d = D(), a = [['asm','アセスメント']];
+  if(d.doctor) a.push(['inst','指示書']);
+  a.push(['plan', d.k === 'nurse' ? '訪問看護計画書' : '計画書']);
+  if(d.report) a.push(['rep','報告書']);
+  a.push(['ctr','契約書']);
+  return a;
+}
+function ptCopiedN(p){ var c = (p && p.copied) || {}; return ptDocs().filter(function(x){ return c[x[0]]; }).length; }
+function ptForm(){
+  var keep = {}; document.querySelectorAll('#pt_hardCats input:checked').forEach(function(c){ keep[c.value] = 1; });
+  $('pt_hardCats').innerHTML = HARD_CATS.map(function(c){ return '<label style="display:inline-block;margin:2px 14px 2px 0"><input type="checkbox" value="' + esc(c) + '"' + (keep[c] ? ' checked' : '') + '> ' + esc(c) + '</label>'; }).join('');
+  var kc = {}; document.querySelectorAll('#pt_copied input:checked').forEach(function(c){ kc[c.value] = 1; });
+  $('pt_copied').innerHTML = ptDocs().map(function(x){ return '<label style="display:inline-block;margin:2px 14px 2px 0"><input type="checkbox" value="' + x[0] + '"' + (kc[x[0]] ? ' checked' : '') + '> ' + esc(x[1]) + 'を写した</label>'; }).join('') + '<div class="muted" id="pt_copiedNote"></div>';
+}
+function ptClear(){
+  $('pt_no').value = '';
+  PT_F.forEach(function(f){ var el = $(f[0]); if(el) el.value = (el.tagName === 'SELECT') ? el.options[0].value : ''; });
+  ['pt_plan','pt_start','pt_pdue'].forEach(function(id){ $(id).value = ''; });
+  document.querySelectorAll('#pt_hardCats input, #pt_copied input').forEach(function(c){ c.checked = false; });
+  var n = $('pt_copiedNote'); if(n) n.textContent = '';
+}
+function ptLoad(no){
+  if(!no){ $('pt_no').focus(); return; }
+  var p = patient(no);
+  if(!p){ $('pt_msg').textContent = 'この番号はまだ登録されていません。欄を埋めて「この内容で登録する」を押すと登録されます。'; return; }
+  ptClear(); $('pt_no').value = dn(no);
+  PT_F.forEach(function(f){ var el = $(f[0]); if(el && p[f[1]] != null) el.value = p[f[1]]; });
+  if(D().kind === 'monitor'){ $('pt_cyc').value = p.cyc || 1; $('pt_staff').value = p.staffId || ''; $('pt_plan').value = p.planDue || ''; $('pt_start').value = p.start || ''; }
+  else $('pt_pdue').value = p.planDue || '';
+  var hc = p.hardCats || []; document.querySelectorAll('#pt_hardCats input').forEach(function(c){ c.checked = hc.indexOf(c.value) >= 0; });
+  var cp = p.copied || {}; document.querySelectorAll('#pt_copied input').forEach(function(c){ c.checked = !!cp[c.value]; });
+  $('pt_copiedNote').textContent = ptDocs().filter(function(x){ return cp[x[0]]; }).map(function(x){ return x[1] + '：' + jpDate(cp[x[0]].d) + (cp[x[0]].by ? '・' + staffName(cp[x[0]].by) : ''); }).join('　');
+  $('pt_msg').textContent = '呼び出しました。直したら「この内容で登録する」を押してください。';
+  var t = document.querySelector('#tabs button[data-tab=pt]'); if(t && !t.classList.contains('on')) t.click();
+  if($('cardPt').scrollIntoView) $('cardPt').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+function ptSave(){
+  var no = keyNo($('pt_no').value); if(!no){ alert('契約書番号を入れてください。'); $('pt_no').focus(); return; }
+  if(!$('pt_area').value.trim()){ alert('地区（町名）を入れてください。予定を地区ごとにまとめるのに使います。'); $('pt_area').focus(); return; }
+  var a = allPatients(), p = a.filter(function(x){ return x.no === no; })[0], isNew = !p;
+  if(!p){ p = { no:no, created:nowLocal() }; a.push(p); }
+  PT_F.forEach(function(f){ var el = $(f[0]); if(el) p[f[1]] = String(el.value || '').trim(); });
+  if(D().kind === 'monitor'){ p.cyc = +$('pt_cyc').value || 1; p.staffId = $('pt_staff').value; p.planDue = $('pt_plan').value; p.start = $('pt_start').value; }
+  else p.planDue = $('pt_pdue').value;
+  p.hardCats = []; document.querySelectorAll('#pt_hardCats input:checked').forEach(function(c){ p.hardCats.push(c.value); });
+  var cp = p.copied || {}, nc = {}, by = $('pt_by').value || dev().me || '';
+  document.querySelectorAll('#pt_copied input').forEach(function(c){ if(c.checked) nc[c.value] = cp[c.value] || { d:ymd(new Date()), by:by }; });
+  p.copied = nc;
+  p.editedBy = by; p.edited = nowLocal();
+  saveCol('patients', a);
+  ptClear();
+  $('pt_msg').textContent = (isNew ? '登録しました：' : '直しました：') + dn(no) + '。続けて次の' + D().client + 'を入れられます。';
+  refreshAll();
+}
+function hardInfo(no, m){
+  var n = events().filter(function(e){ return (e.type === 'cancel' || e.type === 'change') && e.patientNo === no && ym(e.date) === m; }).length;
+  var p = patient(no) || {}, cats = p.hardCats || [], why = [];
+  if(n >= settings().hard) why.push('キャンセル・変更 ' + n + '回');
+  cats.forEach(function(c){ why.push(c); });
+  return { on: why.length > 0, n:n, cats:cats, why:why };
+}
+function ptBrief(p){
+  if(!p || !p.no) return '';
+  var rows = [['地区', p.area + (p.spot ? '（' + p.spot + '）' : '')], ['気を付けること', p.asmRisk], ['好むこと', p.like], ['嫌がること', p.dislike], ['関わり方のこつ', p.tips]];
+  if(D().doctor) rows.splice(1, 0, ['指示の内容', p.instPoint]);
+  rows = rows.filter(function(r){ return r[1]; });
+  if(!rows.length) return '';
+  return '<div class="before"><b>登録の内容から</b><br>' + rows.map(function(r){ return esc(r[0]) + '：' + esc(r[1]); }).join('<br>') + '</div>';
+}
+function ptView(no){
+  var p = patient(no); if(!p){ $('ptView').innerHTML = ''; return; }
+  var d = D(), m = ym(ymd(new Date())), hi = hardInfo(no, m), cp = p.copied || {};
+  var sec = function(title, rows){ rows = rows.filter(function(r){ return r[1]; }); return rows.length ? '<h3>' + esc(title) + '</h3><table>' + rows.map(function(r){ return '<tr><th style="width:30%">' + esc(r[0]) + '</th><td style="white-space:pre-wrap">' + esc(r[1]) + '</td></tr>'; }).join('') + '</table>' : ''; };
+  var h = '<div class="card" style="margin-top:14px;box-shadow:none"><h2>' + esc(dn(no)) + ' <small class="muted">' + esc(p.area || '') + '・' + esc(p.status || '利用中') + (p.ins ? '・' + esc(p.ins) : '') + '</small></h2>' +
+    (hi.on ? '<p><span class="tag red">困難患者（' + esc(hi.why.join('・')) + '）</span></p>' : '') +
+    sec('訪問先', [['目印・駐車', p.spot]]) +
+    (d.doctor ? sec('指示書', [['医療機関', p.hosp], ['主治医', p.doc], ['指示期間', (p.instDate ? jpDate(p.instDate) : '') + (p.instEnd ? '〜' + jpDate(p.instEnd) : '')], ['指示の内容', p.instPoint], ['特別指示', p.special ? p.special + (p.specialEnd ? '（' + jpDate(p.specialEnd) + 'まで）' : '') : '']]) : '') +
+    sec('アセスメント', [['アセスメントの日', p.asmDate ? jpDate(p.asmDate) : ''], ['主な病名・いまの状態', p.asmState], ['暮らしの様子', p.asmLife], ['家族・キーパーソン', p.asmFamily], ['気を付けること', p.asmRisk]]) +
+    (d.kind === 'visit' ? sec('計画書', [['目標', p.goal], ['作成日', p.planMade ? jpDate(p.planMade) : ''], ['次の見直し', p.planDue ? jpDate(p.planDue) : ''], ['回数・時間帯', p.freq]]) : '') +
+    (d.report ? sec('報告書', [['最後の報告書', p.repLast ? jpMonth(p.repLast) : ''], ['報告先', p.repTo], ['前回伝えたこと', p.repNote]]) : '') +
+    sec('契約書', [['契約日', p.ctrDate ? jpDate(p.ctrDate) : ''], ['キャンセルの取り決め', p.cxRule || (p.ctrDate ? '決まりごとのとおり' : '')], ['特記', p.ctrNote]]) +
+    sec('好き嫌い・関わり方', [['好むこと', p.like], ['嫌がること', p.dislike], ['関わり方のこつ', p.tips]]) +
+    sec('困難事例', [['当てはまるもの', (p.hardCats || []).join('・')], ['あったこと', p.hardText]]) +
+    '<p class="muted">写した書類：' + (ptDocs().map(function(x){ return x[1] + (cp[x[0]] ? '（' + jpDate(cp[x[0]].d) + (cp[x[0]].by ? '・' + esc(staffName(cp[x[0]].by)) : '') + '）' : '（まだ）'); }).join('　')) + '</p>' +
+    '<div class="btns"><button class="btn small" data-ptedit2="' + esc(no) + '">直す</button><button class="btn small sub" id="ptViewClose">閉じる</button></div></div>';
+  $('ptView').innerHTML = h;
+  $('ptView').querySelector('[data-ptedit2]').onclick = function(){ ptLoad(no); };
+  $('ptViewClose').onclick = function(){ $('ptView').innerHTML = ''; };
+  if($('ptView').scrollIntoView) $('ptView').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+function renderPtList(){
+  var all = patients(), m = ym(ymd(new Date())), f = $('ptFilter').value, docs = ptDocs();
+  var pts = all.filter(function(p){
+    if(f === 'all') return true;
+    if(f === 'hard') return hardInfo(p.no, m).on;
+    if(f === 'yet') return (p.status || '利用中') !== '契約終了' && ptCopiedN(p) < docs.length;
+    return (p.status || '利用中') !== '契約終了';
+  }).sort(function(a, b){ return (a.area || '') < (b.area || '') ? -1 : (a.area || '') > (b.area || '') ? 1 : (dn(a.no) < dn(b.no) ? -1 : 1); });
+  var act = all.filter(function(p){ return (p.status || '利用中') !== '契約終了'; });
+  var done = act.filter(function(p){ return ptCopiedN(p) >= docs.length; }).length;
+  $('ptProgress').textContent = '登録 ' + act.length + '人（契約終了を除く）。カイポケの書類を全部写し終えた人 ' + done + '人、まだの人 ' + (act.length - done) + '人。地区の順に並べています。';
+  var mon = D().kind === 'monitor';
+  $('ptList').innerHTML = pts.length ? '<table><tr><th>契約書番号</th><th>地区</th><th>状態</th>' + (mon ? '<th>周期</th><th>担当</th><th>計画の更新期限</th>' : D().doctor ? '<th>指示期間の終わり</th>' : '') + '<th>写した書類</th><th>印</th><th></th></tr>' + pts.map(function(p){
+    var hi = hardInfo(p.no, m), n = ptCopiedN(p);
+    var instEnd = p.instEnd ? (p.instEnd < ymd(new Date()) ? '<span class="tag red">' + esc(jpDate(p.instEnd)) + '（切れています）</span>' : esc(jpDate(p.instEnd))) : '<span class="muted">未入力</span>';
+    return '<tr><td>' + esc(dn(p.no)) + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + '</td>' +
+      (mon ? '<td>' + esc(cycLabel(p.cyc)) + '</td><td>' + esc(staffName(p.staffId)) + '</td><td>' + esc(p.planDue ? jpDate(p.planDue) : '') + '</td>' : D().doctor ? '<td>' + instEnd + '</td>' : '') +
+      '<td>' + (n >= docs.length ? '<span class="tag green">' + n + '／' + docs.length + '</span>' : '<span class="tag amber">' + n + '／' + docs.length + '</span>') + (p.editedBy ? ' <small class="muted">' + esc(staffName(p.editedBy)) + '</small>' : '') + '</td>' +
+      '<td>' + (hi.on ? '<span class="tag red" title="' + esc(hi.why.join('・')) + '">困難患者</span>' : '') + '</td>' +
+      '<td style="white-space:nowrap"><button class="btn small sub" data-ptview="' + esc(p.no) + '">見る</button> <button class="btn small sub" data-ptedit="' + esc(p.no) + '">直す</button> <button class="btn small danger" data-ptdel="' + esc(p.no) + '">外す</button></td></tr>';
+  }).join('') + '</table>' : '<p class="empty">' + (all.length ? '当てはまる' + D().client + 'はいません。' : 'まだ登録がありません。') + '</p>';
+  $('ptList').querySelectorAll('[data-ptview]').forEach(function(b){ b.addEventListener('click', function(){ ptView(b.getAttribute('data-ptview')); }); });
+  $('ptList').querySelectorAll('[data-ptedit]').forEach(function(b){ b.addEventListener('click', function(){ ptLoad(b.getAttribute('data-ptedit')); }); });
+  $('ptList').querySelectorAll('[data-ptdel]').forEach(function(b){ b.addEventListener('click', function(){
+    if(!confirm('この' + D().client + 'を名簿から外しますか？（これまでの記録は残ります。契約が終わっただけなら、「状態」を「契約終了」にして残す方が後で見返せます）')) return;
+    saveCol('patients', allPatients().filter(function(p){ return p.no !== b.getAttribute('data-ptdel'); })); $('ptView').innerHTML = ''; refreshAll();
+  }); });
+}
+
+/* ---- 看護部への月の報告（困難患者） ---- */
+function hardRows(m){
+  return patients().filter(function(p){ return (p.status || '利用中') !== '契約終了'; }).map(function(p){
+    var hi = hardInfo(p.no, m);
+    var cx = events().filter(function(e){ return e.type === 'cancel' && e.patientNo === p.no && ym(e.date) === m; });
+    var ch = events().filter(function(e){ return e.type === 'change' && e.patientNo === p.no && ym(e.date) === m; });
+    return { p:p, hi:hi, cx:cx.length, ch:ch.length, other:cx.filter(function(e){ return e.cat === 'それ以外'; }).length };
+  }).filter(function(r){ return r.hi.on; }).sort(function(a, b){ return b.hi.n - a.hi.n; });
+}
+function renderHard(m){
+  var rows = hardRows(m), sent = events().filter(function(e){ return e.type === 'hardrep' && e.month === m && inDept(e.patientNo || ''); });
+  $('adHard').innerHTML = rows.length ? '<table><tr><th>契約書番号</th><th class="num">キャンセル</th><th class="num">うち体調・病状以外</th><th class="num">変更</th><th>理由</th></tr>' + rows.map(function(r){
+    return '<tr><td>' + esc(dn(r.p.no)) + ' <span class="muted">' + esc(r.p.area || '') + '</span></td><td class="num">' + r.cx + '</td><td class="num">' + r.other + '</td><td class="num">' + r.ch + '</td><td>' + esc(r.hi.why.join('・')) + '</td></tr>';
+  }).join('') + '</table>' : '<p class="empty">この月に当てはまる' + D().client + 'はいません（基準：キャンセル・変更 ' + settings().hard + '回以上、または困難事例の印）。</p>';
+  $('adHardMsg').textContent = sent.length ? 'この月の報告は ' + String(sent[sent.length - 1].created || '').replace('T', ' ') + ' に出しています。' : '';
+}
+function hardSend(){
+  var m = $('ad_month').value; if(!m) return;
+  var rows = hardRows(m);
+  if(!rows.length){ $('adHardMsg').textContent = '出す内容がありません。'; return; }
+  var from = dev().me;
+  if(!from){ alert('「名簿・設定」の「この端末を主に使う人」を先に選んでください（連絡板の出す人になります）。'); return; }
+  if(events().some(function(e){ return e.type === 'hardrep' && e.month === m && inDept(e.patientNo || ''); }) && !confirm('この月の報告はもう出しています。もう一度出しますか？')) return;
+  var body = '基準：月のキャンセル・変更 ' + settings().hard + '回以上、または困難事例の印が付いている' + D().client + '\n' +
+    rows.map(function(r){ return '・' + dn(r.p.no) + '（' + (r.p.area || '地区未登録') + '）キャンセル ' + r.cx + '回（うち体調・病状以外 ' + r.other + '回）・変更 ' + r.ch + '回／' + r.hi.why.join('・'); }).join('\n') +
+    '\n詳しい経過は「' + D().client + 'の経過」で番号を選ぶと見られます。';
+  var a = events(), nid = uid();
+  a.push({ id:nid, type:'note', kind:'連絡事項', from:from, to:'dept:' + D().k, title:'【月の報告】' + jpMonth(m) + '　困難患者 ' + rows.length + '人', body:body, mDate:'', mTime:'', created:nowLocal(), date:ymd(new Date()) });
+  a.push({ id:uid(), type:'hardrep', month:m, noteId:nid, patientNo:D().pfx, n:rows.length, created:nowLocal(), date:ymd(new Date()) });
+  saveEvents(a);
+  renderHard(m); renderBoard();
+  $('adHardMsg').textContent = '連絡板で' + D().name + 'の全員あてに出しました。';
+}
+
+/* ---- ご要望（2026-10-26：渋谷さんが島さん・看護部から聞き取った要望を残す） ---- */
+var REQ_ST = ['受け付けた','なぎさへ渡した','取り込んだ','見送った'];
+function reqSave(){
+  var w = $('rq_words').value.trim();
+  if(!w){ alert('言われたことを入れてください。'); $('rq_words').focus(); return; }
+  if(!$('rq_by').value){ alert('聞いた人を選んでください。'); return; }
+  var a = events();
+  a.push({ id:uid(), type:'req', date:$('rq_date').value || ymd(new Date()), from:$('rq_from').value.trim(), by:$('rq_by').value, cat:$('rq_cat').value, words:w, scene:$('rq_scene').value.trim(), dept:D().k, st:'受け付けた', created:nowLocal() });
+  saveEvents(a);
+  $('rq_words').value = ''; $('rq_scene').value = '';
+  $('rq_msg').textContent = '残しました。';
+  renderReq();
+}
+function reqOpen(e){ return e.st === '受け付けた' || e.st === 'なぎさへ渡した'; }
+function renderReq(){
+  var all = events().filter(function(e){ return e.type === 'req'; }).sort(function(a, b){ return (b.created || '') < (a.created || '') ? -1 : 1; });
+  var rs = $('rq_show').value === 'all' ? all : all.filter(reqOpen);
+  $('rqList').innerHTML = rs.length ? rs.map(function(e){
+    return '<div class="note-item"><div><span class="tag ' + (e.st === '取り込んだ' ? 'green' : e.st === '見送った' ? 'gray' : 'amber') + '">' + esc(e.st) + '</span> <b>' + esc(e.cat) + '</b>　<span class="muted">' + esc(jpDate(e.date)) + '・' + esc(e.from || '（言った人の記録なし）') + ' → 聞いた人 ' + esc(staffName(e.by)) + '・' + esc((DEPTS.filter(function(d){ return d.k === e.dept; })[0] || {}).name || '') + '</span></div>' +
+      '<div style="white-space:pre-wrap;margin-top:4px">「' + esc(e.words) + '」</div>' + (e.scene ? '<div class="muted">場面：' + esc(e.scene) + '</div>' : '') + (e.stNote ? '<div class="muted">' + esc(e.st) + '：' + esc(e.stNote) + '</div>' : '') +
+      '<div class="btns" style="margin-top:6px"><select data-rqst="' + esc(e.id) + '">' + REQ_ST.map(function(s){ return '<option' + (s === e.st ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select> <button class="btn small danger" data-rqdel="' + esc(e.id) + '">取り消す</button></div></div>';
+  }).join('') : '<p class="empty">' + (all.length ? 'まだ取り込んでいないご要望はありません。' : 'まだご要望はありません。') + '</p>';
+  $('rqList').querySelectorAll('[data-rqst]').forEach(function(sel){ sel.addEventListener('change', function(){
+    var v = sel.value, note = '';
+    if(v === '見送った'){ note = prompt('見送った理由を一言入れてください（言った人へ返すときに使います）') || ''; if(!note.trim()){ renderReq(); return; } }
+    var a = events(); a.forEach(function(e){ if(e.id === sel.getAttribute('data-rqst')){ e.st = v; e.stNote = note.trim(); e.stAt = nowLocal(); } });
+    saveEvents(a); renderReq();
+  }); });
+  $('rqList').querySelectorAll('[data-rqdel]').forEach(function(b){ b.addEventListener('click', function(){
+    if(!confirm('このご要望の記録を取り消しますか？')) return;
+    saveEvents(events().filter(function(e){ return e.id !== b.getAttribute('data-rqdel'); })); renderReq();
+  }); });
+}
+function reqCopy(){
+  var rs = events().filter(function(e){ return e.type === 'req' && reqOpen(e); }).sort(function(a, b){ return (a.date || '') < (b.date || '') ? -1 : 1; });
+  if(!rs.length){ $('rq_copyMsg').textContent = '写すものがありません。'; return; }
+  var t = '【トライタイムへのご要望】' + ymd(new Date()) + ' 時点・' + rs.length + '件\n' + rs.map(function(e, i){
+    return (i + 1) + '. ［' + e.cat + '］' + e.date + '　' + (e.from || '言った人不明') + '（聞いた人 ' + staffName(e.by) + '）\n　「' + e.words + '」' + (e.scene ? '\n　場面：' + e.scene : '');
+  }).join('\n');
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function(){ $('rq_copyMsg').textContent = '写しました。なぎさとの会話に貼り付けてください。貼り付けたら、状態を「なぎさへ渡した」にしてください。'; })
+    .catch(function(){ $('rq_copyMsg').textContent = '写せませんでした。'; });
 }
 
 /* ---- トライシートの職員名簿とのつなぎ（2026-10-13）----
@@ -1093,11 +1428,6 @@ function sheetPull(){
 
 /* ---- 名簿・設定 ---- */
 function renderSetup(){
-  var pts = patients();
-  var mon = D().kind === 'monitor';
-  $('ptList').innerHTML = pts.length ? '<table><tr><th>契約書番号</th><th>地区</th>' + (mon ? '<th>周期</th><th>担当</th><th>計画の更新期限</th>' : D().doctor ? '<th>指示書の日付</th>' : '') + '<th></th></tr>' + pts.map(function(p){
-    return '<tr><td>' + esc(dn(p.no)) + '</td><td>' + esc(p.area || '') + '</td>' + (mon ? '<td>' + esc(cycLabel(p.cyc)) + '</td><td>' + esc(staffName(p.staffId)) + '</td><td>' + esc(p.planDue ? jpDate(p.planDue) : '') + '</td>' : D().doctor ? '<td>' + esc(p.instDate ? jpDate(p.instDate) : '') + '</td>' : '') + '<td><button class="btn small danger" data-ptdel="' + esc(p.no) + '">外す</button></td></tr>';
-  }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var st = staff();
   $('stList').innerHTML = st.length ? '<table><tr><th>呼び名</th><th>職種</th><th>所属部門</th><th>雇用形態</th><th>管理者</th><th></th></tr>' + st.map(function(s){
     var sd = staffDept(s);
@@ -1108,13 +1438,9 @@ function renderSetup(){
     return '<tr><td>' + DOW[+v.dow] + '</td><td>' + esc(v.time) + '（' + esc(v.min) + '分）</td><td>' + esc(dn(v.no)) + '</td><td>' + esc(staffName(v.staffId)) + '</td><td><button class="btn small danger" data-wkdel="' + esc(v.id) + '">外す</button></td></tr>';
   }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var s = settings();
-  $('s_cut').value = s.cut; $('s_price').value = s.price; $('s_fee').value = s.fee; $('s_review').value = s.review;
+  $('s_cut').value = s.cut; $('s_price').value = s.price; $('s_fee').value = s.fee; $('s_review').value = s.review; $('s_hard').value = s.hard;
   $('rulesDept').textContent = '（' + D().name + '）';
 
-  $('ptList').querySelectorAll('[data-ptdel]').forEach(function(b){ b.addEventListener('click', function(){
-    if(!confirm('この' + D().client + 'を名簿から外しますか？（これまでの記録は残ります）')) return;
-    saveCol('patients', allPatients().filter(function(p){ return p.no !== b.getAttribute('data-ptdel'); })); refreshAll();
-  }); });
   $('stList').querySelectorAll('[data-stedit]').forEach(function(b){ b.addEventListener('click', function(){
     var s = staff().filter(function(x){ return x.id === b.getAttribute('data-stedit'); })[0]; if(!s) return;
     $('st_id').value = s.id; $('st_name').value = s.name; (function(){ var sj = $('st_job'), jv = jobOf(s) || 'その他'; [].slice.call(sj.querySelectorAll('option[data-old]')).forEach(function(o){ o.remove(); }); if(![].some.call(sj.options, function(o){ return o.value === jv; })){ var op = document.createElement('option'); op.textContent = jv; op.dataset.old = '1'; sj.appendChild(op); } sj.value = jv; })(); $('st_dept').value = s.dept || ''; $('st_emp').value = s.emp || '常勤'; $('st_mgr').checked = isMgr(s);
@@ -1256,22 +1582,106 @@ function wireNoteAlert(){
     var c = $('nbList'); if(c && c.scrollIntoView) c.scrollIntoView({ behavior:'smooth', block:'start' });
   };
 }
+/* ---- 記録の鍵（2026-10-26）----
+   患者さんの登録と経過（events）は、共有のとき事業所の合言葉で鍵（AES-GCM）をかけてから送る。
+   中継の保管庫には、番号・時刻と読めない文字列しか残らない。合言葉と鍵は中継へ送らない。
+   合言葉が合っているかは、設定（settings）に置く「確かめ用の暗号文」（kchk）で見る。
+   合言葉を入れていない端末は、患者さんと経過の記録を送らずに手元に置き、届いた鍵つきの記録は
+   読めないまま取っておく（合言葉を入れたときに開く）。 */
+var EKEY = 'tritime_key', LOCK_KEY = 'tritime_locked', ENC_COLS = { patients:1, events:1 }, cryptoKey = null;
+var TE = new TextEncoder(), TD = new TextDecoder();
+function b64(buf){ var u = new Uint8Array(buf), s = ''; for(var i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); }
+function unb64(t){ var s = atob(t), u = new Uint8Array(s.length); for(var i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+function loadKey(){
+  if(cryptoKey) return Promise.resolve(cryptoKey);
+  var r = null; try{ r = localStorage.getItem(EKEY); }catch(e){}
+  if(!r || !window.crypto || !crypto.subtle) return Promise.resolve(null);
+  return crypto.subtle.importKey('raw', unb64(r), 'AES-GCM', false, ['encrypt','decrypt']).then(function(k){ cryptoKey = k; return k; }, function(){ return null; });
+}
+function deriveRaw(phrase){
+  return crypto.subtle.importKey('raw', TE.encode(String(phrase).normalize('NFKC')), 'PBKDF2', false, ['deriveBits'])
+    .then(function(base){ return crypto.subtle.deriveBits({ name:'PBKDF2', salt:TE.encode('TriTime-records-v1'), iterations:210000, hash:'SHA-256' }, base, 256); });
+}
+function encStr(key, s){ var iv = crypto.getRandomValues(new Uint8Array(12)); return crypto.subtle.encrypt({ name:'AES-GCM', iv:iv }, key, TE.encode(s)).then(function(ct){ return b64(iv) + '.' + b64(ct); }); }
+function decStr(key, t){ var p = String(t).split('.'); return crypto.subtle.decrypt({ name:'AES-GCM', iv:unb64(p[0]) }, key, unb64(p[1])).then(function(pt){ return TD.decode(pt); }); }
+function sealItem(key, it){
+  if(!ENC_COLS[it.col]) return Promise.resolve(it);
+  var kf = KEYF[it.col];
+  return encStr(key, JSON.stringify(it.data)).then(function(c){ var d = { upd:it.data.upd || 0, enc:c }; d[kf] = it.data[kf]; return { col:it.col, id:it.id, data:d }; });
+}
+function openItems(items, key){
+  var locked = lj(LOCK_KEY, []), out = [];
+  return Promise.all(items.map(function(it){
+    if(!it || !it.data || !it.data.enc){ out.push(it); return null; }
+    if(!key){ locked.push(it); return null; }
+    return decStr(key, it.data.enc).then(function(t){ var d = JSON.parse(t); if(it.data.srv) d.srv = it.data.srv; out.push({ col:it.col, id:it.id, data:d }); }, function(){ locked.push(it); });
+  })).then(function(){
+    var m = {}; locked.forEach(function(it){ var k = it.col + '|' + it.id; if(!m[k] || (m[k].data.upd || 0) <= (it.data.upd || 0)) m[k] = it; });
+    sj(LOCK_KEY, Object.keys(m).map(function(k){ return m[k]; }));
+    return out;
+  });
+}
+function keyStatus(){
+  var n = lj(LOCK_KEY, []).length, has = false; try{ has = !!localStorage.getItem(EKEY); }catch(e){}
+  var el = $('ky_msg'); if(!el) return;
+  el.innerHTML = has ? '<span class="tag green">この端末には合言葉が入っています</span> 患者さんと経過の記録は、鍵をかけて共有しています。'
+    : '<span class="tag amber">この端末には合言葉が入っていません</span> 患者さんの登録と経過の記録は、合言葉を入れるまでこの端末から送りません。' + (n ? '<br>ほかの端末から届いた鍵つきの記録が ' + n + ' 件あります。合言葉を入れると読めるようになります。' : '');
+}
+function keySet(){
+  var ph = $('ky_pass').value;
+  if(!window.crypto || !crypto.subtle){ $('ky_msg').textContent = 'この端末のブラウザでは鍵をかけられません。'; return; }
+  if(String(ph).length < 8){ alert('合言葉は8文字以上にしてください。'); return; }
+  if(!dev().share){ alert('先に「この端末と共有」で「記録を共有する」に印を付けて保存してください（ほかの端末で決めた合言葉と同じかを確かめるためです）。'); return; }
+  $('ky_msg').textContent = '確かめています…';
+  var raw, key;
+  deriveRaw(ph).then(function(r){ raw = r; return crypto.subtle.importKey('raw', r, 'AES-GCM', false, ['encrypt','decrypt']); }).then(function(k){
+    key = k;
+    return relayCall('pull', { since:0, cols:['settings'] }).then(function(j){ var it = (j.items || []).filter(function(x){ return x.col === 'settings'; }).pop(); return it ? it.data : null; });
+  }).then(function(remote){
+    var chk = (remote && remote.kchk) || (lj(K.settings, {}) || {}).kchk;
+    if(chk) return decStr(key, chk).then(function(t){ if(t !== 'TriTime-OK') throw new Error('x'); }, function(){ throw new Error('合言葉が、事業所で決めたものと違います。入れ直してください。'); });
+    var cur = Object.assign({}, remote || {}, lj(K.settings, {}) || {});
+    return encStr(key, 'TriTime-OK').then(function(c){ cur.kchk = c; saveSettings(cur); });
+  }).then(function(){
+    localStorage.setItem(EKEY, b64(raw)); cryptoKey = key; $('ky_pass').value = '';
+    ['patients','events'].forEach(function(c){ raw2(c); });
+    var locked = lj(LOCK_KEY, []); sj(LOCK_KEY, []);
+    return openItems(locked, key).then(function(items){ if(items.length) mergeIncoming(items); });
+  }).then(function(){ keyStatus(); refreshAll(); return syncNow(); }).then(function(){ $('ky_msg').insertAdjacentHTML('beforeend', '<br>合言葉を入れました。これまでの記録にも鍵をかけて送り直しました。'); })
+  .catch(function(e){ $('ky_msg').textContent = e.message || '設定できませんでした。'; });
+  function raw2(c){ raw_(c).forEach(function(x){ if(x && x[KEYF[c]] != null) markDirty(c, String(x[KEYF[c]])); }); }
+}
+function raw_(c){ return raw(c); }
+function pushChunks(items){
+  var out = [], cur = [], size = 0;
+  items.forEach(function(it){ var n = JSON.stringify(it).length; if(cur.length && (cur.length >= 200 || size + n > 300000)){ out.push(cur); cur = []; size = 0; } cur.push(it); size += n; });
+  if(cur.length) out.push(cur);
+  return out;
+}
 function syncNow(){
   if(!dev().share || syncing) return Promise.resolve();
   syncing = true;
-  var pushed = collectDirty();
-  var chain = Promise.resolve();
-  for(var i = 0; i < pushed.length; i += 200){
-    (function(chunk){ chain = chain.then(function(){ return relayCall('push', { items:chunk }).then(function(){ clearDirty(chunk); }); }); })(pushed.slice(i, i + 200));
-  }
-  return chain.then(function(){
+  var key0 = null;
+  return loadKey().then(function(key){
+    key0 = key;
+    var pushed = collectDirty().filter(function(it){ return key || !ENC_COLS[it.col]; });
+    return Promise.all(pushed.map(function(it){ return sealItem(key, it).then(function(sealed){ return { o:it, s:sealed }; }); })).then(function(pairs){
+      var chain = Promise.resolve();
+      pushChunks(pairs).forEach(function(chunk){
+        chain = chain.then(function(){ return relayCall('push', { items:chunk.map(function(p){ return p.s; }) }).then(function(){ clearDirty(chunk.map(function(p){ return p.o; })); }); });
+      });
+      return chain;
+    });
+  }).then(function(){
     var s = lj(SYNC_KEY, {});
     /* 2026-10-19：基本情報シートの会社（種類 sheet）は受け取らない（タブレットに会社の情報を降ろさないため） */
     return relayCall('pull', { since: s.since || 0, cols:['patients','staff','weekly','events','settings'] });
   }).then(function(j){
-    var n = mergeIncoming(Array.isArray(j.items) ? j.items : []);
-    var s = lj(SYNC_KEY, {}); s.since = j.now || s.since || 0; s.last = Date.now(); s.err = ''; sj(SYNC_KEY, s);
-    if(n) refreshAll(); else setShareNote();
+    return openItems(Array.isArray(j.items) ? j.items : [], key0).then(function(items){ return { j:j, items:items }; });
+  }).then(function(r){
+    var n = mergeIncoming(r.items);
+    var s = lj(SYNC_KEY, {}); s.since = r.j.now || s.since || 0; s.last = Date.now(); s.err = ''; sj(SYNC_KEY, s);
+    if(n) refreshAll(); else { setShareNote(); keyStatus(); }
     renderAlerts();
   }).catch(function(e){
     var s = lj(SYNC_KEY, {}); s.err = e.message; sj(SYNC_KEY, s); setShareNote();
@@ -1423,12 +1833,13 @@ function applyDept(){
     d.kind === 'monitor' ? 'モニタリングの予定・面談の記録・' + d.client + 'の経過を、時間の流れで持つ（' + d.name + '）' :
     '各部署の予定のようすと、事務局からの連絡（' + d.name + '）';
   var show = function(id, on){ var el = $(id); if(el) el.style.display = on ? '' : 'none'; };
-  var tabOn = { plan:true, intake: d.kind === 'visit', course: d.kind !== 'office', report: !!d.report, admin: d.kind === 'visit', setup:true };
+  var tabOn = { plan:true, pt: d.kind !== 'office', intake: d.kind === 'visit', course: d.kind !== 'office', report: !!d.report, admin: d.kind === 'visit', req:true, setup:true };
   document.querySelectorAll('#tabs button').forEach(function(b){ b.style.display = tabOn[b.getAttribute('data-tab')] ? '' : 'none'; });
   var cur = document.querySelector('#tabs button.on');
   if(cur && !tabOn[cur.getAttribute('data-tab')]) document.querySelector('#tabs button[data-tab=plan]').click();
   show('cardSummary', d.kind === 'office'); show('cardMonitor', d.kind === 'monitor'); show('cardPlan', d.kind === 'visit');
   show('cardAdDoctor', !!d.doctor); show('cardPt', d.kind !== 'office'); show('ptInstWrap', !!d.doctor); show('ptMon', d.kind === 'monitor');
+  show('ptsInst', !!d.doctor); show('ptsRep', !!d.report); show('ptsPlan', d.kind === 'visit'); show('cardHard', d.kind === 'visit');
   show('cardWk', d.kind === 'visit'); show('cardIm', d.kind === 'visit'); show('cardRules', d.kind === 'visit');
   show('dDoctor', !!d.doctor);
 }
@@ -1441,6 +1852,7 @@ function refreshAll(){
   $('dv_share').checked = dev().share;
   renderSetup(); renderPlan(); renderIntakeList(); renderCourse(); renderReport(); renderAdmin();
   renderMonitor(); renderSummary();
+  ptForm(); renderPtList(); renderReq(); keyStatus();
 }
 
 /* ---- 配線 ---- */
@@ -1454,6 +1866,8 @@ document.querySelectorAll('#tabs button').forEach(function(b){
     if(t === 'course') renderCourse();
     if(t === 'report') renderReport();
     if(t === 'admin') renderAdmin();
+    if(t === 'pt') renderPtList();
+    if(t === 'req') renderReq();
   });
 });
 
@@ -1494,16 +1908,17 @@ $('rp_copy').addEventListener('click', function(){
     .catch(function(){ $('rp_msg').textContent = '写せませんでした。上の枠の文字を選んで写してください。'; });
 });
 
-$('pt_add').addEventListener('click', function(){
-  var no = keyNo($('pt_no').value); if(!no){ $('pt_no').focus(); return; }
-  var a = allPatients(); var p = a.filter(function(x){ return x.no === no; })[0];
-  if(!p){ p = { no:no }; a.push(p); }
-  p.area = $('pt_area').value.trim(); p.instDate = $('pt_inst').value;
-  if(D().kind === 'monitor'){
-    p.cyc = +$('pt_cyc').value || 1; p.staffId = $('pt_staff').value; p.planDue = $('pt_plan').value; p.start = $('pt_start').value;
-  }
-  saveCol('patients', a); ['pt_no','pt_area','pt_inst','pt_plan','pt_start'].forEach(function(id){ $(id).value = ''; }); refreshAll();
-});
+$('pt_add').addEventListener('click', ptSave);
+$('pt_load').addEventListener('click', function(){ ptLoad(keyNo($('pt_no').value)); });
+$('pt_no').addEventListener('change', function(){ var no = keyNo($('pt_no').value); if(no && patient(no)) ptLoad(no); });
+$('pt_clear').addEventListener('click', function(){ ptClear(); $('pt_msg').textContent = ''; });
+$('ptFilter').addEventListener('change', renderPtList);
+$('rq_date').value = ymd(new Date());
+$('rq_save').addEventListener('click', reqSave);
+$('rq_show').addEventListener('change', renderReq);
+$('rq_copy').addEventListener('click', reqCopy);
+$('adHardSend').addEventListener('click', hardSend);
+$('ky_set').addEventListener('click', keySet);
 function stFormReset(){ $('st_id').value = ''; $('st_name').value = ''; $('st_mgr').checked = false; $('st_add').textContent = '追加する'; $('st_cancel').style.display = 'none'; }
 $('st_cancel').addEventListener('click', stFormReset);
 $('st_add').addEventListener('click', function(){
@@ -1520,7 +1935,7 @@ $('wk_add').addEventListener('click', function(){
   saveCol('weekly', a); $('wk_time').value = ''; refreshAll();
 });
 $('s_save').addEventListener('click', function(){
-  var v = { cut:+$('s_cut').value || 17, price:$('s_price').value, fee:$('s_fee').value, review:+$('s_review').value || 90 };
+  var v = { cut:+$('s_cut').value || 17, price:$('s_price').value, fee:$('s_fee').value, review:+$('s_review').value || 90, hard:Math.max(1, +$('s_hard').value || 3) };
   var cur = lj(K.settings, {}) || {};
   if(D().k === 'nurse') saveSettings(Object.assign({}, cur, v));
   else { var by = Object.assign({}, cur.byDept || {}); by[D().k] = v; saveSettings(Object.assign({}, cur, { byDept:by })); }

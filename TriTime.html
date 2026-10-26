@@ -169,7 +169,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-03</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-04</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -565,6 +565,13 @@ function tsGoBack(){
       <div><label class="f" for="ev_kind">種類</label><select id="ev_kind"><option value="self">本人向け</option><option value="mgr">管理者向け</option></select></div>
     </div>
     <div class="btns"><button class="btn" id="ev_print">この職員の分を印刷する</button><button class="btn sub" id="ev_all">全員分をまとめて印刷する</button><span class="muted" id="ev_msg"></span></div>
+  </div>
+  <div class="card" id="cardSr">
+    <h2>月次の売上資料（経営陣向け）</h2>
+    <p class="lead">月ごとの数字を保存して並べ、経営陣の評価と施策を立てる材料にします。月が替わって最初にこの画面を開いたとき、前の月の数字を自動で保存します（この画面を使い始める前の月は保存しません）。月の途中の数字を残したいときや、看護記録を取り込んだあとに保存し直したいときは、「この月の数字を保存する」を押します（上の「計算する月」の月を、上書きで保存します）。</p>
+    <div class="btns"><button class="btn" id="sr_save">この月の数字を保存する</button><button class="btn sub" id="sr_print">資料を印刷する</button><button class="btn sub" id="sr_out">数字を書き出す（親機トライサイトへ渡す用）</button><span class="muted" id="sr_msg"></span></div>
+    <p class="muted">「資料を印刷する」は、A4横で、保存した月の推移（12か月まで）・「計算する月」の要点・職員ごとの数字を1枚にまとめます。</p>
+    <div class="tbl-scroll" id="sr_list"></div>
   </div>
 </section>
 
@@ -2683,7 +2690,7 @@ function mdFees(m){
       } else {
         fee = +c.prices[ins] || +settings().price || 0; if(!fee) out.noPrice++;
       }
-      out.map[key] = { fee:fee };
+      out.map[key] = { fee:fee, w:!!wj };
     });
   }
   return out;
@@ -2791,11 +2798,12 @@ function mdCollect(){
 function renderModel(){
   if(!$('tab-model')) return;
   if(!$('md_month').value) $('md_month').value = ymd(new Date()).slice(0, 7);
-  mdCond(); mdResult(); mdWeek(); mdDay(); evFill();
+  srAuto(); mdCond(); mdResult(); mdWeek(); mdDay(); evFill(); srList();
 }
-function mdResult(){
-  var m = $('md_month').value, c = mdCfg(), ppl = mdPeople();
-  if(!m || !ppl.length){ ['md_judge','md_rate','md_loss'].forEach(function(id){ $(id).innerHTML = '<p class="empty">職員と計算する月を入れてください。</p>'; }); $('md_rateNote').innerHTML = ''; return; }
+/* 月の合計（画面・保存・印刷で同じ数字を使う） */
+function mdTotals(m){
+  var c = mdCfg();
+  if(!m || !mdPeople().length) return null;
   var R = mdRows(m), rows = R.rows, F = R.F;
   var cr = mdCxRate(m), T = { model:0, modelPast:0, plan:0, planPast:0, planFuture:0, empty:0, emptyFuture:0, cxEff:0, cxAll:0, leave:0, clash:0, clashFix:0, over:0, extra:0, act:0, actN:0, overrun:0,
     sModel:0, sPlan:0, sFc:0, fc:0, noPrice:0, withN:0 };
@@ -2808,7 +2816,13 @@ function mdResult(){
     T.withN += r.withN; T.sPlan += r.sPlan;
     if(r.price){ T.sModel += r.model * r.price; T.sFc += r.fc * r.price; } else if(r.model || r.plan) T.noPrice++;
   });
-  var hasPrice = T.sModel > 0 || T.sPlan > 0, goal = +c.goal || 0, avg = T.model ? T.sModel / T.model : (T.plan ? T.sPlan / T.plan : 0);
+  var avg = T.model ? T.sModel / T.model : (T.plan ? T.sPlan / T.plan : 0);
+  return { c:c, rows:rows, F:F, cr:cr, T:T, avg:avg, goal:(+c.goal || 0), hasPrice:(T.sModel > 0 || T.sPlan > 0) };
+}
+function mdResult(){
+  var m = $('md_month').value, X = mdTotals(m);
+  if(!X){ ['md_judge','md_rate','md_loss'].forEach(function(id){ $(id).innerHTML = '<p class="empty">職員と計算する月を入れてください。</p>'; }); $('md_rateNote').innerHTML = ''; return; }
+  var c = X.c, rows = X.rows, F = X.F, cr = X.cr, T = X.T, hasPrice = X.hasPrice, goal = X.goal, avg = X.avg;
   /* ---- 目標の売上に届くか ---- */
   var h = '<table><tr><th></th><th class="num">件数（月）</th>' + (hasPrice ? '<th class="num">売上（月）</th>' : '') + '<th>中身</th></tr>' +
     '<tr><td><b>モデルコースどおり</b></td><td class="num">' + T.model + '件</td>' + (hasPrice ? '<td class="num">' + mdYen(T.sModel) + '</td>' : '') + '<td><small class="muted">全員が条件どおりの件数をこなしたとき</small></td></tr>' +
@@ -2992,6 +3006,106 @@ function evPrint(list){
 }
 $('ev_print').addEventListener('click', function(){ var id = $('ev_staff').value; var s = mdPeople().filter(function(x){ return x.id === id; })[0]; evPrint(s ? [s] : []); });
 $('ev_all').addEventListener('click', function(){ evPrint(mdPeople()); });
+/* ---- 月次の売上資料（経営陣向け）（2026-10-27・宏史さんの決め「8でよい」）----
+   月ごとの数字を settings.modelSnap[部署][年-月] に保存し、月ごとに並べて見る・印刷する・書き出す。
+   ・月が替わって最初にモデルコースを開いたとき、前の月の数字を自動で保存する（保存済みなら何もしない）
+   ・「この月の数字を保存する」で、選んでいる月を保存（上書き）する
+   ・書き出したファイルは、親機トライサイトへ施策の材料として渡すためのもの */
+function srAll(){ var s = lj(K.settings, {}) || {}; return s.modelSnap || {}; }
+function srOf(){ return srAll()[D().k] || {}; }
+function srPut(m, snap){
+  var cur = lj(K.settings, {}) || {}, all = Object.assign({}, cur.modelSnap || {}), mine = Object.assign({}, all[D().k] || {});
+  if(snap) mine[m] = snap; else delete mine[m];
+  all[D().k] = mine; saveSettings(Object.assign({}, cur, { modelSnap:all }));
+}
+function srMake(m, auto){
+  var X = mdTotals(m); if(!X) return null;
+  var T = X.T, w = workRule(), solo = 0, soloN = 0;
+  Object.keys(X.F.map).forEach(function(k){ var f = X.F.map[k]; if(!f.w && !f.ng && f.fee > 0){ solo += f.fee; soloN++; } });
+  var sAct = 0; X.rows.forEach(function(r){ if(r.act != null) sAct += r.act * r.price; });
+  return { saved:nowLocal(), auto:!!auto, month:m, dept:D().name, goal:X.goal, kanri:X.c.kanri,
+    model:T.model, plan:T.plan, act:(T.actN ? T.act : null), actModel:X.rows.filter(function(r){ return r.act != null; }).reduce(function(a, r){ return a + r.modelPast; }, 0),
+    fc:Math.round(T.fc), sModel:Math.round(T.sModel), sPlan:Math.round(T.sPlan), sFc:Math.round(T.sFc), sAct:Math.round(sAct),
+    empty:T.empty, cxEff:T.cxEff, leave:T.leave, clash:T.clash, clashFix:T.clashFix, withN:T.withN, withMin:T.withN * w.visit,
+    soloAvg:(soloN ? Math.round(solo / soloN) : 0), avg:Math.round(X.avg), w4ng:X.F.w4ng, cxRate:X.cr.rate,
+    rows:X.rows.map(function(r){ return { name:r.s.name, emp:r.s.emp || '', n:r.c.n, days:r.c.days.slice(), model:r.model, plan:r.plan, withN:r.withN, act:r.act, actSrc:r.actSrc, actModel:r.modelPast,
+      price:Math.round(r.price), sModel:Math.round(r.model * r.price), sPlan:Math.round(r.sPlan), sFc:Math.round(r.fc * r.price), empty:r.empty, cxEff:r.cxEff, leave:r.leave }; }) };
+}
+/* 月が替わって最初に開いたとき、前に開いていた月の数字を自動で保存する。
+   この画面を開いたことのない月（使い始める前の月）は保存しない（いまの週間予定で過去の月を数えることになるため） */
+function srAuto(){
+  var key = 'tritime_sr_seen_' + D().k, now = ymd(new Date()).slice(0, 7), last = '';
+  try{ last = localStorage.getItem(key) || ''; }catch(e){}
+  if(last && last < now && !srOf()[last] && mdPeople().length && weekly().length){ var snap = srMake(last, true); if(snap) srPut(last, snap); }
+  if(last !== now){ try{ localStorage.setItem(key, now); }catch(e){} }
+}
+function srRow(x, cls){
+  var p = function(a, b){ return mdPct(a, b); };
+  return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + esc(jpMonth(x.month)) + (x.live ? '<br><small class="muted">保存前</small>' : '') + '</td>' +
+    '<td class="num">' + (x.goal ? mdYen(x.goal) : '—') + '</td><td class="num">' + mdYen(x.sModel) + '</td><td class="num">' + mdYen(x.sPlan) + '</td><td class="num">' + mdYen(x.sFc) + '</td>' +
+    '<td class="num"><b>' + (x.goal ? p(x.sFc, x.goal) : '—') + '</b></td><td class="num">' + p(x.plan, x.model) + '</td><td class="num">' + (x.act != null ? p(x.act, x.actModel) : '—') + '</td>' +
+    '<td class="num">' + mdYen(x.empty * x.avg) + '<br><small class="muted">' + x.empty + '件</small></td><td class="num">' + mdYen(x.cxEff * x.avg) + '<br><small class="muted">' + x.cxEff + '件</small></td><td class="num">' + mdYen(x.leave * x.avg) + '<br><small class="muted">' + x.leave + '件</small></td>' +
+    '<td class="num">' + x.withN + '件<br><small class="muted">' + minLabel(x.withMin) + '</small></td>';
+}
+var SR_HEAD = '<tr><th>月</th><th class="num">目標</th><th class="num">モデルの売上</th><th class="num">予定の売上</th><th class="num">見込みの売上<br><small>（実績込み）</small></th><th class="num">目標の達成率<br><small>（見込み）</small></th><th class="num">予定の稼働率</th><th class="num">実績の稼働率</th><th class="num">空き枠</th><th class="num">キャンセル</th><th class="num">休みの届け</th><th class="num">2名体制の同行</th>';
+function srList(){
+  var box = $('sr_list'); if(!box) return;
+  var S = srOf(), ms = Object.keys(S).sort().reverse();
+  if(!ms.length){ box.innerHTML = '<p class="empty">保存した月はまだありません。「この月の数字を保存する」を押すか、来月の初めにこの画面を開くと、今月の分が自動で保存されます。</p>'; return; }
+  box.innerHTML = '<table>' + SR_HEAD + '<th>保存</th></tr>' + ms.map(function(m){
+    var x = S[m];
+    return srRow(x) + '<td><small class="muted">' + esc(String(x.saved || '').replace('T', ' ')) + (x.auto ? '<br>自動' : '') + '</small><br><button class="btn small danger" data-srdel="' + esc(m) + '">外す</button></td></tr>';
+  }).join('') + '</table><p class="muted" style="margin-top:6px">空き枠・キャンセル・休みの届けの金額は、件数にその月の1件あたりの売上（モデルの売上÷モデルの件数）を掛けたものです。2名体制の同行の下の時間は、同行に使った訪問の時間（件数×決まりの長さ）です。</p>';
+  box.querySelectorAll('[data-srdel]').forEach(function(b){ b.addEventListener('click', function(){
+    if(!confirm(jpMonth(b.getAttribute('data-srdel')) + 'の保存した数字を外しますか？')) return;
+    srPut(b.getAttribute('data-srdel'), null); srList();
+  }); });
+}
+function srPrint(){
+  var S = srOf(), m = $('md_month').value, cur = S[m] || (function(){ var x = srMake(m); if(x) x.live = true; return x; })();
+  if(!cur){ $('sr_msg').textContent = '職員と計算する月を入れてください。'; return; }
+  var ms = Object.keys(S).sort().slice(-12), hist = ms.map(function(k){ return S[k]; });
+  if(!S[m]) hist.push(cur);
+  hist.sort(function(a, b){ return a.month < b.month ? -1 : 1; });
+  var today = ymd(new Date());
+  var css = '@page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic",sans-serif;color:#10243b;font-size:9pt;line-height:1.45;margin:0}' +
+    '.hd{display:flex;align-items:center;gap:10px;border-bottom:1.5px solid #10243b;padding-bottom:6px;margin-bottom:8px}.hd img{width:30px;height:30px}.hd h1{font-size:14pt;margin:0}.hd p{margin:0;font-size:9pt;color:#5d6b7a}' +
+    'h2{font-size:10.5pt;margin:10px 0 4px;border-left:4px solid #c9772a;padding-left:6px}table{width:100%;border-collapse:collapse;margin:4px 0}th,td{border:1px solid #cfc6b4;padding:2px 5px;text-align:left;vertical-align:top}' +
+    'th{background:#f4f1ea;font-weight:700}.num{text-align:right;white-space:nowrap}small,.sm{font-size:8pt;color:#5d6b7a}.now td{background:#fffaf2}p{margin:3px 0}';
+  var staffT = '<table><tr><th>職員</th><th class="num">1日の件数</th><th>出る曜日</th><th class="num">モデル</th><th class="num">予定<br><small>（うち同行）</small></th><th class="num">予定の稼働率</th><th class="num">実績</th><th class="num">実績の稼働率</th><th class="num">1件あたり</th><th class="num">モデルの売上</th><th class="num">予定の売上</th><th class="num">見込みの売上</th><th class="num">空き枠</th><th class="num">キャンセル</th><th class="num">休みの届け</th></tr>' +
+    cur.rows.map(function(r){ return '<tr><td>' + esc(r.name) + ' <small>' + esc(r.emp) + '</small></td><td class="num">' + r.n + '件</td><td>' + (r.days.map(function(d){ return DOW[+d]; }).join('') || '—') + '</td><td class="num">' + r.model + '件</td><td class="num">' + r.plan + '件' + (r.withN ? '<br><small>（' + r.withN + '件）</small>' : '') + '</td><td class="num">' + mdPct(r.plan, r.model) + '</td><td class="num">' + (r.act != null ? r.act + '件<br><small>' + esc(r.actSrc) + '</small>' : '—') + '</td><td class="num">' + (r.act != null ? mdPct(r.act, r.actModel) : '—') + '</td><td class="num">' + mdYen(r.price) + '</td><td class="num">' + mdYen(r.sModel) + '</td><td class="num">' + mdYen(r.sPlan) + '</td><td class="num">' + mdYen(r.sFc) + '</td><td class="num">' + r.empty + '件</td><td class="num">' + r.cxEff + '件</td><td class="num">' + r.leave + '件</td></tr>'; }).join('') + '</table>';
+  var notes = [];
+  if(cur.goal) notes.push('目標 ' + mdYen(cur.goal) + ' に対して、見込みは ' + mdPct(cur.sFc, cur.goal) + '、モデルどおりなら ' + mdPct(cur.sModel, cur.goal) + '。');
+  notes.push('モデルといまの予定の差 ' + (cur.model - cur.plan) + '件のうち、空き枠 ' + cur.empty + '件・キャンセル ' + cur.cxEff + '件・休みの届け ' + cur.leave + '件。');
+  if(cur.withN) notes.push('2名体制の同行 ' + cur.withN + '件（' + minLabel(cur.withMin) + '）。単独の訪問は1件あたり平均 ' + mdYen(cur.soloAvg) + '（この月の単独の訪問の平均）。');
+  if(cur.w4ng) notes.push('週4日目以降で算定できない訪問 ' + cur.w4ng + '件（特別指示の期間を確かめる）。');
+  if(cur.clash || cur.clashFix) notes.push('休みの日に入っている予定（要調整）：休みの届けの日 ' + cur.clash + '件・公休と祝日 ' + cur.clashFix + '件。');
+  var body = '<div class="hd"><img src="' + esc(new URL('TriSight_icon_512.png', location.href).href) + '" alt="TriSight®"><div><h1>月次の売上資料（経営陣向け）</h1><p>' + esc(cur.dept) + '　' + esc(jpMonth(cur.month)) + '分　作成日 ' + esc(jpDate(today)) + '</p></div></div>' +
+    '<h2>1　月ごとの推移</h2><table>' + SR_HEAD + '</tr>' + hist.map(function(x){ return srRow(x, x.month === cur.month ? 'now' : '') + '</tr>'; }).join('') + '</table>' +
+    '<h2>2　' + esc(jpMonth(cur.month)) + 'の要点</h2>' + notes.map(function(t){ return '<p>・' + esc(t) + '</p>'; }).join('') +
+    '<h2>3　' + esc(jpMonth(cur.month)) + 'の職員ごとの数字</h2>' + staffT +
+    '<p class="sm">売上は、週間予定の訪問を1件ずつ料金表（令和8年6月1日から・令和8年厚生労働省告示第74号ほか）で計算したもの。見込みは今日までの実績（無い職員は予定）と、明日からの予定から直前3か月のキャンセルの割合を引いたもの。空き枠・キャンセル・休みの届けの金額は、件数×その月の1件あたりの売上。' + (cur.live ? 'この月の数字はまだ保存していないため、印刷した時点の計算です。' : '保存日時 ' + esc(String(cur.saved || '').replace('T', ' ')) + '。') + '</p>';
+  var win = window.open('', '_blank');
+  if(!win){ $('sr_msg').textContent = '印刷の画面を開けませんでした。ブラウザのポップアップの許可を確かめてください。'; return; }
+  win.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>月次の売上資料 ' + esc(cur.month) + '</title><style>' + css + '</style></head><body>' + body + '<script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script></body></html>');
+  win.document.close();
+  $('sr_msg').textContent = '印刷の画面を開きました。';
+}
+$('sr_save').addEventListener('click', function(){
+  var m = $('md_month').value; if(!m){ $('sr_msg').textContent = '計算する月を選んでください。'; return; }
+  if(srOf()[m] && !confirm(jpMonth(m) + 'の数字はもう保存されています。いまの計算で上書きしますか？')) return;
+  var snap = srMake(m, false); if(!snap){ $('sr_msg').textContent = '職員がいないため保存できません。'; return; }
+  srPut(m, snap); $('sr_msg').textContent = jpMonth(m) + 'の数字を保存しました。'; srList();
+});
+$('sr_print').addEventListener('click', srPrint);
+$('sr_out').addEventListener('click', function(){
+  var S = srOf(); if(!Object.keys(S).length){ $('sr_msg').textContent = '保存した月がまだありません。'; return; }
+  var data = { app:'TriTime', kind:'salesReport', dept:D().name, made:nowLocal(), months:S };
+  var blob = new Blob([JSON.stringify(data, null, 1)], { type:'application/json' });
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'TriTime_売上資料_' + D().name + '_' + ymd(new Date()).replace(/-/g, '') + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  $('sr_msg').textContent = '書き出しました（ダウンロードのフォルダに入ります）。';
+});
 
 /* ---- 仮スケジュール表（2026-10-26・宏史さんの指示）----
    予定を組む人（管理する人）が、部署の1週間を「職員ごとの行 × 曜日の列」で見渡すための右のサブ画面。

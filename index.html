@@ -96,20 +96,69 @@ footer{text-align:center;color:#7e8499;font-size:11px;margin-top:14px;line-heigh
 
 <a class="parent" href="TriSight_v5.html">
   <div class="p-left">
-    <div class="p-ey">MAIN SYSTEM</div>
+    <div class="p-ey">MAIN SYSTEM　<span style="color:#fff;letter-spacing:.04em">基本：一段ずつ人が確かめて、次のAIへ渡す</span></div>
     <div class="p-nm">TriSight <span>System</span></div>
     <div class="p-jp">トライサイトシステム</div>
   </div>
   <span class="p-go">OPEN &rsaquo;</span>
 </a>
 
-<!-- 2026-09-18：本体の意味の説明と、それを短縮するAI連携オプションへの小さな入口。
+<!-- 2026-10-27：使い方を選ぶ（宏史さんの決め）。基本は本体（一段ずつ人が確かめて次のAIへ渡す）。
+     AI連携オプションは利用者が選ぶもの：「この件だけ」か「固定（期限あり・なし）」。
      オプションへの入口はこの表札にだけ置き、本体の画面の中には置かない（本体にAI間の経路を持たせないため）。 -->
-<div class="p-note" style="margin:-14px 0 26px;padding:12px 18px;border:1px solid rgba(200,162,74,.45);border-radius:12px;font-size:12.5px;line-height:1.75;color:#cdd6ea;background:rgba(10,20,40,.35)">
-  <b style="color:var(--gold-soft)">本体の見方</b>　あずさ（構想）・なぎさ（検証）・つかさ（評価）の各段で出力を止め、人が読んでから次へ渡します。AIがどう理論を組み立てたかを段ごとに確かめられ、渡す・差し戻す・爆破の判断とその記録が残ります。<br>
-  <span style="color:#9fb0cc">三段を続けて動かし、最後に一度だけ読んで採否を決めたいときは、こちらを押してください →</span>
-  <a href="TriSight_v5_auto.html" style="display:inline-block;margin-left:6px;padding:3px 12px;border:1px solid var(--gold);border-radius:999px;color:var(--gold-soft);text-decoration:none;font-size:12px;letter-spacing:.06em">AI連携オプション（ショートカット）</a>
+<div class="p-note" id="useBox" style="margin:-14px 0 26px;padding:14px 18px;border:1px solid rgba(200,162,74,.45);border-radius:12px;font-size:12.5px;line-height:1.75;color:#cdd6ea;background:rgba(10,20,40,.35)">
+  <b style="color:var(--gold-soft)">基本は本体です</b>　あずさ（構想）・なぎさ（検証）・つかさ（評価）の各段で出力を止め、人が読んでから次へ渡します。一段ずつ確かめるのは、次の4つのためです。
+  <ul style="margin:6px 0 8px 18px;padding:0">
+    <li><b style="color:#fff">最初のずれで止められる</b>：あずさが前提を取り違えると、なぎさ・つかさもその上に積み上げます。最初の段で止めれば、ずれが広がる前に直せ、時間とAIの利用料の無駄も防げます。</li>
+    <li><b style="color:#fff">途中で舵を切れる</b>：「差し戻す」に理由を書けば、起案者の意図を途中で差し込めます。</li>
+    <li><b style="color:#fff">判断の記録が残る</b>：どの段で何を採ったかが残り、お客さまや上司へ「どう確かめて決めたか」を説明できます。</li>
+    <li><b style="color:#fff">AIの考え方が見える</b>：段ごとに読むことで、AIがどう考えを組み立てたかが分かり、起案者の判断の目も育ちます。</li>
+  </ul>
+  <span style="color:#9fb0cc">三段を続けて動かし、判断を最後の一回で済ませたいときは、AI連携オプションを選べます。大事な案件や、前提がずれやすい案件は、本体で一段ずつ確かめてください。</span>
+  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px">
+    <a href="TriSight_v5_auto.html" class="opt-btn">この件だけAI連携オプションで開く</a>
+    <span style="color:#9fb0cc">または</span>
+    <select id="optTerm" aria-label="固定する期間" style="font:inherit;font-size:12px;padding:3px 6px;border-radius:8px;border:1px solid var(--gold);background:#0f1d3a;color:var(--gold-soft)">
+      <option value="today">今日いっぱい</option><option value="7">7日間</option><option value="30">30日間</option><option value="none">期限なし</option>
+    </select>
+    <button type="button" id="optFix" class="opt-btn">AI連携オプションに固定する</button>
+  </div>
+  <div id="optState" style="margin-top:8px;display:none"></div>
+  <div style="margin-top:6px;font-size:11px;color:#8d93a6">固定は、この端末だけに効きます。固定している間は、アプリのアイコンなどから表札を開くと、自動でAI連携オプションへ進みます。</div>
 </div>
+<style>.opt-btn{display:inline-block;padding:4px 14px;border:1px solid var(--gold);border-radius:999px;color:var(--gold-soft);background:transparent;text-decoration:none;font:inherit;font-size:12px;letter-spacing:.04em;cursor:pointer}.opt-btn:hover,.opt-btn:focus-visible{background:rgba(200,162,74,.18);outline:none}</style>
+<script>
+/* AI連携オプションの固定（2026-10-27）。localStorage 'trisight_opt_fixed' = { until: ミリ秒（0＝期限なし）, set: 固定した日時 } */
+(function(){
+  var KEY = 'trisight_opt_fixed';
+  function get(){ try{ var v = JSON.parse(localStorage.getItem(KEY) || 'null'); if(v && (!v.until || v.until > Date.now())) return v; if(v) localStorage.removeItem(KEY); }catch(e){} return null; }
+  function fmt(ms){ var d = new Date(ms); return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+  var q = new URLSearchParams(location.search);
+  if(q.get('unfix') === '1'){ try{ localStorage.removeItem(KEY); }catch(e){} }
+  var fx = get();
+  /* 外から開いたとき（アイコン・ブックマークなど）だけオプションへ進む。ほかの画面から戻ったとき・stay=1 のときは表札にとどまる */
+  var fromInside = false; try{ fromInside = !!document.referrer && new URL(document.referrer).origin === location.origin; }catch(e){}
+  if(fx && !fromInside && q.get('stay') !== '1'){ location.replace('TriSight_v5_auto.html'); return; }
+  function show(){
+    var box = document.getElementById('optState'); if(!box) return;
+    var f = get();
+    if(!f){ box.style.display = 'none'; box.innerHTML = ''; return; }
+    box.style.display = '';
+    box.innerHTML = '<span style="color:#f0c25a;font-weight:700">AI連携オプションに固定中</span>（' + (f.until ? fmt(f.until) + 'まで' : '期限なし') + '）　<button type="button" id="optUnfix" class="opt-btn">固定を外す</button>';
+    document.getElementById('optUnfix').onclick = function(){ try{ localStorage.removeItem(KEY); }catch(e){} show(); };
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    show();
+    document.getElementById('optFix').onclick = function(){
+      var t = document.getElementById('optTerm').value, until = 0, now = new Date();
+      if(t === 'today'){ var e = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59); until = e.getTime(); }
+      else if(t !== 'none'){ until = Date.now() + (+t) * 864e5; }
+      try{ localStorage.setItem(KEY, JSON.stringify({ until:until, set:now.toISOString() })); }catch(e){}
+      location.href = 'TriSight_v5_auto.html';
+    };
+  });
+})();
+</script>
 
 <div class="family-band">
   <span class="fb-line"></span>

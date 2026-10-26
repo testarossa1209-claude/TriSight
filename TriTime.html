@@ -132,7 +132,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-26-01</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-26-02</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <div id="verNotice"></div>
@@ -287,6 +287,12 @@ function tsGoBack(){
       </div>
     </details>
     <div class="btns"><button class="btn" id="pt_add">この内容で登録する</button><button class="btn sub" type="button" id="pt_clear">欄を空にする</button><span class="muted" id="pt_msg"></span></div>
+  </div>
+  <div class="card" id="cardNr">
+    <h2>看護記録（トライケア）の取り込み</h2>
+    <p class="muted">トライケアの「看護記録」で保存した記録を、契約書番号ごとにこの画面へ取り込みます。同じタブレットで保存した記録は、画面を開いたときと共有のたびに自動で取り込みます。保存のときに落ちた控えのファイル（TriCare_番号_日時.html）は、下のボタンからまとめて取り込めます。取り込んだ記録は、患者さんの一覧の「見る」に出ます。</p>
+    <div class="btns"><button class="btn sub" type="button" id="nr_pick">控えのファイルを選んで取り込む</button><input type="file" id="nr_file" accept=".html,.htm,text/html" multiple style="display:none"><span class="muted" id="nr_msg"></span></div>
+    <div id="nr_orphan"></div>
   </div>
   <div class="card" id="cardPtList">
     <h2 data-t="{client}の一覧">患者さんの一覧</h2>
@@ -535,7 +541,7 @@ function tsGoBack(){
    看護の中身の評価はしない。事実と、本人の言葉だけを持つ。
    ============================================================ */
 
-var K = { settings:'tritime_settings', patients:'tritime_patients', staff:'tritime_staff', weekly:'tritime_weekly', events:'tritime_events' };
+var K = { settings:'tritime_settings', patients:'tritime_patients', staff:'tritime_staff', weekly:'tritime_weekly', events:'tritime_events', records:'tritime_records' };
 var DOW = ['日','月','火','水','木','金','土'];
 var $ = function(id){ return document.getElementById(id); };
 
@@ -559,7 +565,7 @@ function yen(n){ return Number(n).toLocaleString('ja-JP') + '円'; }
    名簿・予定・記録は「1件ずつ」持つ。変えた件には時刻（upd）を付け、消した件は
    消さずに「消した印（del）」を付けて残す。共有のとき、どの端末の変更が新しいかを
    1件ずつ見分けるため。画面に出すときは消した印の付いた件を除く。 */
-var KEYF = { patients:'no', staff:'id', weekly:'id', events:'id' };
+var KEYF = { patients:'no', staff:'id', weekly:'id', events:'id', records:'id' };
 var SYNC_KEY = 'tritime_sync', DEV_KEY = 'tritime_device', ALERT_KEY = 'tritime_alerts';
 function raw(col){ var a = lj(K[col], []); return Array.isArray(a) ? a : []; }
 function live(col){ return raw(col).filter(function(x){ return x && !x.del; }); }
@@ -1202,6 +1208,127 @@ function ptBrief(p){
   if(!rows.length) return '';
   return '<div class="before"><b>登録の内容から</b><br>' + rows.map(function(r){ return esc(r[0]) + '：' + esc(r[1]); }).join('<br>') + '</div>';
 }
+/* ---- 看護記録の取り込み（2026-10-26・宏史さんの指示「トライタイムでこの看護記録の情報を読み取れるように」）----
+   トライケアの看護記録（TriCare_NursingRecord.html）は、保存すると
+     ① この端末のブラウザに控え（localStorage の tricare_<契約書番号>_<日時>）
+     ② 控えのファイル（TriCare_<契約書番号>_<日時>.html）
+   を残す。どちらも中に記録の中身（<script id="tricare-data">）を埋め込んでいる。
+   ここではその中身だけを読み、契約書番号で患者さんにつなぐ。署名の画像・利用者名は取り込まない。
+   取り込んだ記録は「records」として、患者さんの登録と同じく合言葉の鍵をかけて共有する。 */
+var NR_SEEN = 'tritime_nr_seen';
+function nrNum(v){ return String(v == null ? '' : v).replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).trim(); }
+function nrYear(v, fb){
+  var t = nrNum(v); if(!t) return fb;
+  var m = t.match(/^(?:R|r|令和)?\s*(\d{1,2})$/); if(m) return 2018 + (+m[1]);
+  m = t.match(/(\d{4})/); return m ? +m[1] : fb;
+}
+function nrParse(html, key){
+  var m = String(html).match(/<script type="application\/json" id="tricare-data">([\s\S]*?)<\/script>/);
+  if(!m) return null;
+  var d; try{ d = JSON.parse(m[1]); }catch(e){ return null; }
+  var km = String(key || '').match(/(?:tricare|TriCare)_([0-9A-Za-z_\-]+?)_(\d{8})_(\d{4})/);
+  var cno = nrNum(d.c_no) || (km && km[1] !== 'NONUM' ? km[1] : '');
+  var sd = km ? km[2] : '', st = km ? km[3] : '';
+  var fy = sd ? +sd.slice(0,4) : new Date().getFullYear();
+  var y = nrYear(d.d_year, fy), mo = +nrNum(d.d_month) || (sd ? +sd.slice(4,6) : 0), da = +nrNum(d.d_day) || (sd ? +sd.slice(6,8) : 0);
+  var date = (mo && da) ? y + '-' + pad(mo) + '-' + pad(da) : '';
+  var hm = function(h, mi){ h = nrNum(h); mi = nrNum(mi); return h ? pad(+h) + ':' + pad(+mi || 0) : ''; };
+  var pick = ['o_temp','o_temp_a','o_temp_o','o_pulse','o_pulse_ir','o_bp_s','o_bp_d','o_resp','o_resp_q','o_bs_pre','o_bs_post','o_bs_time','o_bs_val','o_spo2','o_o2',
+    'o_cat_g','o_cat_g_fr','o_cat_n','o_cat_n_fr','o_cat_u','o_cat_u_fr','o_cat_e','o_cat_etc','o_iv_cv','o_iv_p','o_iv_sc','o_extra',
+    'r_vital','r_bs','r_proc','o_care','r_care','t_msg','t_other','ins_kaigo','ins_yobo','ins_iryo','ins_other'];
+  var v = {}; pick.forEach(function(k){ if(d[k] !== '' && d[k] !== false && d[k] != null) v[k] = d[k]; });
+  return { id:'NR-' + (cno || 'NONUM') + '-' + (sd ? sd + st : Date.now().toString(36)), patientNo:cno, date:date,
+    start:hm(d.t_sh, d.t_sm), end:hm(d.t_eh, d.t_em), nurse:String(d.ns_name || '').trim(), saved:sd ? sd.slice(0,4) + '-' + sd.slice(4,6) + '-' + sd.slice(6,8) + ' ' + st.slice(0,2) + ':' + st.slice(2) : '', v:v };
+}
+function nrAdd(list){
+  if(!list.length) return 0;
+  var have = {}; raw('records').forEach(function(x){ if(x) have[x.id] = 1; });
+  var add = list.filter(function(x){ if(!x || have[x.id]) return false; have[x.id] = 1; return true; });
+  if(!add.length) return 0;
+  var me = dev().me;
+  add.forEach(function(x){ x.by = me || ''; x.took = Date.now(); });
+  saveCol('records', live('records').concat(add));
+  return add.length;
+}
+function nrScanLocal(){
+  var seen = lj(NR_SEEN, {}), got = [], n = 0;
+  try{
+    for(var i = 0; i < localStorage.length; i++){
+      var k = localStorage.key(i);
+      if(!/^tricare_[0-9A-Za-z_\-]+_\d{8}_\d{4}$/.test(k) || seen[k]) continue;
+      var rec = nrParse(localStorage.getItem(k), k);
+      seen[k] = 1; if(rec) got.push(rec);
+    }
+  }catch(e){}
+  if(got.length){ n = nrAdd(got); }
+  sj(NR_SEEN, seen);
+  return n;
+}
+function nrRecs(no){ return live('records').filter(function(x){ return x.patientNo === dn(no); }).sort(function(a, b){ return (b.date + b.start) < (a.date + a.start) ? -1 : 1; }); }
+function nrVital(v){
+  var a = [];
+  if(v.o_temp) a.push('体温 ' + v.o_temp + '℃' + (v.o_temp_a ? '（腋下）' : v.o_temp_o ? '（口腔）' : ''));
+  if(v.o_pulse) a.push('脈拍 ' + v.o_pulse + '回/分' + (v.o_pulse_ir ? '（不整）' : ''));
+  if(v.o_bp_s || v.o_bp_d) a.push('血圧 ' + (v.o_bp_s || '') + '/' + (v.o_bp_d || '') + 'mmHg');
+  if(v.o_resp) a.push('呼吸 ' + v.o_resp + '回/分' + (v.o_resp_q ? '（' + v.o_resp_q + '）' : ''));
+  if(v.o_bs_val) a.push('血糖 ' + v.o_bs_val + 'mg/dl' + (v.o_bs_pre ? '（食前）' : v.o_bs_post ? '（食後）' : '') + (v.o_bs_time ? ' ' + v.o_bs_time : ''));
+  if(v.o_spo2) a.push('SpO₂ ' + v.o_spo2 + '%' + (v.o_o2 ? '（酸素 ' + v.o_o2 + 'l/h）' : ''));
+  return a.join('　');
+}
+function nrDevice(v){
+  var a = [];
+  if(v.o_cat_g) a.push('胃瘻' + (v.o_cat_g_fr ? '（' + v.o_cat_g_fr + 'Fr）' : ''));
+  if(v.o_cat_n) a.push('経鼻胃管' + (v.o_cat_n_fr ? '（' + v.o_cat_n_fr + 'Fr）' : ''));
+  if(v.o_cat_u) a.push('尿道カテ' + (v.o_cat_u_fr ? '（' + v.o_cat_u_fr + 'Fr）' : ''));
+  if(v.o_cat_e) a.push('その他のカテーテル' + (v.o_cat_etc ? '（' + v.o_cat_etc + '）' : ''));
+  if(v.o_iv_cv) a.push('中心静脈栄養'); if(v.o_iv_p) a.push('末梢点滴'); if(v.o_iv_sc) a.push('皮下・筋注');
+  if(v.o_extra) a.push(v.o_extra);
+  return a.join('・');
+}
+function nrIns(v){ return [v.ins_kaigo ? '介護保険' : '', v.ins_yobo ? '介護予防' : '', v.ins_iryo ? '医療保険' : '', v.ins_other ? 'その他' : ''].filter(Boolean).join('・'); }
+function nrSection(no){
+  if(D().k !== 'nurse') return '';
+  var rs = nrRecs(no);
+  if(!rs.length) return '<h3>看護記録（トライケア）</h3><p class="muted">まだ取り込んだ記録はありません。</p>';
+  var last = rs.filter(function(x){ return x.v && x.v.t_msg; })[0];
+  return '<h3>看護記録（トライケア）　<small class="muted">' + rs.length + '件・新しい順</small></h3>' +
+    (last ? '<div class="before"><b>直近の伝達事項（' + esc(last.date ? jpDate(last.date) : last.saved) + '）</b><br><span style="white-space:pre-wrap">' + esc(last.v.t_msg) + '</span></div>' : '') +
+    rs.map(function(x, i){
+      var v = x.v || {}, rows = [['観察（バイタル）', nrVital(v)], ['カテーテル・点滴注射', nrDevice(v)], ['バイタルの所見', v.r_vital], ['血糖・SpO₂の所見', v.r_bs], ['処置・カテ・点滴の所見', v.r_proc],
+        ['看護ケア（実施したこと）', v.o_care], ['看護ケアの所見', v.r_care], ['伝達事項', v.t_msg], ['その他', v.t_other], ['保険', nrIns(v)]].filter(function(r){ return r[1]; });
+      return '<details' + (i === 0 ? ' open' : '') + ' style="margin:6px 0;border:1px solid #e3e7ec;border-radius:10px;padding:6px 10px"><summary><b>' + esc(x.date ? jpDate(x.date) : '訪問日の記入なし') + '</b>' +
+        (x.start ? '　' + esc(x.start) + (x.end ? '〜' + esc(x.end) : '') : '') + (x.nurse ? '　看護師 ' + esc(x.nurse) : '') + '</summary>' +
+        (rows.length ? '<table>' + rows.map(function(r){ return '<tr><th style="width:30%">' + esc(r[0]) + '</th><td style="white-space:pre-wrap">' + esc(r[1]) + '</td></tr>'; }).join('') + '</table>' : '<p class="muted">記入された欄がありません。</p>') +
+        '<p class="muted" style="margin:4px 0 0">トライケアで保存した日時 ' + esc(x.saved || '') + (x.by ? '・取り込んだ端末を使う人 ' + esc(staffName(x.by)) : '') + '</p></details>';
+    }).join('');
+}
+function nrRender(){
+  if(!$('cardNr')) return;
+  $('cardNr').style.display = (D().k === 'nurse') ? '' : 'none';
+  var all = live('records'), pmap = {};
+  patients().forEach(function(p){ pmap[dn(p.no)] = 1; });
+  var orphan = all.filter(function(x){ return !x.patientNo || !pmap[x.patientNo]; });
+  $('nr_orphan').innerHTML = '<p class="muted">取り込んだ看護記録 ' + all.length + '件。' + (orphan.length ? '' : 'すべて登録済みの患者さんにつながっています。') + '</p>' +
+    (orphan.length ? '<div class="note">契約書番号が登録に無い（または番号の記入が無い）記録が ' + orphan.length + '件あります。患者さんを登録すると、その人の「見る」に出ます。<br>' +
+      orphan.slice(0, 20).map(function(x){ return esc(x.patientNo || '番号なし') + '（' + esc(x.date ? jpDate(x.date) : x.saved) + '）'; }).join('　') + '</div>' : '');
+}
+function nrFiles(files){
+  var list = Array.prototype.slice.call(files || []);
+  if(!list.length) return;
+  var got = [], bad = 0, left = list.length;
+  list.forEach(function(f){
+    var r = new FileReader();
+    r.onload = function(){ var rec = nrParse(r.result, f.name); if(rec) got.push(rec); else bad++; done(); };
+    r.onerror = function(){ bad++; done(); };
+    r.readAsText(f);
+  });
+  function done(){
+    if(--left) return;
+    var n = nrAdd(got);
+    $('nr_msg').textContent = '取り込みました：新しい記録 ' + n + '件' + (got.length - n ? '・取り込み済みで飛ばした記録 ' + (got.length - n) + '件' : '') + (bad ? '・看護記録の控えではないファイル ' + bad + '件' : '') + '。';
+    refreshAll();
+  }
+}
 function ptView(no){
   var p = patient(no); if(!p){ $('ptView').innerHTML = ''; return; }
   var d = D(), m = ym(ymd(new Date())), hi = hardInfo(no, m), cp = p.copied || {};
@@ -1216,6 +1343,7 @@ function ptView(no){
     sec('契約書', [['契約日', p.ctrDate ? jpDate(p.ctrDate) : ''], ['キャンセルの取り決め', p.cxRule || (p.ctrDate ? '決まりごとのとおり' : '')], ['特記', p.ctrNote]]) +
     sec('好き嫌い・関わり方', [['好むこと', p.like], ['嫌がること', p.dislike], ['関わり方のこつ', p.tips]]) +
     sec('困難事例', [['当てはまるもの', (p.hardCats || []).join('・')], ['あったこと', p.hardText]]) +
+    nrSection(no) +
     '<p class="muted">写した書類：' + (ptDocs().map(function(x){ return x[1] + (cp[x[0]] ? '（' + jpDate(cp[x[0]].d) + (cp[x[0]].by ? '・' + esc(staffName(cp[x[0]].by)) : '') + '）' : '（まだ）'); }).join('　')) + '</p>' +
     '<div class="btns"><button class="btn small" data-ptedit2="' + esc(no) + '">直す</button><button class="btn small sub" id="ptViewClose">閉じる</button></div></div>';
   $('ptView').innerHTML = h;
@@ -1588,7 +1716,7 @@ function wireNoteAlert(){
    合言葉が合っているかは、設定（settings）に置く「確かめ用の暗号文」（kchk）で見る。
    合言葉を入れていない端末は、患者さんと経過の記録を送らずに手元に置き、届いた鍵つきの記録は
    読めないまま取っておく（合言葉を入れたときに開く）。 */
-var EKEY = 'tritime_key', LOCK_KEY = 'tritime_locked', ENC_COLS = { patients:1, events:1 }, cryptoKey = null;
+var EKEY = 'tritime_key', LOCK_KEY = 'tritime_locked', ENC_COLS = { patients:1, events:1, records:1 }, cryptoKey = null;
 var TE = new TextEncoder(), TD = new TextDecoder();
 function b64(buf){ var u = new Uint8Array(buf), s = ''; for(var i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); }
 function unb64(t){ var s = atob(t), u = new Uint8Array(s.length); for(var i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
@@ -1644,7 +1772,7 @@ function keySet(){
     return encStr(key, 'TriTime-OK').then(function(c){ cur.kchk = c; saveSettings(cur); });
   }).then(function(){
     localStorage.setItem(EKEY, b64(raw)); cryptoKey = key; $('ky_pass').value = '';
-    ['patients','events'].forEach(function(c){ raw2(c); });
+    ['patients','events','records'].forEach(function(c){ raw2(c); });
     var locked = lj(LOCK_KEY, []); sj(LOCK_KEY, []);
     return openItems(locked, key).then(function(items){ if(items.length) mergeIncoming(items); });
   }).then(function(){ keyStatus(); refreshAll(); return syncNow(); }).then(function(){ $('ky_msg').insertAdjacentHTML('beforeend', '<br>合言葉を入れました。これまでの記録にも鍵をかけて送り直しました。'); })
@@ -1659,6 +1787,7 @@ function pushChunks(items){
   return out;
 }
 function syncNow(){
+  nrScanLocal();
   if(!dev().share || syncing) return Promise.resolve();
   syncing = true;
   var key0 = null;
@@ -1675,7 +1804,7 @@ function syncNow(){
   }).then(function(){
     var s = lj(SYNC_KEY, {});
     /* 2026-10-19：基本情報シートの会社（種類 sheet）は受け取らない（タブレットに会社の情報を降ろさないため） */
-    return relayCall('pull', { since: s.since || 0, cols:['patients','staff','weekly','events','settings'] });
+    return relayCall('pull', { since: s.since || 0, cols:['patients','staff','weekly','events','settings','records'] });
   }).then(function(j){
     return openItems(Array.isArray(j.items) ? j.items : [], key0).then(function(items){ return { j:j, items:items }; });
   }).then(function(r){
@@ -1852,7 +1981,7 @@ function refreshAll(){
   $('dv_share').checked = dev().share;
   renderSetup(); renderPlan(); renderIntakeList(); renderCourse(); renderReport(); renderAdmin();
   renderMonitor(); renderSummary();
-  ptForm(); renderPtList(); renderReq(); keyStatus();
+  ptForm(); renderPtList(); nrRender(); renderReq(); keyStatus();
 }
 
 /* ---- 配線 ---- */
@@ -1866,7 +1995,7 @@ document.querySelectorAll('#tabs button').forEach(function(b){
     if(t === 'course') renderCourse();
     if(t === 'report') renderReport();
     if(t === 'admin') renderAdmin();
-    if(t === 'pt') renderPtList();
+    if(t === 'pt'){ nrScanLocal(); renderPtList(); nrRender(); }
     if(t === 'req') renderReq();
   });
 });
@@ -1983,7 +2112,7 @@ $('bk_in').addEventListener('change', function(){
       if(!d || d.app !== 'TriTime'){ $('bk_msg').textContent = 'トライタイムで書き出したファイルではありません。'; return; }
       if(!confirm('この端末の記録を、読み込んだ内容に置き換えます。よろしいですか？')) return;
       Object.keys(K).forEach(function(k){ if(d[k] != null) sj(K[k], d[k]); });
-      ['patients','staff','weekly','events'].forEach(function(c){ raw(c).forEach(function(x){ if(x && x[KEYF[c]] != null) markDirty(c, String(x[KEYF[c]])); }); });
+      ['patients','staff','weekly','events','records'].forEach(function(c){ raw(c).forEach(function(x){ if(x && x[KEYF[c]] != null) markDirty(c, String(x[KEYF[c]])); }); });
       if(lj(K.settings, null)) markDirty('settings', 'main');
       scheduleSync();
       $('bk_msg').textContent = '読み込みました（' + (d.saved || '') + ' に書き出したもの）。'; refreshAll();
@@ -1993,6 +2122,9 @@ $('bk_in').addEventListener('change', function(){
   this.value = '';
 });
 
+nrScanLocal();
+$('nr_pick').onclick = function(){ $('nr_file').click(); };
+$('nr_file').addEventListener('change', function(){ nrFiles(this.files); this.value = ''; });
 applyDept(); refreshAll();
 syncNow();
 

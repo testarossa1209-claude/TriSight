@@ -83,7 +83,7 @@ pre.out{white-space:pre-wrap;font-size:12px;font-family:var(--font-mono);backgro
     <div style="font-size:20px;font-weight:500">基本情報シート</div>
   </div>
   <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">発行：合同会社トライサイト</div>
-  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-25-02</span> <span id="verMsg"></span></div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-26-01</span> <span id="verMsg"></span></div>
   <div style="border-top:1px solid var(--border-strong);margin:8px 0 12px"></div>
   <!-- 2026-10-19：認証コードで端末どうし共有する（宏史さんの指示）。印を付けた端末だけが共有する。部品は TriSheetSync.js -->
   <div id="tssBox" style="margin:0 0 12px;padding:10px 12px;border:0.5px solid var(--border-accent);border-radius:var(--radius);background:var(--surface-1);font-size:13px">
@@ -1071,6 +1071,9 @@ function orgName(o){return (o&&o.corp&&o.corp.name)||(o&&o.sheet&&o.sheet.val&&o
    区分を持たない古い登録は、activeOrg なら自社、それ以外は未選択として扱う。 */
 function roleOf(o){
   if(!o)return '';
+  /* 2026-10-26：「自社」の札が付いていても、元帳で自社に選ばれている会社（activeOrg）が別にあれば、自社とは表示しない。
+     共有で届いた会社の札だけが「自社」になり、各システムが読む自社と画面の表示が食い違っていたため。 */
+  if(o.role==='self'&&DOC&&o!==pending&&DOC.activeOrg&&o.id!==DOC.activeOrg&&DOC.orgs.some(x=>x.id===DOC.activeOrg))return 'client';
   if(o.role==='self'||o.role==='client')return o.role;
   if(DOC&&o!==pending&&o.id===DOC.activeOrg)return 'self';
   return '';

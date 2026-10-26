@@ -132,7 +132,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-26-05</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-26-06</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <div id="verNotice"></div>
@@ -463,7 +463,7 @@ function tsGoBack(){
 <section class="tab" id="tab-setup">
   <div class="card">
     <h2>職員</h2>
-    <p class="lead">職員は、トライシート（基本情報シート）の会社カード「人員」の「職員名簿」に入れたものを読み込みます。会社の基本情報と同じ名簿を使うので、二か所で入れ直す必要はありません。ここで足したり直したりした職員も、この端末のトライシートの名簿へ書き戻します。</p>
+    <p class="lead">職員は、トライシート（基本情報シート）の会社カード「人員」の「職員名簿」に入れたものを、この画面を開いたときと、ほかの端末から名簿が届いたときに自動で読み込みます。会社の基本情報と同じ名簿を使うので、二か所で入れ直す必要はありません。ここで足したり直したりした職員も、この端末のトライシートの名簿へ書き戻します。</p>
     <div class="btns"><button class="btn" id="st_pull">トライシートから読み込む</button><a class="btn sub" href="TriSheet.html?focus=roster" target="_blank" rel="noopener" style="text-decoration:none">トライシートの職員名簿を開く</a></div>
     <p class="muted" id="st_pullMsg" style="margin:6px 0 10px"></p>
     <div class="row">
@@ -635,7 +635,11 @@ function keyNo(v){ v = String(v || '').trim(); return v ? D().pfx + v : ''; }   
 function selNo(id){ return keyNo($(id).value); }
 function allPatients(){ return live('patients'); }
 function patients(){ return allPatients().filter(function(p){ return inDept(p.no); }); }
-function staff(){ return live('staff'); }
+function staff(){
+  var a = live('staff'), pick = {};
+  a.forEach(function(x){ if(!x.sheetId) return; var c = pick[x.sheetId]; if(!c || (String(x.id).indexOf('sh-') === 0 && String(c.id).indexOf('sh-') !== 0)) pick[x.sheetId] = x; });
+  return a.filter(function(x){ return !x.sheetId || pick[x.sheetId] === x; });
+}
 function weekly(){ return live('weekly').filter(function(v){ return inDept(v.no); }); }
 function events(){ return live('events'); }
 function saveEvents(a){ saveCol('events', a); }
@@ -1615,16 +1619,20 @@ function sheetPush(){
   return wrote;
 }
 /* この端末の名簿 → トライタイムの職員 */
-function sheetPull(){
-  var msg = $('st_pullMsg');
+function sheetPull(opt){
+  /* 2026-10-26：開いたときと基本情報シートの名簿が届いたときにも自動で読む（silent）。
+     職員の番号は名簿の番号から作り（sh-名簿の番号）、どの端末で読み込んでも同じ人は同じ番号になるようにする */
+  var silent = !!(opt && opt.silent);
+  var msg = silent ? { textContent:'' } : $('st_pullMsg');
   var d = sheetDoc(), o = sheetSelf(d);
   var ro = (o && o.sheet && o.sheet.val && Array.isArray(o.sheet.val['職員名簿'])) ? o.sheet.val['職員名簿'].filter(function(r){ return r && String(r.name || '').trim(); }) : [];
+  if(silent && (!o || !ro.length)) return 0;
   if(!o){ msg.textContent = 'この端末のトライシートに、自社がまだ登録されていません。「トライシートの職員名簿を開く」から会社を入れてください。看護師さんの端末では、共有を設定すると事務局の端末から名簿が届きます。'; return; }
   if(!ro.length){ msg.textContent = 'トライシートの「' + sheetName(o) + '」に、職員名簿がまだありません。「トライシートの職員名簿を開く」から一人ずつ入れてから、もう一度押してください。'; return; }
   var tt = staff(), add = 0, upd = 0;
   ro.forEach(function(r){
     var st = tt.filter(function(x){ return x.sheetId === r.id; })[0] || tt.filter(function(x){ return !x.sheetId && x.name === r.name; })[0];
-    if(!st){ st = { id:uid() }; tt.push(st); add++; }
+    if(!st){ st = { id:'sh-' + r.id }; tt.push(st); add++; }
     else upd++;
     st.sheetId = r.id; st.name = String(r.name).trim();
     if(r.job){ st.job = r.job; delete st.role; }
@@ -1635,8 +1643,11 @@ function sheetPull(){
   var keep = tt.filter(function(x){ return !x.sheetId || ro.some(function(r){ return r.id === x.sheetId; }); });
   var rem = tt.length - keep.length;
   var only = keep.filter(function(x){ return !x.sheetId; }).length;
+  var before = JSON.stringify(staff());
   saveCol('staff', keep);
   sheetPush();
+  var changedNow = before !== JSON.stringify(staff());
+  if(silent){ if(changedNow){ refreshAll(); $('st_pullMsg').textContent = 'トライシートの「' + sheetName(o) + '」の職員名簿から、自動で取り込みました（新しく ' + add + '人）。'; scheduleSync(); } return add; }
   refreshAll();
   msg.textContent = 'トライシートの「' + sheetName(o) + '」の職員名簿を読み込みました。新しく ' + add + '人、直した ' + upd + '人' + (rem ? '、名簿から外されていた ' + rem + '人をこちらでも外しました（これまでの記録は残ります）' : '') + (only ? '。トライタイムにだけいた ' + only + '人は、トライシートの名簿へ書き戻しました' : '') + '。';
 }
@@ -2292,6 +2303,7 @@ $('rd_go').onclick = rdGo;
 $('nr_pick').onclick = function(){ $('nr_file').click(); };
 $('nr_file').addEventListener('change', function(){ nrFiles(this.files); this.value = ''; });
 applyDept(); refreshAll();
+sheetPull({ silent:true });
 fdRestore();
 syncNow();
 
@@ -2313,8 +2325,8 @@ if(window.TriVoice && TriVoice.dictation) TriVoice.dictation({ exclude:'#st_name
 <script src="TriSheetSync.js"></script>
 <script>
 /* 2026-10-19：基本情報シートの共有（この端末で基本情報シートの「この端末と共有」に印を付けたときだけ動く）。
-   トライタイムは「トライシートから読み込む」を押したときに元帳を読むので、届いても帯は出さない。 */
-if(window.TriSheetSync) TriSheetSync.init({ notify:false });
+   名簿が届いたら、トライタイムの職員へ自動で取り込む（2026-10-26）。帯は出さない。 */
+if(window.TriSheetSync) TriSheetSync.init({ notify:false, onPulled:function(){ sheetPull({ silent:true }); } });
 /* 2026-10-19：アプリとして入れられるようにする（トライゲイトと同じ sw.js。中身は素通しで、キャッシュは持たない） */
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').then(function(r){ r.update().catch(function(){}); }).catch(function(){}); });

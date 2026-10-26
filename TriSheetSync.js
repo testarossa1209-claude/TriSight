@@ -93,20 +93,25 @@
     });
     var self = doc ? (doc.activeOrg || '') : '';
     var hs = fp('self:' + self);
-    if(doc && s.h.__self !== hs) items.push({ col:'sheet', id:'__self', data:{ id:'__self', upd:now, activeOrg:self }, h:hs });
+    if(doc && !s.pendSelf && s.h.__self !== hs) items.push({ col:'sheet', id:'__self', data:{ id:'__self', upd:now, activeOrg:self }, h:hs });
     return items;
   }
 
   /* 他の端末から届いた件を、この端末の元帳へ入れる。戻り値＝入れた件数 */
   function merge(items, s){
     var doc = readDoc() || blankDoc(), n = 0;
+    /* 2026-10-26：「自社」の印（__self）は、会社の中身より後に入れる。
+       印の指す会社がまだ届いていなければ捨てずに覚えておき（s.pendSelf）、会社が届いたときに付ける。 */
+    items = (items || []).slice().sort(function(a, b){ return (String(a && a.id) === '__self') - (String(b && b.id) === '__self'); });
     items.forEach(function(it){
       var d = it && it.data; if(!d || it.col !== 'sheet') return;
       var id = String(it.id || d.id || ''), upd = Number(d.upd) || 0;
       if(upd <= (s.u[id] || 0)) return;   /* この端末が知っている版と同じか古い */
       if(id === '__self'){
-        if(doc.orgs.some(function(o){ return o.id === d.activeOrg; }) || !d.activeOrg){ doc.activeOrg = d.activeOrg || ''; }
-        s.u[id] = upd; s.h[id] = fp('self:' + (d.activeOrg || '')); n++; return;
+        s.u[id] = upd; s.h[id] = fp('self:' + (d.activeOrg || ''));
+        if(doc.orgs.some(function(o){ return o.id === d.activeOrg; }) || !d.activeOrg){ doc.activeOrg = d.activeOrg || ''; delete s.pendSelf; }
+        else s.pendSelf = d.activeOrg;
+        n++; return;
       }
       if(id.indexOf('org:') !== 0) return;
       var oid = id.slice(4), i = -1;
@@ -120,6 +125,7 @@
       if(i >= 0) doc.orgs[i] = org; else doc.orgs.push(org);
       s.h[id] = fp(JSON.stringify(clean(org))); s.u[id] = upd; n++;
     });
+    if(s.pendSelf && doc.orgs.some(function(o){ return o.id === s.pendSelf; })){ doc.activeOrg = s.pendSelf; delete s.pendSelf; n++; }
     if(n){
       if(doc.activeOrg && !doc.orgs.some(function(o){ return o.id === doc.activeOrg; })) doc.activeOrg = '';
       if(!doc.activeOrg){ var f = doc.orgs.filter(function(o){ return o.role !== 'client'; })[0]; doc.activeOrg = f ? f.id : ''; }

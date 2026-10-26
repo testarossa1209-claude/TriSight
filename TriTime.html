@@ -132,7 +132,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-26-07</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-26-08</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <div id="verNotice"></div>
@@ -473,6 +473,7 @@ function tsGoBack(){
       <div><label class="f" for="st_emp">雇用形態</label><select id="st_emp"><option>常勤</option><option>非常勤</option></select></div>
       <div><label class="f">&nbsp;</label><label><input type="checkbox" id="st_mgr"> 管理者</label></div>
     </div>
+    <div style="margin-top:8px"><label class="f">兼務する部署（所属部門のほかに横断して入る部署に印を付けます）</label><div id="st_sub" class="btns" style="margin-top:2px"></div></div>
     <input type="hidden" id="st_id"><div class="btns"><button class="btn" id="st_add">追加する</button><button class="btn sub" id="st_cancel" style="display:none">直すのをやめる</button></div>
     <div class="tbl-scroll" id="stList"></div>
   </div>
@@ -655,7 +656,9 @@ function staffLabel(s){ var j = jobOf(s); var p = [JOB_SHORT[j] || j, s.emp || '
 function nurses(){ return staff().filter(function(s){ return NURSE_JOBS.indexOf(jobOf(s)) >= 0; }); }
 /* 部署の職員：名簿の「所属部門」で分ける。所属部門が無い人は職種から当てる */
 function staffDept(s){ if(s.dept) return deptByName(s.dept); var j = jobOf(s); return DEPTS.filter(function(d){ return d.jobs.indexOf(j) >= 0; })[0] || null; }
-function deptStaff(d){ d = d || D(); return staff().filter(function(s){ if(s.dept) return s.dept === d.name; return d.jobs.indexOf(jobOf(s)) >= 0; }); }
+function staffSub(s){ return Array.isArray(s.sub) ? s.sub.filter(function(x){ return x && x !== s.dept; }) : []; }
+/* 2026-10-26：兼務する部署に入っている職員も、その部署の職員として扱う（担当の選ぶ欄・連絡板の宛先など） */
+function deptStaff(d){ d = d || D(); return staff().filter(function(s){ if(staffSub(s).indexOf(d.name) >= 0) return true; if(s.dept) return s.dept === d.name; return d.jobs.indexOf(jobOf(s)) >= 0; }); }
 
 /* ---- 共通：選択肢 ---- */
 function fillSelect(sel, items, blank){
@@ -1610,7 +1613,7 @@ function sheetPush(){
       if(!r){ r = { id:'R' + Date.now().toString(36) + Math.random().toString(36).slice(2,6), name:'', job:'', emp:'', mgr:false }; ro.push(r); }
       st.sheetId = r.id; linked = true;
     }
-    r.name = st.name; if(jobOf(st)) r.job = jobOf(st); r.emp = empToSheet(r.emp, st.emp); r.mgr = isMgr(st); r.dept = st.dept || r.dept || '';
+    r.name = st.name; if(jobOf(st)) r.job = jobOf(st); r.emp = empToSheet(r.emp, st.emp); r.mgr = isMgr(st); r.dept = st.dept || r.dept || ''; r.sub = staffSub(st);
   });
   o.sheet.val['職員名簿'] = ro;
   sheetRecount(o, ro);
@@ -1639,6 +1642,7 @@ function sheetPull(opt){
     var e = empToTT(r.emp); if(e) st.emp = e; else if(st.emp == null) st.emp = '';
     st.mgr = !!r.mgr;
     st.dept = r.dept || '';
+    st.sub = Array.isArray(r.sub) ? r.sub.filter(function(x){ return x && x !== st.dept; }) : [];
   });
   var keep = tt.filter(function(x){ return !x.sheetId || ro.some(function(r){ return r.id === x.sheetId; }); });
   var rem = tt.length - keep.length;
@@ -1655,9 +1659,9 @@ function sheetPull(opt){
 /* ---- 名簿・設定 ---- */
 function renderSetup(){
   var st = staff();
-  $('stList').innerHTML = st.length ? '<table><tr><th>呼び名</th><th>職種</th><th>所属部門</th><th>雇用形態</th><th>管理者</th><th></th></tr>' + st.map(function(s){
+  $('stList').innerHTML = st.length ? '<table><tr><th>呼び名</th><th>職種</th><th>所属部門</th><th>兼務する部署</th><th>雇用形態</th><th>管理者</th><th></th></tr>' + st.map(function(s){
     var sd = staffDept(s);
-    return '<tr><td>' + esc(s.name) + '</td><td>' + esc(jobOf(s) || '未設定') + '</td><td>' + esc(s.dept || (sd ? sd.name + '（職種から）' : '未設定')) + '</td><td>' + esc(s.emp || '未設定') + '</td><td>' + (isMgr(s) ? '管理者' : '') + '</td><td><button class="btn small sub" data-stedit="' + esc(s.id) + '">直す</button> <button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
+    return '<tr><td>' + esc(s.name) + '</td><td>' + esc(jobOf(s) || '未設定') + '</td><td>' + esc(s.dept || (sd ? sd.name + '（職種から）' : '未設定')) + '</td><td>' + esc(staffSub(s).join('・')) + '</td><td>' + esc(s.emp || '未設定') + '</td><td>' + (isMgr(s) ? '管理者' : '') + '</td><td><button class="btn small sub" data-stedit="' + esc(s.id) + '">直す</button> <button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
   }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var wk = weekly().slice().sort(function(a,b){ var da = (+a.dow + 6) % 7, db = (+b.dow + 6) % 7; return da - db || (a.time < b.time ? -1 : 1); });
   $('wkList').innerHTML = wk.length ? '<table><tr><th>曜日</th><th>時刻</th><th>契約書番号</th><th>担当</th><th></th></tr>' + wk.map(function(v){
@@ -1669,7 +1673,7 @@ function renderSetup(){
 
   $('stList').querySelectorAll('[data-stedit]').forEach(function(b){ b.addEventListener('click', function(){
     var s = staff().filter(function(x){ return x.id === b.getAttribute('data-stedit'); })[0]; if(!s) return;
-    $('st_id').value = s.id; $('st_name').value = s.name; (function(){ var sj = $('st_job'), jv = jobOf(s) || 'その他'; [].slice.call(sj.querySelectorAll('option[data-old]')).forEach(function(o){ o.remove(); }); if(![].some.call(sj.options, function(o){ return o.value === jv; })){ var op = document.createElement('option'); op.textContent = jv; op.dataset.old = '1'; sj.appendChild(op); } sj.value = jv; })(); $('st_dept').value = s.dept || ''; $('st_emp').value = s.emp || '常勤'; $('st_mgr').checked = isMgr(s);
+    $('st_id').value = s.id; $('st_name').value = s.name; (function(){ var sj = $('st_job'), jv = jobOf(s) || 'その他'; [].slice.call(sj.querySelectorAll('option[data-old]')).forEach(function(o){ o.remove(); }); if(![].some.call(sj.options, function(o){ return o.value === jv; })){ var op = document.createElement('option'); op.textContent = jv; op.dataset.old = '1'; sj.appendChild(op); } sj.value = jv; })(); $('st_dept').value = s.dept || ''; stSubDraw(staffSub(s)); $('st_emp').value = s.emp || '常勤'; $('st_mgr').checked = isMgr(s);
     $('st_add').textContent = 'この内容で直す'; $('st_cancel').style.display = ''; $('st_name').focus();
   }); });
   $('stList').querySelectorAll('[data-stdel]').forEach(function(b){ b.addEventListener('click', function(){
@@ -2146,12 +2150,19 @@ $('rq_show').addEventListener('change', renderReq);
 $('rq_copy').addEventListener('click', reqCopy);
 $('adHardSend').addEventListener('click', hardSend);
 $('ky_set').addEventListener('click', keySet);
-function stFormReset(){ $('st_id').value = ''; $('st_name').value = ''; $('st_mgr').checked = false; $('st_add').textContent = '追加する'; $('st_cancel').style.display = 'none'; }
+function stSubDraw(cur){
+  cur = cur || []; var main = $('st_dept').value;
+  $('st_sub').innerHTML = DEPTS.map(function(d){ var m = d.name === main; return '<label style="margin-right:12px"><input type="checkbox" data-stsub="' + esc(d.name) + '"' + (cur.indexOf(d.name) >= 0 && !m ? ' checked' : '') + (m ? ' disabled' : '') + '> ' + esc(d.name) + (m ? '（所属）' : '') + '</label>'; }).join('');
+}
+function stSubVal(){ var main = $('st_dept').value; return [].slice.call($('st_sub').querySelectorAll('[data-stsub]:checked')).map(function(c){ return c.getAttribute('data-stsub'); }).filter(function(x){ return x !== main; }); }
+$('st_dept').addEventListener('change', function(){ stSubDraw(stSubVal()); });
+stSubDraw([]);
+function stFormReset(){ $('st_id').value = ''; $('st_name').value = ''; $('st_mgr').checked = false; stSubDraw([]); $('st_add').textContent = '追加する'; $('st_cancel').style.display = 'none'; }
 $('st_cancel').addEventListener('click', stFormReset);
 $('st_add').addEventListener('click', function(){
   var n = $('st_name').value.trim(); if(!n){ $('st_name').focus(); return; }
   var a = staff(), id = $('st_id').value;
-  var rec = { name:n, job:$('st_job').value, dept:$('st_dept').value, emp:$('st_emp').value, mgr:$('st_mgr').checked };
+  var rec = { name:n, job:$('st_job').value, dept:$('st_dept').value, sub:stSubVal(), emp:$('st_emp').value, mgr:$('st_mgr').checked };
   var cur = id ? a.filter(function(x){ return x.id === id; })[0] : null;
   if(cur){ delete cur.role; Object.assign(cur, rec); } else { a.push(Object.assign({ id:uid() }, rec)); }
   saveCol('staff', a); sheetPush(); stFormReset(); refreshAll();

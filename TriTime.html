@@ -169,7 +169,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-02</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-03</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -523,9 +523,10 @@ function tsGoBack(){
       <div><label class="f" for="md_month">計算する月</label><input type="month" id="md_month"></div>
       <div><label class="f" for="md_goal">目標の売上（月・円）</label><input type="number" id="md_goal" min="0" step="10000" placeholder="例：3000000"></div>
     </div>
-    <h3>1回の訪問の単価（保険の種類ごと）</h3>
-    <p class="muted">患者さんの登録の「保険」ごとに単価を入れます。空欄の種類は、「名簿・設定」の決まりごとの単価で数えます。どちらも入っていないと、売上は出さずに件数だけを出します。単価はノアの請求の実績から入れてください（ここに入れた数字だけで計算します）。</p>
+    <h3>1回の訪問の料金</h3>
+    <p class="muted">精神科訪問看護・医療保険・介護保険は、下の料金表（令和8年6月1日から）で1回ずつ計算します。保険の種類は「患者さんの登録」の「保険」、担当が看護師か准看護師かは名簿の職種、2名体制は週間予定の「同行する職員」から読みます。障害福祉と自費だけは、1回の単価を入れてください。</p>
     <div class="row" id="md_prices"></div>
+    <details><summary>料金表（令和8年6月1日から）と出所</summary><div id="md_feeTable" style="margin-top:6px"></div></details>
     <h3>職員ごとの件数と出る曜日</h3>
     <div class="tbl-scroll" id="md_staff"></div>
     <div class="btns"><button class="btn" id="md_save">この条件で計算する</button><button class="btn sub" id="md_reset">初めの値に戻す</button><span class="muted" id="md_msg"></span></div>
@@ -627,6 +628,7 @@ function tsGoBack(){
       <div><label class="f" for="wk_min">時間（分）</label><input type="number" id="wk_min" value="30" min="10" step="5"></div>
       <div><label class="f" for="wk_no">契約書番号</label><select id="wk_no"></select></div>
       <div><label class="f" for="wk_staff">担当</label><select id="wk_staff"></select></div>
+      <div><label class="f" for="wk_with">同行する職員（2名体制のとき）</label><select id="wk_with"></select></div>
     </div>
     <div class="btns"><button class="btn" id="wk_add">追加する</button></div>
     <div class="tbl-scroll" id="wkList"></div>
@@ -815,6 +817,7 @@ function refreshSelects(){
   var ns = deptStaff().map(function(s){ return { v:s.id, t:s.name }; });
   var all = staff().map(function(s){ return { v:s.id, t:staffLabel(s) }; });
   ['c_staff','p_staff','d_staff','r_staff','wk_staff','pt_staff'].forEach(function(id){ fillSelect(id, ns, '選んでください'); });
+  fillSelect('wk_with', ns, 'なし（1名）');
   fillSelect('c_fwdTo', ns, '回していない');
   ['c_by','r_by','pt_by','rq_by'].forEach(function(id){ fillSelect(id, all, '選んでください'); });
   if(!$('pt_by').value && dev().me) $('pt_by').value = dev().me;
@@ -852,7 +855,7 @@ function visitsOn(date){
   var d = parseYmd(date); var w = d.getDay();
   return weekly().filter(function(v){ return +v.dow === w; }).map(function(v){
     var p = patient(v.no) || {};
-    return { date:date, time:v.time, min:v.min, no:v.no, area:p.area || '', staffId:v.staffId, cx:cancelOf(v.no, date, v.time) };
+    return { date:date, time:v.time, min:v.min, no:v.no, area:p.area || '', staffId:v.staffId, withId:v.withId || '', cx:cancelOf(v.no, date, v.time) };
   }).sort(function(a,b){ return a.time < b.time ? -1 : 1; });
 }
 
@@ -1809,7 +1812,7 @@ function renderSetup(){
   }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var wk = weekly().slice().sort(function(a,b){ var da = (+a.dow + 6) % 7, db = (+b.dow + 6) % 7; return da - db || (a.time < b.time ? -1 : 1); });
   $('wkList').innerHTML = wk.length ? '<table><tr><th>曜日</th><th>時刻</th><th>契約書番号</th><th>担当</th><th></th></tr>' + wk.map(function(v){
-    return '<tr><td>' + DOW[+v.dow] + '</td><td>' + esc(v.time) + '（' + esc(v.min) + '分）</td><td>' + esc(dn(v.no)) + '</td><td>' + esc(staffName(v.staffId)) + '</td><td><button class="btn small danger" data-wkdel="' + esc(v.id) + '">外す</button></td></tr>';
+    return '<tr><td>' + DOW[+v.dow] + '</td><td>' + esc(v.time) + '（' + esc(v.min) + '分）</td><td>' + esc(dn(v.no)) + '</td><td>' + esc(staffName(v.staffId)) + (v.withId ? '<br><small class="muted">同行：' + esc(staffName(v.withId)) + '</small>' : '') + '</td><td><button class="btn small danger" data-wkdel="' + esc(v.id) + '">外す</button></td></tr>';
   }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var s = settings();
   $('s_cut').value = s.cut; $('s_price').value = s.price; $('s_fee').value = s.fee; $('s_review').value = s.review; $('s_hard').value = s.hard;
@@ -2315,7 +2318,7 @@ $('st_add').addEventListener('click', function(){
 });
 $('wk_add').addEventListener('click', function(){
   if(!$('wk_time').value || !$('wk_no').value || !$('wk_staff').value){ alert('時刻・契約書番号・担当を入れてください。'); return; }
-  var a = live('weekly'); a.push({ id:uid(), dow:$('wk_dow').value, time:$('wk_time').value, min:$('wk_min').value || 30, no:selNo('wk_no'), staffId:$('wk_staff').value });
+  var a = live('weekly'); a.push({ id:uid(), dow:$('wk_dow').value, time:$('wk_time').value, min:$('wk_min').value || 30, no:selNo('wk_no'), staffId:$('wk_staff').value, withId:($('wk_with').value !== $('wk_staff').value ? $('wk_with').value : '') });
   saveCol('weekly', a); $('wk_time').value = ''; refreshAll();
 });
 $('s_save').addEventListener('click', function(){
@@ -2614,10 +2617,10 @@ var MD_INS = ['精神科訪問看護（医療）', '医療保険', '介護保険
 var MD_DOW = ['1','2','3','4','5','6','0'];
 var mdPick = null;   /* 週間モデルコースで押した升 { sid, dow } */
 function mdAll(){ var s = lj(K.settings, {}) || {}; return s.model || {}; }
-function mdCfg(){ var m = mdAll()[D().k] || {}; return { staff:m.staff || {}, prices:m.prices || {}, goal:(m.goal == null ? '' : m.goal), manual:m.manual || {} }; }
+function mdCfg(){ var m = mdAll()[D().k] || {}; return { staff:m.staff || {}, prices:m.prices || {}, goal:(m.goal == null ? '' : m.goal), manual:m.manual || {}, kanri:m.kanri || 'other', tanka:(+m.tanka || 11.05), shogu:!!m.shogu }; }
 function mdStore(c){ var cur = lj(K.settings, {}) || {}; var all = Object.assign({}, cur.model || {}); all[D().k] = c; saveSettings(Object.assign({}, cur, { model:all })); }
 function mdPeople(){ return deptStaff().filter(function(s){ return jobOf(s) !== '事務局'; }); }
-function mdWeekOf(sid){ return weekly().filter(function(v){ return v.staffId === sid; }); }
+function mdWeekOf(sid){ return weekly().filter(function(v){ return v.staffId === sid || v.withId === sid; }); }   /* 同行（2名体制）も、その職員の時間を使う訪問として数える */
 /* 初めの値：常勤＝勤務の決まりの目標件数・公休以外の曜日。非常勤＝いまの週間予定（いちばん多い日の件数・予定のある曜日） */
 function mdDef(s){
   if(s.emp === '常勤'){ var off = staffOff(s); return { n:workRule().target, days:MD_DOW.filter(function(d){ return off.indexOf(d) < 0; }) }; }
@@ -2626,10 +2629,94 @@ function mdDef(s){
   return { n:mx, days:Object.keys(per) };
 }
 function mdOf(s){ var c = mdCfg().staff[s.id]; return c ? { n:Math.max(0, +c.n || 0), days:(c.days || []).map(String), set:true } : Object.assign(mdDef(s), { set:false }); }
-function mdPrice(ins){ var v = +mdCfg().prices[ins] || 0; return v || (+settings().price || 0); }
-function mdAvg(nos){ var sum = 0, n = 0; nos.forEach(function(no){ var p = patient(no); var v = mdPrice(p && p.ins || ''); if(v){ sum += v; n++; } }); return n ? sum / n : 0; }
 /* 職員の1件あたりの単価：その人の週間予定の患者さんの保険で重みを付ける → 部署全体 → 決まりごとの単価 */
-function mdStaffPrice(sid){ return mdAvg(mdWeekOf(sid).map(function(v){ return v.no; })) || mdAvg(weekly().map(function(v){ return v.no; })) || (+settings().price || 0); }
+/* ---- 料金表（2026-10-27・宏史さんの指示「この料金表をベースに売り上げ算定予想額を出して」）----
+   出所（2026-10-27確認）：令和8年厚生労働省告示第74号（令和8年6月1日適用）と同 新旧対照表（別紙2）、
+   実施上の留意事項（令和8年3月5日 保発0305第19号）、介護給付費分科会 資料3「訪問看護」（令和8年6月29日）、
+   地域区分（東村山市＝3級地・訪問看護の1単位11.05円、令和6〜8年度）、WAM NET（訪問看護の処遇改善加算1.8%・令和8年6月から）。
+   ・精神科訪問看護基本療養費（Ⅰ）／訪問看護基本療養費（Ⅰ）は週3日まで。4日目以降は特別指示の期間中だけ数える
+   ・管理療養費は患者さんごとに月の最初の訪問日＝初日の額、2日目以降＝3,010円（単一建物20人未満）
+   ・複数名精神科訪問看護加算は30分以上のときだけ。看護補助者・精神保健福祉士との同行は週1日まで
+   ・2名体制は、同行した職員の稼働に数え、売上（加算込み）は担当の職員に付ける */
+var FEE = {
+  psy: { n:{ o30:5550, u30:4250, o30w4:6550, u30w4:5100 }, j:{ o30:5050, u30:3870, o30w4:6050, u30w4:4720 } },
+  med: { n:{ base:5550, w4:6550 }, j:{ base:5050, w4:6050 } },
+  kanriFirst: { other:7710, k1:13760, k2:10460, k3:9030, k4:9030 },
+  kanriNext: 3010,
+  psyWith: { n:4500, j:3800, h:3000 },
+  kaigoUnits: [[20, 314], [30, 471], [60, 823], [1e9, 1128]],
+  kaigoWith: { I:{ u30:254, o30:402 }, II:{ u30:201, o30:317 } }
+};
+var KANRI_LBL = { other:'その他（機能強化型でない）', k1:'機能強化型1', k2:'機能強化型2', k3:'機能強化型3', k4:'機能強化型4' };
+var MD_MANUAL = ['障害福祉', '自費'];
+function feeJob(sid){ var s = staff().filter(function(x){ return x.id === sid; })[0]; var j = s ? jobOf(s) : ''; return j === '准看護師' ? 'j' : (j === '看護師（正看）' ? 'n' : 'h'); }
+function feeSpecial(p, date){ return p && p.special === 'あり' && (!p.specialEnd || date <= p.specialEnd); }
+/* その月の訪問1件ごとの売上。週の日数は月曜始まりで数える（月をまたぐ週は前月の分から数える） */
+function mdFees(m){
+  var c = mdCfg(), days = mdDays(m), end = parseYmd(days[days.length - 1]);
+  var out = { map:{}, w4ng:0, medWith:0, hojoOver:0, noPrice:0 }, wk = {}, hojo = {}, first = {};
+  for(var d = mondayOf(parseYmd(days[0])); d <= end; d = addDays(d, 1)){
+    var date = ymd(d), inM = ym(date) === m;
+    if(d.getDay() === 1){ wk = {}; hojo = {}; }
+    visitsOn(date).forEach(function(v){
+      if(v.cx || offWhy(v.staffId, date)) return;
+      var p = patient(v.no) || {}, ins = p.ins || '', key = date + '|' + v.time + '|' + v.no;
+      (wk[v.no] = wk[v.no] || {})[date] = 1;
+      var nth = Object.keys(wk[v.no]).length;
+      if(!inM) return;
+      var mj = feeJob(v.staffId) === 'j' ? 'j' : 'n', wj = v.withId ? feeJob(v.withId) : '', min = +v.min || 30, fee = 0;
+      if(ins === '精神科訪問看護（医療）' || ins === '医療保険'){
+        var w4 = nth >= 4;
+        if(w4 && !feeSpecial(p, date)){ out.w4ng++; out.map[key] = { fee:0, ng:true }; return; }
+        if(ins === '精神科訪問看護（医療）'){ var t = FEE.psy[mj]; fee = min < 30 ? (w4 ? t.u30w4 : t.u30) : (w4 ? t.o30w4 : t.o30); }
+        else { var t2 = FEE.med[mj]; fee = w4 ? t2.w4 : t2.base; }
+        fee += first[v.no] ? FEE.kanriNext : (FEE.kanriFirst[c.kanri] || FEE.kanriFirst.other); first[v.no] = 1;
+        if(wj){
+          if(ins === '精神科訪問看護（医療）'){
+            if(min >= 30){ if(wj !== 'h') fee += FEE.psyWith[wj]; else if(!hojo[v.no]){ fee += FEE.psyWith.h; hojo[v.no] = 1; } else out.hojoOver++; }
+          } else out.medWith++;
+        }
+      } else if(ins === '介護保険'){
+        var u = 0; FEE.kaigoUnits.some(function(x){ if(min < x[0]){ u = x[1]; return true; } return false; });
+        if(wj) u += (wj === 'h' ? FEE.kaigoWith.II : FEE.kaigoWith.I)[min < 30 ? 'u30' : 'o30'];
+        fee = Math.floor(u * (c.shogu ? 1.018 : 1) * c.tanka);
+      } else {
+        fee = +c.prices[ins] || +settings().price || 0; if(!fee) out.noPrice++;
+      }
+      out.map[key] = { fee:fee };
+    });
+  }
+  return out;
+}
+/* 部署の職員ぶんの集計。予定の無い職員の1件あたりの売上は、部署の平均（それも無ければ決まりごとの単価） */
+function mdRows(m){
+  var F = mdFees(m), rows = mdPeople().map(function(s){ return mdStats(s, m, F); });
+  var sp = 0, pl = 0; rows.forEach(function(r){ sp += r.sPlan; pl += r.plan; });
+  var avg = pl ? sp / pl : (+settings().price || 0);
+  rows.forEach(function(r){ r.price = r.plan ? r.sPlan / r.plan : avg; });
+  return { F:F, rows:rows, avg:avg };
+}
+function mdFeeTable(){
+  var c = mdCfg(), y = function(n){ return Number(n).toLocaleString('ja-JP') + '円'; };
+  return '<table><tr><th>精神科訪問看護（医療保険）・1回</th><th class="num">看護師</th><th class="num">准看護師</th></tr>' +
+    '<tr><td>30分以上・週3日目まで</td><td class="num">' + y(FEE.psy.n.o30) + '</td><td class="num">' + y(FEE.psy.j.o30) + '</td></tr>' +
+    '<tr><td>30分未満・週3日目まで（指示書に短時間の記載があるとき）</td><td class="num">' + y(FEE.psy.n.u30) + '</td><td class="num">' + y(FEE.psy.j.u30) + '</td></tr>' +
+    '<tr><td>30分以上・週4日目以降（特別指示などの期間中だけ）</td><td class="num">' + y(FEE.psy.n.o30w4) + '</td><td class="num">' + y(FEE.psy.j.o30w4) + '</td></tr>' +
+    '<tr><td>医療保険（精神科以外）・週3日目まで</td><td class="num">' + y(FEE.med.n.base) + '</td><td class="num">' + y(FEE.med.j.base) + '</td></tr></table>' +
+    '<table style="margin-top:8px"><tr><th>訪問看護管理療養費（医療保険）</th><th class="num">額</th></tr>' +
+    '<tr><td>月の初日（いまの設定：' + esc(KANRI_LBL[c.kanri] || KANRI_LBL.other) + '）</td><td class="num">' + y(FEE.kanriFirst[c.kanri] || FEE.kanriFirst.other) + '</td></tr>' +
+    '<tr><td>月の2日目以降（1日につき・単一建物20人未満）</td><td class="num">' + y(FEE.kanriNext) + '</td></tr></table>' +
+    '<table style="margin-top:8px"><tr><th>複数名精神科訪問看護加算（30分以上・1日1回・個人宅）</th><th class="num">額</th></tr>' +
+    '<tr><td>看護師と看護師（保健師・作業療法士も同じ）</td><td class="num">' + y(FEE.psyWith.n) + '</td></tr>' +
+    '<tr><td>看護師と准看護師</td><td class="num">' + y(FEE.psyWith.j) + '</td></tr>' +
+    '<tr><td>看護師と看護補助者・精神保健福祉士（週1日まで）</td><td class="num">' + y(FEE.psyWith.h) + '</td></tr></table>' +
+    '<table style="margin-top:8px"><tr><th>介護保険の訪問看護（訪問看護ステーション）</th><th class="num">単位</th></tr>' +
+    '<tr><td>20分未満／30分未満／30分以上1時間未満／1時間以上1時間30分未満</td><td class="num">314／471／823／1,128</td></tr>' +
+    '<tr><td>複数名訪問加算（Ⅰ）看護師等と：30分未満／30分以上</td><td class="num">254／402</td></tr>' +
+    '<tr><td>複数名訪問加算（Ⅱ）看護補助者と：30分未満／30分以上</td><td class="num">201／317</td></tr></table>' +
+    '<p class="muted" style="margin-top:6px">介護保険は「単位 ×（処遇改善加算を入れるときは1.018）× 1単位の単価」を1回ごとに切り捨てて円にしています（実際の請求は月の合計で計算します）。ベースアップ評価料・物価対応料は月単位の少額のため入れていません。</p>' +
+    '<p class="muted">出所（2026年10月27日確認）：<a href="https://www.mhlw.go.jp/content/12400000/001665206.pdf" target="_blank" rel="noopener">令和8年厚生労働省告示第74号</a>（令和8年6月1日適用）・<a href="https://www.mhlw.go.jp/content/10808000/001655181.pdf" target="_blank" rel="noopener">同 新旧対照表</a>・<a href="https://www.mhlw.go.jp/content/12400000/001686845.pdf" target="_blank" rel="noopener">実施上の留意事項（保発0305第19号）</a>・<a href="https://www.mhlw.go.jp/content/12300000/001716095.pdf" target="_blank" rel="noopener">介護給付費分科会 資料3「訪問看護」（令和8年6月29日）</a>・<a href="https://www.mhlw.go.jp/content/12300000/001146441.pdf" target="_blank" rel="noopener">地域区分（介護給付費分科会 資料6）</a>・<a href="https://www.wam.go.jp/content/wamnet/pcpub/top/watch/20260515_002.html" target="_blank" rel="noopener">WAM NET（訪問看護の処遇改善加算）</a>。東村山市の3級地は民間の解説2件で確かめたもので、告示そのものでは確かめていません。</p>';
+}
 function mdDays(m){ var y = +m.slice(0, 4), mo = +m.slice(5, 7), a = []; for(var d = 1; d <= 31; d++){ var dt = new Date(y, mo - 1, d); if(dt.getMonth() !== mo - 1) break; a.push(ymd(dt)); } return a; }
 /* 直前3か月のキャンセルの割合（週間予定の件数に対して） */
 function mdCxRate(m){
@@ -2637,18 +2724,20 @@ function mdCxRate(m){
   for(var i = 0; i < 3; i++){ mm = prevYm(mm); mdDays(mm).forEach(function(date){ visitsOn(date).forEach(function(v){ tot++; if(v.cx) cx++; }); }); }
   return { rate: tot ? cx / tot : 0, tot:tot, cx:cx };
 }
-function mdStats(s, m){
+function mdStats(s, m, F){
+  F = F || mdFees(m);
   var c = mdOf(s), today = ymd(new Date()), w = workRule(), all = staff();
-  var r = { s:s, c:c, model:0, modelPast:0, plan:0, planPast:0, planFuture:0, empty:0, emptyFuture:0, cxEff:0, cxAll:0, leave:0, leaveDays:0, clash:0, clashFix:0, over:0, extra:0, act:null, actSrc:'', overrun:0, price:mdStaffPrice(s.id) };
+  var r = { s:s, c:c, sPlan:0, withN:0, ng:0, model:0, modelPast:0, plan:0, planPast:0, planFuture:0, empty:0, emptyFuture:0, cxEff:0, cxAll:0, leave:0, leaveDays:0, clash:0, clashFix:0, over:0, extra:0, act:null, actSrc:'', overrun:0, price:0 };
   mdDays(m).forEach(function(date){
     var dow = String(parseYmd(date).getDay()), why = offWhy(s.id, date), fixed = (why === '公休' || why === '祝日');
-    var vs = visitsOn(date).filter(function(v){ return v.staffId === s.id; });
+    var vs = visitsOn(date).filter(function(v){ return v.staffId === s.id || v.withId === s.id; });
     var ok = vs.filter(function(v){ return !v.cx; }).length, past = date <= today;
     var isModel = c.n > 0 && c.days.indexOf(dow) >= 0 && !fixed;
     if(isModel){ r.model += c.n; if(past) r.modelPast += c.n; }
     if(fixed){ r.clashFix += ok; return; }                            /* 公休・祝日の日の予定は要調整（件数には入れない） */
     if(why){ r.clash += ok; if(isModel){ r.leave += c.n; r.leaveDays++; } return; }     /* 休みの届けの日：予定は要調整、モデルの件数はそのまま失う */
     r.cxAll += vs.length - ok; r.plan += ok; if(past) r.planPast += ok; else r.planFuture += ok;
+    vs.forEach(function(v){ if(v.cx) return; if(v.staffId !== s.id){ r.withN++; return; } var f = F.map[date + '|' + v.time + '|' + v.no]; if(f){ r.sPlan += f.fee; if(f.ng) r.ng++; } });
     if(isModel){
       var emp = Math.max(0, c.n - vs.length);
       r.empty += emp; if(!past) r.emptyFuture += emp;
@@ -2672,7 +2761,11 @@ function mdYen(n){ return yen(Math.round(n) || 0); }
 function mdCond(){
   var c = mdCfg(), m = $('md_month').value;
   $('md_goal').value = c.goal;
-  $('md_prices').innerHTML = MD_INS.map(function(k, i){ return '<div><label class="f" for="md_p' + i + '">' + esc(k) + '</label><input type="number" id="md_p' + i + '" min="0" step="10" value="' + esc(c.prices[k] || '') + '" placeholder="' + (settings().price ? '空欄＝' + esc(settings().price) + '円' : '空欄') + '"></div>'; }).join('');
+  $('md_prices').innerHTML = '<div><label class="f" for="md_kanri">管理療養費の区分（届出のとおり）</label><select id="md_kanri">' + Object.keys(KANRI_LBL).map(function(k){ return '<option value="' + k + '"' + (c.kanri === k ? ' selected' : '') + '>' + esc(KANRI_LBL[k]) + '</option>'; }).join('') + '</select></div>' +
+    '<div><label class="f" for="md_tanka">介護保険の1単位の単価（円）</label><input type="number" id="md_tanka" min="10" max="12" step="0.01" value="' + c.tanka + '"></div>' +
+    '<div><label class="f">&nbsp;</label><label><input type="checkbox" id="md_shogu"' + (c.shogu ? ' checked' : '') + '> 介護保険の訪問看護に処遇改善加算（1.8%）を算定している</label></div>' +
+    MD_MANUAL.map(function(k, i){ return '<div><label class="f" for="md_m' + i + '">' + esc(k) + 'の1回の単価（円）</label><input type="number" id="md_m' + i + '" min="0" step="10" value="' + esc(c.prices[k] || '') + '" placeholder="' + (settings().price ? '空欄＝' + esc(settings().price) + '円' : '空欄') + '"></div>'; }).join('');
+  $('md_feeTable').innerHTML = mdFeeTable();
   var ppl = mdPeople();
   if(!ppl.length){ $('md_staff').innerHTML = '<p class="empty">この部署の職員がまだいません。「名簿・設定」で入れてください。</p>'; return; }
   var man = c.manual[m] || {};
@@ -2689,9 +2782,10 @@ function mdCollect(){
   document.querySelectorAll('[data-mdn]').forEach(function(el){ var id = el.getAttribute('data-mdn'); st[id] = { n:Math.max(0, +el.value || 0), days:[] }; });
   document.querySelectorAll('[data-mdd]:checked').forEach(function(el){ var id = el.getAttribute('data-mdd'); if(st[id]) st[id].days.push(el.value); });
   document.querySelectorAll('[data-mdm]').forEach(function(el){ var id = el.getAttribute('data-mdm'); if(el.value === '') delete man[id]; else man[id] = Math.max(0, +el.value || 0); });
-  MD_INS.forEach(function(k, i){ var v = $('md_p' + i).value; if(v !== '' && +v > 0) pr[k] = +v; });
+  MD_MANUAL.forEach(function(k, i){ var v = $('md_m' + i).value; if(v !== '' && +v > 0) pr[k] = +v; });
   var manual = Object.assign({}, c.manual); if(m) manual[m] = man;
-  return { staff:Object.assign({}, c.staff, st), prices:pr, goal:$('md_goal').value === '' ? '' : Math.max(0, +$('md_goal').value || 0), manual:manual };
+  var tk = +$('md_tanka').value;
+  return { staff:Object.assign({}, c.staff, st), prices:pr, goal:$('md_goal').value === '' ? '' : Math.max(0, +$('md_goal').value || 0), manual:manual, kanri:$('md_kanri').value || 'other', tanka:(tk >= 10 && tk <= 12 ? tk : 11.05), shogu:$('md_shogu').checked };
 }
 
 function renderModel(){
@@ -2702,19 +2796,19 @@ function renderModel(){
 function mdResult(){
   var m = $('md_month').value, c = mdCfg(), ppl = mdPeople();
   if(!m || !ppl.length){ ['md_judge','md_rate','md_loss'].forEach(function(id){ $(id).innerHTML = '<p class="empty">職員と計算する月を入れてください。</p>'; }); $('md_rateNote').innerHTML = ''; return; }
-  var rows = ppl.map(function(s){ return mdStats(s, m); });
+  var R = mdRows(m), rows = R.rows, F = R.F;
   var cr = mdCxRate(m), T = { model:0, modelPast:0, plan:0, planPast:0, planFuture:0, empty:0, emptyFuture:0, cxEff:0, cxAll:0, leave:0, clash:0, clashFix:0, over:0, extra:0, act:0, actN:0, overrun:0,
-    sModel:0, sPlan:0, sFc:0, fc:0, noPrice:0 };
+    sModel:0, sPlan:0, sFc:0, fc:0, noPrice:0, withN:0 };
   rows.forEach(function(r){
     ['model','modelPast','plan','planPast','planFuture','empty','emptyFuture','cxEff','cxAll','leave','clash','clashFix','over','extra','overrun'].forEach(function(k){ T[k] += r[k]; });
     var done = r.act != null ? r.act : r.planPast;
     r.fc = done + r.planFuture * (1 - cr.rate);
     if(r.act != null){ T.act += r.act; T.actN++; }
     T.fc += r.fc;
-    if(r.price){ T.sModel += r.model * r.price; T.sPlan += r.plan * r.price; T.sFc += r.fc * r.price; } else if(r.model || r.plan) T.noPrice++;
+    T.withN += r.withN; T.sPlan += r.sPlan;
+    if(r.price){ T.sModel += r.model * r.price; T.sFc += r.fc * r.price; } else if(r.model || r.plan) T.noPrice++;
   });
   var hasPrice = T.sModel > 0 || T.sPlan > 0, goal = +c.goal || 0, avg = T.model ? T.sModel / T.model : (T.plan ? T.sPlan / T.plan : 0);
-  var src = Object.keys(c.prices).length ? '保険の種類ごとの単価（この画面で入れたもの）' : (settings().price ? '「名簿・設定」の決まりごとの単価（' + esc(settings().price) + '円）' : '');
   /* ---- 目標の売上に届くか ---- */
   var h = '<table><tr><th></th><th class="num">件数（月）</th>' + (hasPrice ? '<th class="num">売上（月）</th>' : '') + '<th>中身</th></tr>' +
     '<tr><td><b>モデルコースどおり</b></td><td class="num">' + T.model + '件</td>' + (hasPrice ? '<td class="num">' + mdYen(T.sModel) + '</td>' : '') + '<td><small class="muted">全員が条件どおりの件数をこなしたとき</small></td></tr>' +
@@ -2722,7 +2816,7 @@ function mdResult(){
     '<tr><td><b>今月の見込み</b></td><td class="num">' + Math.round(T.fc) + '件</td>' + (hasPrice ? '<td class="num">' + mdYen(T.sFc) + '</td>' : '') + '<td><small class="muted">今日までは' + (!T.actN ? '予定' : (T.actN < rows.length ? '実績（看護記録・手入力。実績の無い職員は予定）' : '実績（看護記録・手入力）')) + '、明日からは予定から直前3か月のキャンセルの割合（' + (cr.tot ? Math.round(cr.rate * 1000) / 10 + '%' : 'データなし＝0%') + '）を引いたもの</small></td></tr>' +
     (goal ? '<tr><td><b>目標</b></td><td class="num">' + (avg ? '約' + Math.ceil(goal / avg) + '件' : '—') + '</td>' + (hasPrice ? '<td class="num">' + mdYen(goal) + '</td>' : '') + '<td></td></tr>' : '') + '</table>';
   if(!hasPrice){
-    h += '<div class="judge fee">単価が入っていないため、売上と目標への届き方は出していません。上の「1回の訪問の単価」か、「名簿・設定」の決まりごとの単価を入れてください。</div>';
+    h += '<div class="judge fee">売上を出せる訪問がないため、売上と目標への届き方は出していません。「患者さんの登録」で保険の種類を入れてください（障害福祉・自費は上の単価も入れてください）。</div>';
   } else if(!goal){
     h += '<div class="judge" style="background:#eef3f8;color:var(--ink-soft)">目標の売上を入れると、届くかどうかを判定します。</div>';
   } else {
@@ -2738,16 +2832,21 @@ function mdResult(){
         (T.emptyFuture >= need ? '今月の残りの空き枠（' + T.emptyFuture + '件）を埋めれば届きます。' : '今月の残りの空き枠（' + T.emptyFuture + '件）をすべて埋めても、今月は届きません。来月の予定の組み方で取り返すことになります。') + '</div>';
     }
   }
-  h += '<p class="muted" style="margin-top:8px">単価：' + (src || '入っていません') + '。職員ごとの単価は、その人の週間予定に入っている' + D().client + 'の保険の種類から平均しています。' + (T.noPrice ? '<br><span style="color:var(--red)">単価の決まらない職員が ' + T.noPrice + '人 います（その人の分は売上に入っていません）。</span>' : '') + '</p>';
+  var warn = [];
+  if(F.w4ng) warn.push('週4日目以降に当たる医療保険の訪問 ' + F.w4ng + '件は、特別指示の期間でないため売上に入れていません（算定できない訪問です）。');
+  if(F.hojoOver) warn.push('看護補助者・精神保健福祉士との同行で、同じ週の2日目以降の ' + F.hojoOver + '件は、加算を入れていません（週1日まで）。');
+  if(F.medWith) warn.push('医療保険（精神科以外）の2名体制 ' + F.medWith + '件は、加算を入れていません。');
+  if(F.noPrice) warn.push('保険の種類が未入力か、単価の無い訪問 ' + F.noPrice + '件は、売上0で数えています。');
+  h += '<p class="muted" style="margin-top:8px">売上：いまの週間予定の訪問を1件ずつ、料金表（令和8年6月1日から）で計算しています（管理療養費＝' + esc(KANRI_LBL[c.kanri] || KANRI_LBL.other) + '・介護の1単位＝' + c.tanka + '円' + (c.shogu ? '・処遇改善加算1.8%込み' : '') + '）。モデルと見込みの売上は、その職員のいまの予定の1件あたりの売上に件数を掛けたものです。' + (T.withN ? '2名体制の同行 ' + T.withN + '件は、同行した職員の稼働に数え、売上は担当の職員に付けています。' : '') + '</p>' + (warn.length ? '<p style="color:var(--red);font-size:13px">' + warn.join('<br>') + '</p>' : '');
   $('md_judge').innerHTML = h;
   /* ---- 稼働率 ---- */
   $('md_rate').innerHTML = '<table><tr><th>職員</th><th class="num">モデル</th><th class="num">いまの予定</th><th class="num">予定の稼働率</th><th class="num">実績<br><small>（今日まで）</small></th><th class="num">実績の稼働率<br><small>（今日までのモデルに対して）</small></th>' + (hasPrice ? '<th class="num">モデルの売上</th><th class="num">見込みの売上</th>' : '') + '</tr>' +
     rows.map(function(r){
       return '<tr><td>' + esc(r.s.name) + '<br><small class="muted">1日' + r.c.n + '件・' + (r.c.days.map(function(d){ return DOW[+d]; }).join('') || '出る曜日なし') + '</small></td>' +
-        '<td class="num">' + r.model + '件</td><td class="num">' + r.plan + '件</td><td class="num"><b>' + mdPct(r.plan, r.model) + '</b></td>' +
+        '<td class="num">' + r.model + '件</td><td class="num">' + r.plan + '件' + (r.withN ? '<br><small class="muted">うち同行 ' + r.withN + '件</small>' : '') + '</td><td class="num"><b>' + mdPct(r.plan, r.model) + '</b></td>' +
         '<td class="num">' + (r.act != null ? r.act + '件<br><small class="muted">' + r.actSrc + '</small>' : '<small class="muted">記録なし</small>') + '</td>' +
         '<td class="num">' + (r.act != null ? '<b>' + mdPct(r.act, r.modelPast) + '</b><br><small class="muted">モデル ' + r.modelPast + '件</small>' : '—') + '</td>' +
-        (hasPrice ? '<td class="num">' + (r.price ? mdYen(r.model * r.price) : '<small class="muted">単価なし</small>') + '</td><td class="num">' + (r.price ? mdYen(r.fc * r.price) : '—') + '</td>' : '') + '</tr>';
+        (hasPrice ? '<td class="num">' + (r.price ? mdYen(r.model * r.price) + '<br><small class="muted">1件 ' + mdYen(r.price) + '</small>' : '<small class="muted">単価なし</small>') + '</td><td class="num">' + (r.price ? mdYen(r.fc * r.price) : '—') + '</td>' : '') + '</tr>';
     }).join('') +
     '<tr><th>合計</th><th class="num">' + T.model + '件</th><th class="num">' + T.plan + '件</th><th class="num">' + mdPct(T.plan, T.model) + '</th><th class="num">' + (T.actN ? T.act + '件' : '—') + '</th><th class="num">' + (T.actN ? mdPct(T.act, rows.filter(function(r){ return r.act != null; }).reduce(function(a, r){ return a + r.modelPast; }, 0)) : '—') + '</th>' + (hasPrice ? '<th class="num">' + mdYen(T.sModel) + '</th><th class="num">' + mdYen(T.sFc) + '</th>' : '') + '</tr></table>';
   $('md_rateNote').innerHTML = '今日（' + esc(jpDate(ymd(new Date()))) + '）までを実績、明日からを予定として数えています。公休・祝日休みの日はモデルに入れていません。';
@@ -2812,7 +2911,7 @@ function mdDay(){
     h += '<table><tr><th>時刻</th><th>モデルコース</th><th>いまの週間予定</th></tr>' + cs.list.map(function(x){
       if(x.k !== 'v') return '<tr><td>' + hm(x.a) + '〜' + hm(x.b) + '</td><td class="muted">' + lbl[x.k] + '</td><td></td></tr>';
       var i = vi++, v = used[i], p = v ? patient(v.no) : null;
-      return '<tr><td><b>' + hm(x.a) + '〜' + hm(x.b) + '</b></td><td>訪問 ' + (i + 1) + '件目</td><td>' + (v ? '<span class="tag green">予定あり</span> ' + esc(dn(v.no)) + (p && p.area ? '<small class="muted">（' + esc(p.area) + '）</small>' : '') + '<br><small class="muted">いまの予定の時刻 ' + esc(v.time) + '・' + esc(v.min || w.visit) + '分</small>' : '<span class="tag amber">空き枠</span>') + '</td></tr>';
+      return '<tr><td><b>' + hm(x.a) + '〜' + hm(x.b) + '</b></td><td>訪問 ' + (i + 1) + '件目</td><td>' + (v ? (v.staffId !== s.id ? '<span class="tag gray">同行</span> ' : '<span class="tag green">予定あり</span> ') + esc(dn(v.no)) + (p && p.area ? '<small class="muted">（' + esc(p.area) + '）</small>' : '') + '<br><small class="muted">いまの予定の時刻 ' + esc(v.time) + '・' + esc(v.min || w.visit) + '分' + (v.staffId !== s.id ? '・担当 ' + esc(staffName(v.staffId)) : (v.withId ? '・同行 ' + esc(staffName(v.withId)) : '')) + '</small>' : '<span class="tag amber">空き枠</span>') + '</td></tr>';
     }).join('') + '</table>';
     if(cs.over > 0) h += '<p style="color:var(--red);font-weight:700;margin-top:6px">この件数では、退勤時刻（' + esc(w.end) + '）を ' + minLabel(cs.over) + ' 超えます。</p>';
     var free = slots.length - Object.keys(used).length;
@@ -2833,7 +2932,7 @@ $('md_month').addEventListener('change', function(){ $('md_msg').textContent = '
    差の内訳は、予定を組む側（空き枠）／患者さんの都合（キャンセル）／本人に関わるもの（休みの届け・超過）に分ける。 */
 function evFill(){ fillSelect('ev_staff', mdPeople().map(function(s){ return { v:s.id, t:s.name }; }), null); }
 function evSheet(s, kind, m){
-  var r = mdStats(s, m), w = workRule(), cs = mdCourse(r.c.n), mgr = kind === 'mgr', today = ymd(new Date());
+  var r = mdRows(m).rows.filter(function(x){ return x.s.id === s.id; })[0] || mdStats(s, m), w = workRule(), cs = mdCourse(r.c.n), mgr = kind === 'mgr', today = ymd(new Date());
   var pastMonth = m < today.slice(0, 7), upto = pastMonth ? 'この月の終わりまで' : '今日（' + jpDate(today) + '）まで';
   var visits = cs.list.filter(function(x){ return x.k === 'v'; });
   var yenOf = function(n){ return r.price ? mdYen(n * r.price) : '—'; };
@@ -2847,7 +2946,7 @@ function evSheet(s, kind, m){
     '<h2>2　モデルに対する数字</h2>' +
     '<table class="nums"><tr><th></th><th class="n">件数</th>' + (mgr ? '<th class="n">売上にすると</th>' : '') + '</tr>' +
       row('モデルコース', r.model + '件', mgr ? yenOf(r.model) : null) +
-      row('いまの週間予定（キャンセル・休みの日を除く）', r.plan + '件', mgr ? yenOf(r.plan) : null) +
+      row('いまの週間予定（キャンセル・休みの日を除く）', r.plan + '件' + (r.withN ? '<span class="sm">（うち2名体制の同行 ' + r.withN + '件）</span>' : ''), mgr ? mdYen(r.sPlan) : null) +
       row('予定の稼働率', '<b>' + mdPct(r.plan, r.model) + '</b>', mgr ? '' : null) +
       row('実績（' + upto + '）', r.act != null ? r.act + '件<span class="sm">（' + r.actSrc + '）</span>' : '記録なし', mgr ? (r.act != null ? yenOf(r.act) : '—') : null) +
       row('実績の稼働率（同じ期間のモデル ' + r.modelPast + '件に対して）', r.act != null ? '<b>' + mdPct(r.act, r.modelPast) + '</b>' : '—', mgr ? '' : null) +
@@ -2866,7 +2965,9 @@ function evSheet(s, kind, m){
       (r.clash ? '<li>休みの届けの日に入っている予定：' + r.clash + '件（要調整）</li>' : '') +
       (r.clashFix ? '<li>公休・祝日に入っている予定：' + r.clashFix + '件（要調整）</li>' : '') +
       ((r.over + r.extra) ? '<li>モデルを超えて入っている予定：' + (r.over + r.extra) + '件</li>' : '') +
-      '<li>単価：' + (r.price ? '1件あたり ' + mdYen(r.price) + '（この職員の週間予定の' + esc(D().client) + 'の保険の種類から平均）' : '入っていません') + '</li></ul>';
+      (r.withN ? '<li>2名体制の同行：' + r.withN + '件（この職員の時間を使いますが、売上は担当の職員に付きます）</li>' : '') +
+      (r.ng ? '<li>週4日目以降で算定できない訪問：' + r.ng + '件（特別指示の期間を確かめてください）</li>' : '') +
+      '<li>1件あたりの売上：' + (r.price ? mdYen(r.price) + '（いまの週間予定を料金表で計算した平均）' : '出せません') + '</li></ul>';
   }
   h += '<h2>' + (mgr ? '5　所見' : '4　面談で話したこと・来月に向けて') + '</h2><div class="memo"></div>' +
     (mgr ? '' : '<table class="sign"><tr><th>面談日</th><td></td><th>面談者</th><td></td><th>本人</th><td></td></tr></table>') +

@@ -180,7 +180,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-19</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-20</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -413,7 +413,7 @@ function tsGoBack(){
       <div><label class="f" for="mh_cap">1人の利用者の週の回数（上限）</label><input type="number" id="mh_cap" min="1" max="7" value="3"></div>
       <div><label class="f" for="mh_who">表に入れる職員</label><select id="mh_who"><option value="real">部署の職員（名簿の名前・常勤／非常勤・休みの曜日で組む）</option><option value="demo">見本の職員（職員A・B…）</option></select></div>
     </div>
-    <div class="btns"><button class="btn" id="mh_make">この条件で表を作る</button><button class="btn sub" id="mh_print">表を印刷する</button><span class="muted" id="mh_msg"></span></div>
+    <div class="btns"><button class="btn" id="mh_make">この条件で表を作る</button><button class="btn sub" id="mh_print">表を印刷する</button><button class="btn amber" id="mh_use" style="display:none">このコースで患者さんを当てはめる</button><span class="muted" id="mh_msg"></span></div>
     <div id="mh_sum"></div>
     <div class="tbl-scroll" id="mh_tbl"></div>
     <p class="muted" id="mh_note"></p>
@@ -2625,6 +2625,14 @@ function miMake(){
     '<p class="muted">毎月の目標は、足りない週' + gap + '件を、' + k + 'か月（' + esc(jpMonth(ms[0])) + '〜' + esc(jpMonth(to)) + '）で均等に割ったものです。先に、いまの利用者の回数を上げる分から当てています。4週の売上の目安は「週の訪問 × 4週 × ' + yen(P) + '」に、10月からの加算（利用者1人 月' + yen(MI_KASAN) + '・新しい利用者の分を含む）を足したものです。2名体制の加算・月の初日の管理療養費・キャンセルは入れていません。入金の月は、訪問した月の翌月に請求し、その翌月に入金される医療保険の流れで数えています（実際の入金日は請求の記録で確かめてください）。</p>';
   $('mi_out').innerHTML = h;
 }
+var mhLast = null;
+/* 見本のコースの枠（職員ごとの曜日ごとの件数）のまま、実際の患者さんを当てはめる（2026-10-27 宏史さんの指示「モデルコースをそっくりそのまま、現実の患者さんを当て込んで」） */
+function mhUse(){
+  if(!mhLast) return;
+  var t = document.querySelector('#tabs button[data-tab=plan]'); if(t) t.click();
+  auMake(mhLast);
+  if($('cardAuto').scrollIntoView) $('cardAuto').scrollIntoView({ behavior:'smooth', block:'start' });
+}
 function mhRender(){
   var pr = mhPrice();
   $('mh_pricev').innerHTML = yen(pr.v) + '<br><small class="muted" style="font-weight:400">' + esc(pr.t) + '</small>';
@@ -2658,6 +2666,8 @@ function mhMake(){
   var w = workRule(), dayMin = toMin(w.end) - toMin(w.start) - (w.brk || 0), weekH = dayMin * 5 / 60;
   var week = goal / 4, N = Math.ceil(week / P), days = ['1','2','3','4','5'], S, grid = [], i, L = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', who = [];
   var plan = $('mh_who').value === 'real' ? mhStaffPlan(N) : [];
+  mhLast = plan.length ? { goal:goal, caps:plan.reduce(function(o, x){ o[x.s.id] = x.per; return o; }, {}) } : null;
+  $('mh_use').style.display = mhLast ? '' : 'none';
   if(plan.length){
     S = plan.length;
     plan.forEach(function(x){ var g = {}; x.days.forEach(function(d){ g[d] = x.per[d]; }); grid.push(g);
@@ -2837,6 +2847,7 @@ $('mh_goal').addEventListener('change', function(){ mhNow(); miMake(); });
 ['mi_to','mi_nf','mh_cap'].forEach(function(id){ $(id).addEventListener('change', miMake); });
 $('mh_make').addEventListener('click', mhMake);
 $('mh_print').addEventListener('click', mhPrint);
+$('mh_use').addEventListener('click', mhUse);
 ['mh_users','mh_cap','mh_n','mh_who'].forEach(function(id){ $(id).addEventListener('change', mhMake); });
 ['sc_pd','sc_fn','sc_fk','sc_pn','sc_pk','mh_users','mh_cap'].forEach(function(id){ $(id).addEventListener('change', scMake); });
 $('gr_make').addEventListener('click', grMake);
@@ -2934,11 +2945,14 @@ function renderToday(){
 var AU_BAK = 'tritime_weekly_backup', auPlan = null;
 function auFreq(p, cur){ if(cur) return Math.min(3, cur); var m = String(p.freq || '').match(/週\s*([1-7１-７])/); if(m) return Math.min(3, +String(m[1]).replace(/[１-７]/, function(c){ return '１２３４５６７'.indexOf(c) + 1; })); return 1; }
 function auCombos(days, f){ var out = []; (function rec(i, a){ if(a.length === f){ out.push(a.slice()); return; } for(var j = i; j < days.length; j++){ a.push(days[j]); rec(j + 1, a); a.pop(); } })(0, []); return out; }
-function auMake(){
+function auMake(course){
+  if(course && course.type) course = null;
   var capF = Math.max(1, +$('au_full').value || 5), capP = Math.max(1, +$('au_part').value || 3);
   var ST = deptStaff().filter(function(s){ return !staffOrphan(s) && NURSE_JOBS.indexOf(jobOf(s)) >= 0; }).map(function(s){
     var off = staffOff(s), days = MD_DOW.filter(function(d){ return off.length ? off.indexOf(d) < 0 : ['1','2','3','4','5'].indexOf(d) >= 0; }).filter(function(d){ return d !== '0'; });
-    return { s:s, full:s.emp !== '非常勤', days:days, cap:s.emp !== '非常勤' ? capF : capP, load:{}, areas:{} };
+    var x = { s:s, full:s.emp !== '非常勤', days:days, cap:s.emp !== '非常勤' ? capF : capP, load:{}, areas:{} };
+    if(course){ var pd = course.caps[s.id] || {}; x.capDay = pd; x.days = days.filter(function(d){ return (pd[d] || 0) > 0; }); }
+    return x;
   }).filter(function(x){ return x.days.length; });
   if(!ST.length){ $('au_out').innerHTML = '<p class="empty">振り分けられる看護師が名簿にいません。</p>'; return; }
   var wk = weekly(), cnt = {}, main = {}, info = {};
@@ -2950,12 +2964,13 @@ function auMake(){
   var byArea = {}; P.forEach(function(p){ (byArea[p.area] = byArea[p.area] || []).push(p); });
   var areas = Object.keys(byArea).sort(function(a, b){ return byArea[b].length - byArea[a].length || (a < b ? -1 : 1); });
   var used = function(x, d){ return (x.load[d] || []).length; };
+  var capOf = function(x, d){ return x.capDay ? (x.capDay[d] || 0) : x.cap; };
   var out = [], miss = [];
   areas.forEach(function(ar){
     byArea[ar].sort(function(a, b){ return b.f - a.f; }).forEach(function(p){
       var cand = ST.slice().sort(function(a, b){
         var ka = (a.s.id === p.main ? 100 : 0) + (a.areas[ar] || 0) * 10, kb = (b.s.id === p.main ? 100 : 0) + (b.areas[ar] || 0) * 10;
-        var ra = a.days.length * a.cap - a.days.reduce(function(t, d){ return t + used(a, d); }, 0), rb = b.days.length * b.cap - b.days.reduce(function(t, d){ return t + used(b, d); }, 0);
+        var ra = a.days.reduce(function(t, d){ return t + capOf(a, d) - used(a, d); }, 0), rb = b.days.reduce(function(t, d){ return t + capOf(b, d) - used(b, d); }, 0);
         return (kb - ka) || (rb - ra);
       });
       var done = false;
@@ -2963,7 +2978,7 @@ function auMake(){
         var x = cand[i], best = null, bs = -1e9;
         auCombos(x.days, Math.min(p.f, x.days.length)).forEach(function(c){
           if(c.length < p.f) return;
-          if(c.some(function(d){ return used(x, d) >= x.cap; })) return;
+          if(c.some(function(d){ return used(x, d) >= capOf(x, d); })) return;
           var idx = c.map(function(d){ return +d; }), gap = 7;
           for(var k = 1; k < idx.length; k++) gap = Math.min(gap, idx[k] - idx[k - 1]);
           var same = c.reduce(function(t, d){ return t + (x.load[d] || []).filter(function(q){ return q.area === ar; }).length; }, 0);
@@ -2995,11 +3010,14 @@ function auMake(){
     var cells = MD_DOW.map(function(d){
       if(x.days.indexOf(d) < 0) return '<td class="mhOff">休</td>';
       var r = rows.filter(function(v){ return v.staffId === x.s.id && v.dow === d; }).sort(function(a, b){ return a.time < b.time ? -1 : 1; }); w += r.length;
-      return '<td>' + r.map(function(v){ return '<span class="ssChip">' + esc(v.time) + ' ' + esc(dn(v.no)) + '<br><small>' + esc(v.area) + '</small></span>'; }).join('') + '<div class="mhCnt' + (r.length >= x.cap ? ' full' : '') + '">' + r.length + '件</div></td>';
+      var cp = capOf(x, d), empty = course ? Math.max(0, cp - r.length) : 0;
+      return '<td>' + r.map(function(v){ return '<span class="ssChip">' + esc(v.time) + ' ' + esc(dn(v.no)) + '<br><small>' + esc(v.area) + '</small></span>'; }).join('') + (empty ? '<span class="ssChip" style="background:#fff;border:1px dashed var(--amber);color:var(--amber)">空き ' + empty + '件</span>' : '') + '<div class="mhCnt' + (r.length >= cp ? ' full' : '') + '">' + r.length + (course ? '／' + cp : '') + '件</div></td>';
     }).join('');
-    return '<tr><th class="who">' + esc(x.s.name) + '<small>' + (x.full ? '常勤' : '非常勤') + '・1日 ' + x.cap + '件まで</small><small>週 ' + w + '件</small></th>' + cells + '</tr>';
+    return '<tr><th class="who">' + esc(x.s.name) + '<small>' + (x.full ? '常勤' : '非常勤') + (course ? '・コースの枠' : '・1日 ' + x.cap + '件まで') + '</small><small>週 ' + w + '件</small></th>' + cells + '</tr>';
   }).join('');
-  $('au_out').innerHTML = '<div class="judge ' + (miss.length ? 'fee' : 'free') + '" style="margin:8px 0">利用中の患者さん ' + P.length + '人・週 ' + need + '回のうち、<b>週 ' + tot + '回</b>を振り分けました。' +
+  var slotsW = course ? ST.reduce(function(t, x){ return t + x.days.reduce(function(u, d){ return u + capOf(x, d); }, 0); }, 0) : 0;
+  $('au_out').innerHTML = (course ? '<div class="judge ' + (tot < slotsW ? 'fee' : 'free') + '" style="margin:8px 0"><b style="font-size:15px;color:var(--ink)">目標設定額 ' + esc(mdYenShort(course.goal)) + 'コースの枠（週 ' + slotsW + '件）に、いまの患者さんを当てはめました。埋まったのは週 ' + tot + '件、空きは週 ' + Math.max(0, slotsW - tot) + '件です。</b>' + (tot < slotsW ? '<br>空き（点線の枠）は、新しい患者さんと、いまの患者さんの回数を上げる分で埋めていく枠です。埋め方は「モデルコースの見本」の「選んだコースに届くまでの道のり」にあります。' : '') + '</div>' : '') +
+    '<div class="judge ' + (miss.length ? 'fee' : 'free') + '" style="margin:8px 0">利用中の患者さん ' + P.length + '人・週 ' + need + '回のうち、<b>週 ' + tot + '回</b>を振り分けました。' +
     (miss.length ? '<br><b>入りきらなかった患者さん：' + miss.map(function(p){ return esc(dn(p.no)) + '（' + esc(p.area) + '・週' + p.f + '回）'; }).join('、') + '</b>。1日の件数の上限を上げるか、手で入れてください。' : '') + '</div>' +
     '<div class="tbl-scroll"><table class="mhT">' + head + body + '</table></div>' +
     '<p class="muted">同じ地区の患者さんを、同じ職員・同じ曜日に寄せています。いまの担当がいる患者さんは、なるべく同じ職員のままにしています。週の回数は、いまの週間予定の回数（無ければ登録の「訪問の頻度」、それも無ければ週1回）です。1日の中は、地区ごと・位置が分かるものは近い順に並べ、時刻は「勤務の決まり」の1日の流れに当てています。2名体制の同行者は、いまの週間予定の回数の分だけ引き継ぎます。</p>';

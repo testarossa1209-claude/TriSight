@@ -83,7 +83,7 @@ pre.out{white-space:pre-wrap;font-size:12px;font-family:var(--font-mono);backgro
     <div style="font-size:20px;font-weight:500">基本情報シート</div>
   </div>
   <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">発行：合同会社トライサイト</div>
-  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-27-03</span> <span id="verMsg"></span></div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-27-04</span> <span id="verMsg"></span></div>
   <div style="border-top:1px solid var(--border-strong);margin:8px 0 12px"></div>
   <!-- 2026-10-19：認証コードで端末どうし共有する（宏史さんの指示）。印を付けた端末だけが共有する。部品は TriSheetSync.js -->
   <div id="tssBox" style="margin:0 0 12px;padding:10px 12px;border:0.5px solid var(--border-accent);border-radius:var(--radius);background:var(--surface-1);font-size:13px">
@@ -337,7 +337,10 @@ function ctl(f){
 /* 2026-10-25：介護職を資格ごとに分けた（看護師・准看護師と同じ形。加算の条件・処遇改善加算の分配で使う）。
    これより前に「介護職」で入れた人はそのまま残し、資格の入った職種を選び直すよう知らせる */
 const RO_JOB='看護師（正看）|准看護師|介護福祉士|介護職（実務者研修修了）|介護職（初任者研修修了）|介護職（資格なし）|相談員・ケアマネジャー|事務局|その他';
-const RO_EMP='常勤・正社員|常勤・正社員以外|非常勤',RO_DEPT='訪問看護部|訪問介護部|特定障害相談部|居宅介護支援部|経営企画事務職';
+const RO_EMP='常勤・正社員|常勤・正社員以外|非常勤',RO_DEPT='訪問看護部|訪問介護部|特定障害相談部|居宅介護支援部|経営企画事務職|管理部門';
+/* 2026-10-27：役職（宏史さんの指示「役職と部門をもう一つ作って。管理部門と代表社員或いは代表取締役とかも選択できるように」）。
+   部門に「管理部門」を足した。トライタイムでは、管理部門の人は経営企画事務職と同じ見る範囲で扱う */
+const RO_POST='代表社員|業務執行社員|代表取締役|取締役|監査役|理事長|理事|部長|課長|主任';
 const RO_COUNT=['従業員数（合計）','うち正社員','うち非常勤'];
 function roList(){if(!Array.isArray(val['職員名簿']))val['職員名簿']=[];return val['職員名簿'];}
 function roId(){return 'R'+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36);}
@@ -381,6 +384,7 @@ function rosterHTML(){
       +'<select data-rf="job" aria-label="職種">'+sel(RO_JOB,r.job||'','職種を選ぶ')+'</select>'
       +'<select data-rf="emp" aria-label="雇用形態">'+sel(RO_EMP,r.emp||'','雇用形態を選ぶ')+'</select>'
       +'<select data-rf="dept" aria-label="所属部門">'+sel(RO_DEPT,r.dept||'','所属部門を選ぶ')+'</select>'
+      +'<select data-rf="post" aria-label="役職">'+sel(RO_POST,r.post||'','役職：なし')+'</select>'
       +roKjHTML(r)
       +'<label><input type="checkbox" data-rf="mgr"'+(r.mgr?' checked':'')+'>管理者</label>'
       +'<button type="button" data-rodel="1">外す</button></div>';

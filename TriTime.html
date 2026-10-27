@@ -169,7 +169,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-08</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-09</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -595,7 +595,7 @@ function tsGoBack(){
 <section class="tab" id="tab-setup">
   <div class="card" id="cardStaff">
     <h2>職員</h2>
-    <p class="lead">職員は、トライシート（基本情報シート）の会社カード「人員」の「職員名簿」に入れたものを、この画面を開いたときと、ほかの端末から名簿が届いたときに自動で読み込みます。会社の基本情報と同じ名簿を使うので、二か所で入れ直す必要はありません。ここで足したり直したりした職員も、この端末のトライシートの名簿へ書き戻します。</p>
+    <p class="lead">職員は、トライシート（基本情報シート）の会社カード「人員」の「職員名簿」に入れたものを、この画面を開いたときと、ほかの端末から名簿が届いたときに自動で読み込みます。会社の基本情報と同じ名簿を使うので、二か所で入れ直す必要はありません。ここで足したり直したりした職員は、その人の分だけ、この端末のトライシートの名簿へ書き戻します。並び順は名簿の順です。名簿に無い職員には「名簿にいません」の印が付き、「この端末を使う人」には出ません。</p>
     <div class="btns"><button class="btn" id="st_pull">トライシートから読み込む</button><a class="btn sub" href="TriSheet.html?focus=roster" target="_blank" rel="noopener" style="text-decoration:none">トライシートの職員名簿を開く</a></div>
     <p class="muted" id="st_pullMsg" style="margin:6px 0 10px"></p>
     <div class="row">
@@ -816,8 +816,27 @@ function patients(){ return allPatients().filter(function(p){ return inDept(p.no
 function staff(){
   var a = live('staff'), pick = {};
   a.forEach(function(x){ if(!x.sheetId) return; var c = pick[x.sheetId]; if(!c || (String(x.id).indexOf('sh-') === 0 && String(c.id).indexOf('sh-') !== 0)) pick[x.sheetId] = x; });
-  return a.filter(function(x){ return !x.sheetId || pick[x.sheetId] === x; });
+  var out = a.filter(function(x){ return !x.sheetId || pick[x.sheetId] === x; });
+  /* 2026-10-27：基本情報シートの職員名簿の順に並べる。名簿にいない職員は後ろ（宏史さんの指摘「並びが変わってしまっている」） */
+  var ix = rosterIdx();
+  if(ix){ var big = 1e6; out = out.map(function(x, i){ return { x:x, k:(x.sheetId && ix[x.sheetId] != null) ? ix[x.sheetId] : big + i }; }).sort(function(p, q){ return p.k - q.k; }).map(function(p){ return p.x; }); }
+  return out;
 }
+/* 基本情報シートの自社の職員名簿の、行の番号 → 並び順（名簿が無ければ null）。読むたびに解析し直さないよう、元の文字列で覚えておく */
+var rosterMemo = { t:null, ix:null };
+function rosterIdx(){
+  var t = null; try{ t = localStorage.getItem('trisight_office_master_v1'); }catch(e){}
+  if(t === rosterMemo.t) return rosterMemo.ix;
+  var ix = null;
+  try{ var d = JSON.parse(t || 'null'), o = d && Array.isArray(d.orgs) ? d.orgs.filter(function(x){ return x && x.id === d.activeOrg; })[0] : null;
+    var ro = o && o.sheet && o.sheet.val && Array.isArray(o.sheet.val['職員名簿']) ? o.sheet.val['職員名簿'].filter(function(r){ return r && String(r.name || '').trim(); }) : [];
+    if(ro.length){ ix = {}; ro.forEach(function(r, i){ if(r.id != null && ix[r.id] == null) ix[r.id] = i; }); }
+  }catch(e){ ix = null; }
+  rosterMemo = { t:t, ix:ix };
+  return ix;
+}
+/* 名簿につながっていた（sheetId がある）のに、いまの名簿にその行が無い職員 */
+function staffOrphan(s){ var ix = rosterIdx(); return !!(ix && s && s.sheetId && ix[s.sheetId] == null); }
 function weekly(){ return live('weekly').filter(function(v){ return inDept(v.no); }); }
 function events(){ return live('events'); }
 function saveEvents(a){ saveCol('events', a); }
@@ -1773,27 +1792,28 @@ function sheetWrite(d, o, before){
   localStorage.setItem(SHEET_KEY, JSON.stringify(d));
   return true;
 }
-/* トライタイムの職員 → この端末の名簿 */
-function sheetPush(){
+/* トライタイムの職員 → この端末の名簿（2026-10-27 作り直し）
+   これまでは、トライタイムの職員全員の職種・雇用形態などを名簿へ書き写し、名簿に無い職員を名前で付け足していた。
+   そのため、トライタイムに残っていた古い職員の中身が名簿を上書きし、表記の違う同じ人が名簿に足されて二重になった（2026-10-27 宏史さんの指摘）。
+   今は、人がトライタイムで直した職員だけを書き戻す。
+   ・opt.ids：トライタイムで足した・直した職員の番号。名簿につながっていればその行だけ直し、つながっていない（トライタイムで新しく足した）ときだけ行を足す
+   ・opt.gone：トライタイムで外した職員の名簿の行の番号。その行だけ外す */
+function sheetPush(opt){
+  opt = opt || {};
+  var ids = opt.ids || [], gone = opt.gone || [];
+  if(!ids.length && !gone.length) return false;
   var d = sheetDoc(), o = sheetSelf(d);
   if(!o || !o.sheet) return false;
   o.sheet.val = o.sheet.val || {};
   var ro = Array.isArray(o.sheet.val['職員名簿']) ? o.sheet.val['職員名簿'] : [];
   var before = JSON.stringify(ro);
-  var tt = staff(), gone = {};
-  raw('staff').forEach(function(x){ if(x && x.del && x.sheetId && !tt.some(function(t){ return t.sheetId === x.sheetId; })) gone[x.sheetId] = 1; });
-  ro = ro.filter(function(r){ return !gone[r.id]; });
-  var linked = false;
+  ro = ro.filter(function(r){ return gone.indexOf(r.id) < 0; });
+  var tt = staff(), linked = false;
   tt.forEach(function(st){
-    var r = null;
-    if(st.sheetId){
-      r = ro.filter(function(x){ return x.id === st.sheetId; })[0];
-      if(!r) return; /* 名簿の側で外された人。次の読み込みでトライタイムからも外れる */
-    } else {
-      r = ro.filter(function(x){ return x.name === st.name && !tt.some(function(t){ return t.sheetId === x.id; }); })[0];
-      if(!r){ r = { id:'R' + Date.now().toString(36) + Math.random().toString(36).slice(2,6), name:'', job:'', emp:'', mgr:false }; ro.push(r); }
-      st.sheetId = r.id; linked = true;
-    }
+    if(ids.indexOf(st.id) < 0) return;
+    var r = st.sheetId ? ro.filter(function(x){ return x.id === st.sheetId; })[0] : null;
+    if(st.sheetId && !r) return;   /* 名簿の側に無い行には書かない */
+    if(!r){ r = { id:'R' + Date.now().toString(36) + Math.random().toString(36).slice(2,6), name:'', job:'', emp:'', mgr:false }; ro.push(r); st.sheetId = r.id; linked = true; }
     r.name = st.name; if(jobOf(st)) r.job = jobOf(st); r.emp = empToSheet(r.emp, st.emp); r.mgr = isMgr(st); r.dept = st.dept || r.dept || ''; r.sub = staffSub(st); r.off = staffOff(st); r.holOff = !!st.holOff;
   });
   o.sheet.val['職員名簿'] = ro;
@@ -1838,11 +1858,11 @@ function sheetPull(opt){
   var only = keep.filter(function(x){ return !x.sheetId; }).length;
   var before = JSON.stringify(staff());
   saveCol('staff', keep);
-  if(!silent) sheetPush();
+  /* 2026-10-27：読み込むときは、名簿へ書き戻さない */
   var changedNow = before !== JSON.stringify(staff());
   if(silent){ if(changedNow){ refreshAll(); $('st_pullMsg').textContent = 'トライシートの「' + sheetName(o) + '」の職員名簿から、自動で取り込みました（新しく ' + add + '人）。'; scheduleSync(); } return add; }
   refreshAll();
-  msg.textContent = 'トライシートの「' + sheetName(o) + '」の職員名簿を読み込みました。新しく ' + add + '人、直した ' + upd + '人' + (rem ? '、名簿から外されていた ' + rem + '人をこちらでも外しました（これまでの記録は残ります）' : '') + (only ? '。トライタイムにだけいた ' + only + '人は、トライシートの名簿へ書き戻しました' : '') + '。';
+  msg.textContent = 'トライシートの「' + sheetName(o) + '」の職員名簿を読み込みました。新しく ' + add + '人、直した ' + upd + '人' + (rem ? '、名簿から外されていた ' + rem + '人をこちらでも外しました（これまでの記録は残ります）' : '') + (only ? '。トライタイムにだけいる職員が ' + only + '人います（名簿には書き足していません）' : '') + '。';
 }
 
 /* ---- 名簿・設定 ---- */
@@ -1850,7 +1870,7 @@ function renderSetup(){
   var st = staff();
   $('stList').innerHTML = st.length ? '<table><tr><th>呼び名</th><th>職種</th><th>所属部門</th><th>兼務する部署</th><th>公休</th><th>雇用形態</th><th>管理者</th><th></th></tr>' + st.map(function(s){
     var sd = staffDept(s);
-    return '<tr><td>' + esc(s.name) + '</td><td>' + esc(jobOf(s) || '未設定') + '</td><td>' + esc(s.dept || (sd ? sd.name + '（職種から）' : '未設定')) + '</td><td>' + esc(staffSub(s).join('・')) + '</td><td>' + esc([1,2,3,4,5,6,0].filter(function(w){ return staffOff(s).indexOf(String(w)) >= 0; }).map(function(w){ return DOW[w]; }).join('・') + (s.holOff ? (staffOff(s).length ? '・' : '') + '祝日' : '')) + '</td><td>' + esc(s.emp || '未設定') + '</td><td>' + (isMgr(s) ? '管理者' : '') + '</td><td><button class="btn small sub" data-stedit="' + esc(s.id) + '">直す</button> <button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
+    return '<tr' + (staffOrphan(s) ? ' style="background:#fdecea"' : '') + '><td>' + esc(s.name) + (staffOrphan(s) ? ' <span class="tag red">名簿にいません</span>' : '') + '</td><td>' + esc(jobOf(s) || '未設定') + '</td><td>' + esc(s.dept || (sd ? sd.name + '（職種から）' : '未設定')) + '</td><td>' + esc(staffSub(s).join('・')) + '</td><td>' + esc([1,2,3,4,5,6,0].filter(function(w){ return staffOff(s).indexOf(String(w)) >= 0; }).map(function(w){ return DOW[w]; }).join('・') + (s.holOff ? (staffOff(s).length ? '・' : '') + '祝日' : '')) + '</td><td>' + esc(s.emp || '未設定') + '</td><td>' + (isMgr(s) ? '管理者' : '') + '</td><td><button class="btn small sub" data-stedit="' + esc(s.id) + '">直す</button> <button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
   }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var wk = weekly().slice().sort(function(a,b){ var da = (+a.dow + 6) % 7, db = (+b.dow + 6) % 7; return da - db || (a.time < b.time ? -1 : 1); });
   $('wkList').innerHTML = wk.length ? '<table><tr><th>曜日</th><th>時刻</th><th>契約書番号</th><th>担当</th><th></th></tr>' + wk.map(function(v){
@@ -1867,7 +1887,8 @@ function renderSetup(){
   }); });
   $('stList').querySelectorAll('[data-stdel]').forEach(function(b){ b.addEventListener('click', function(){
     if(!confirm('この職員を名簿から外しますか？（これまでの記録は残ります。この端末のトライシートの職員名簿からも外れます）')) return;
-    saveCol('staff', staff().filter(function(x){ return x.id !== b.getAttribute('data-stdel'); })); sheetPush(); refreshAll();
+    var gs = staff().filter(function(x){ return x.id === b.getAttribute('data-stdel'); })[0];
+    saveCol('staff', staff().filter(function(x){ return x.id !== b.getAttribute('data-stdel'); })); if(gs && gs.sheetId) sheetPush({ gone:[gs.sheetId] }); refreshAll();
   }); });
   $('wkList').querySelectorAll('[data-wkdel]').forEach(function(b){ b.addEventListener('click', function(){
     saveCol('weekly', live('weekly').filter(function(x){ return x.id !== b.getAttribute('data-wkdel'); })); refreshAll();
@@ -2228,17 +2249,17 @@ function imPreview(){
 function imImport(){
   var p = imParsed();
   if(p.missing.length || !p.ok.length){ imPreview(); return; }
-  var st = staff(), pts = allPatients(), wk = live('weekly'), addS = 0, addP = 0, addW = 0, same = 0;
+  var st = staff(), pts = allPatients(), wk = live('weekly'), addS = 0, addP = 0, addW = 0, same = 0, newIds = [];
   p.ok.forEach(function(v){
     var s = st.filter(function(x){ return x.name === v.staff; })[0];
-    if(!s){ s = { id:uid(), name:v.staff, job:D().jobs[0] || '', dept:D().name, emp:'', mgr:false }; st.push(s); addS++; }
+    if(!s){ s = { id:uid(), name:v.staff, job:D().jobs[0] || '', dept:D().name, emp:'', mgr:false }; st.push(s); addS++; newIds.push(s.id); }
     var kn = keyNo(v.no);
     var pt = pts.filter(function(x){ return x.no === kn; })[0];
     if(!pt){ pts.push({ no:kn, area:v.area, instDate:'' }); addP++; } else if(v.area && !pt.area){ pt.area = v.area; }
     if(wk.some(function(x){ return String(x.dow) === v.dow && x.time === v.time && x.no === kn; })){ same++; return; }
     wk.push({ id:uid(), dow:v.dow, time:v.time, min:v.min, no:kn, staffId:s.id }); addW++;
   });
-  saveCol('staff', st); saveCol('patients', pts); saveCol('weekly', wk); sheetPush();
+  saveCol('staff', st); saveCol('patients', pts); saveCol('weekly', wk); sheetPush({ ids:newIds });
   $('im_map').innerHTML = '<p class="muted">取り込みました。予定 ' + addW + '件' + (same ? '（すでにあった ' + same + '件は飛ばしました）' : '') + '、新しく登録した職員 ' + addS + '人、患者さん ' + addP + '人。</p>';
   $('im_text').value = '';
   refreshAll();
@@ -2413,7 +2434,7 @@ function refreshAll(){
   mgMigrate(); applyDept();
   setShareNote(); renderAlerts();
   refreshSelects(); nbRefreshForm();
-  fillSelect('dv_me', staff().map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
+  fillSelect('dv_me', staff().filter(function(s){ return !staffOrphan(s) || s.id === dev().me; }).map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
   if(!$('dv_me').value && dev().me) $('dv_me').value = dev().me;
   $('dv_share').checked = dev().share;
   renderSetup(); renderPlan(); renderIntakeList(); renderCourse(); renderReport(); renderAdmin();
@@ -2503,8 +2524,9 @@ $('st_add').addEventListener('click', function(){
   var a = staff(), id = $('st_id').value;
   var rec = { name:n, job:$('st_job').value, dept:$('st_dept').value, sub:stSubVal(), off:stOffVal(), holOff:$('st_hol').checked, emp:$('st_emp').value, mgr:$('st_mgr').checked };
   var cur = id ? a.filter(function(x){ return x.id === id; })[0] : null;
-  if(cur){ delete cur.role; Object.assign(cur, rec); } else { a.push(Object.assign({ id:uid() }, rec)); }
-  saveCol('staff', a); sheetPush(); stFormReset(); refreshAll();
+  var sid = cur ? cur.id : uid();
+  if(cur){ delete cur.role; Object.assign(cur, rec); } else { a.push(Object.assign({ id:sid }, rec)); }
+  saveCol('staff', a); sheetPush({ ids:[sid] }); stFormReset(); refreshAll();
 });
 $('wk_add').addEventListener('click', function(){
   if(!$('wk_time').value || !$('wk_no').value || !$('wk_staff').value){ alert('時刻・契約書番号・担当を入れてください。'); return; }

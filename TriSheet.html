@@ -83,7 +83,7 @@ pre.out{white-space:pre-wrap;font-size:12px;font-family:var(--font-mono);backgro
     <div style="font-size:20px;font-weight:500">基本情報シート</div>
   </div>
   <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">発行：合同会社トライサイト</div>
-  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-27-02</span> <span id="verMsg"></span></div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-27-03</span> <span id="verMsg"></span></div>
   <div style="border-top:1px solid var(--border-strong);margin:8px 0 12px"></div>
   <!-- 2026-10-19：認証コードで端末どうし共有する（宏史さんの指示）。印を付けた端末だけが共有する。部品は TriSheetSync.js -->
   <div id="tssBox" style="margin:0 0 12px;padding:10px 12px;border:0.5px solid var(--border-accent);border-radius:var(--radius);background:var(--surface-1);font-size:13px">
@@ -372,8 +372,12 @@ function rosterHTML(){
     +'#roTbl .ro details.kj summary::-webkit-details-marker{display:none}#roTbl .ro details.kj .kjbox{display:flex;flex-direction:column;gap:4px;padding:8px 10px;margin-top:4px;border:0.5px solid var(--border);border-radius:8px;background:var(--bg-primary,#fff)}'
     +'#roTbl .ro details.kj .kjbox label.off{opacity:.45}</style>';
   h+='<div id="roTbl">';
+  /* 2026-10-27：同じ人らしい名前（空白や「ず／づ」の違いだけ）の行に、赤い印を付ける */
+  const dk={};a.forEach(r=>{const k=holdKey(r.name);if(k)dk[k]=(dk[k]||0)+1;});
+  const dn=a.filter(r=>dk[holdKey(r.name)]>1).length;
+  if(dn)h+='<div class="nt" style="color:var(--text-danger);font-weight:700">同じ人らしい名前が '+dn+'行 あります（赤い枠の行）。同じ人なら、片方の「外す」を押してください。</div>';
   a.forEach((r,i)=>{
-    h+='<div class="ro" data-ro="'+i+'"><input type="text" data-rf="name" value="'+esc(r.name||'')+'" placeholder="呼び名" aria-label="呼び名">'
+    h+='<div class="ro" data-ro="'+i+'"'+(dk[holdKey(r.name)]>1?' style="outline:2px solid #d9534f;background:#fdecea"':'')+'><input type="text" data-rf="name" value="'+esc(r.name||'')+'" placeholder="呼び名" aria-label="呼び名">'
       +'<select data-rf="job" aria-label="職種">'+sel(RO_JOB,r.job||'','職種を選ぶ')+'</select>'
       +'<select data-rf="emp" aria-label="雇用形態">'+sel(RO_EMP,r.emp||'','雇用形態を選ぶ')+'</select>'
       +'<select data-rf="dept" aria-label="所属部門">'+sel(RO_DEPT,r.dept||'','所属部門を選ぶ')+'</select>'
@@ -1493,6 +1497,49 @@ function boot(){
 }
 /* 2026-10-27：同じ名前の会社が二つ以上あるとき（ノアが「自社」と「顧客」の二つに分かれていた件）、一つにまとめる。
    どれを残すかは人が職員名簿の人数を見て選ぶ。残した会社を自社にし、ほかの同じ名前の会社は消して、その結果をほかの端末へ送る。 */
+/* 2026-10-27：名簿の点検。並び順のまま、職種・雇用形態・所属部門を出し、同じ人らしい行（空白や「ず／づ」「じ／ぢ」の違いだけの名前）に赤い印を付ける */
+function holdKey(n){return String(n||'').replace(/[\s　]/g,'').replace(/づ/g,'ず').replace(/ぢ/g,'じ').replace(/ヅ/g,'ズ').replace(/ヂ/g,'ジ');}
+function holdRoTable(ro){
+  const c={};ro.forEach(r=>{const k=holdKey(r.name);c[k]=(c[k]||0)+1;});
+  const dup=ro.filter(r=>c[holdKey(r.name)]>1).length;
+  return (dup?'<div style="color:var(--text-danger);font-weight:700;margin-top:4px">同じ人らしい名前が '+dup+'行 あります（赤い行）。</div>':'<div style="color:var(--text-success);margin-top:4px">同じ人らしい名前の重なりはありません。</div>')
+    +'<details style="margin-top:4px"><summary style="cursor:pointer">名簿の中身を見る（並び順のまま）</summary><table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:4px"><tr><th style="text-align:left">順</th><th style="text-align:left">呼び名</th><th style="text-align:left">職種</th><th style="text-align:left">雇用形態</th><th style="text-align:left">所属部門</th><th style="text-align:left">管理者</th></tr>'
+    +ro.map((r,i)=>'<tr'+(c[holdKey(r.name)]>1?' style="background:#fdecea"':'')+'><td>'+(i+1)+'</td><td>'+esc(r.name)+'</td><td>'+esc(r.job||'')+'</td><td>'+esc(r.emp||'')+'</td><td>'+esc(r.dept||'')+'</td><td>'+(r.mgr?'管理者':'')+'</td></tr>').join('')+'</table></details>';
+}
+/* 控えのファイル（この枠の「控えとして保存する」で出したもの）から、自社の職員名簿だけを戻す。ほかの項目は今のまま */
+function holdFileHTML(){
+  return '<div style="margin-top:12px;padding-top:10px;border-top:1px dashed #c9772a"><b>控えのファイルから職員名簿を戻す</b>　この枠の「控えとして保存する」で出したファイル（基本情報シート_控え_日付.json）を選ぶと、その中の名簿を見せます。<br>'
+    +'<input type="file" id="holdFile" accept=".json,application/json"><div id="holdFileOut" style="margin-top:6px"></div></div>';
+}
+function holdFileHook(o){
+  const f=document.getElementById('holdFile');if(!f)return;
+  f.onchange=()=>{
+    const out=document.getElementById('holdFileOut'),file=f.files&&f.files[0];if(!file)return;
+    const rd=new FileReader();
+    rd.onload=()=>{
+      let cd=null;try{cd=JSON.parse(rd.result);}catch(e){cd=null;}
+      if(!cd||!Array.isArray(cd.orgs)){out.innerHTML='<span style="color:var(--text-danger)">基本情報シートの控えのファイルではありません。</span>';return;}
+      const nm=orgName(o),cands=cd.orgs.filter(x=>x&&orgName(x)===nm);
+      if(!cands.length){out.innerHTML='<span style="color:var(--text-danger)">この控えには「'+esc(nm)+'」がありません。</span>';return;}
+      out.innerHTML=cands.map((x,i)=>{const r=holdRoN(x);return '<div style="margin:6px 0;padding:6px 8px;border:1px solid #e3cfb3;border-radius:8px;background:#fff">控えの中の「'+esc(nm)+'」'+(cands.length>1?'（'+(i+1)+'件目・'+(x.id===cd.activeOrg?'自社':'顧客')+'）':'')+'：職員名簿 <b>'+r.length+'名</b>'+holdRoTable(r)
+        +'<button type="button" data-holdfile="'+i+'" style="margin-top:6px;background:#1f3a2e;color:#fff;border:0">この名簿で、自社の職員名簿を戻して送る</button></div>';}).join('')+'<div id="holdFileMsg" style="font-size:13px"></div>';
+      out.querySelectorAll('[data-holdfile]').forEach(b=>{b.onclick=()=>{
+        const src=cands[+b.dataset.holdfile],r=holdRoN(src);
+        if(!confirm('この端末の自社「'+nm+'」の職員名簿を、控えの名簿（'+r.length+'名）に置き換えて、ほかの端末へ送ります。名簿のほかの項目は今のままです。よろしいですか？'))return;
+        const doc=loadDoc(),self=doc.orgs.find(x=>x.id===doc.activeOrg);if(!self){return;}
+        self.sheet=self.sheet||{};self.sheet.val=self.sheet.val||{};
+        self.sheet.val['職員名簿']=JSON.parse(JSON.stringify(src.sheet.val['職員名簿']));
+        const c={'従業員数（合計）':r.length,'うち正社員':r.filter(x=>x.emp==='常勤・正社員').length,'うち非常勤':r.filter(x=>x.emp==='非常勤').length};
+        Object.keys(c).forEach(k=>{self.sheet.val[k]=String(c[k]);});
+        BOOTED=false;localStorage.setItem(MKEY,JSON.stringify(doc));
+        const m=document.getElementById('holdFileMsg');m.textContent='送っています…';
+        TriSheetSync.forceSend(self.id).then(()=>{m.style.color='var(--text-success)';m.textContent='控えの名簿（'+r.length+'名）に戻して、ほかの端末へ送りました。この画面を閉じてください。';})
+          .catch(e=>{m.style.color='var(--text-danger)';m.textContent='この端末では戻しましたが、送れませんでした：'+(e.message||e);});
+      };});
+    };
+    rd.readAsText(file);
+  };
+}
 function holdDupList(d,o){const nm=orgName(o);return d.orgs.filter(x=>x&&orgName(x)===nm);}
 function holdRoN(x){return ((x&&x.sheet&&x.sheet.val&&Array.isArray(x.sheet.val['職員名簿']))?x.sheet.val['職員名簿']:[]).filter(r=>r&&String(r.name||'').trim());}
 function holdDupHTML(d,o){
@@ -1637,13 +1684,13 @@ window.addEventListener('storage',e=>{
     const box=document.createElement('div');
     box.style.cssText='margin:10px 0;padding:12px 14px;border:2px solid #c9772a;border-radius:10px;background:#fff7ec;line-height:1.7';
     box.innerHTML='<b>共有を止めて開いています。</b>ほかの端末とのやり取り（送る・受け取る）をしていません。この画面に出ているのは、この端末に残っている内容です。<br>'
-      +'この端末の自社（'+esc(orgName(o))+'）の職員名簿：<b>'+ro.length+'名</b><br><small>'+ro.map(r=>esc(r.name)).join('、')+'</small>'
+      +'この端末の自社（'+esc(orgName(o))+'）の職員名簿：<b>'+ro.length+'名</b>'+holdRoTable(ro)
       +'<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" id="holdSave">この端末の内容を控えとして保存する</button>'
       +'<button type="button" id="holdSend" style="background:#c9772a;color:#fff;border:0">この端末の内容を、共有の正しい版として送る</button></div>'
       +'<div id="holdMsg" style="margin-top:6px;font-size:13px"></div>'
-      +holdDupHTML(d,o);
+      +holdDupHTML(d,o)+holdFileHTML();
     const bar=document.getElementById('loadMsg');(bar&&bar.closest('div')?bar.closest('div'):document.body).insertAdjacentElement('beforebegin',box);
-    holdDupHook(d,o);
+    holdDupHook(d,o);holdFileHook(o);
     document.getElementById('holdSave').onclick=()=>{
       const t=localStorage.getItem(MKEY)||'';const a=document.createElement('a');
       a.href=URL.createObjectURL(new Blob([t],{type:'application/json'}));a.download='基本情報シート_控え_'+new Date().toISOString().slice(0,10)+'.json';

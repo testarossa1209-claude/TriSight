@@ -125,6 +125,13 @@
   .ssBody{flex:1;overflow:auto;padding:0 16px 16px}
   .ssBody table{border-collapse:collapse;width:100%;min-width:560px;font-size:12.5px;table-layout:fixed}
   .ssChip{white-space:nowrap}
+  .mhT{border-collapse:collapse;width:100%;min-width:640px;font-size:12.5px;table-layout:fixed}
+  .mhT th,.mhT td{border:1px solid var(--paper-deep);padding:4px;vertical-align:top}
+  .mhT thead th{background:var(--paper);font-weight:700}.mhT thead th.we{color:var(--red)}
+  .mhT th.who{width:110px;text-align:left;background:#fbf8f2;font-weight:700}.mhT th.who small{display:block;font-weight:400;color:var(--muted)}
+  .mhT td.mhOff{background:repeating-linear-gradient(45deg,#f3f0ea,#f3f0ea 4px,#ebe6dc 4px,#ebe6dc 8px);color:var(--muted);text-align:center}
+  .mhT .ssChip{display:block;border-radius:5px;background:#eef3f8;margin:0 0 3px;padding:2px 4px}
+  .mhCnt{text-align:right;font-size:12px;font-weight:700;color:var(--muted)}.mhCnt.full{color:var(--ok)}
   .ssBody th,.ssBody td{border:1px solid var(--paper-deep);padding:4px;vertical-align:top}
   .ssBody thead th{position:sticky;top:0;background:var(--paper);font-weight:700;z-index:1}
   .ssBody thead th.we{color:var(--red)}
@@ -169,7 +176,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-10</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-11</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -194,6 +201,7 @@ function tsGoBack(){
   <button data-tab="report">報告書の下書き</button>
   <button data-tab="admin">管理者の窓</button>
   <button data-tab="model">モデルコース</button>
+  <button data-tab="mihon">モデルコースの見本</button>
   <button data-tab="req">ご要望</button>
   <button data-tab="setup">名簿・設定</button>
 </nav>
@@ -363,6 +371,25 @@ function tsGoBack(){
   </div>
 </section>
 <!-- ===== ご要望（2026-10-26：使う人の声を集めて、トライタイムに取り込む） ===== -->
+<!-- ===== モデルコースの見本（2026-10-27・宏史さんの指示）===== -->
+<section class="tab" id="tab-mihon">
+  <div class="card">
+    <h2>モデルコースの見本（月の売上の目標から作る、1週間の表）</h2>
+    <p class="lead">月の売上の目標を選ぶと、その目標に届く1週間の訪問の組み方を、仮スケジュール表と同じ「職員 × 曜日」の表で作ります。見本の職員（職員A・B…）で作る架空の表なので、誰でも、どの目標でも試せます。実際の職員でモデルコースを作ると（「モデルコース」タブ）、職員ごとにこのような表になり、各職員のタブレットの「予定」タブには、その人の1日の流れと曜日ごとの件数が届きます。</p>
+    <div class="btns"><button class="btn" data-mh="2500000">月250万円コース</button><button class="btn" data-mh="3000000">月300万円コース</button><button class="btn" data-mh="3500000">月350万円コース</button></div>
+    <div class="row">
+      <div><label class="f" for="mh_goal">月の売上の目標（円）</label><input type="number" id="mh_goal" min="100000" step="100000" value="3000000"></div>
+      <div><label class="f" for="mh_price">1回の訪問の売上</label><select id="mh_price"></select></div>
+      <div><label class="f" for="mh_own">「自分で入れる」ときの1回の売上（円）</label><input type="number" id="mh_own" min="1000" step="10" placeholder="例：9000"></div>
+      <div><label class="f" for="mh_n">1人1日の訪問件数（上限）</label><input type="number" id="mh_n" min="1" max="12"></div>
+    </div>
+    <div class="btns"><button class="btn" id="mh_make">この条件で表を作る</button><button class="btn sub" id="mh_print">表を印刷する</button><span class="muted" id="mh_msg"></span></div>
+    <div id="mh_sum"></div>
+    <div class="tbl-scroll" id="mh_tbl"></div>
+    <p class="muted" id="mh_note"></p>
+  </div>
+</section>
+
 <section class="tab" id="tab-req">
   <div class="card">
     <h2>ご要望を残す</h2>
@@ -2359,7 +2386,7 @@ function applyDept(){
     d.kind === 'monitor' ? 'モニタリングの予定・面談の記録・' + d.client + 'の経過を、時間の流れで持つ（' + d.name + '）' :
     '各部署の予定のようすと、事務局からの連絡（' + d.name + '）';
   var show = function(id, on){ var el = $(id); if(el) el.style.display = on ? '' : 'none'; };
-  var tabOn = { plan:true, pt: d.kind !== 'office', intake: d.kind === 'visit', course: d.kind !== 'office', report: !!d.report, admin: d.kind === 'visit', model: d.kind === 'visit', req:true, setup:true };
+  var tabOn = { plan:true, pt: d.kind !== 'office', intake: d.kind === 'visit', course: d.kind !== 'office', report: !!d.report, admin: d.kind === 'visit', model: d.kind === 'visit', mihon: d.kind === 'visit', req:true, setup:true };
   /* 見る範囲（2026-10-27）：職員には管理者の窓とモデルコースを出さない。モデルコース（売上・評価）は管理者の端末だけ */
   if(R.lv === 'none') Object.keys(tabOn).forEach(function(k){ tabOn[k] = (k === 'setup'); });
   if(R.lv === 'staff') tabOn.admin = false;
@@ -2430,8 +2457,78 @@ function renderMine(){
     '<table><tr><th></th><th class="num">件数</th><th class="num">稼働率</th></tr>' +
     '<tr><td>モデルコース（この月）</td><td class="num">' + r.model + '件</td><td class="num">100%</td></tr>' +
     '<tr><td>いまの予定（キャンセル・休みの日を除く）</td><td class="num">' + r.plan + '件</td><td class="num"><b>' + mdPct(r.plan, r.model) + '</b></td></tr>' +
-    '<tr><td>実績（今日まで・' + (r.act != null ? esc(r.actSrc) : '記録なし') + '）</td><td class="num">' + (r.act != null ? r.act + '件' : '—') + '</td><td class="num">' + (r.act != null ? '<b>' + mdPct(r.act, r.modelPast) + '</b><br><small class="muted">今日までのモデル ' + r.modelPast + '件に対して</small>' : '—') + '</td></tr></table>';
+    '<tr><td>実績（今日まで・' + (r.act != null ? esc(r.actSrc) : '記録なし') + '）</td><td class="num">' + (r.act != null ? r.act + '件' : '—') + '</td><td class="num">' + (r.act != null ? '<b>' + mdPct(r.act, r.modelPast) + '</b><br><small class="muted">今日までのモデル ' + r.modelPast + '件に対して</small>' : '—') + '</td></tr></table>' + mineCourse(R.s, r.c);
 }
+/* 2026-10-27：職員のタブレットに、自分の週間モデルコース（曜日ごとの件数）と1日の流れを出す（稼働率の枠の続き） */
+function mineCourse(s, c){
+  var wk = mdWeekOf(s.id), cs = mdCourse(c.n), lbl = { mv:'移動', v:'訪問', brk:'休憩', 'in':'内勤', spare:'予備' };
+  return '<h3 style="margin-top:12px">あなたの週間モデルコース</h3><div class="tbl-scroll"><table><tr><th></th>' + MD_DOW.map(function(d){ return '<th class="num">' + DOW[+d] + '</th>'; }).join('') + '</tr>' +
+    '<tr><td>モデル</td>' + MD_DOW.map(function(d){ return '<td class="num">' + (c.days.indexOf(d) >= 0 ? c.n + '件' : '<span class="muted">—</span>') + '</td>'; }).join('') + '</tr>' +
+    '<tr><td>いまの週間予定</td>' + MD_DOW.map(function(d){ var k = wk.filter(function(v){ return String(v.dow) === d; }).length, on = c.days.indexOf(d) >= 0; return '<td class="num">' + (k || on ? '<span class="tag ' + (!on ? 'gray' : (k >= c.n ? 'green' : 'amber')) + '">' + k + '件</span>' : '<span class="muted">—</span>') + '</td>'; }).join('') + '</tr></table></div>' +
+    '<h3 style="margin-top:12px">1日のモデルコース（' + c.n + '件の日）</h3><p class="sm">' + cs.list.map(function(x){ return hm(x.a) + '〜' + hm(x.b) + ' ' + lbl[x.k]; }).join('　') + '</p>';
+}
+/* ---- モデルコースの見本（2026-10-27・宏史さんの指示「250万・300万・350万コースのサンプル。1週間この予定表通りに当て込めれば週○回・週75万、4週で300万と表示」）----
+   見本の職員（職員A・B…）で、月の目標÷4＝週の目標に届く訪問の回数を、月〜金に均して並べる。時刻は「勤務の決まり」の1日の流れ（mdCourse）で当てる。
+   1回の売上は料金表（令和8年6月1日から）から選ぶか、自分で入れる。書き込みはしない（見本だけ）。 */
+function mhPrices(){
+  var c = mdCfg(), kg = Math.floor(823 * (c.shogu ? 1.018 : 1) * c.tanka);
+  return [
+    { k:'psy', t:'精神科訪問看護（看護師・30分以上・週3日目まで）＋管理療養費（月2日目以降）＝' + yen(FEE.psy.n.o30 + FEE.kanriNext), v:FEE.psy.n.o30 + FEE.kanriNext },
+    { k:'kaigo', t:'介護保険の訪問看護（30分以上1時間未満・823単位 × 1単位' + c.tanka + '円' + (c.shogu ? '・処遇改善加算1.8%込み' : '') + '）＝' + yen(kg), v:kg },
+    { k:'own', t:'自分で入れる（右の欄）', v:0 }
+  ];
+}
+function mhRender(){
+  var sel = $('mh_price');
+  if(!sel.options.length){ sel.innerHTML = mhPrices().map(function(x){ return '<option value="' + x.k + '">' + esc(x.t) + '</option>'; }).join(''); }
+  if(!$('mh_n').value) $('mh_n').value = workRule().target;
+  if(!$('mh_tbl').innerHTML) mhMake();
+}
+function mhMake(){
+  var goal = Math.max(0, +$('mh_goal').value || 0), pk = $('mh_price').value, n = Math.max(1, Math.min(12, +$('mh_n').value || workRule().target));
+  var pr = mhPrices().filter(function(x){ return x.k === pk; })[0] || mhPrices()[0], P = pr.k === 'own' ? (+$('mh_own').value || 0) : pr.v;
+  if(!goal || !P){ $('mh_msg').textContent = !goal ? '月の売上の目標を入れてください。' : '1回の売上を入れてください。'; return; }
+  $('mh_msg').textContent = '';
+  var week = goal / 4, N = Math.ceil(week / P), days = ['1','2','3','4','5'], S = Math.max(1, Math.ceil(N / (n * days.length)));
+  var slots = S * days.length, base = Math.floor(N / slots), extra = N % slots, grid = [], i, L = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  for(i = 0; i < S; i++) grid.push({});
+  for(var di = 0, k = 0; di < days.length; di++) for(i = 0; i < S; i++, k++) grid[i][days[di]] = base + (k < extra ? 1 : 0);
+  var dayTot = {}; MD_DOW.forEach(function(d){ dayTot[d] = 0; });
+  var rows = grid.map(function(g, si){
+    var tw = 0;
+    var cells = MD_DOW.map(function(d){
+      var c = g[d] || 0; dayTot[d] += c; tw += c;
+      if(!c) return '<td class="mhOff">' + (days.indexOf(d) < 0 ? '休' : '') + '</td>';
+      var vs = mdCourse(c).list.filter(function(x){ return x.k === 'v'; });
+      return '<td>' + vs.map(function(x){ return '<span class="ssChip">' + hm(x.a) + ' 訪問</span>'; }).join('') + '<div class="mhCnt' + (c >= n ? ' full' : '') + '">' + c + '件</div></td>';
+    }).join('');
+    return '<tr><th class="who">職員' + (si < 26 ? L.charAt(si) : si + 1) + '<small>週 ' + tw + '件・' + yen(tw * P) + '</small></th>' + cells + '</tr>';
+  }).join('');
+  var wy = N * P, over = mdCourse(n).over;
+  $('mh_tbl').innerHTML = '<table class="mhT"><thead><tr><th class="who">職員</th>' + MD_DOW.map(function(d){ return '<th' + (d === '0' || d === '6' ? ' class="we"' : '') + '>' + DOW[+d] + '</th>'; }).join('') + '</tr></thead><tbody>' + rows +
+    '<tr><th class="who">日の計</th>' + MD_DOW.map(function(d){ return '<td class="num"><b>' + (dayTot[d] ? dayTot[d] + '件' : '') + '</b></td>'; }).join('') + '</tr></tbody></table>';
+  $('mh_sum').innerHTML = '<div class="judge free" style="margin:8px 0">月' + esc(mdYenShort(goal)) + 'コース：1週間この表のとおりにサービスを当て込めれば、<b>1週間に ' + N + '回</b> のサービス × 1回 ' + yen(P) + ' ＝ <b>週 ' + yen(wy) + '</b>。<b>4週で ' + yen(wy * 4) + '</b> です（月の目標 ' + yen(goal) + '）。<br>職員 ' + S + '人・1人1日 最大 ' + n + '件・月〜金で組んでいます。</div>';
+  $('mh_note').innerHTML = '週の目標は「月の目標 ÷ 4」（' + yen(Math.round(week)) + '）で、それに届く回数（' + N + '回）を、月〜金に均して並べています。実際の月はおよそ4.3週あるので、4週を超える日の訪問は上乗せになります。時刻は「名簿・設定」の「勤務の決まり」（出発 ' + esc(workRule().start) + '・1件 ' + workRule().visit + '分・移動 ' + workRule().mvMax + '分まで・休憩 ' + workRule().brk + '分）で当てています。' +
+    (over > 0 ? '<br><b style="color:var(--red)">1日 ' + n + '件では、退勤時刻を ' + minLabel(over) + ' 超えます。1人1日の件数を減らすか、勤務の決まりを見直してください。</b>' : '') +
+    '<br>1回の売上：' + esc(pr.k === 'own' ? '自分で入れた額 ' + yen(P) : pr.t) + '。料金表の出所は「モデルコース」タブの「料金表（令和8年6月1日から）と出所」にあります。見本なので、どこにも保存しません。';
+}
+function mdYenShort(v){ return (v % 10000 === 0) ? (v / 10000).toLocaleString('ja-JP') + '万円' : yen(v); }
+function mhPrint(){
+  if(!$('mh_tbl').innerHTML) mhMake();
+  var css = '@page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic",sans-serif;color:#10243b;font-size:9.5pt;line-height:1.5;margin:0}' +
+    '.hd{display:flex;align-items:center;gap:10px;border-bottom:1.5px solid #10243b;padding-bottom:6px;margin-bottom:8px}.hd img{width:30px;height:30px}.hd h1{font-size:14pt;margin:0}.hd p{margin:0;font-size:9pt;color:#5d6b7a}' +
+    'table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #cfc6b4;padding:3px;vertical-align:top;text-align:left}th{background:#f4f1ea}th.we{color:#b0402f}th.who small{display:block;font-weight:400;color:#5d6b7a}' +
+    '.ssChip{display:block;background:#eef3f8;border-radius:4px;margin:0 0 2px;padding:1px 3px}.mhCnt{text-align:right;font-weight:700;color:#5d6b7a}.mhCnt.full{color:#2e7d4f}.num{text-align:right}.judge{border:1px solid #cfc6b4;border-radius:6px;padding:6px 8px;margin:6px 0;background:#eef5ef}p{margin:4px 0;font-size:8.5pt;color:#5d6b7a}';
+  var win = window.open('', '_blank');
+  if(!win){ $('mh_msg').textContent = '印刷の画面を開けませんでした。ブラウザのポップアップの許可を確かめてください。'; return; }
+  win.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>モデルコースの見本</title><style>' + css + '</style></head><body><div class="hd"><img src="' + esc(new URL('TriSight_icon_512.png', location.href).href) + '" alt="TriSight®"><div><h1>モデルコースの見本</h1><p>' + esc(D().name) + '　作成日 ' + esc(jpDate(ymd(new Date()))) + '</p></div></div>' +
+    $('mh_sum').innerHTML + $('mh_tbl').innerHTML + '<p>' + $('mh_note').innerHTML + '</p><script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script></body></html>');
+  win.document.close();
+}
+document.querySelectorAll('[data-mh]').forEach(function(b){ b.addEventListener('click', function(){ $('mh_goal').value = b.getAttribute('data-mh'); mhMake(); }); });
+$('mh_make').addEventListener('click', mhMake);
+$('mh_print').addEventListener('click', mhPrint);
+$('mh_price').addEventListener('change', mhMake);
 function refreshAll(){
   mgMigrate(); applyDept();
   setShareNote(); renderAlerts();
@@ -2457,6 +2554,7 @@ document.querySelectorAll('#tabs button').forEach(function(b){
     if(t === 'report') renderReport();
     if(t === 'admin') renderAdmin();
     if(t === 'model') renderModel();
+    if(t === 'mihon') mhRender();
     if(t === 'pt'){ nrScanLocal(); renderPtList(); nrRender(); }
     if(t === 'req') renderReq();
   });

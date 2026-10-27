@@ -179,7 +179,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-13</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-14</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -392,6 +392,27 @@ function tsGoBack(){
     <div id="mh_sum"></div>
     <div class="tbl-scroll" id="mh_tbl"></div>
     <p class="muted" id="mh_note"></p>
+  </div>
+  <div class="card">
+    <h2>このコースをこなせるようになるまでの、成長の段階</h2>
+    <div class="judge free" style="margin:8px 0;font-size:15px;line-height:1.8">この表は「明日からこれをこなしなさい」という表ではありません。一つずつ技術を身につけて、ここまで来られたときの1週間の姿です。段階が一つ上がるごとに、自分の手で生み出せる売上が増え、それがそのまま自分の成長の証になります。</div>
+    <p class="lead">常勤は1日5〜8件、非常勤は1日3〜6件を段階にしています。月の売上の目安は「1日の件数 × 月の勤務日数 × 1回の売上」です。</p>
+    <div class="row">
+      <div><label class="f" for="sc_pd">非常勤の週の勤務日数（日）</label><input type="number" id="sc_pd" min="1" max="5" value="4"></div>
+    </div>
+    <h3 style="margin:10px 0 4px">常勤（月〜金・月におよそ21.7日）</h3>
+    <div class="tbl-scroll" id="sc_full"></div>
+    <h3 style="margin:14px 0 4px">非常勤</h3>
+    <div class="tbl-scroll" id="sc_part"></div>
+    <h3 style="margin:14px 0 4px">部署の組み合わせで見る</h3>
+    <p class="lead">常勤と非常勤の人数と段階を選ぶと、職員が出せる月の売上と、利用者の人数で取れる上限を並べます。売上の見込みは、この二つのうち少ない方です。</p>
+    <div class="row">
+      <div><label class="f" for="sc_fn">常勤の人数（名）</label><input type="number" id="sc_fn" min="0" value="2"></div>
+      <div><label class="f" for="sc_fk">常勤の1日の件数</label><select id="sc_fk"><option>5</option><option>6</option><option>7</option><option>8</option></select></div>
+      <div><label class="f" for="sc_pn">非常勤の人数（名）</label><input type="number" id="sc_pn" min="0" value="8"></div>
+      <div><label class="f" for="sc_pk">非常勤の1日の件数</label><select id="sc_pk"><option>3</option><option>4</option><option>5</option><option>6</option></select></div>
+    </div>
+    <div id="sc_mix"></div>
   </div>
   <div class="card">
     <h2>利用者を増やしたときの、月ごとの売上の見込み</h2>
@@ -2508,6 +2529,7 @@ function mhRender(){
   if(!$('mh_users').value){ var nu = patients().filter(function(p){ return !p.status || p.status === '利用中'; }).length; if(nu) $('mh_users').value = nu; }
   if(!$('mh_tbl').innerHTML) mhMake();
   grFill(); if(!$('gr_out').innerHTML) grMake();
+  scMake();
 }
 /* 1日の流れ（見本用）：訪問を詰めて並べず、午前（出発〜休憩）と午後（休憩明け〜内勤の前）に均して置き、
    訪問と訪問の間に移動と「ゆとり」を持たせる（2026-10-27 宏史さんの指示：移動の時間も予備時間を使うように、間隔に余裕を）。 */
@@ -2610,6 +2632,50 @@ function grMake(){
   $('gr_note').innerHTML = '1人の月の売上：週1回＝約' + u[1].v + '回・' + yen(u[1].yen) + '、週2回＝約' + u[2].v + '回・' + yen(u[2].yen) + '、週3回＝約' + u[3].v + '回・' + yen(u[3].yen) + '（精神科訪問看護・看護師・30分以上の基本療養費 ' + yen(FEE.psy.n.o30) + '、管理療養費は月の初日 ' + yen(FEE.kanriFirst[mdCfg().kanri] || FEE.kanriFirst.other) + '・2日目以降 ' + yen(FEE.kanriNext) + '）。月の回数は「週の回数×30.4÷7」を四捨五入したもので、月の日の並びで前後します。' +
     '要る看護師は、月の訪問の回数を「1人1日' + n + '件×月〜金（月におよそ21.7日）」で割った常勤換算です。2名体制の加算・週4日目以降（特別指示）・キャンセルは入れていません。' + (last ? '<br><b>' + esc(jpMonth(last.m)) + '：利用者 ' + last.users + '名・月の売上の見込み ' + yen(last.sales) + '・要る看護師 常勤換算 ' + last.nurse.toFixed(1) + '人。</b>' : '');
 }
+/* ---- 成長の段階（2026-10-27・宏史さんの指示「1日3〜6件は非常勤の勤め方。常勤は1日5〜8件」）----
+   月の売上の目安＝1日の件数 × 月の勤務日数 × 1回の売上（精神科訪問看護・看護師・30分以上＋管理療養費 2日目以降）。
+   常勤の月の勤務日数は月〜金で21.7日、非常勤は「週の勤務日数×30.4÷7」。 */
+var SC_FULL = [
+  { n:5, sk:['1件30分の訪問を、時間どおりに始めて終える','その日の記録を、その日のうちに書き終える'] },
+  { n:6, sk:['記録にかける時間を短くする（看護メモ・音声入力を使いこなす）','訪問の順番と移動を自分で組む（住所の近い順に寄せる）'] },
+  { n:7, sk:['キャンセルで空いた時間に、別の訪問を入れられる','状態の変化を自分で見立て、管理者・主治医へすぐ報告できる'] },
+  { n:8, sk:['新しい患者さんを、自分から受け持てる','非常勤・新しく入った人の同行で、やり方を教えられる'] }
+];
+var SC_PART = [
+  { n:3, sk:['1件30分の訪問を、時間どおりに始めて終える','その日の記録を、その日のうちに書き終える'] },
+  { n:4, sk:['記録にかける時間を短くする（看護メモ・音声入力を使いこなす）','訪問前の情報の確かめを、短い時間で済ませる'] },
+  { n:5, sk:['訪問の順番と移動を自分で組む（住所の近い順に寄せる）','キャンセルで空いた時間に、別の訪問を入れられる'] },
+  { n:6, sk:['状態の変化を自分で見立て、管理者・主治医へすぐ報告できる','新しい患者さんを、自分から受け持てる'] }
+];
+function scP(){ return FEE.psy.n.o30 + FEE.kanriNext; }
+function scPartDays(){ var d = Math.max(1, Math.min(5, +$('sc_pd').value || 4)); return { w:d, m:d * 30.4 / 7 }; }
+function scTable(list, days, note){
+  var P = scP(), w = workRule();
+  return '<table><tr><th>段階</th><th>1日の訪問</th><th class="num">1人の月の売上の目安</th><th>この段階で身につけること</th></tr>' + list.map(function(x, i){
+    var cnt = Math.round(x.n * days), yenM = Math.round(x.n * days * P);
+    return '<tr' + (i === list.length - 1 ? ' style="background:#fffaf2"' : '') + '><td><b>段階' + (i + 1) + '</b></td><td>1日' + x.n + '件<br><small class="muted">訪問 ' + minLabel(x.n * w.visit) + '</small></td><td class="num">月 約' + cnt + '件<br><b>約' + Math.round(yenM / 10000) + '万円</b></td><td><ul style="margin:0;padding-left:18px">' + x.sk.map(function(t){ return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></td></tr>';
+  }).join('') + '</table><p class="muted">' + note + '</p>';
+}
+function scMake(){
+  var P = scP(), pd = scPartDays();
+  $('sc_full').innerHTML = scTable(SC_FULL, 21.7, '1日の件数 × 月〜金（月におよそ21.7日）× 1回 ' + yen(P) + '（精神科訪問看護・看護師・30分以上＋管理療養費 2日目以降）。');
+  $('sc_part').innerHTML = scTable(SC_PART, pd.m, '1日の件数 × 週' + pd.w + '日（月におよそ' + pd.m.toFixed(1) + '日）× 1回 ' + yen(P) + '。');
+  var fn = Math.max(0, +$('sc_fn').value || 0), fk = +$('sc_fk').value || 5, pn = Math.max(0, +$('sc_pn').value || 0), pk = +$('sc_pk').value || 3;
+  var wk = fn * fk * 5 + pn * pk * pd.w, staffYen = Math.round((fn * fk * 21.7 + pn * pk * pd.m) * P);
+  var users = Math.max(0, +$('mh_users').value || 0), cap = Math.max(1, Math.min(7, +$('mh_cap').value || 3));
+  var h = '<table><tr><th>見るもの</th><th class="num">週の訪問</th><th class="num">月の売上</th></tr>' +
+    '<tr><td>職員が出せる量（常勤 ' + fn + '名 × 1日' + fk + '件・非常勤 ' + pn + '名 × 1日' + pk + '件 × 週' + pd.w + '日）</td><td class="num">' + wk + '回</td><td class="num"><b>約' + Math.round(staffYen / 10000) + '万円</b></td></tr>';
+  if(users){
+    var capW = users * cap, capYen = Math.round(capW * 30.4 / 7 * P);
+    h += '<tr><td>利用者の人数で取れる上限（' + users + '人 × 週' + cap + '回まで）</td><td class="num">' + capW + '回</td><td class="num"><b>約' + Math.round(capYen / 10000) + '万円</b></td></tr></table>';
+    var lack = wk > capW;
+    h += '<div class="judge ' + (lack ? 'fee' : 'free') + '" style="margin:8px 0">' + (lack
+      ? '<b>職員が出せる量（週' + wk + '回）に対して、利用者の人数で取れるのは週' + capW + '回までです。</b>この組み合わせで売上を上げるには、件数を上げるのと同時に、利用者をあと約' + Math.ceil((wk - capW) / cap) + '人（週' + cap + '回の人で数えて）増やす必要があります。'
+      : '<b>利用者の人数の上限（週' + capW + '回）の中に収まっています。</b>職員の件数を上げた分が、そのまま売上になります。') + '</div>';
+  } else h += '</table><p class="muted">上の「利用者の人数」を入れると、利用者の人数で取れる上限も並べます。</p>';
+  h += '<p class="muted">月の売上は1回 ' + yen(P) + 'で数えた目安で、月の初日の管理療養費・2名体制の加算・キャンセルは入れていません。利用者の上限は、週の回数 × 30.4 ÷ 7 で月に直しています。</p>';
+  $('sc_mix').innerHTML = h;
+}
 function mhCourseOf(v){ var c = Math.floor(v / 1000000); return c >= 3 ? '月' + c + '00万円台' : '月300万円に届かない'; }
 function mdYenShort(v){ return (v % 10000 === 0) ? (v / 10000).toLocaleString('ja-JP') + '万円' : yen(v); }
 function mhPrint(){
@@ -2629,6 +2695,7 @@ $('mh_make').addEventListener('click', mhMake);
 $('mh_print').addEventListener('click', mhPrint);
 $('mh_price').addEventListener('change', mhMake);
 ['mh_users','mh_cap','mh_n'].forEach(function(id){ $(id).addEventListener('change', mhMake); });
+['sc_pd','sc_fn','sc_fk','sc_pn','sc_pk','mh_users','mh_cap'].forEach(function(id){ $(id).addEventListener('change', scMake); });
 $('gr_make').addEventListener('click', grMake);
 ['gr_f1','gr_f2','gr_f3','gr_add','gr_from','gr_to','gr_nf'].forEach(function(id){ $(id).addEventListener('change', grMake); });
 function refreshAll(){

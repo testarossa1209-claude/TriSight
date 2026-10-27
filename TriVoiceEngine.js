@@ -405,7 +405,7 @@
   var cmd = null;
   function normJa(t){
     return String(t || '').replace(/[\s　、。,.・「」（）()！!？?…:：]/g, '').replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
-      .replace(/(を|に)?(押して|押す|おして|開いて|開く|ひらいて|して|する|ください|下さい|お願いします|おねがいします|頼む)+$/g, '').replace(/(ボタン|タブ)$/g, '');
+      .replace(/(を|に|が)?(押して|押す|おして|開いて|開く|開け|ひらいて|見せて|みせて|見せる|見たい|みたい|出して|だして|出す|表示して|表示する|選んで|えらんで|して|する|ください|下さい|ちょうだい|お願いします|おねがいします|頼む)+$/g, '').replace(/(ボタン|タブ)$/g, '');
   }
   function bigrams(s){ var a = []; for(var i = 0; i < s.length - 1; i++) a.push(s.slice(i, i + 2)); return a.length ? a : [s]; }
   function dice(a, b){ if(!a || !b) return 0; var A = bigrams(a), B = bigrams(b).slice(), hit = 0; A.forEach(function(x){ var i = B.indexOf(x); if(i >= 0){ hit++; B.splice(i, 1); } }); return 2 * hit / (A.length + bigrams(b).length); }
@@ -451,7 +451,7 @@
     var clicks = [].slice.call(document.querySelectorAll('button, summary, [role=button]')).filter(function(n){ return visible(n) && !n.classList.contains('tv-dict-btn') && !n.classList.contains('tv-cmd-btn') && !n.classList.contains('tv-cmd-pick') && !(cmd.exclude && n.closest(cmd.exclude)); });
     clicks.forEach(function(n){
       var t = normJa(n.textContent); if(!t) return;
-      var sc = u === t ? 3 : (u.indexOf(t) >= 0 && t.length >= 2 ? 1.5 + t.length / 40 : (t.indexOf(u) >= 0 && u.length >= 3 ? 1.2 + u.length / 40 : dice(u, t)));
+      var sc = u === t ? 3 : (u.indexOf(t) >= 0 && t.length >= 2 ? 1.5 + t.length / 40 : (t.indexOf(u) >= 0 && u.length >= 2 ? 1.0 + u.length / 40 : dice(u, t)));
       if(sc >= 0.45) acts.push({ k:'click', n:n, t:n.textContent.trim().replace(/\s+/g, ' '), sc:sc });
     });
     if(!acts.length){ cmdTip('当てはまるボタンや欄が、いまの画面に見つかりませんでした。聞き取った言葉：「' + txt + '」', 'warn'); return; }

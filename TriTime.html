@@ -180,7 +180,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-21</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-24</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -519,6 +519,7 @@ function tsGoBack(){
     <textarea id="c_note" style="min-height:48px"></textarea>
     <div id="c_judge"></div>
     <div class="btns"><button class="btn" id="c_save">この内容で記録する</button><button class="btn sub" id="c_clear">入力を消す</button></div>
+    <div id="c_after"></div>
   </div>
   <div class="card">
     <h2>最近のキャンセル</h2>
@@ -595,6 +596,11 @@ function tsGoBack(){
     <p class="lead"><span data-t="{client}">患者さん</span>ごとの回数と、先月から変わった点を出します。売上への影響は「名簿・設定」に単価を入れたときだけ計算します。</p>
     <label class="f" for="ad_month">月</label><input type="month" id="ad_month" style="max-width:220px">
     <div class="tbl-scroll" id="adCancel"></div>
+  </div>
+  <div class="card">
+    <h2>看護記録もキャンセルの記録もない訪問（未報告のキャンセルの疑い）</h2>
+    <p class="lead">上で選んだ月のうち、看護記録を取り込んだ日について、週間予定にあるのに、看護記録もキャンセルの受付の記録もない訪問を出します。キャンセルが事務局に伝えられていない疑いがあります。確かめて、キャンセルだったものは「キャンセルとして受け付ける」から記録してください。キャンセル料の案内をしなかったことが分かった場合は、職員の指導の対象です。</p>
+    <div class="tbl-scroll" id="adHidden"></div>
   </div>
   <div class="card" id="cardAttend">
     <h2>出勤と実績（月）</h2>
@@ -1013,12 +1019,31 @@ function doctorStatus(no){
 function cancelOf(no, date, time){
   return events().filter(function(e){ return e.type === 'cancel' && e.patientNo === no && e.date === date && (!time || !e.time || e.time === time); })[0] || null;
 }
+/* 予定の組み換え（2026-10-27）：キャンセルで空いた時間に、同じ日の後の訪問を前倒しした記録（type "move"）。
+   週間予定は書き換えず、その日だけ時刻と担当を置き換える。取り消しは move の記録を消すだけ。 */
+function movesOn(date){ return events().filter(function(e){ return e.type === 'move' && e.date === date; }); }
 function visitsOn(date){
-  var d = parseYmd(date); var w = d.getDay();
+  var d = parseYmd(date); var w = d.getDay(), mv = movesOn(date);
   return weekly().filter(function(v){ return +v.dow === w; }).map(function(v){
-    var p = patient(v.no) || {};
-    return { date:date, time:v.time, min:v.min, no:v.no, area:p.area || '', staffId:v.staffId, withId:v.withId || '', cx:cancelOf(v.no, date, v.time) };
+    var p = patient(v.no) || {}, m = mv.filter(function(e){ return e.patientNo === v.no && e.fromTime === v.time; })[0];
+    var t = m ? m.toTime : v.time, sid = m ? (m.toStaff || v.staffId) : v.staffId;
+    return { date:date, time:t, min:v.min, no:v.no, area:p.area || '', staffId:sid, withId:v.withId || '', cx:cancelOf(v.no, date, t), moved:m ? { id:m.id, from:v.time, fromStaff:v.staffId } : null };
   }).sort(function(a,b){ return a.time < b.time ? -1 : 1; });
+}
+/* 信用度（2026-10-27 宏史さんの指示「キャンセルの多い患者は信用度が下がる」）：直近90日のキャンセルから出す。
+   100から、体調・病状以外（明確な理由のないもの）1回につき10、前日の締め切りを過ぎていればさらに5、体調・病状のものは1回につき3を引く。 */
+/* キャンセル料をいただかない扱いを決められるのは、事務局（経営企画事務職）と全体の管理者だけ（2026-10-27 宏史さんの指示：看護師がキャンセル料の案内を避けて事務局に伝えないことを防ぐ） */
+function canWaive(){ var r = role(); return r.lv === 'all' || r.lv === 'office'; }
+function trustOf(no){
+  var since = ymd(addDays(new Date(), -90)), cx = events().filter(function(e){ return e.type === 'cancel' && e.patientNo === no && (e.date || '') >= since; });
+  var other = cx.filter(function(e){ return e.cat !== '体調・病状'; }), sc = 100;
+  cx.forEach(function(e){ sc -= (e.cat === '体調・病状' ? 3 : 10) + (e.cat !== '体調・病状' && e.late ? 5 : 0); });
+  sc = Math.max(0, sc);
+  return { sc:sc, lv:sc >= 80 ? '高' : sc >= 50 ? '中' : '低', n:cx.length, other:other.length };
+}
+function trustTag(no, full){
+  var t = trustOf(no); if(!t.n && !full) return '';
+  return '<span class="tag ' + (t.lv === '高' ? 'green' : t.lv === '中' ? 'amber' : 'red') + '">信用度 ' + t.lv + '（' + t.sc + '）</span>' + (full ? ' <small class="muted">直近90日のキャンセル ' + t.n + '回・うち体調・病状以外 ' + t.other + '回</small>' : '');
 }
 
 function renderPlan(){
@@ -1041,6 +1066,8 @@ function renderPlan(){
       var ds = doctorStatus(v.no);
       if(D().doctor && !ds.ok) tags += '<span class="tag amber">主治医への確認：未</span>';
       if(hardInfo(v.no, ym(date)).on) tags += '<span class="tag red">困難患者</span>';
+      if(v.moved) tags += '<span class="tag green">組み換え（元 ' + esc(v.moved.from) + (v.moved.fromStaff !== v.staffId ? '・' + esc(staffName(v.moved.fromStaff)) : '') + '）</span> <button class="btn small sub" data-unmove="' + esc(v.moved.id) + '">組み換えを取り消す</button>';
+      if(trustOf(v.no).lv === '低') tags += trustTag(v.no);
       var offw = v.cx ? '' : offWhy(v.staffId, v.date); if(offw) tags += '<span class="tag red">要調整：担当が休み（' + esc(offw) + '）</span>';
       var key = v.date + '|' + v.time + '|' + v.no;
       html += '<div class="visit' + (v.cx ? ' cx' : '') + '"><div class="t">' + esc(v.time) + '</div>' +
@@ -1054,6 +1081,12 @@ function renderPlan(){
   renderBoard();
   $('planBody').querySelectorAll('[data-gap]').forEach(function(b){
     b.addEventListener('click', function(){ toggleGap(b.getAttribute('data-gap')); });
+  });
+  $('planBody').querySelectorAll('[data-unmove]').forEach(function(b){
+    b.addEventListener('click', function(){
+      if(!confirm('この組み換えを取り消し、元の時刻・担当に戻しますか。')) return;
+      saveEvents(events().filter(function(e){ return e.id !== b.getAttribute('data-unmove'); })); renderPlan(); renderToday();
+    });
   });
   renderOffice();
 }
@@ -1095,6 +1128,7 @@ function toggleGap(key){
   if(cands.length){
     h += '<ul>' + cands.map(function(v, idx){
       return '<li>' + esc(v.time) + '　' + esc(dn(v.no)) + '（' + esc(v.area || '地区未登録') + (v.area && v.area === area ? '・同じ地区' : '') + '・現在の担当 ' + esc(staffName(v.staffId)) + '）' +
+        ' <button class="btn small amber" data-move="' + idx + '">了承を得て前倒しする</button>' +
         ' <button class="btn small danger" data-decline="' + esc(v.no) + '" data-i="' + idx + '">この案を断る</button>' +
         '<div class="dec" id="dec-' + idx + '-' + esc(key.replace(/[^0-9A-Za-z]/g,'_')) + '" style="display:none;margin-top:6px"><input type="text" placeholder="断る理由を一言（言葉のまま）"> <button class="btn small" data-decsave="1">残す</button></div></li>';
     }).join('') + '</ul>';
@@ -1112,6 +1146,20 @@ function toggleGap(key){
   }
   box.innerHTML = h;
   box.style.display = '';
+  box.querySelectorAll('[data-move]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var v = cands[+b.getAttribute('data-move')]; if(!v) return;
+      if(!confirm(dn(v.no) + 'の ' + v.time + ' の訪問を、' + time + '（' + staffName(me) + '）へ前倒しします。' + D().client + 'の了承は得ましたか。')) return;
+      var ev = events(), src = weekly().filter(function(w){ return w.no === v.no && +w.dow === parseYmd(date).getDay() && (w.time === v.time || (v.moved && w.time === v.moved.from)); })[0];
+      var fromT = v.moved ? v.moved.from : v.time;
+      ev = ev.filter(function(e){ return !(e.type === 'move' && e.date === date && e.patientNo === v.no && e.fromTime === fromT); });
+      ev.push({ id:uid(), type:'move', patientNo:v.no, date:date, fromTime:fromT, toTime:time, toStaff:me, by:dev().me || '', created:nowLocal() });
+      var to = [me, v.staffId].filter(function(x, i, a){ return x && a.indexOf(x) === i; });
+      ev.push({ id:uid(), type:'note', kind:'予定の組み換え', from:dev().me || me, to:to, title:'【予定の組み換え】' + jpDate(date) + '　' + dn(v.no) + ' を ' + v.time + ' → ' + time + '（' + staffName(me) + '）', body:'キャンセルで空いた ' + time + ' に、' + dn(v.no) + '（' + (v.area || '地区未登録') + '）の ' + v.time + ' の訪問を前倒ししました。' + (v.staffId !== me ? '担当は ' + staffName(v.staffId) + ' さんから ' + staffName(me) + ' さんに替わります。' : ''), mDate:'', mTime:'', created:nowLocal(), date:ymd(new Date()) });
+      saveEvents(ev); renderPlan(); renderToday();
+      var nb = $('gap-' + key.replace(/[^0-9A-Za-z]/g,'_')); if(nb){ nb.style.display = ''; nb.innerHTML = '<div class="judge free">' + esc(dn(v.no)) + 'の訪問を ' + esc(time) + ' に前倒ししました。担当の看護師に連絡板で知らせました。</div>'; }
+    });
+  });
   box.querySelectorAll('[data-decline]').forEach(function(b){
     b.addEventListener('click', function(){
       var d = $('dec-' + b.getAttribute('data-i') + '-' + key.replace(/[^0-9A-Za-z]/g,'_'));
@@ -1255,8 +1303,13 @@ function renderJudge(){
   if(late == null){ $('c_judge').innerHTML = ''; return; }
   var cut = settings().cut;
   var waive = $('c_waive').checked;
-  if(!late) $('c_judge').innerHTML = '<div class="judge free">前日' + cut + '時までの連絡です。キャンセル料はかかりません。</div>';
-  else $('c_judge').innerHTML = '<div class="judge fee">前日' + cut + '時を過ぎた連絡です。' + (waive ? '今回はキャンセル料をいただかない扱いにします。' : 'キャンセル料がかかります。') + '</div>';
+  var cat = $('c_cat').value, no = selNo('c_no'), tr = no ? '<br>' + trustTag(no, true) : '';
+  var cw = canWaive(); $('c_waive').disabled = !cw; $('c_waiveWhy').disabled = !cw; if(!cw) $('c_waive').checked = false;
+  if(!cw) waive = false;
+  tr += (cat === 'それ以外' ? '<div style="margin-top:6px;padding:8px 10px;background:#fff;border-radius:6px;color:var(--ink);font-weight:400">「気分が乗らない」「会いたくない」などは、明確な理由に当たりません。キャンセル料の案内は、社会のルールを身につける支援（主治医の指示書にもある指導）の一部です。' + D().client + 'の気持ちを理由に案内をしないことは、指導の方針に反します。キャンセル料は必ず事務局に伝え、いただかない扱いは事務局が決めます。</div>' : '') +
+    (late && !cw ? '<div class="muted" style="margin-top:4px">「今回はキャンセル料をいただかない」は、事務局の端末でだけ選べます。</div>' : '');
+  if(!late) $('c_judge').innerHTML = '<div class="judge free">前日' + cut + '時までの連絡です。契約上、キャンセル料はかかりません。' + (cat === 'それ以外' ? '<br><b>体調・病状以外の理由のため、信用度が下がります。</b>' : '') + tr + '</div>';
+  else $('c_judge').innerHTML = '<div class="judge fee">前日' + cut + '時を過ぎた連絡です。' + (waive ? '今回はキャンセル料をいただかない扱いにします（理由を必ず残してください）。' : (cat === '体調・病状' ? 'キャンセル料の対象です（体調・病状によるものです。いただかない場合は、下で理由を残してください）。' : '<b>明確な理由のないキャンセルです。キャンセル料を請求します。</b>')) + tr + '</div>';
 }
 function intakeClear(){
   ['c_no','c_date','c_time','c_staff','c_words','c_cat','c_by','c_fwdTo','c_note','c_waiveWhy','c_raw'].forEach(function(id){ $(id).value = ''; $(id).classList.remove('ai-filled'); });
@@ -1264,26 +1317,95 @@ function intakeClear(){
   $('c_recv').value = nowLocal();
   $('c_judge').innerHTML = '';
 }
+/* ---- キャンセルの事後処理をまとめて行う（2026-10-27 宏史さんの指示）----
+   ①空いた時間の組み換え（同じ日の後の訪問の前倒し。同じ地区を先に、拒否の記録がある組み合わせは外す）
+   ②担当の看護師へ：キャンセルの中身と、組み換え後のその日の予定
+   ③前倒しする訪問の元の担当へ：組み換えの知らせ
+   ④事務局へ：キャンセル料の扱いと、組み換えの結果の報告
+   を「まとめて処理する」1回で行う。前倒しは、その患者さんの了承を得てから。 */
+function gapCands(date, time, no, me){
+  var slot = visitsOn(date).filter(function(v){ return v.time === time && v.no === no; })[0], area = slot ? slot.area : ((patient(no) || {}).area || '');
+  return visitsOn(date).filter(function(v){ return !v.cx && v.time > time && v.no !== no && !activeRefusal(v.no, me); })
+    .sort(function(a, b){ var sa = (a.area && a.area === area) ? 0 : 1, sb = (b.area && b.area === area) ? 0 : 1; return sa - sb || (a.time < b.time ? -1 : 1); });
+}
+function dayPlanText(date, sid){
+  return visitsOn(date).filter(function(v){ return !v.cx && (v.staffId === sid || v.withId === sid); }).map(function(v){ return v.time + ' ' + dn(v.no) + '（' + (v.area || '地区未登録') + '）' + (v.moved ? '［組み換え・元 ' + v.moved.from + '］' : ''); }).join('／') || 'この日の訪問はありません';
+}
+function afterOpen(c){
+  var box = $('c_after'); if(!box) return;
+  if(!c.date || !c.time || !c.staffId){ box.innerHTML = '<div class="judge fee" style="margin:8px 0">訪問の時刻と担当が分からないため、組み換えはできません。担当の看護師と事務局への知らせは、連絡板から出してください。</div>'; return; }
+  var cs = gapCands(c.date, c.time, c.no, c.staffId);
+  var office = DEPTS.filter(function(d){ return d.kind === 'office'; })[0], offIds = office ? deptStaff(office).map(function(s){ return s.id; }) : [];
+  box.innerHTML = '<div class="card" style="margin:10px 0;border:2px solid var(--amber)"><h3 style="margin:0 0 6px">事後処理をまとめて行う：' + esc(jpDate(c.date)) + ' ' + esc(c.time) + '（' + esc(staffName(c.staffId)) + '）が空きました</h3>' +
+    '<label class="f" for="af_move">① 空いた時間の組み換え</label><select id="af_move"><option value="">組み換えない（空いたままにする）</option>' +
+    cs.map(function(v, i){ return '<option value="' + i + '"' + (i === 0 ? ' selected' : '') + '>' + esc(v.time) + '　' + esc(dn(v.no)) + '（' + esc(v.area || '地区未登録') + '・担当 ' + esc(staffName(v.staffId)) + '）を ' + esc(c.time) + ' に前倒しする</option>'; }).join('') + '</select>' +
+    (cs.length ? '<label style="display:block;margin:6px 0"><input type="checkbox" id="af_ok"> 前倒しする患者さんの了承を得た</label>' : '<p class="muted">この日の後の時間帯に、前倒しできる訪問はありません。</p>') +
+    '<label class="f">② 知らせる相手（連絡板とタブレットに出ます）</label>' +
+    '<label style="margin-right:12px"><input type="checkbox" id="af_toNurse" checked> 担当の看護師（' + esc(staffName(c.staffId)) + '）</label>' +
+    '<label style="margin-right:12px"><input type="checkbox" id="af_toMoved" checked> 前倒しする訪問の担当</label>' +
+    '<label><input type="checkbox" id="af_toOffice" checked' + (offIds.length ? '' : ' disabled') + '> 事務局' + (offIds.length ? '' : '（名簿に事務局の職員がいません）') + '</label>' +
+    '<div class="btns" style="margin-top:8px"><button class="btn amber" id="af_go">まとめて処理する</button><button class="btn sub" id="af_skip">あとで行う</button></div><div id="af_res"></div></div>';
+  $('af_skip').onclick = function(){ box.innerHTML = '<p class="muted">事後処理はあとで行えます。「予定」タブのキャンセルの訪問の「空いた時間の案」から組み換えられます。</p>'; };
+  $('af_go').onclick = function(){
+    var mi = $('af_move').value, v = mi === '' ? null : cs[+mi], done = [];
+    if(v && !$('af_ok').checked){ alert('前倒しする患者さんの了承を得てから、印を付けてください。了承がまだなら「組み換えない」を選んで先に知らせだけを出せます。'); return; }
+    var ev = events(), now = nowLocal(), me = dev().me || c.by || '';
+    if(v){
+      var fromT = v.moved ? v.moved.from : v.time;
+      ev = ev.filter(function(e){ return !(e.type === 'move' && e.date === c.date && e.patientNo === v.no && e.fromTime === fromT); });
+      ev.push({ id:uid(), type:'move', patientNo:v.no, date:c.date, fromTime:fromT, toTime:c.time, toStaff:c.staffId, by:me, created:now });
+      done.push('組み換え：' + dn(v.no) + ' を ' + v.time + ' → ' + c.time + '（' + staffName(c.staffId) + '）');
+    }
+    saveEvents(ev); ev = events();
+    var head = jpDate(c.date) + ' ' + c.time + '　' + dn(c.no);
+    if($('af_toNurse').checked){
+      ev.push({ id:uid(), type:'note', kind:'キャンセル', from:me, to:[c.staffId], title:'【キャンセルと組み換え】' + head + ' がキャンセルになりました',
+        body:'理由（言葉のまま）：「' + c.words + '」（' + c.cat + '）。' + (c.fee ? 'キャンセル料を請求します。' : (c.late ? 'キャンセル料はいただかない扱い（事務局の判断）です。' : '前日の締め切りまでの連絡のため、キャンセル料はかかりません。')) +
+          (v ? '空いた ' + c.time + ' に ' + dn(v.no) + '（' + (v.area || '地区未登録') + '）を前倒ししました。' : '空いた時間は、記録の片付けに使ってください。') + '　この日のあなたの予定：' + dayPlanText(c.date, c.staffId), mDate:'', mTime:'', created:now, date:ymd(new Date()) });
+      done.push('担当の看護師（' + staffName(c.staffId) + '）へ知らせ');
+    }
+    if(v && $('af_toMoved').checked && v.staffId !== c.staffId){
+      ev.push({ id:uid(), type:'note', kind:'予定の組み換え', from:me, to:[v.staffId], title:'【予定の組み換え】' + jpDate(c.date) + '　' + dn(v.no) + ' の ' + v.time + ' の訪問は ' + staffName(c.staffId) + 'さんが ' + c.time + ' に行きます',
+        body:'キャンセルで空いた時間に前倒ししたため、この訪問はあなたの予定から外れます。　この日のあなたの予定：' + dayPlanText(c.date, v.staffId), mDate:'', mTime:'', created:now, date:ymd(new Date()) });
+      done.push('前倒しした訪問の元の担当（' + staffName(v.staffId) + '）へ知らせ');
+    }
+    if($('af_toOffice').checked && offIds.length){
+      ev.push({ id:uid(), type:'note', kind:'キャンセル', from:me, to:offIds, title:'【事後処理の報告】' + head + '（担当 ' + staffName(c.staffId) + '）' + (c.fee ? '　キャンセル料あり' : ''),
+        body:(c.fee ? 'キャンセル料を請求してください。' : (c.late ? 'キャンセル料はいただかない扱いです。' : 'キャンセル料はかかりません。')) + (v ? '空いた時間に ' + dn(v.no) + ' を ' + v.time + ' → ' + c.time + '（' + staffName(c.staffId) + '）で前倒ししました（患者さんの了承あり）。' : '組み換えはしていません。') + '　信用度：' + trustOf(c.no).lv, mDate:'', mTime:'', created:now, date:ymd(new Date()) });
+      done.push('事務局へ報告');
+    }
+    saveEvents(ev); renderPlan(); renderToday(); renderBoard();
+    box.innerHTML = '<div class="judge free" style="margin:8px 0"><b>事後処理を終えました。</b><ul style="margin:4px 0 0;padding-left:18px">' + done.map(function(t){ return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>';
+  };
+}
 function intakeSave(){
   var need = [['c_no','契約書番号'],['c_date','訪問の日'],['c_words', D().client + 'が言った理由'],['c_cat','理由の分類'],['c_recv','連絡を受けた日時'],['c_by','受けた人']];
   for(var i = 0; i < need.length; i++){ if(!$(need[i][0]).value.trim()){ alert('「' + need[i][1] + '」が入っていません。'); $(need[i][0]).focus(); return; } }
   var late = isLate($('c_date').value, $('c_recv').value);
   var waive = $('c_waive').checked;
-  var ev = events();
+  if(waive && !canWaive()){ alert('キャンセル料をいただかない扱いは、事務局だけが決められます。'); return; }
+  if(late && waive && !$('c_waiveWhy').value.trim()){ alert('キャンセル料をいただかない理由を入れてください。'); $('c_waiveWhy').focus(); return; }
+  var ev = events(), cxNo = selNo('c_no'), cxDate = $('c_date').value, cxTime = $('c_time').value, cxStaff = $('c_staff').value, fee = !!late && !waive;
+  /* 事務局へ連絡板で知らせる（担当の看護師には、共有でキャンセルの知らせが別に届く） */
+  var office = DEPTS.filter(function(d){ return d.kind === 'office'; })[0], offIds = office ? deptStaff(office).map(function(s){ return s.id; }).filter(function(id){ return id !== $('c_by').value; }) : [];
+  if(offIds.length) ev.push({ id:uid(), type:'note', kind:'キャンセル', from:$('c_by').value, to:offIds, title:'【キャンセル】' + jpDate(cxDate) + ' ' + cxTime + '　' + dn(cxNo) + '（担当 ' + staffName(cxStaff) + '）' + (fee ? '　キャンセル料あり' : ''),
+    body:'理由（言葉のまま）：「' + $('c_words').value.trim() + '」／分類：' + $('c_cat').value + '／連絡を受けた日時：' + $('c_recv').value.replace('T', ' ') + '／' + (late ? '前日の締め切りを過ぎた連絡' : '前日の締め切りまでの連絡') + (fee ? '・キャンセル料を請求' : (late ? '・いただかない（' + $('c_waiveWhy').value.trim() + '）' : '')) + '／信用度：' + trustOf(cxNo).lv, mDate:'', mTime:'', created:nowLocal(), date:ymd(new Date()) });
   ev.push({ id:uid(), type:'cancel', patientNo:selNo('c_no'), date:$('c_date').value, time:$('c_time').value, staffId:$('c_staff').value,
     words:$('c_words').value.trim(), cat:$('c_cat').value, recv:$('c_recv').value, by:$('c_by').value,
     fwdTo:$('c_fwdTo').value, late:!!late, fee:!!late && !waive, waive:waive, waiveWhy:$('c_waiveWhy').value.trim(), note:$('c_note').value.trim(), created:nowLocal() });
   saveEvents(ev);
+  var afterArg = { no:cxNo, date:cxDate, time:cxTime, staffId:cxStaff, fee:fee, late:!!late, words:$('c_words').value.trim(), cat:$('c_cat').value, recv:$('c_recv').value, by:$('c_by').value };
   intakeClear();
   renderIntakeList();
-  $('micStatus').textContent = '記録しました。次の受付はマイクを押して話してください。';
+  $('micStatus').textContent = '記録しました。' + (offIds.length ? '事務局に連絡板で知らせました。' : '') + '続けて下の「事後処理」をまとめて行ってください。';
+  afterOpen(afterArg);
 }
 function renderIntakeList(){
   var cx = events().filter(function(e){ return e.type === 'cancel' && inDept(e.patientNo); }).sort(function(a,b){ return (b.recv||'') < (a.recv||'') ? -1 : 1; }).slice(0, 20);
   if(!cx.length){ $('intakeList').innerHTML = '<p class="empty">まだキャンセルの記録はありません。</p>'; return; }
   $('intakeList').innerHTML = '<div class="tbl-scroll"><table><tr><th>訪問</th><th>契約書番号</th><th>理由（言葉のまま）</th><th>分類</th><th>キャンセル料</th><th>受けた人</th><th></th></tr>' +
     cx.map(function(e){
-      return '<tr><td>' + esc(jpDate(e.date)) + ' ' + esc(e.time || '') + '</td><td>' + esc(dn(e.patientNo)) + '</td><td>「' + esc(e.words) + '」</td><td>' + esc(e.cat) + '</td><td>' +
+      return '<tr><td>' + esc(jpDate(e.date)) + ' ' + esc(e.time || '') + '</td><td>' + esc(dn(e.patientNo)) + '<br>' + trustTag(e.patientNo) + '</td><td>「' + esc(e.words) + '」</td><td>' + esc(e.cat) + '</td><td>' +
         (e.fee ? '<span class="tag amber">あり</span>' : (e.late ? '<span class="tag gray">いただかない</span>' : '<span class="tag gray">なし</span>')) +
         '</td><td>' + esc(staffName(e.by)) + (e.fwdTo ? '→' + esc(staffName(e.fwdTo)) : '') + '</td><td><button class="btn small danger" data-del="' + esc(e.id) + '">取り消す</button></td></tr>';
     }).join('') + '</table></div>';
@@ -1413,7 +1535,38 @@ function renderReport(){
 }
 
 /* ---- 管理者の窓 ---- */
+function hiddenCancels(m){
+  var recs = live('records').filter(function(x){ return x.date && ym(x.date) === m; }), days = {}, has = {};
+  recs.forEach(function(x){ days[x.date] = 1; has[x.date + '|' + D().pfx + String(x.patientNo || '')] = 1; });
+  var today = ymd(new Date()), out = [];
+  Object.keys(days).sort().forEach(function(d){
+    if(d >= today) return;
+    visitsOn(d).forEach(function(v){ if(!v.cx && !has[d + '|' + v.no]) out.push(v); });
+  });
+  return { list:out, days:Object.keys(days).length };
+}
+function renderHidden(){
+  var m = $('ad_month').value, box = $('adHidden'); if(!m || !box) return;
+  var r = hiddenCancels(m);
+  if(!r.days){ box.innerHTML = '<p class="empty">この月の看護記録がまだ取り込まれていません。看護記録を取り込むと、ここで突き合わせます。</p>'; return; }
+  if(!r.list.length){ box.innerHTML = '<p class="empty">看護記録を取り込んだ ' + r.days + '日分で、記録の無い訪問はありません。</p>'; return; }
+  var by = {}; r.list.forEach(function(v){ by[v.staffId] = (by[v.staffId] || 0) + 1; });
+  box.innerHTML = '<div class="judge fee" style="margin:8px 0">看護記録を取り込んだ ' + r.days + '日分で、記録の無い訪問が <b>' + r.list.length + '件</b> あります（担当ごと：' + Object.keys(by).map(function(k){ return esc(staffName(k)) + ' ' + by[k] + '件'; }).join('、') + '）。</div>' +
+    '<table><tr><th>訪問</th><th>契約書番号</th><th>担当</th><th></th></tr>' + r.list.map(function(v, i){
+      return '<tr><td>' + esc(jpDate(v.date)) + ' ' + esc(v.time) + '</td><td>' + esc(dn(v.no)) + ' ' + trustTag(v.no) + '</td><td>' + esc(staffName(v.staffId)) + '</td><td><button class="btn small amber" data-hid="' + i + '">キャンセルとして受け付ける</button></td></tr>';
+    }).join('') + '</table>';
+  box.querySelectorAll('[data-hid]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var v = r.list[+b.getAttribute('data-hid')];
+      document.querySelector('#tabs button[data-tab=intake]').click();
+      intakeClear(); $('c_no').value = dn(v.no); $('c_date').value = v.date; $('c_time').value = v.time; $('c_staff').value = v.staffId;
+      $('c_note').value = '看護記録の無い訪問から受け付けた（事務局に伝えられていなかったキャンセルの疑い）';
+      $('c_words').focus(); renderJudge();
+    });
+  });
+}
 function renderAdmin(){
+  renderHidden();
   var m = $('ad_month').value; if(!m) return;
   var s = settings(); var price = +s.price || 0, fee = +s.fee || 0;
   var rows = patients().map(function(p){ var a = monthStats(p.no, m), b = monthStats(p.no, prevYm(m)); return { no:p.no, area:p.area, a:a, b:b, f:flagsFor(p.no, m) }; })
@@ -2918,7 +3071,7 @@ function renderToday(){
   var live = vs.filter(function(v){ return !v.cx; });
   var rows = vs.map(function(v){
     var p = patient(v.no) || {}, n = live.indexOf(v) + 1;
-    return '<tr' + (v.cx ? ' style="opacity:.55"' : '') + '><td class="num"><b>' + (v.cx ? '—' : n) + '</b></td><td>' + esc(v.time) + '<br><small class="muted">' + esc(v.min || 30) + '分</small></td><td><b>' + esc(dn(v.no)) + '</b>' + (v.withId ? ' <span class="tag amber">2名体制（' + esc(staffName(v.withId === sid ? v.staffId : v.withId)) + 'さんと）</span>' : '') + (v.cx ? ' <span class="tag red">キャンセル</span>' : '') +
+    return '<tr' + (v.cx ? ' style="opacity:.55"' : '') + '><td class="num"><b>' + (v.cx ? '—' : n) + '</b></td><td>' + esc(v.time) + '<br><small class="muted">' + esc(v.min || 30) + '分</small></td><td><b>' + esc(dn(v.no)) + '</b>' + (v.withId ? ' <span class="tag amber">2名体制（' + esc(staffName(v.withId === sid ? v.staffId : v.withId)) + 'さんと）</span>' : '') + (v.cx ? ' <span class="tag red">キャンセル</span>' : '') + (v.moved ? ' <span class="tag green">組み換え（元 ' + esc(v.moved.from) + '）</span>' : '') + (trustOf(v.no).lv === '低' ? ' ' + trustTag(v.no) : '') +
       '<br><small>' + esc(p.addr || v.area || '住所未登録') + (p.spot ? '・' + esc(p.spot) : '') + '</small>' + (p.addr && !p.lat ? ' <span class="tag gray">地図の位置が未取得</span>' : '') + '</td><td><small>' + esc(p.asmRisk || '') + '</small></td></tr>';
   }).join('');
   $('td_list').innerHTML = vs.length ? '<table><tr><th class="num">順</th><th>時刻</th><th>訪問先</th><th>気を付けること</th></tr>' + rows + '</table><p class="muted">' + esc(jpDate(date)) + '：訪問 ' + live.length + '件' + (vs.length > live.length ? '（キャンセル ' + (vs.length - live.length) + '件）' : '') + '。地図の番号は、この表の「順」と同じです。</p>'
@@ -3091,7 +3244,7 @@ $('planNext').addEventListener('click', function(){ $('planWeek').value = ymd(ad
 $('planThis').addEventListener('click', function(){ $('planWeek').value = ymd(mondayOf(new Date())); renderPlan(); });
 
 ['c_no','c_date','c_time'].forEach(function(id){ $(id).addEventListener('change', intakeAutofill); $(id).addEventListener('input', intakeAutofill); });
-['c_recv','c_waive'].forEach(function(id){ $(id).addEventListener('change', renderJudge); });
+['c_recv','c_waive','c_cat','c_no'].forEach(function(id){ $(id).addEventListener('change', renderJudge); });
 $('c_save').addEventListener('click', intakeSave);
 $('c_clear').addEventListener('click', intakeClear);
 $('c_recv').value = nowLocal();

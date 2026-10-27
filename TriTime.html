@@ -180,7 +180,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-29</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-30</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -2825,8 +2825,8 @@ function mhNow(){
 }
 /* 選んだコースに届くまでの道のり（2026-10-27 宏史さんの指示）
    いまの週の訪問（週間予定）から、コースに要る週の訪問までの差を、期限までの月ごとの目標に割る。
-   10月からの加算＝利用者1人あたり月1,050円（宏史さんの指示の額）は売上に足す。2名体制の加算は上振れとして別に出す。 */
-var MI_KASAN = 1050;
+   訪問看護ベースアップ評価料（Ⅰ）（利用者1人 月1,050円）は全額を職員の賃上げに充てるお金のため、売上の算定に入れない（2026-10-27 宏史さんの指示）。2名体制の加算は上振れとして別に出す。 */
+var MI_KASAN = 0;
 function miMake(){
   var P = mhPrice().v, goal = +$('mh_goal').value || 0, capF = Math.max(1, Math.min(7, +$('mh_cap').value || 3)), nf = +$('mi_nf').value || 2, wFee = (FEE.psyWith && FEE.psyWith.n) || 4500;
   if(!goal){ $('mi_out').innerHTML = ''; return; }
@@ -2841,9 +2841,9 @@ function miMake(){
   var red = gap > 0, col = red ? 'var(--red)' : 'var(--ok)';
   var h = '<table><tr><th>見るもの</th><th class="num">週の訪問</th><th class="num">4週の売上</th></tr>' +
     '<tr><td>いま（患者さん登録 ' + U + '人の週間予定）</td><td class="num">' + cur + '件</td><td class="num">' + yen(base) + '</td></tr>' +
-    '<tr><td>10月からの加算（利用者 ' + U + '人 × 月 ' + yen(MI_KASAN) + '）</td><td class="num">—</td><td class="num">＋' + yen(kasan) + '</td></tr>' +
+    '<tr><td>訪問看護ベースアップ評価料（Ⅰ）（利用者 ' + U + '人 × 月 1,050円）：全額を職員の賃上げに充てるため、売上に入れていません</td><td class="num">—</td><td class="num">—</td></tr>' +
     '<tr><td><b>いまの合計</b></td><td class="num"><b>' + cur + '件</b></td><td class="num"><b>' + yen(base + kasan) + '</b></td></tr>' +
-    '<tr><td>目標設定額 ' + esc(mdYenShort(goal)) + 'コース（加算の分を引いて要る訪問）</td><td class="num">' + needW + '件</td><td class="num">' + yen(goal) + '</td></tr>' +
+    '<tr><td>目標設定額 ' + esc(mdYenShort(goal)) + 'コースに要る訪問</td><td class="num">' + needW + '件</td><td class="num">' + yen(goal) + '</td></tr>' +
     '<tr style="background:' + (red ? '#fbecea' : '#eef5ef') + '"><td><b>' + (red ? '足りない分' : '上回っている分') + '</b></td><td class="num"><b style="color:' + col + '">' + (red ? '−' : '+') + Math.abs(gap) + '件</b></td><td class="num"><b style="color:' + col + '">' + (diffY > 0 ? '−' : '+') + yen(Math.abs(diffY)) + '</b></td></tr>' +
     (two ? '<tr><td>上振れ：2名体制の加算（いまの週間予定で週 ' + two + '回 × ' + yen(wFee) + '）</td><td class="num">—</td><td class="num">＋' + yen(wUp) + '</td></tr>' : '<tr><td>上振れ：2名体制の加算（いまの週間予定には2名体制の訪問がありません。入ると1回 ' + yen(wFee) + ' ふえます）</td><td class="num">—</td><td class="num">—</td></tr>') + '</table>';
   if(!red){ $('mi_out').innerHTML = h + '<div class="judge free" style="margin:8px 0"><b>このコースには、いまの週間予定で届いています。上のコースを狙えます。</b></div>'; return; }
@@ -2864,10 +2864,10 @@ function miMake(){
     if(fromRoom) todo.push('いまの利用者の回数を 週' + fromRoom + '件 ふやす');
     if(fromNew) todo.push('新しい利用者を ' + nNew + '人（週' + nf + '回）ふやす（週' + fromNew + '件分）');
     var pay = parseYmd(mo + '-01'); pay.setMonth(pay.getMonth() + 2);
-    rows += '<tr' + (i === k - 1 ? ' style="background:#fffaf2"' : '') + '><td><b>ステップ' + (i + 1) + '</b><br><small class="muted">' + esc(jpMonth(mo)) + 'の末まで</small></td><td>週の訪問を <b>' + wk + '件</b> にする<br><small class="muted">（前の月より＋' + add + '件）</small></td><td>' + (todo.length ? todo.join('<br>') : '—') + '</td><td class="num">' + yen(sales) + '<br><small class="muted">（加算込み）</small></td><td>' + esc(jpMonth(ymd(pay).slice(0, 7))) + 'ごろ</td></tr>';
+    rows += '<tr' + (i === k - 1 ? ' style="background:#fffaf2"' : '') + '><td><b>ステップ' + (i + 1) + '</b><br><small class="muted">' + esc(jpMonth(mo)) + 'の末まで</small></td><td>週の訪問を <b>' + wk + '件</b> にする<br><small class="muted">（前の月より＋' + add + '件）</small></td><td>' + (todo.length ? todo.join('<br>') : '—') + '</td><td class="num">' + yen(sales) + '<br><small class="muted">（評価料は入れず）</small></td><td>' + esc(jpMonth(ymd(pay).slice(0, 7))) + 'ごろ</td></tr>';
   });
   h += '<h3 style="margin:12px 0 4px">' + esc(jpMonth(to)) + 'までの段取り（毎月の目標）</h3><table><tr><th>段取り</th><th>目標</th><th>やること</th><th class="num">4週の売上の目安</th><th>入金の月<br><small>（医療保険）</small></th></tr>' + rows + '</table>' +
-    '<p class="muted">毎月の目標は、足りない週' + gap + '件を、' + k + 'か月（' + esc(jpMonth(ms[0])) + '〜' + esc(jpMonth(to)) + '）で均等に割ったものです。先に、いまの利用者の回数を上げる分から当てています。4週の売上の目安は「週の訪問 × 4週 × ' + yen(P) + '」に、10月からの加算（利用者1人 月' + yen(MI_KASAN) + '・新しい利用者の分を含む）を足したものです。2名体制の加算・月の初日の管理療養費・キャンセルは入れていません。入金の月は、訪問した月の翌月に請求し、その翌月に入金される医療保険の流れで数えています（実際の入金日は請求の記録で確かめてください）。</p>';
+    '<p class="muted">毎月の目標は、足りない週' + gap + '件を、' + k + 'か月（' + esc(jpMonth(ms[0])) + '〜' + esc(jpMonth(to)) + '）で均等に割ったものです。先に、いまの利用者の回数を上げる分から当てています。4週の売上の目安は「週の訪問 × 4週 × ' + yen(P) + '」です。訪問看護ベースアップ評価料（Ⅰ）は職員の賃上げに充てるお金なので入れていません。2名体制の加算・月の初日の管理療養費・キャンセルは入れていません。入金の月は、訪問した月の翌月に請求し、その翌月に入金される医療保険の流れで数えています（実際の入金日は請求の記録で確かめてください）。</p>';
   $('mi_out').innerHTML = h;
 }
 var mhLast = null;

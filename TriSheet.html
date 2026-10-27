@@ -83,7 +83,7 @@ pre.out{white-space:pre-wrap;font-size:12px;font-family:var(--font-mono);backgro
     <div style="font-size:20px;font-weight:500">基本情報シート</div>
   </div>
   <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">発行：合同会社トライサイト</div>
-  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-27-01</span> <span id="verMsg"></span></div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-27-02</span> <span id="verMsg"></span></div>
   <div style="border-top:1px solid var(--border-strong);margin:8px 0 12px"></div>
   <!-- 2026-10-19：認証コードで端末どうし共有する（宏史さんの指示）。印を付けた端末だけが共有する。部品は TriSheetSync.js -->
   <div id="tssBox" style="margin:0 0 12px;padding:10px 12px;border:0.5px solid var(--border-accent);border-radius:var(--radius);background:var(--surface-1);font-size:13px">
@@ -1491,6 +1491,36 @@ function boot(){
   if(m&&movedCare>0){m.style.color='var(--text-success)';m.textContent='このシートに入っていた利用者 '+movedCare+' 人分のアセスメントを、トライケアのアセスメント画面へ移しました。';}
   if(m&&movedCare<0){m.style.color='var(--text-danger)';m.textContent='このシートに入っている利用者のアセスメントを、トライケアへ移せませんでした（この端末に保存できません）。記録はこのシートに残してあります。';}
 }
+/* 2026-10-27：同じ名前の会社が二つ以上あるとき（ノアが「自社」と「顧客」の二つに分かれていた件）、一つにまとめる。
+   どれを残すかは人が職員名簿の人数を見て選ぶ。残した会社を自社にし、ほかの同じ名前の会社は消して、その結果をほかの端末へ送る。 */
+function holdDupList(d,o){const nm=orgName(o);return d.orgs.filter(x=>x&&orgName(x)===nm);}
+function holdRoN(x){return ((x&&x.sheet&&x.sheet.val&&Array.isArray(x.sheet.val['職員名簿']))?x.sheet.val['職員名簿']:[]).filter(r=>r&&String(r.name||'').trim());}
+function holdDupHTML(d,o){
+  if(!o)return '';
+  const a=holdDupList(d,o);if(a.length<2)return '';
+  const best=a.slice().sort((x,y)=>holdRoN(y).length-holdRoN(x).length)[0];
+  return '<div style="margin-top:12px;padding-top:10px;border-top:1px dashed #c9772a"><b>同じ名前の会社が '+a.length+'件 登録されています。</b>残す方を一つ選んでください。選んだ会社を自社にして、ほかの同じ名前の会社は消し、ほかの端末にも同じように送ります。'
+    +a.map((x,i)=>{const r=holdRoN(x);return '<label style="display:block;margin:6px 0;padding:6px 8px;border:1px solid #e3cfb3;border-radius:8px;background:#fff"><input type="radio" name="holdKeep" value="'+esc(x.id)+'"'+(x===best?' checked':'')+'> <b>'+(i+1)+'件目</b>　'+(x.id===d.activeOrg?'いまの自社':'いまは顧客')+'　職員名簿 <b>'+r.length+'名</b><br><small>'+(r.map(y=>esc(y.name)).join('、')||'名簿なし')+'</small></label>';}).join('')
+    +'<button type="button" id="holdMerge" style="background:#1f3a2e;color:#fff;border:0;margin-top:4px">選んだ会社を残して、一つにまとめる</button><div id="holdMergeMsg" style="margin-top:6px;font-size:13px"></div></div>';
+}
+function holdDupHook(d,o){
+  const b=document.getElementById('holdMerge');if(!b)return;
+  b.onclick=()=>{
+    const pick=document.querySelector('input[name=holdKeep]:checked');if(!pick)return;
+    const doc=loadDoc(),keep=doc.orgs.find(x=>x.id===pick.value),nm=orgName(keep);
+    const gone=doc.orgs.filter(x=>x&&x!==keep&&orgName(x)===nm);
+    if(!keep||!gone.length)return;
+    if(!confirm('「'+nm+'」を、職員名簿 '+holdRoN(keep).length+'名 の方に一つにまとめます。ほかの '+gone.length+'件（職員名簿 '+gone.map(x=>holdRoN(x).length+'名').join('・')+'）は消えます。ほかの端末にも同じように送ります。よろしいですか？'))return;
+    const m=document.getElementById('holdMergeMsg');m.textContent='まとめています…';
+    const gid=gone.map(x=>x.id);
+    doc.orgs=doc.orgs.filter(x=>gid.indexOf(x.id)<0);
+    keep.role='self';doc.activeOrg=keep.id;doc.sheetOrg=keep.id;doc.updated=new Date().toLocaleString('ja-JP');
+    BOOTED=false;   /* この画面の中の古い内容で、元帳を書き戻さないようにする */
+    localStorage.setItem(MKEY,JSON.stringify(doc));
+    TriSheetSync.forceSync(keep.id,gid).then(()=>{m.style.color='var(--text-success)';m.textContent='一つにまとめて、ほかの端末へ送りました。この画面を閉じてください。ほかのPCでは、基本情報シートやトライタイムを開き直すと、まとめた内容になります。';})
+      .catch(e=>{m.style.color='var(--text-danger)';m.textContent='この端末ではまとめましたが、ほかの端末へ送れませんでした：'+(e.message||e);});
+  };
+}
 boot();
 window.addEventListener('storage',e=>{
   if(e.key!==MKEY||!BOOTED||pending)return;
@@ -1610,8 +1640,10 @@ window.addEventListener('storage',e=>{
       +'この端末の自社（'+esc(orgName(o))+'）の職員名簿：<b>'+ro.length+'名</b><br><small>'+ro.map(r=>esc(r.name)).join('、')+'</small>'
       +'<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" id="holdSave">この端末の内容を控えとして保存する</button>'
       +'<button type="button" id="holdSend" style="background:#c9772a;color:#fff;border:0">この端末の内容を、共有の正しい版として送る</button></div>'
-      +'<div id="holdMsg" style="margin-top:6px;font-size:13px"></div>';
+      +'<div id="holdMsg" style="margin-top:6px;font-size:13px"></div>'
+      +holdDupHTML(d,o);
     const bar=document.getElementById('loadMsg');(bar&&bar.closest('div')?bar.closest('div'):document.body).insertAdjacentElement('beforebegin',box);
+    holdDupHook(d,o);
     document.getElementById('holdSave').onclick=()=>{
       const t=localStorage.getItem(MKEY)||'';const a=document.createElement('a');
       a.href=URL.createObjectURL(new Blob([t],{type:'application/json'}));a.download='基本情報シート_控え_'+new Date().toISOString().slice(0,10)+'.json';

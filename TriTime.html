@@ -180,7 +180,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-28-03</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-28-04</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -204,6 +204,7 @@ function tsGoBack(){
   <button data-tab="course">利用者経過</button>
   <button data-tab="report">計画書・報告書</button>
   <button data-tab="admin">管理者の窓</button>
+  <button data-tab="eval">会社評価</button>
   <button data-tab="model">モデルコース</button>
   <button data-tab="mihon">モデルコースの見本</button>
   <button data-tab="req">ご要望</button>
@@ -680,6 +681,57 @@ function tsGoBack(){
   <div class="card">
     <h2>見直しの時期が来た拒否の記録</h2>
     <div id="adReview"></div>
+  </div>
+</section>
+
+<!-- ===== 会社評価（2026-10-28・宏史さんの指示）=====
+     各部の管理者が見る評価シート（モデルコースのタブ）はそのまま。こちらは、各部の管理者も含めた職員全員を、代表が多くの面から評価し、クラス分けする「会社評価」。
+     開けるのは、代表と代表が指名した幹部だけ（評価の合言葉＋指名）。評価の中身は評価の合言葉の鍵をかけて保存する。 -->
+<section class="tab" id="tab-eval">
+  <div class="card" id="cardEvLock">
+    <h2>会社評価（代表と指名された幹部だけ）</h2>
+    <p class="lead">各部の管理者も含めた職員全員を、会社として評価し、クラス分けする画面です。開くには「評価の合言葉」が要ります（管理者の合言葉とは別のものです）。いちばん初めに合言葉を入れた人が合言葉を決め、その人が最初の閲覧者になります。合言葉を知っていても、指名されていない人の端末では開きません。評価の中身はこの合言葉で鍵をかけて保存するので、管理者の合言葉だけでは読めません。</p>
+    <div class="row"><div><label class="f" for="ev_pass">評価の合言葉（8文字以上）</label><input type="password" id="ev_pass" autocomplete="off" data-no-voice="1"></div></div>
+    <div class="btns"><button class="btn" id="ev_open">開く</button><button class="btn sub" id="ev_close">この端末から外す</button><span class="muted" id="ev_lmsg"></span></div>
+  </div>
+  <div id="evBody" style="display:none">
+  <div class="card">
+    <h2>会社評価をつける</h2>
+    <div class="row">
+      <div><label class="f" for="ce_period">評価の期間</label><input type="text" id="ce_period" placeholder="例：2026年度下期"></div>
+      <div><label class="f" for="ce_staff">職員（全部署）</label><select id="ce_staff"></select></div>
+      <div><label class="f" for="ce_month">参考の数字を見る月</label><input type="month" id="ce_month"></div>
+    </div>
+    <div id="ce_ref"></div>
+    <div class="tbl-scroll" id="ce_form"></div>
+    <label class="f" for="ce_note">所見（代表の言葉で）</label><textarea id="ce_note" maxlength="2000" style="min-height:64px"></textarea>
+    <div class="row">
+      <div><label class="f">合計とクラス（自動）</label><div id="ce_total" style="padding:4px 0;font-weight:700"></div></div>
+      <div><label class="f" for="ce_cls">クラス（手で決めるとき）</label><select id="ce_cls"></select></div>
+    </div>
+    <div class="btns"><button class="btn" id="ce_save">この評価を保存する</button><button class="btn sub" id="ce_print">この職員の会社評価を印刷する</button><span class="muted" id="ce_msg"></span></div>
+  </div>
+  <div class="card">
+    <h2>会社評価の一覧（クラス分け）</h2>
+    <div class="tbl-scroll" id="ce_list"></div>
+    <div class="btns"><button class="btn sub" id="ce_listPrint">一覧を印刷する</button></div>
+  </div>
+  <div class="card">
+    <h2>評価の基準（代表が決める）</h2>
+    <p class="lead">区分・項目・重みと、クラスの線を決めます。初めに入っているのは<b>見本</b>です。会社の考えに合わせて書き換えてください。各項目は5段階（1＝大きく下回る・2＝下回る・3＝期待どおり・4＝上回る・5＝大きく上回る）でつけ、合計は「点 × 重み」の合計を満点に対する割合（%）で出します。</p>
+    <div class="tbl-scroll" id="cc_items"></div>
+    <div class="btns"><button class="btn sub small" id="cc_addItem">項目を足す</button></div>
+    <h3 style="margin-top:12px">クラスの線</h3>
+    <div class="tbl-scroll" id="cc_classes"></div>
+    <div class="btns"><button class="btn sub small" id="cc_addCls">クラスを足す</button></div>
+    <div class="btns"><button class="btn" id="cc_save">基準を保存する</button><span class="muted" id="cc_msg"></span></div>
+  </div>
+  <div class="card">
+    <h2>会社評価を見られる幹部（指名）</h2>
+    <p class="lead">印を付けた人の端末だけで、この画面が開きます（その人にも評価の合言葉を伝えてください）。指名した人の端末にも「管理者の合言葉」が入っている必要があります。</p>
+    <div id="ev_who"></div>
+    <div class="btns"><button class="btn sub" id="ev_whoSave">指名を保存する</button><span class="muted" id="ev_wmsg"></span></div>
+  </div>
   </div>
 </section>
 
@@ -2557,7 +2609,7 @@ function deriveRaw(phrase, salt){
 function encStr(key, s){ var iv = crypto.getRandomValues(new Uint8Array(12)); return crypto.subtle.encrypt({ name:'AES-GCM', iv:iv }, key, TE.encode(s)).then(function(ct){ return b64(iv) + '.' + b64(ct); }); }
 function decStr(key, t){ var p = String(t).split('.'); return crypto.subtle.decrypt({ name:'AES-GCM', iv:unb64(p[0]) }, key, unb64(p[1])).then(function(pt){ return TD.decode(pt); }); }
 function sealItem(key, it, mk){
-  if(it.col === 'mgmt' && String(it.id) === '_chk') return Promise.resolve(it);
+  if(it.col === 'mgmt' && /^_(chk|evchk)$/.test(String(it.id))) return Promise.resolve(it);   /* 2026-10-28：評価の合言葉の確かめ用も同じ扱い */
   if(it.col === 'mgmt') key = mk;
   else if(!ENC_COLS[it.col]) return Promise.resolve(it);
   var kf = KEYF[it.col];
@@ -2869,6 +2921,7 @@ function applyDept(){
   if(R.lv === 'none') Object.keys(tabOn).forEach(function(k){ tabOn[k] = (k === 'setup'); });
   if(R.lv === 'staff') tabOn.admin = false;
   if(!canMoney(d)) tabOn.model = false;
+  tabOn.eval = R.lv !== 'none' && R.lv !== 'staff';   /* 2026-10-28：会社評価。開けるかどうかは評価の合言葉と指名で決める */
   document.querySelectorAll('#tabs button').forEach(function(b){ b.style.display = tabOn[b.getAttribute('data-tab')] ? '' : 'none'; });
   var cur = document.querySelector('#tabs button.on');
   if(cur && !tabOn[cur.getAttribute('data-tab')]){ var first = [].filter.call(document.querySelectorAll('#tabs button'), function(b){ return tabOn[b.getAttribute('data-tab')]; })[0]; if(first) first.click(); }
@@ -3513,6 +3566,7 @@ document.querySelectorAll('#tabs button').forEach(function(b){
     if(t === 'report'){ renderReport(); renderPlanDoc(); }
     if(t === 'admin') renderAdmin();
     if(t === 'model') renderModel();
+    if(t === 'eval') evRender();
     if(t === 'mihon') mhRender();
     if(t === 'pt'){ nrScanLocal(); renderPtList(); nrRender(); tcRender(); }
     if(t === 'req') renderReq();
@@ -4630,6 +4684,210 @@ window.addEventListener('storage', function(e){ if(e.key === TC_KEY) tcRender();
 $('nr_file').addEventListener('change', function(){ nrFiles(this.files); this.value = ''; });
 applyDept(); refreshAll();
 sheetPull({ silent:true });
+/* ---- 会社評価（2026-10-28・宏史さんの指示「職員全員の評価を私自身がつける会社評価。タレントパレットのように多岐にわたる面の評価で、職員をクラス分け」）----
+   鍵：評価の合言葉から作った鍵（evKey）。確かめ用は mgmt の「_evchk」（管理者の合言葉の確かめ用 _chk と同じく、そのまま共有）。
+   中身：mgmt の「evcfg」（基準）と「evr_<職員>_<期間>」（評価）。どちらも中身を evKey で鍵をかけた箱（box）にしてから mgmt に置く。
+         mgmt は管理者の合言葉でも鍵がかかるが、その内側がさらに評価の合言葉の鍵なので、管理者の合言葉だけでは読めない。
+   開けるのは：評価の合言葉が合っている端末で、かつ（共有していない端末／この端末を使う人が指名されている）とき。
+         指名がまだ誰もいないときは、合言葉を決めた人を最初の閲覧者にする。共有している端末では、管理者の合言葉も要る（mgmt を送るため）。 */
+var EVKEY = 'tritime_evkey', evKey = null, evCfgCache = null, evRecCache = {};
+var CE_DEF = { items:[
+  { id:'a1', g:'業績', t:'予定の稼働率（モデルコースに対して）', w:2 },
+  { id:'a2', g:'業績', t:'受け持てる幅（要望・拒否で外れる割合が低い）', w:1 },
+  { id:'a3', g:'業績', t:'記録をその日のうちに出す', w:1 },
+  { id:'b1', g:'専門性', t:'看護・ケアの技術とアセスメント', w:2 },
+  { id:'b2', g:'専門性', t:'資格・研修（精神科の認定など）', w:1 },
+  { id:'b3', g:'専門性', t:'主治医・多職種との連携', w:1 },
+  { id:'c1', g:'行動・姿勢', t:'時間と約束を守る', w:1 },
+  { id:'c2', g:'行動・姿勢', t:'報告・連絡・相談', w:1 },
+  { id:'c3', g:'行動・姿勢', t:'要望への先回り（改善の取り組み・学び直し）', w:1 },
+  { id:'c4', g:'行動・姿勢', t:'新しい取り組みへの参加（トライサイトの活用など）', w:1 },
+  { id:'d1', g:'組織への貢献', t:'後輩・新人への指導や同行', w:1 },
+  { id:'d2', g:'組織への貢献', t:'部署をまたぐ協力（事務局の業務など）', w:1 },
+  { id:'d3', g:'組織への貢献', t:'会社の方針の理解と実行', w:1 }
+], classes:[ { n:'S', min:90 }, { n:'A', min:75 }, { n:'B', min:60 }, { n:'C', min:45 }, { n:'D', min:0 } ] };
+var CE_SC = ['', '1 大きく下回る', '2 下回る', '3 期待どおり', '4 上回る', '5 大きく上回る'];
+function evDesignated(){ return staff().filter(function(x){ return x.evalView; }); }
+function evOk(){
+  if(!evKey) return false;
+  if(!dev().share) return true;
+  var me = meStaff(); return !!(me && me.evalView && hasMgrKey());
+}
+function evLoad(){
+  if(evKey) return Promise.resolve(evKey);
+  var r = null; try{ r = localStorage.getItem(EVKEY); }catch(e){}
+  if(!r || !window.crypto || !crypto.subtle) return Promise.resolve(null);
+  return crypto.subtle.importKey('raw', unb64(r), 'AES-GCM', false, ['encrypt','decrypt']).then(function(k){ evKey = k; return k; }, function(){ return null; });
+}
+function evBoxGet(id){ var it = live('mgmt').filter(function(x){ return x.id === id; })[0]; if(!it || !it.box || !evKey) return Promise.resolve(null); return decStr(evKey, it.box).then(function(t){ return JSON.parse(t); }, function(){ return null; }); }
+function evBoxPut(id, obj){ return encStr(evKey, JSON.stringify(obj)).then(function(c){ var all = live('mgmt').filter(function(x){ return x.id !== id; }); all.push({ id:id, box:c }); saveCol('mgmt', all); }); }
+function evOpen(){
+  var ph = $('ev_pass').value;
+  if(!window.crypto || !crypto.subtle){ $('ev_lmsg').textContent = 'この端末のブラウザでは開けません。'; return; }
+  if(String(ph).length < 8){ alert('評価の合言葉は8文字以上にしてください。'); return; }
+  if(dev().share && !hasMgrKey()){ alert('この端末には管理者の合言葉が入っていません。先に「名簿・設定」で管理者の合言葉を入れてください。'); return; }
+  if(dev().share && !meStaff()){ alert('この端末を使う人が選ばれていません。「名簿・設定」の「この端末と共有」で選んでください。'); return; }
+  $('ev_lmsg').textContent = '確かめています…';
+  var rk, key;
+  deriveRaw(ph, 'TriTime-eval-v1').then(function(r){ rk = r; return crypto.subtle.importKey('raw', r, 'AES-GCM', false, ['encrypt','decrypt']); }).then(function(k){
+    key = k;
+    return dev().share ? relayCall('pull', { since:0, cols:['mgmt'] }).then(function(j){ return (j.items || []).filter(function(x){ return String(x.id) === '_evchk'; }).pop(); }, function(){ return null; }) : null;
+  }).then(function(remote){
+    var loc = live('mgmt').filter(function(x){ return x.id === '_evchk'; })[0], chk = (remote && remote.data && remote.data.chk) || (loc && loc.chk);
+    if(chk) return decStr(key, chk).then(function(t){ if(t !== 'TriTime-EVAL-OK') throw new Error('x'); return false; }, function(){ throw new Error('評価の合言葉が、決めたものと違います。入れ直してください。'); });
+    if(!confirm('評価の合言葉は、まだ決まっていません。いま入れたものを評価の合言葉にしますか？（あなたが最初の閲覧者になります。合言葉は、指名する幹部にだけ伝えてください）')) throw new Error('取りやめました。');
+    return encStr(key, 'TriTime-EVAL-OK').then(function(c){ var all = live('mgmt').filter(function(x){ return x.id !== '_evchk'; }); all.push({ id:'_evchk', chk:c }); saveCol('mgmt', all); return true; });
+  }).then(function(first){
+    try{ localStorage.setItem(EVKEY, b64(rk)); }catch(e){}
+    evKey = key; $('ev_pass').value = ''; evCfgCache = null; evRecCache = {};
+    var me = meStaff();
+    if(me && !evDesignated().length){ var a = staff(); a.forEach(function(x){ if(x.id === me.id) x.evalView = true; }); saveCol('staff', a); }
+    $('ev_lmsg').textContent = first ? '評価の合言葉を決めました。' : '開きました。';
+    if(!evOk()) $('ev_lmsg').textContent = '合言葉は合っていますが、この端末を使う人は指名されていません。代表に指名してもらってください。';
+    evRender(); return syncNow();
+  }).catch(function(e){ $('ev_lmsg').textContent = e.message || '開けませんでした。'; });
+}
+function evCloseDev(){
+  try{ localStorage.removeItem(EVKEY); }catch(e){}
+  evKey = null; evCfgCache = null; evRecCache = {}; $('ev_lmsg').textContent = 'この端末から外しました。'; evRender();
+}
+function ceCfg(){ return evCfgCache || CE_DEF; }
+function cePeriodDef(){ var d = new Date(), y = d.getFullYear(), m = d.getMonth() + 1; var fy = m >= 4 ? y : y - 1; return fy + '年度' + (m >= 4 && m <= 9 ? '上期' : '下期'); }
+function ceRecId(sid, per){ return 'evr_' + sid + '_' + String(per || '').replace(/[^0-9A-Za-z一-龠ぁ-んァ-ヶー]/g, ''); }
+function ceAllStaff(){ return staff().filter(function(x){ return !staffOrphan(x); }); }
+function evRender(){
+  var ok = evOk();
+  $('evBody').style.display = ok ? '' : 'none';
+  $('ev_close').style.display = evKey ? '' : 'none';
+  if(!ok){ if(evKey && !$('ev_lmsg').textContent) $('ev_lmsg').textContent = 'この端末を使う人は、会社評価を見る人に指名されていません。'; return; }
+  $('ev_who').innerHTML = ceAllStaff().map(function(x){ return '<label style="display:inline-flex;align-items:center;gap:6px;margin:4px 14px 4px 0"><input type="checkbox" value="' + esc(x.id) + '"' + (x.evalView ? ' checked' : '') + '> ' + esc(staffLabel(x)) + '</label>'; }).join('') || '<p class="empty">職員名簿に人がいません。</p>';
+  fillSelect('ce_staff', ceAllStaff().map(function(x){ return { v:x.id, t:staffLabel(x) }; }), null);
+  if(!$('ce_period').value) $('ce_period').value = cePeriodDef();
+  if(!$('ce_month').value) $('ce_month').value = ymd(new Date()).slice(0, 7);
+  evBoxGet('evcfg').then(function(c){ if(c && Array.isArray(c.items) && c.items.length) evCfgCache = c; ccDraw(); ceLoad(); ceList(); });
+}
+/* 参考の数字：その職員の部署（訪問の部署）で、稼働率・要望で外れる割合・改善の取り組み・記録・記録の無い配置不可を数える */
+function ceRef(s, m){
+  var out = [];
+  myDepts(s).filter(function(d){ return d.kind === 'visit'; }).forEach(function(d){
+    try{ withDept(d.k, function(){
+      var r = mdStats(s, m), rf = refStat(s.id);
+      var recN = live('records').filter(function(x){ return x.nurse && x.nurse === s.name && String(x.date || '').slice(0, 7) === m; }).length;
+      var dec = events().filter(function(e){ return e.type === 'decline' && e.staffId === s.id && ym(e.date) === m && inDept(e.patientNo); }).length;
+      out.push('<tr><th>' + esc(d.name) + '</th><td>予定の稼働率 <b>' + mdPct(r.plan, r.model) + '</b>（予定 ' + r.plan + '件／モデル ' + r.model + '件）' + (r.act != null ? '・実績の稼働率 <b>' + mdPct(r.act, r.modelPast) + '</b>' : '') +
+        '<br>要望・拒否で外れる割合 <b>' + rf.rate + '%</b>（申し出 ' + rf.refs.length + '件・改善の取り組み ' + rf.plans + '件）' + (rf.over ? ' <span class="tag red">線を超えています</span>' : '') +
+        '<br>看護記録の提出 ' + recN + '件・記録の無い配置不可 ' + dec + '件</td></tr>');
+    }); }catch(e){}
+  });
+  return out.length ? '<div class="judge free" style="margin:8px 0"><b>参考の数字（' + esc(jpMonth(m)) + '・トライタイムから）</b><table style="margin-top:4px">' + out.join('') + '</table><small class="muted">点をつけるときの参考です。数字だけで点を決めるものではありません。</small></div>'
+    : '<p class="muted">この職員には、トライタイムの訪問の数字がありません（事務局など）。</p>';
+}
+function ceTotal(rec){
+  var c = ceCfg(), got = 0, full = 0, n = 0;
+  c.items.forEach(function(it){ var v = +((rec.scores || {})[it.id] || 0), w = Math.max(0, +it.w || 0); if(v){ got += v * w; full += 5 * w; n++; } });
+  var pct = full ? Math.round(got / full * 100) : null;
+  var cls = pct == null ? '' : ((c.classes.slice().sort(function(a, b){ return b.min - a.min; }).filter(function(k){ return pct >= +k.min; })[0] || {}).n || '');
+  return { pct:pct, auto:cls, n:n, all:c.items.length };
+}
+function ceFormDraw(rec){
+  var c = ceCfg(), sc = rec.scores || {}, last = '';
+  $('ce_form').innerHTML = '<table><tr><th>区分</th><th>項目</th><th class="num">重み</th><th>評価（5段階）</th></tr>' + c.items.map(function(it){
+    var g = it.g !== last ? esc(it.g) : ''; last = it.g;
+    return '<tr><td>' + g + '</td><td>' + esc(it.t) + '</td><td class="num">' + esc(it.w) + '</td><td><select data-ce="' + esc(it.id) + '">' + CE_SC.map(function(t, i){ return '<option value="' + (i || '') + '"' + (+sc[it.id] === i && i ? ' selected' : '') + '>' + (i ? t : 'まだつけない') + '</option>'; }).join('') + '</select></td></tr>';
+  }).join('') + '</table>';
+  $('ce_form').querySelectorAll('[data-ce]').forEach(function(x){ x.onchange = ceShowTotal; });
+  fillSelect('ce_cls', ceCfg().classes.map(function(k){ return { v:k.n, t:k.n }; }), '自動のまま');
+  $('ce_cls').value = rec.cls || '';
+  $('ce_note').value = rec.note || '';
+  ceShowTotal();
+}
+function ceCur(){ var sc = {}; $('ce_form').querySelectorAll('[data-ce]').forEach(function(x){ if(x.value) sc[x.getAttribute('data-ce')] = +x.value; }); return { scores:sc, note:$('ce_note').value.trim(), cls:$('ce_cls').value }; }
+function ceShowTotal(){ var t = ceTotal(ceCur()); $('ce_total').textContent = t.pct == null ? 'まだ点がありません' : t.pct + '%・クラス ' + (t.auto || '—') + '（' + t.n + '／' + t.all + '項目）'; }
+function ceLoad(){
+  var sid = $('ce_staff').value, per = $('ce_period').value.trim(), s = staff().filter(function(x){ return x.id === sid; })[0];
+  if(!s){ $('ce_form').innerHTML = ''; $('ce_ref').innerHTML = ''; return; }
+  $('ce_ref').innerHTML = ceRef(s, $('ce_month').value || ymd(new Date()).slice(0, 7));
+  evBoxGet(ceRecId(sid, per)).then(function(rec){ evRecCache[ceRecId(sid, per)] = rec; ceFormDraw(rec || {}); $('ce_msg').textContent = rec ? '保存済みの評価を出しています（' + String(rec.at || '').replace('T', ' ') + '）。' : ''; });
+}
+function ceSave(){
+  var sid = $('ce_staff').value, per = $('ce_period').value.trim(); if(!sid || !per){ $('ce_msg').textContent = '職員と評価の期間を入れてください。'; return; }
+  var cur = ceCur(), t = ceTotal(cur);
+  var rec = Object.assign(cur, { staffId:sid, period:per, pct:t.pct, auto:t.auto, by:dev().me || '', at:nowLocal() });
+  evBoxPut(ceRecId(sid, per), rec).then(function(){ evRecCache[ceRecId(sid, per)] = rec; $('ce_msg').textContent = '保存しました。'; scheduleSync(); ceList(); });
+}
+function ceList(){
+  var per = $('ce_period').value.trim(), all = ceAllStaff();
+  Promise.all(all.map(function(x){ return evBoxGet(ceRecId(x.id, per)).then(function(r){ return { s:x, r:r }; }); })).then(function(rows){
+    rows.sort(function(a, b){ return ((b.r && b.r.pct) || -1) - ((a.r && a.r.pct) || -1); });
+    var cnt = {}; rows.forEach(function(o){ var k = o.r ? (o.r.cls || o.r.auto || '—') : 'まだ'; cnt[k] = (cnt[k] || 0) + 1; });
+    $('ce_list').innerHTML = '<p><b>' + esc(per) + '</b>　' + Object.keys(cnt).map(function(k){ return esc(k) + '：' + cnt[k] + '人'; }).join('　') + '</p>' +
+      '<table><tr><th>職員</th><th>部署</th><th class="num">合計</th><th>クラス</th><th>つけた日</th></tr>' + rows.map(function(o){
+        var r = o.r; return '<tr><td>' + esc(o.s.name) + '</td><td>' + esc(myDepts(o.s).map(function(d){ return d.name; }).join('・')) + '</td><td class="num">' + (r && r.pct != null ? r.pct + '%' : '—') + '</td><td>' + (r ? '<b>' + esc(r.cls || r.auto || '—') + '</b>' + (r.cls && r.cls !== r.auto ? ' <small class="muted">（自動は ' + esc(r.auto || '—') + '・代表が決め直し）</small>' : '') : '<span class="muted">まだ</span>') + '</td><td>' + esc(r ? String(r.at || '').replace('T', ' ') : '') + '</td></tr>';
+      }).join('') + '</table>';
+  });
+}
+/* 基準の表（区分・項目・重み）とクラスの線 */
+function ccDraw(){
+  var c = ceCfg();
+  $('cc_items').innerHTML = '<table><tr><th>区分</th><th>項目</th><th class="num">重み</th><th></th></tr>' + c.items.map(function(it, i){
+    return '<tr data-cc="' + i + '"><td><input type="text" value="' + esc(it.g) + '" data-k="g" maxlength="30"></td><td><input type="text" value="' + esc(it.t) + '" data-k="t" maxlength="80"></td><td><input type="number" min="0" max="10" value="' + esc(it.w) + '" data-k="w" style="max-width:80px"></td><td><button type="button" class="btn small danger" data-ccdel="' + i + '">外す</button></td></tr>';
+  }).join('') + '</table>';
+  $('cc_classes').innerHTML = '<table><tr><th>クラス</th><th class="num">何%以上</th><th></th></tr>' + c.classes.map(function(k, i){
+    return '<tr data-cl="' + i + '"><td><input type="text" value="' + esc(k.n) + '" data-k="n" maxlength="10" style="max-width:120px"></td><td><input type="number" min="0" max="100" value="' + esc(k.min) + '" data-k="min" style="max-width:90px"></td><td><button type="button" class="btn small danger" data-cldel="' + i + '">外す</button></td></tr>';
+  }).join('') + '</table>';
+  $('cc_items').querySelectorAll('[data-ccdel]').forEach(function(b){ b.onclick = function(){ var c2 = ccRead(); c2.items.splice(+b.getAttribute('data-ccdel'), 1); evCfgCache = c2; ccDraw(); }; });
+  $('cc_classes').querySelectorAll('[data-cldel]').forEach(function(b){ b.onclick = function(){ var c2 = ccRead(); c2.classes.splice(+b.getAttribute('data-cldel'), 1); evCfgCache = c2; ccDraw(); }; });
+}
+function ccRead(){
+  var old = ceCfg(), items = [], classes = [];
+  $('cc_items').querySelectorAll('[data-cc]').forEach(function(tr){ var i = +tr.getAttribute('data-cc'), g = tr.querySelector('[data-k=g]').value.trim(), t = tr.querySelector('[data-k=t]').value.trim(), w = +tr.querySelector('[data-k=w]').value; if(t) items.push({ id:(old.items[i] && old.items[i].id) || ('x' + Date.now().toString(36) + i), g:g || 'その他', t:t, w:isFinite(w) ? Math.max(0, w) : 1 }); });
+  $('cc_classes').querySelectorAll('[data-cl]').forEach(function(tr){ var n = tr.querySelector('[data-k=n]').value.trim(), mn = +tr.querySelector('[data-k=min]').value; if(n) classes.push({ n:n, min:isFinite(mn) ? Math.max(0, Math.min(100, mn)) : 0 }); });
+  return { items:items, classes:classes };
+}
+function ccSave(){
+  var c = ccRead();
+  if(!c.items.length){ alert('項目を1つ以上入れてください。'); return; }
+  if(!c.classes.length){ alert('クラスを1つ以上入れてください。'); return; }
+  if(!c.classes.some(function(k){ return +k.min === 0; })) c.classes.push({ n:'—', min:0 });
+  evBoxPut('evcfg', c).then(function(){ evCfgCache = c; ccDraw(); ceLoad(); ceList(); $('cc_msg').textContent = '保存しました。'; scheduleSync(); });
+}
+function cePrint(html, title){
+  var css = '@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic",sans-serif;color:#10243b;font-size:9.5pt;line-height:1.45;margin:0}' +
+    '.hd{display:flex;align-items:center;gap:10px;border-bottom:1.5px solid #10243b;padding-bottom:6px;margin-bottom:8px}.hd img{width:30px;height:30px}.hd h1{font-size:14pt;margin:0}.hd p{margin:0;font-size:9.5pt;color:#5d6b7a}' +
+    'h2{font-size:10.5pt;margin:8px 0 3px;border-left:4px solid #c9772a;padding-left:6px}table{width:100%;border-collapse:collapse;margin:4px 0}th,td{border:1px solid #cfc6b4;padding:2px 6px;text-align:left;vertical-align:top}th{background:#f4f1ea}.num{text-align:right}.muted,small{color:#5d6b7a}.tag{font-weight:700}.memo{border:1px solid #cfc6b4;min-height:24mm;padding:4px 6px;white-space:pre-wrap}';
+  var win = window.open('', '_blank'); if(!win){ $('ce_msg').textContent = '印刷の画面を開けませんでした。ブラウザのポップアップの許可を確かめてください。'; return; }
+  win.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>' + esc(title) + '</title><style>' + css + '</style></head><body><div class="hd"><img src="' + esc(new URL('TriSight_icon_512.png', location.href).href) + '" alt="TriSight®"><div><h1>' + esc(title) + '</h1><p>' + esc(D().name ? 'ノア・コーポレーション合同会社' : '') + '　作成日 ' + esc(jpDate(ymd(new Date()))) + '</p></div></div>' + html + '<script>setTimeout(function(){print()},300)<\/script></body></html>');
+  win.document.close();
+}
+$('ev_open').addEventListener('click', evOpen);
+$('ev_close').addEventListener('click', evCloseDev);
+$('ev_whoSave').addEventListener('click', function(){
+  if(!evOk()) return;
+  var on = {}; $('ev_who').querySelectorAll('input:checked').forEach(function(c){ on[c.value] = 1; });
+  var me = meStaff();
+  if(me && !on[me.id] && !confirm('自分の印を外すと、この端末では開けなくなります。よろしいですか？')) return;
+  if(!Object.keys(on).length){ alert('少なくとも1人は指名してください。'); return; }
+  var a = staff(); a.forEach(function(x){ var v = !!on[x.id]; if(!!x.evalView !== v) x.evalView = v; }); saveCol('staff', a);
+  $('ev_wmsg').textContent = '保存しました（' + Object.keys(on).length + '人）。'; scheduleSync(); evRender();
+});
+['ce_staff','ce_period','ce_month'].forEach(function(id){ $(id).addEventListener('change', function(){ if(evOk()){ ceLoad(); if(id === 'ce_period') ceList(); } }); });
+$('ce_cls').addEventListener('change', ceShowTotal);
+$('ce_save').addEventListener('click', function(){ if(evOk()) ceSave(); });
+$('cc_addItem').addEventListener('click', function(){ var c = ccRead(); c.items.push({ id:'x' + Date.now().toString(36), g:'', t:'', w:1 }); evCfgCache = c; ccDraw(); });
+$('cc_addCls').addEventListener('click', function(){ var c = ccRead(); c.classes.push({ n:'', min:0 }); evCfgCache = c; ccDraw(); });
+$('cc_save').addEventListener('click', function(){ if(evOk()) ccSave(); });
+$('ce_print').addEventListener('click', function(){
+  if(!evOk()) return;
+  var sid = $('ce_staff').value, s = staff().filter(function(x){ return x.id === sid; })[0]; if(!s) return;
+  var cur = ceCur(), t = ceTotal(cur), c = ceCfg(), last = '';
+  var html = '<table><tr><th>職員</th><td>' + esc(staffLabel(s)) + '</td><th>評価の期間</th><td>' + esc($('ce_period').value) + '</td></tr><tr><th>合計</th><td>' + (t.pct == null ? '—' : t.pct + '%') + '</td><th>クラス</th><td><b>' + esc(cur.cls || t.auto || '—') + '</b>' + (cur.cls && cur.cls !== t.auto ? '（自動は ' + esc(t.auto || '—') + '）' : '') + '</td></tr></table>' +
+    '<h2>評価の内訳</h2><table><tr><th>区分</th><th>項目</th><th class="num">重み</th><th>評価</th></tr>' + c.items.map(function(it){ var g = it.g !== last ? esc(it.g) : ''; last = it.g; var v = +(cur.scores[it.id] || 0); return '<tr><td>' + g + '</td><td>' + esc(it.t) + '</td><td class="num">' + esc(it.w) + '</td><td>' + (v ? esc(CE_SC[v]) : '—') + '</td></tr>'; }).join('') + '</table>' +
+    '<h2>参考の数字</h2>' + ceRef(s, $('ce_month').value || ymd(new Date()).slice(0, 7)) +
+    '<h2>所見</h2><div class="memo">' + esc(cur.note) + '</div>';
+  cePrint(html, '会社評価シート');
+});
+$('ce_listPrint').addEventListener('click', function(){ if(!evOk()) return; cePrint($('ce_list').innerHTML, '会社評価の一覧（' + $('ce_period').value + '）'); });
+evLoad().then(function(){ evRender(); });
 window.ttSheetPull = sheetPull;   /* 下の基本情報シート共有部品から呼ぶ口（2026-10-26） */
 /* 2026-10-28：契約の範囲を確かめた後に、トライケアの入口を出し直す口（下の TriScope の確認から呼ぶ） */
 window.ttScopeRefresh = function(){ nrRender(); tcRender(); var pv = document.querySelector('#ptView h2[data-no]'); if(pv) ptView(pv.getAttribute('data-no')); };

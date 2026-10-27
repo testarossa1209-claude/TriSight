@@ -125,6 +125,7 @@
   .ssBody{flex:1;overflow:auto;padding:0 16px 16px}
   .ssBody table{border-collapse:collapse;width:100%;min-width:560px;font-size:12.5px;table-layout:fixed}
   .ssChip{white-space:nowrap}
+  .tdPin{background:#1f4e79!important;color:#fff;border-radius:50%;border:2px solid #fff!important;box-shadow:0 1px 4px rgba(0,0,0,.4);font-weight:700;font-size:13px}.tdPin span{display:block;width:100%;text-align:center;line-height:24px}
   .mhT{border-collapse:collapse;width:100%;min-width:640px;font-size:12.5px;table-layout:fixed}
   .mhT th,.mhT td{border:1px solid var(--paper-deep);padding:4px;vertical-align:top}
   .mhT thead th{background:var(--paper);font-weight:700}.mhT thead th.we{color:var(--red)}
@@ -179,7 +180,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-18</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-19</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -211,6 +212,28 @@ function tsGoBack(){
 
 <!-- ===== 予定係 ===== -->
 <section class="tab on" id="tab-plan">
+  <div class="card" id="cardToday">
+    <h2>1日の予定と地図</h2>
+    <p class="lead">選んだ職員の、その日の訪問を回る順に並べ、訪問先を地図に番号で出します。タブレットでは、この端末を使う人の今日の予定が最初から出ます。</p>
+    <div class="row">
+      <div><label class="f" for="td_date">日付</label><input type="date" id="td_date"></div>
+      <div><label class="f" for="td_staff">職員</label><select id="td_staff"></select></div>
+      <div><label class="f">&nbsp;</label><button class="btn sub" id="td_geo">住所から位置を取る</button></div>
+    </div>
+    <p class="muted" id="td_msg"></p>
+    <div id="td_map" style="height:360px;border-radius:10px;border:1px solid var(--paper-deep);margin:6px 0 10px;display:none"></div>
+    <div class="tbl-scroll" id="td_list"></div>
+  </div>
+  <div class="card" id="cardAuto" style="display:none">
+    <h2>週間予定を地区で寄せて組む（自動の振り分け）</h2>
+    <p class="lead">利用中の患者さんを地区ごとにまとめ、看護師の出る曜日（名簿の公休）と1日の件数の上限の中で、週間予定の組み方を自動で出します。出た組み方を見て、よければ「この組み方を週間予定に入れる」を押します。</p>
+    <div class="row">
+      <div><label class="f" for="au_full">常勤の1日の件数の上限</label><input type="number" id="au_full" min="1" max="10"></div>
+      <div><label class="f" for="au_part">非常勤の1日の件数の上限</label><input type="number" id="au_part" min="1" max="10" value="3"></div>
+    </div>
+    <div class="btns"><button class="btn" id="au_make">組み方を出す</button><button class="btn amber" id="au_apply" style="display:none">この組み方を週間予定に入れる</button><button class="btn sub" id="au_undo" style="display:none">元に戻す</button><span class="muted" id="au_msg"></span></div>
+    <div id="au_out"></div>
+  </div>
   <div class="card" id="cardMine" style="display:none">
     <h2>あなたの今月の稼働率</h2>
     <div id="mineBody"></div>
@@ -270,7 +293,7 @@ function tsGoBack(){
 <section class="tab" id="tab-pt">
   <div class="card" id="cardPt">
     <h2 data-t="{client}の登録">患者さんの登録</h2>
-    <p class="lead" data-t="{ptLead}">氏名は入れず、契約書番号で扱います。地区は町名までです。カイポケの書類（アセスメント・指示書・計画書・報告書・契約書）から、訪問に要るところだけを写します。</p>
+    <p class="lead" data-t="{ptLead}">氏名は入れず、契約書番号で扱います。地区（町名）は予定を寄せる単位に、住所（番地まで）は地図に使います。カイポケの書類（アセスメント・指示書・計画書・報告書・契約書）から、訪問に要るところだけを写します。</p>
     <p class="muted">番号を入れて「呼び出す」を押すと、登録済みの内容が欄に出ます。写し終えた書類には印を付けてください。何人かで手分けして写すとき、誰がどこまで写したかが下の一覧で分かります。</p>
     <div class="row">
       <div><label class="f" for="pt_no">契約書番号</label><input type="text" id="pt_no"></div>
@@ -280,6 +303,7 @@ function tsGoBack(){
     </div>
     <div class="row">
       <div><label class="f" for="pt_area">地区（町名）</label><input type="text" id="pt_area" placeholder="例：本町二丁目"></div>
+      <div><label class="f" for="pt_addr">住所（番地まで・地図と予定の振り分けに使う）</label><input type="text" id="pt_addr" placeholder="例：東村山市本町2-3-4"></div>
       <div><label class="f" for="pt_spot">訪問先の目印・駐車</label><input type="text" id="pt_spot" placeholder="例：青い屋根の2階・裏の駐車場"></div>
     </div>
     <details class="ptsec" id="ptsRead" open><summary>書類を読み込ませる（PDF・写真から欄を埋める）</summary>
@@ -1435,7 +1459,7 @@ function renderAdmin(){
    何人かで手分けして写すため、書類ごとに「写した日・写した人」を残し、一覧で進み具合を出す。
    特定の職員を嫌がる申し出は、ここに書かせず「経過」の拒否の申し出（本人の言葉・見直し期限つき）へ回す。
    ============================================================ */
-var PT_F = [['pt_status','status'],['pt_ins','ins'],['pt_area','area'],['pt_spot','spot'],
+var PT_F = [['pt_status','status'],['pt_ins','ins'],['pt_area','area'],['pt_addr','addr'],['pt_spot','spot'],
   ['pt_hosp','hosp'],['pt_doc','doc'],['pt_inst','instDate'],['pt_instEnd','instEnd'],['pt_instPoint','instPoint'],['pt_special','special'],['pt_specialEnd','specialEnd'],
   ['pt_asmDate','asmDate'],['pt_asmState','asmState'],['pt_asmLife','asmLife'],['pt_asmFamily','asmFamily'],['pt_asmRisk','asmRisk'],
   ['pt_goal','goal'],['pt_planMade','planMade'],['pt_freq','freq'],
@@ -1569,6 +1593,7 @@ function ptSave(){
   ptClear();
   $('pt_msg').textContent = (isNew ? '登録しました：' : '直しました：') + dn(no) + '。続けて次の' + D().client + 'を入れられます。';
   refreshAll();
+  if(p.addr && p.geoAddr !== p.addr) geoFill(no).then(function(r){ if(r === 'miss') $('pt_msg').textContent += '（住所から地図の位置が取れませんでした。「東村山市本町2-3-4」の形で入れ直してください）'; else if(r === 'ok') renderToday(); });
 }
 function hardInfo(no, m){
   var n = events().filter(function(e){ return (e.type === 'cancel' || e.type === 'change') && e.patientNo === no && ym(e.date) === m; }).length;
@@ -2412,7 +2437,7 @@ function sumMoney(){
 var DEPT_T = {
   nurse:  null,   /* 訪問看護部は画面に書いてある文のまま */
   kaigo:  { board:'連絡板（事務局から訪問介護部へ）', courseLead:'利用者さんごとに、キャンセル・次回の約束・拒否の申し出を、日付の順に一本の線で持ちます。良い悪いの評価はせず、事実だけを並べます。',
-            promiseSum:'今日やったこと・次回の約束を残す', didLabel:'今日やったこと（ヘルパーさんの言葉のまま）', ptLead:'氏名は入れず、契約書番号で扱います。地区は町名までです。' },
+            promiseSum:'今日やったこと・次回の約束を残す', didLabel:'今日やったこと（ヘルパーさんの言葉のまま）', ptLead:'氏名は入れず、契約書番号で扱います。地区（町名）は予定を寄せる単位に、住所（番地まで）は地図に使います。' },
   soudan: { board:'連絡板（事務局から特定障害相談部へ）', courseLead:'利用者さんごとに、モニタリング・面談・キャンセル・拒否の申し出を、日付の順に一本の線で持ちます。良い悪いの評価はせず、事実だけを並べます。',
             promiseSum:'モニタリング・面談を記録する（次回の約束も）', didLabel:'行ったこと（相談員の言葉のまま）', ptLead:'氏名は入れず、契約書番号で扱います。モニタリングの周期と、計画の更新期限を入れると、予定のタブに次に行う月が出ます。' },
   kyotaku:{ board:'連絡板（事務局から居宅介護支援部へ）', courseLead:'利用者さんごとに、モニタリング・面談・キャンセル・拒否の申し出を、日付の順に一本の線で持ちます。良い悪いの評価はせず、事実だけを並べます。',
@@ -2816,6 +2841,198 @@ $('mh_print').addEventListener('click', mhPrint);
 ['sc_pd','sc_fn','sc_fk','sc_pn','sc_pk','mh_users','mh_cap'].forEach(function(id){ $(id).addEventListener('change', scMake); });
 $('gr_make').addEventListener('click', grMake);
 ['gr_f1','gr_f2','gr_f3','gr_add','gr_from','gr_to','gr_nf'].forEach(function(id){ $(id).addEventListener('change', grMake); });
+/* ===== 住所・地図・1日の予定・地区で寄せる自動の振り分け（2026-10-27 宏史さんの指示）=====
+   ・住所は番地まで入れてよい（ノアの患者さんの情報はNDAで守っており、当社での利用は問題ない＝宏史さんの判断）。
+   ・住所から位置（緯度・経度）を出すのは国土地理院の住所検索。ブラウザから直に取れないときは、当社のリレー（fetchdoc）経由で取る。
+     位置は患者さんの登録内容（記録の鍵をかけて共有）に一緒に入れる。地図は地理院タイル（住所は送らない）。 */
+var GSI_FIND = 'https://msearch.gsi.go.jp/address-search/AddressSearch?q=';
+var LEAFLET_JS = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js', LEAFLET_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+function geoParse(a){ a = Array.isArray(a) ? a : []; var c = a[0] && a[0].geometry && a[0].geometry.coordinates; return c ? { lat:+c[1], lng:+c[0], hit:(a[0].properties && a[0].properties.title) || '' } : null; }
+function geoFind(addr){
+  var url = GSI_FIND + encodeURIComponent(addr);
+  return fetch(url).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); }).then(geoParse).catch(function(){
+    var code = localStorage.getItem('trisight_access_code') || '';
+    return fetch(GATE_URL.replace(/\/gate$/, '/fetchdoc'), { method:'POST', headers:{ 'Content-Type':'application/json', 'x-trisight-code':code }, body:JSON.stringify({ url:url, name:'geo.json' }) })
+      .then(function(r){ return r.json(); }).then(function(j){
+        if(!j || !j.base64) return null;
+        var bin = atob(j.base64), u8 = new Uint8Array(bin.length); for(var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+        return geoParse(JSON.parse(new TextDecoder('utf-8').decode(u8)));
+      }).catch(function(){ return null; });
+  });
+}
+/* 1人分：住所が変わっていれば位置を取り直して保存する */
+function geoFill(no){
+  var p = patient(no); if(!p || !p.addr || p.geoAddr === p.addr) return Promise.resolve(p && p.lat ? 'ok' : 'none');
+  return geoFind(p.addr).then(function(g){
+    var a = allPatients(), q = a.filter(function(x){ return x.no === no; })[0]; if(!q) return 'none';
+    if(g){ q.lat = g.lat; q.lng = g.lng; q.geoAddr = q.addr; q.geoHit = g.hit; } else { q.geoAddr = q.addr; q.lat = null; q.lng = null; q.geoHit = ''; }
+    saveCol('patients', a); return g ? 'ok' : 'miss';
+  });
+}
+function geoFillAll(){
+  var list = patients().filter(function(p){ return p.addr && p.geoAddr !== p.addr; }).map(function(p){ return p.no; });
+  $('td_msg').textContent = list.length ? '住所から位置を取っています（' + list.length + '件）…' : '位置を取り直す住所はありません（住所の入っていない患者さんは、登録で住所を入れてください）。';
+  var ok = 0, miss = [];
+  return list.reduce(function(pr, no){ return pr.then(function(){ return geoFill(no).then(function(r){ if(r === 'ok') ok++; else if(r === 'miss') miss.push(dn(no)); }); }); }, Promise.resolve()).then(function(){
+    if(list.length) $('td_msg').textContent = '位置を取りました：' + ok + '件。' + (miss.length ? '取れなかった住所：' + miss.join('・') + '（住所の書き方を「東村山市本町2-3-4」の形に直してください）' : '');
+    renderToday();
+  });
+}
+/* ---- 1日の予定と地図 ---- */
+var tdMap = null, tdLayer = null, leafletP = null;
+function leafletLoad(){
+  if(window.L) return Promise.resolve();
+  if(leafletP) return leafletP;
+  leafletP = new Promise(function(ok, ng){
+    var c = document.createElement('link'); c.rel = 'stylesheet'; c.href = LEAFLET_CSS; document.head.appendChild(c);
+    var s = document.createElement('script'); s.src = LEAFLET_JS; s.onload = function(){ ok(); }; s.onerror = function(){ leafletP = null; ng(new Error('地図の部品を読み込めませんでした')); }; document.head.appendChild(s);
+  });
+  return leafletP;
+}
+function todayFill(){
+  if(!$('td_date').value) $('td_date').value = ymd(new Date());
+  var R = role(), me = dev().me, list = deptStaff().filter(function(s){ return !staffOrphan(s) && jobOf(s) !== '事務局'; });
+  if(R.lv === 'staff' && R.s) list = list.filter(function(s){ return s.id === R.s.id; });
+  var cur = $('td_staff').value || me || '';
+  fillSelect('td_staff', list.map(function(s){ return { v:s.id, t:staffLabel(s) }; }), list.length > 1 ? '選んでください' : null);
+  if(cur && list.some(function(s){ return s.id === cur; })) $('td_staff').value = cur;
+  else if(list.length === 1) $('td_staff').value = list[0].id;
+}
+function renderToday(){
+  if(!$('cardToday')) return;
+  todayFill();
+  var date = $('td_date').value, sid = $('td_staff').value;
+  if(!sid){ $('td_list').innerHTML = '<p class="empty">職員を選ぶと、その人のこの日の予定と地図が出ます。</p>'; $('td_map').style.display = 'none'; return; }
+  var vs = visitsOn(date).filter(function(v){ return v.staffId === sid || v.withId === sid; });
+  var live = vs.filter(function(v){ return !v.cx; });
+  var rows = vs.map(function(v){
+    var p = patient(v.no) || {}, n = live.indexOf(v) + 1;
+    return '<tr' + (v.cx ? ' style="opacity:.55"' : '') + '><td class="num"><b>' + (v.cx ? '—' : n) + '</b></td><td>' + esc(v.time) + '<br><small class="muted">' + esc(v.min || 30) + '分</small></td><td><b>' + esc(dn(v.no)) + '</b>' + (v.withId ? ' <span class="tag amber">2名体制（' + esc(staffName(v.withId === sid ? v.staffId : v.withId)) + 'さんと）</span>' : '') + (v.cx ? ' <span class="tag red">キャンセル</span>' : '') +
+      '<br><small>' + esc(p.addr || v.area || '住所未登録') + (p.spot ? '・' + esc(p.spot) : '') + '</small>' + (p.addr && !p.lat ? ' <span class="tag gray">地図の位置が未取得</span>' : '') + '</td><td><small>' + esc(p.asmRisk || '') + '</small></td></tr>';
+  }).join('');
+  $('td_list').innerHTML = vs.length ? '<table><tr><th class="num">順</th><th>時刻</th><th>訪問先</th><th>気を付けること</th></tr>' + rows + '</table><p class="muted">' + esc(jpDate(date)) + '：訪問 ' + live.length + '件' + (vs.length > live.length ? '（キャンセル ' + (vs.length - live.length) + '件）' : '') + '。地図の番号は、この表の「順」と同じです。</p>'
+    : '<p class="empty">' + esc(jpDate(date)) + 'の訪問はありません。</p>';
+  var pts = live.map(function(v, i){ var p = patient(v.no) || {}; return p.lat ? { n:i + 1, lat:+p.lat, lng:+p.lng, t:v.time + ' ' + dn(v.no) } : null; }).filter(Boolean);
+  if(!pts.length){ $('td_map').style.display = 'none'; if(live.length) $('td_list').insertAdjacentHTML('afterbegin', '<p class="muted">地図に出せる訪問先がありません。患者さんの登録で住所（番地まで）を入れ、「住所から位置を取る」を押してください。</p>'); return; }
+  $('td_map').style.display = '';
+  leafletLoad().then(function(){
+    if(!tdMap){
+      tdMap = L.map('td_map', { scrollWheelZoom:false });
+      L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png', { maxZoom:18, attribution:'<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>' }).addTo(tdMap);
+    }
+    if(tdLayer) tdLayer.remove();
+    tdLayer = L.layerGroup().addTo(tdMap);
+    var ll = pts.map(function(x){ return [x.lat, x.lng]; });
+    if(ll.length > 1) L.polyline(ll, { color:'#1f4e79', weight:3, opacity:.7, dashArray:'6 6' }).addTo(tdLayer);
+    pts.forEach(function(x){
+      L.marker([x.lat, x.lng], { icon:L.divIcon({ className:'tdPin', html:'<span>' + x.n + '</span>', iconSize:[28, 28], iconAnchor:[14, 14] }) }).bindTooltip(esc(x.t)).addTo(tdLayer);
+    });
+    setTimeout(function(){ tdMap.invalidateSize(); if(ll.length > 1) tdMap.fitBounds(ll, { padding:[30, 30] }); else tdMap.setView(ll[0], 16); }, 50);
+  }).catch(function(e){ $('td_map').innerHTML = '<p class="muted" style="padding:10px">' + esc(e.message) + '。通信を確かめて、もう一度開いてください。</p>'; });
+}
+/* ---- 地区で寄せる自動の振り分け ---- */
+var AU_BAK = 'tritime_weekly_backup', auPlan = null;
+function auFreq(p, cur){ if(cur) return Math.min(3, cur); var m = String(p.freq || '').match(/週\s*([1-7１-７])/); if(m) return Math.min(3, +String(m[1]).replace(/[１-７]/, function(c){ return '１２３４５６７'.indexOf(c) + 1; })); return 1; }
+function auCombos(days, f){ var out = []; (function rec(i, a){ if(a.length === f){ out.push(a.slice()); return; } for(var j = i; j < days.length; j++){ a.push(days[j]); rec(j + 1, a); a.pop(); } })(0, []); return out; }
+function auMake(){
+  var capF = Math.max(1, +$('au_full').value || 5), capP = Math.max(1, +$('au_part').value || 3);
+  var ST = deptStaff().filter(function(s){ return !staffOrphan(s) && NURSE_JOBS.indexOf(jobOf(s)) >= 0; }).map(function(s){
+    var off = staffOff(s), days = MD_DOW.filter(function(d){ return off.length ? off.indexOf(d) < 0 : ['1','2','3','4','5'].indexOf(d) >= 0; }).filter(function(d){ return d !== '0'; });
+    return { s:s, full:s.emp !== '非常勤', days:days, cap:s.emp !== '非常勤' ? capF : capP, load:{}, areas:{} };
+  }).filter(function(x){ return x.days.length; });
+  if(!ST.length){ $('au_out').innerHTML = '<p class="empty">振り分けられる看護師が名簿にいません。</p>'; return; }
+  var wk = weekly(), cnt = {}, main = {}, info = {};
+  wk.forEach(function(v){ cnt[v.no] = (cnt[v.no] || 0) + 1; (main[v.no] = main[v.no] || {})[v.staffId] = (main[v.no][v.staffId] || 0) + 1; if(!info[v.no]) info[v.no] = { min:v.min || 30, withId:'', withN:0 }; if(v.withId){ info[v.no].withId = info[v.no].withId || v.withId; info[v.no].withN++; } });
+  var P = patients().filter(function(p){ return !p.status || p.status === '利用中'; }).map(function(p){
+    var m = main[p.no] || {}, ms = Object.keys(m).sort(function(a, b){ return m[b] - m[a]; })[0] || '';
+    return { no:p.no, area:p.area || '（地区なし）', f:auFreq(p, cnt[p.no] || 0), lat:p.lat, lng:p.lng, main:ms };
+  });
+  var byArea = {}; P.forEach(function(p){ (byArea[p.area] = byArea[p.area] || []).push(p); });
+  var areas = Object.keys(byArea).sort(function(a, b){ return byArea[b].length - byArea[a].length || (a < b ? -1 : 1); });
+  var used = function(x, d){ return (x.load[d] || []).length; };
+  var out = [], miss = [];
+  areas.forEach(function(ar){
+    byArea[ar].sort(function(a, b){ return b.f - a.f; }).forEach(function(p){
+      var cand = ST.slice().sort(function(a, b){
+        var ka = (a.s.id === p.main ? 100 : 0) + (a.areas[ar] || 0) * 10, kb = (b.s.id === p.main ? 100 : 0) + (b.areas[ar] || 0) * 10;
+        var ra = a.days.length * a.cap - a.days.reduce(function(t, d){ return t + used(a, d); }, 0), rb = b.days.length * b.cap - b.days.reduce(function(t, d){ return t + used(b, d); }, 0);
+        return (kb - ka) || (rb - ra);
+      });
+      var done = false;
+      for(var i = 0; i < cand.length && !done; i++){
+        var x = cand[i], best = null, bs = -1e9;
+        auCombos(x.days, Math.min(p.f, x.days.length)).forEach(function(c){
+          if(c.length < p.f) return;
+          if(c.some(function(d){ return used(x, d) >= x.cap; })) return;
+          var idx = c.map(function(d){ return +d; }), gap = 7;
+          for(var k = 1; k < idx.length; k++) gap = Math.min(gap, idx[k] - idx[k - 1]);
+          var same = c.reduce(function(t, d){ return t + (x.load[d] || []).filter(function(q){ return q.area === ar; }).length; }, 0);
+          var lv = c.reduce(function(t, d){ return t + used(x, d); }, 0);
+          var sc = (idx.length > 1 ? Math.min(gap, 2) * 20 : 0) + same * 6 - lv * 3;
+          if(sc > bs){ bs = sc; best = c; }
+        });
+        if(best){ best.forEach(function(d){ (x.load[d] = x.load[d] || []).push(p); }); x.areas[ar] = (x.areas[ar] || 0) + 1; done = true; out.push({ p:p, x:x, days:best }); }
+      }
+      if(!done) miss.push(p);
+    });
+  });
+  /* 時刻：その日の訪問を地区ごとにまとめ、位置があれば近い順に並べて、1日の流れの枠（mhDay）に当てる */
+  var rows = [];
+  ST.forEach(function(x){
+    Object.keys(x.load).forEach(function(d){
+      var a = x.load[d].slice().sort(function(p, q){ return p.area < q.area ? -1 : p.area > q.area ? 1 : 0; });
+      var g = a.filter(function(p){ return p.lat; });
+      if(g.length > 1){ var ord = [g[0]], rest = g.slice(1); while(rest.length){ var last = ord[ord.length - 1], bi = 0, bd = 1e9; rest.forEach(function(q, i){ var dd = Math.pow(q.lat - last.lat, 2) + Math.pow(q.lng - last.lng, 2); if(dd < bd){ bd = dd; bi = i; } }); ord.push(rest.splice(bi, 1)[0]); } a = ord.concat(a.filter(function(p){ return !p.lat; })); }
+      var slots = mhDay(a.length).filter(function(s){ return s.k === 'v'; });
+      a.forEach(function(p, i){ rows.push({ dow:d, time:hm(slots[i] ? slots[i].a : 540 + i * 60), no:p.no, staffId:x.s.id, area:p.area }); });
+    });
+  });
+  auPlan = { rows:rows, miss:miss, nos:out.map(function(o){ return o.p.no; }), info:info };
+  var tot = rows.length, need = P.reduce(function(t, p){ return t + p.f; }, 0);
+  var head = '<tr><th class="who">職員</th>' + MD_DOW.map(function(d){ return '<th' + (d === '0' || d === '6' ? ' class="we"' : '') + '>' + DOW[+d] + '</th>'; }).join('') + '</tr>';
+  var body = ST.map(function(x){
+    var w = 0;
+    var cells = MD_DOW.map(function(d){
+      if(x.days.indexOf(d) < 0) return '<td class="mhOff">休</td>';
+      var r = rows.filter(function(v){ return v.staffId === x.s.id && v.dow === d; }).sort(function(a, b){ return a.time < b.time ? -1 : 1; }); w += r.length;
+      return '<td>' + r.map(function(v){ return '<span class="ssChip">' + esc(v.time) + ' ' + esc(dn(v.no)) + '<br><small>' + esc(v.area) + '</small></span>'; }).join('') + '<div class="mhCnt' + (r.length >= x.cap ? ' full' : '') + '">' + r.length + '件</div></td>';
+    }).join('');
+    return '<tr><th class="who">' + esc(x.s.name) + '<small>' + (x.full ? '常勤' : '非常勤') + '・1日 ' + x.cap + '件まで</small><small>週 ' + w + '件</small></th>' + cells + '</tr>';
+  }).join('');
+  $('au_out').innerHTML = '<div class="judge ' + (miss.length ? 'fee' : 'free') + '" style="margin:8px 0">利用中の患者さん ' + P.length + '人・週 ' + need + '回のうち、<b>週 ' + tot + '回</b>を振り分けました。' +
+    (miss.length ? '<br><b>入りきらなかった患者さん：' + miss.map(function(p){ return esc(dn(p.no)) + '（' + esc(p.area) + '・週' + p.f + '回）'; }).join('、') + '</b>。1日の件数の上限を上げるか、手で入れてください。' : '') + '</div>' +
+    '<div class="tbl-scroll"><table class="mhT">' + head + body + '</table></div>' +
+    '<p class="muted">同じ地区の患者さんを、同じ職員・同じ曜日に寄せています。いまの担当がいる患者さんは、なるべく同じ職員のままにしています。週の回数は、いまの週間予定の回数（無ければ登録の「訪問の頻度」、それも無ければ週1回）です。1日の中は、地区ごと・位置が分かるものは近い順に並べ、時刻は「勤務の決まり」の1日の流れに当てています。2名体制の同行者は、いまの週間予定の回数の分だけ引き継ぎます。</p>';
+  $('au_apply').style.display = rows.length ? '' : 'none';
+}
+function auApply(){
+  if(!auPlan || !auPlan.rows.length) return;
+  if(!confirm('いまの週間予定のうち、振り分けた患者さん ' + auPlan.nos.length + '人の分を、この組み方に入れ替えます。入れ替える前の週間予定は控えに残し、「元に戻す」で戻せます。入れ替えますか。')) return;
+  var all = live('weekly');
+  try{ localStorage.setItem(AU_BAK, JSON.stringify({ at:nowLocal(), rows:all })); }catch(e){}
+  var set = {}; auPlan.nos.forEach(function(n){ set[n] = 1; });
+  var keep = all.filter(function(v){ return !set[v.no]; });
+  var wUsed = {};
+  auPlan.rows.forEach(function(v){ var inf = auPlan.info[v.no] || {}, w = '';
+    if(inf.withId && inf.withId !== v.staffId && (wUsed[v.no] || 0) < (inf.withN || 0)){ w = inf.withId; wUsed[v.no] = (wUsed[v.no] || 0) + 1; }
+    keep.push({ id:uid(), dow:v.dow, time:v.time, min:inf.min || 30, no:v.no, staffId:v.staffId, withId:w }); });
+  saveCol('weekly', keep);
+  $('au_msg').textContent = '週間予定に入れました（' + auPlan.rows.length + '件）。入れ替える前の予定は控えに残しています。';
+  auPlan = null; $('au_apply').style.display = 'none'; refreshAll(); auUndoShow();
+}
+function auUndoShow(){ var b = lj(AU_BAK, null); $('au_undo').style.display = b ? '' : 'none'; if(b) $('au_undo').textContent = '元に戻す（' + b.at + 'の週間予定）'; }
+function auUndo(){
+  var b = lj(AU_BAK, null); if(!b) return;
+  if(!confirm(b.at + 'に入れ替える前の週間予定に戻します。戻しますか。')) return;
+  saveCol('weekly', b.rows); try{ localStorage.removeItem(AU_BAK); }catch(e){}
+  $('au_msg').textContent = '入れ替える前の週間予定に戻しました。'; refreshAll(); auUndoShow();
+}
+function renderAuto(){
+  var c = $('cardAuto'); if(!c) return;
+  var R = role(); c.style.display = (R.lv === 'all' || R.lv === 'dept' || R.lv === 'office') && D().kind === 'visit' ? '' : 'none';
+  if(!$('au_full').value) $('au_full').value = 5;
+  auUndoShow();
+}
 function refreshAll(){
   mgMigrate(); applyDept();
   setShareNote(); renderAlerts();
@@ -2823,7 +3040,7 @@ function refreshAll(){
   fillSelect('dv_me', staff().filter(function(s){ return !staffOrphan(s) || s.id === dev().me; }).map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
   if(!$('dv_me').value && dev().me) $('dv_me').value = dev().me;
   $('dv_share').checked = dev().share;
-  renderSetup(); renderPlan(); renderIntakeList(); renderCourse(); renderReport(); renderAdmin();
+  renderSetup(); renderPlan(); renderToday(); renderAuto(); renderIntakeList(); renderCourse(); renderReport(); renderAdmin();
   renderMonitor(); renderSummary();
   ptForm(); rdKinds(); renderPtList(); nrRender(); renderReq(); keyStatus(); mkStatus(); renderMine();
   if(typeof renderModel === 'function' && canMoney()) renderModel();
@@ -2836,7 +3053,7 @@ document.querySelectorAll('#tabs button').forEach(function(b){
     document.querySelectorAll('section.tab').forEach(function(s){ s.classList.toggle('on', s.id === 'tab-' + b.getAttribute('data-tab')); });
     var t = b.getAttribute('data-tab');
     if(t === 'intake') initVoice();
-    if(t === 'plan'){ renderPlan(); renderMonitor(); renderSummary(); }
+    if(t === 'plan'){ renderPlan(); renderToday(); renderAuto(); renderMonitor(); renderSummary(); }
     if(t === 'course') renderCourse();
     if(t === 'report') renderReport();
     if(t === 'admin') renderAdmin();
@@ -2885,6 +3102,11 @@ $('rp_copy').addEventListener('click', function(){
 });
 
 $('pt_add').addEventListener('click', ptSave);
+['td_date','td_staff'].forEach(function(id){ $(id).addEventListener('change', renderToday); });
+$('td_geo').addEventListener('click', geoFillAll);
+$('au_make').addEventListener('click', auMake);
+$('au_apply').addEventListener('click', auApply);
+$('au_undo').addEventListener('click', auUndo);
 $('pt_load').addEventListener('click', function(){ ptLoad(keyNo($('pt_no').value)); });
 $('pt_no').addEventListener('change', function(){ var no = keyNo($('pt_no').value); if(no && patient(no)) ptLoad(no); });
 $('pt_clear').addEventListener('click', function(){ ptClear(); $('pt_msg').textContent = ''; });

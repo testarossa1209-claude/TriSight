@@ -359,7 +359,7 @@
       try{ dict.selS = n.selectionStart; dict.selE = n.selectionEnd; }catch(e){ dict.selS = dict.selE = null; }
     }
     document.addEventListener('focusin', function(ev){ remember(ev.target); }, true);
-    document.addEventListener('focusout', function(ev){ if(ev.target === dict.last) remember(ev.target); }, true);
+    document.addEventListener('focusout', function(ev){ if(ev.target === dict.last){ remember(ev.target); dict.blurAt = Date.now(); } }, true);
     document.addEventListener('keyup', function(ev){ if(ev.target === dict.last) remember(ev.target); }, true);
     document.addEventListener('mouseup', function(ev){ if(ev.target === dict.last) remember(ev.target); }, true);
     document.addEventListener('selectionchange', function(){ if(dict.last && document.activeElement === dict.last) remember(dict.last); });
@@ -384,6 +384,9 @@
       if(rec.owner === dict.owner && isRecording()){ stopRec(); return; }
       if(document.activeElement && isTextField(document.activeElement)) remember(document.activeElement);
       var n = dict.last;
+      /* 2026-10-27：ボタンを1つに。文字の欄を押した直後でなければ「声で操作」として聞く（command を一緒に使っているときだけ） */
+      var fresh = n && document.body.contains(n) && (document.activeElement === n || (Date.now() - (dict.blurAt || 0)) < 2000);
+      if(!fresh && cmd && cmd.merged){ cmd.owner.button = btn; startRec(cmd.owner); return; }
       if(!n && dict.lastEx){
         dictTip('この欄は音声入力の対象外です（個人の情報を外へ送らない欄のため）。手で入力してください。', 'warn'); return;
       }
@@ -483,12 +486,15 @@
       '.tv-cmd-tip[data-kind="warn"]{background:#9a3412}.tv-cmd-pick{display:block;margin:6px 0 0;width:100%;text-align:left;background:#fff;color:#1f2328;border:0;border-radius:6px;padding:6px 8px;font-size:13px;cursor:pointer}'+
       '.tv-cmd-hit{outline:3px solid #1f4e79 !important;outline-offset:2px}@media print{.tv-cmd-btn,.tv-cmd-tip{display:none !important}}';
     document.head.appendChild(css);
+    var merged = !!opts.mergeWithDictation && !!dict;
     var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'tv-cmd-btn'; btn.textContent = '🗣 声で操作';
+    if(merged){ btn.style.display = 'none'; dict.btn.title = '文字を入れたい欄を押してから話すと、その欄に文字が入ります。欄を押さずに話すと、「予定タブ」「組み方を出す」のように、言ったボタンやタブを押します'; }
     btn.title = '押してから「予定タブ」「組み方を出す」「11月2日」「看護一郎さん」のように、押したいボタンや選びたいものの名前を話し、もう一度押します';
     var tip = document.createElement('div'); tip.className = 'tv-cmd-tip'; tip.setAttribute('role', 'status');
     document.body.appendChild(tip); document.body.appendChild(btn);
-    cmd = { btn:btn, tip:tip, exclude:opts.exclude || '' };
-    cmd.owner = { button:btn, conf:cfg, recordingMessage:'聞いています… 押したいボタンや選びたいものの名前を話し、もう一度「声で操作」を押してください。',
+    cmd = { btn:btn, tip:tip, exclude:opts.exclude || '', merged:merged };
+    if(merged) tip.style.right = '16px';
+    cmd.owner = { button:btn, conf:cfg, recordingMessage:merged ? '聞いています… 押したいボタンやタブの名前を話し、もう一度マイクを押してください。（文字を入れたいときは、先に欄を押してからマイクを押します）' : '聞いています… 押したいボタンや選びたいものの名前を話し、もう一度「声で操作」を押してください。',
       status:function(t){ cmdTip(t, /失敗|エラー|できません|未対応|不一致|認識できません/.test(t) ? 'warn' : ''); }, onText:runCommand };
     btn.addEventListener('click', function(){ if(rec.owner === cmd.owner && isRecording()){ stopRec(); return; } startRec(cmd.owner); });
   }

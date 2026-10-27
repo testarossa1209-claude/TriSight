@@ -180,7 +180,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-30</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-28-01</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -306,6 +306,11 @@ function tsGoBack(){
       <div><label class="f" for="pt_addr">住所（番地まで・地図と予定の振り分けに使う）</label><input type="text" id="pt_addr" placeholder="例：東村山市本町2-3-4"></div>
       <div><label class="f" for="pt_spot">訪問先の目印・駐車</label><input type="text" id="pt_spot" placeholder="例：青い屋根の2階・裏の駐車場"></div>
     </div>
+    <details class="ptsec" id="ptsCare" open><summary>トライケアから読み込む（この端末のアセスメント）</summary>
+      <p class="muted">この端末のトライケア（アセスメント）に入っている利用者さんの情報を、下の欄へ入れます。AIは使わず、通信もしません。氏名・ふりがな・生年月日・住所・電話番号・保険の番号・ご家族の氏名は入れません（トライタイムは契約書番号で扱うため）。すでに書いてある欄は書き換えず、空いている欄だけを埋めます。</p>
+      <div class="row"><div><label class="f" for="tc_pick">トライケアの利用者さん</label><select id="tc_pick"></select></div></div>
+      <div class="btns"><button class="btn sub" type="button" id="tc_go">欄に入れる</button><span class="muted" id="tc_msg"></span></div>
+    </details>
     <details class="ptsec" id="ptsRead" open><summary>書類を読み込ませる（PDF・写真から欄を埋める）</summary>
       <p class="muted">カイポケの書類や契約書のPDF、または書類の写真を選ぶと、AIが読んで下の欄に下書きを入れます。氏名・生年月日・電話番号・番地などは入れません。入った内容を見て直し、「この内容で登録する」を押すと登録されます。読み込ませた書類そのものは、どこにも残しません（読み取りのため、AIの提供元へ送られます）。</p>
       <div class="row">
@@ -385,8 +390,8 @@ function tsGoBack(){
   </div>
   <div class="card" id="cardNr">
     <h2>看護記録（トライケア）の取り込み</h2>
-    <p class="muted">トライケアの「看護記録」で保存した記録を、契約書番号ごとにこの画面へ取り込みます。同じタブレットで保存した記録は、画面を開いたときと共有のたびに自動で取り込みます。保存のときに落ちた控えのファイル（TriCare_番号_日時.html）は、下のボタンからまとめて取り込めます。取り込んだ記録は、患者さんの一覧の「見る」に出ます。</p>
-    <div class="btns"><button class="btn sub" type="button" id="nr_pick">控えのファイルを選んで取り込む</button><input type="file" id="nr_file" accept=".html,.htm,text/html" multiple style="display:none"><span class="muted" id="nr_msg"></span></div>
+    <p class="muted">トライタイムは、トライケアの看護記録とセットで使えます（トライタイムだけのご契約でも使えます）。下の「看護記録を書く」でトライケアの看護記録の画面が開き、書き終えて保存したら「前のページに戻る」でこの画面へ戻ります。患者さんの一覧の「見る」からは、その患者さんの契約書番号が入った状態で開けます。<br>トライケアの「看護記録」で保存した記録を、契約書番号ごとにこの画面へ取り込みます。同じタブレットで保存した記録は、画面を開いたときと共有のたびに自動で取り込みます。保存のときに落ちた控えのファイル（TriCare_番号_日時.html）は、下のボタンからまとめて取り込めます。取り込んだ記録は、患者さんの一覧の「見る」に出ます。</p>
+    <div class="btns"><a class="btn" href="TriCare_NursingRecord.html?from=tritime" style="text-decoration:none;display:inline-block">看護記録を書く（トライケアを開く）</a><button class="btn sub" type="button" id="nr_pick">控えのファイルを選んで取り込む</button><input type="file" id="nr_file" accept=".html,.htm,text/html" multiple style="display:none"><span class="muted" id="nr_msg"></span></div>
     <div id="nr_orphan"></div>
   </div>
   <div class="card" id="cardPtList">
@@ -494,7 +499,7 @@ function tsGoBack(){
 <section class="tab" id="tab-intake">
   <div class="card">
     <h2>キャンセルの受付</h2>
-    <p class="lead">電話を受けたら、マイクを押して内容を話してください。AIが欄に下書きし、色の付いた欄を確かめてから「この内容で記録する」を押します。手で入力しても構いません。</p>
+    <p class="lead">電話を受けたら、上の「🎤 話して入力」を押して内容を話してください。AIが欄に下書きし、色の付いた欄を確かめてから「この内容で記録する」を押します。一つの欄だけを話して直したいときは、その欄のすぐ下の「🎤 話して入力」を押します。手で入力しても構いません。</p>
     <div class="mic"><button id="micBtn" type="button">🎤 話して入力</button><span class="st" id="micStatus">準備しています…</span></div>
     <details id="c_rawWrap"><summary>聞き取った全文</summary><textarea id="c_raw" readonly placeholder="マイクで話すと、ここに聞き取った言葉がそのまま残ります。AIの下書きがうまくいかなかったときは、ここを見て手で入れてください。"></textarea></details>
     <div class="row">
@@ -1769,6 +1774,47 @@ function rdApply(kind, j){
   if(cb && filled.length) cb.checked = true;
   return { filled:filled, diff:diff };
 }
+/* ---- トライケアから読み込む（2026-10-28・宏史さんの決定「トライケアが利用している患者情報の読み込みが可能になるシステムに」）----
+   トライケアのアセスメント（TriCare_Assessment.html）は、この端末の tricare_assessment_v1 に利用者さんを持つ。
+   その中から、訪問に要るところだけを利用者登録の欄へ入れる。欄の埋め方は書類の読み取り（rdApply）と同じ。
+   氏名・ふりがな・生年月日・住所・電話・保険の番号・家族の氏名は入れない（2026-10-12の決まり：氏名は入れず契約書番号で扱う）。 */
+var TC_KEY = 'tricare_assessment_v1';
+function tcUsers(){ var d = lj(TC_KEY, null); return (d && Array.isArray(d.users)) ? d.users : []; }
+function tcIsNo(v){ v = String(v || '').trim(); return /\d/.test(v) && /-/.test(v) && v.length <= 30; }
+function tcRender(){
+  var sec = $('ptsCare'); if(!sec) return;
+  var us = tcUsers();
+  sec.style.display = (tcOk() && us.length) ? '' : 'none';
+  if(!us.length) return;
+  $('tc_pick').innerHTML = '<option value="">選んでください</option>' + us.map(function(u, i){
+    var a = u.asm || {};
+    return '<option value="' + i + '">' + esc((u.name || '（名前の欄が空）') + (u.office ? '・' + u.office : '') + (a['asm_作成年月日'] ? '・' + a['asm_作成年月日'] + ' 作成' : '')) + '</option>';
+  }).join('');
+}
+function tcLines(a, keys){
+  return keys.map(function(k){
+    var v = a['asm_' + k]; if(Array.isArray(v)) v = v.join('・');
+    v = String(v == null ? '' : v).trim();
+    return v ? k + '：' + v : '';
+  }).filter(Boolean).join('\n');
+}
+function tcNoPhone(v){ return String(v || '').replace(/[0０][0-9０-９]{1,4}[-‐ー－−(（ ]?[0-9０-９]{1,4}[-‐ー－−)） ]?[0-9０-９]{3,4}/g, '').replace(/(電話|TEL|tel|☎)\s*[:：]?\s*$/,'').trim(); }
+function tcGo(){
+  var i = $('tc_pick').value; if(i === ''){ $('tc_msg').textContent = 'トライケアの利用者さんを選んでください。'; return; }
+  var u = tcUsers()[+i]; if(!u){ $('tc_msg').textContent = 'この端末のトライケアに見つかりません。'; return; }
+  var a = u.asm || {}, f = {};
+  if(/^\d{4}-\d{2}-\d{2}$/.test(a['asm_作成年月日'] || '')) f.asmDate = a['asm_作成年月日'];
+  f.asmState = tcLines(a, ['要介護度','障害高齢者の日常生活自立度','認知症高齢者の日常生活自立度','傷病名・症状・既往歴・治療・処置','麻痺・関節の拘縮','皮膚疾患','じょく瘡','痛み','現在の生活状況']);
+  f.asmLife = tcLines(a, ['1日の生活','日中の過ごし方','外出の頻度','薬の管理','金銭管理','利用者の望む生活','家族の望む生活']);
+  f.asmFamily = tcLines(a, ['世帯区分','介護力','介護に対する考え']);
+  f.asmRisk = tcLines(a, ['嚥下','食事形態','食事の制限','水分摂取','問題行動','物忘れ','認知の状況・課題','ADLの状況・課題','特別な状況']);
+  var doc = tcNoPhone(a['asm_主治医']); if(doc) f.doc = doc;
+  Object.keys(f).forEach(function(k){ if(!f[k]) delete f[k]; else f[k] = String(f[k]).slice(0, k === 'asmFamily' ? 800 : k === 'asmRisk' ? 1000 : 1500); });
+  var r = rdApply('asm', { fields:f, contractNo: tcIsNo(u.name) ? String(u.name).trim() : '' });
+  $('tc_msg').textContent = (r.filled.length ? '入れた欄：' + r.filled.join('・') + '。' : '入れられる空いた欄はありませんでした。') +
+    (r.diff.length ? '　書いてある内容と違う欄（書き換えていません）：' + r.diff.join('・') + '。' : '') +
+    (tcIsNo(u.name) ? '' : '　トライケアでは氏名で登録されているため、契約書番号は手で入れてください。') + '　中身を確かめてから「この内容で登録する」を押してください。';
+}
 function rdGo(){
   var kind = $('rd_kind').value, files = Array.prototype.slice.call($('rd_file').files || []);
   if(!files.length){ $('rd_msg').textContent = 'ファイルを選んでください。'; return; }
@@ -1933,12 +1979,14 @@ function nrDevice(v){
   return a.join('・');
 }
 function nrIns(v){ return [v.ins_kaigo ? '介護保険' : '', v.ins_yobo ? '介護予防' : '', v.ins_iryo ? '医療保険' : '', v.ins_other ? 'その他' : ''].filter(Boolean).join('・'); }
+function tcOk(){ return !window.TriScope || TriScope.has('tricare'); }   /* 2026-10-28：契約の範囲にトライケアがあるか */
 function nrSection(no){
-  if(D().k !== 'nurse') return '';
+  if(D().k !== 'nurse' || !tcOk()) return '';
   var rs = nrRecs(no);
-  if(!rs.length) return '<h3>看護記録（トライケア）</h3><p class="muted">まだ取り込んだ記録はありません。</p>';
+  var wr = '<p><a class="btn small" href="TriCare_NursingRecord.html?from=tritime&amp;no=' + encodeURIComponent(dn(no)) + '" style="text-decoration:none;display:inline-block">この患者さんの看護記録を書く（トライケアを開く）</a></p>';
+  if(!rs.length) return '<h3>看護記録（トライケア）</h3>' + wr + '<p class="muted">まだ取り込んだ記録はありません。</p>';
   var last = rs.filter(function(x){ return x.v && x.v.t_msg; })[0];
-  return '<h3>看護記録（トライケア）　<small class="muted">' + rs.length + '件・新しい順</small></h3>' +
+  return '<h3>看護記録（トライケア）　<small class="muted">' + rs.length + '件・新しい順</small></h3>' + wr +
     (last ? '<div class="before"><b>直近の伝達事項（' + esc(last.date ? jpDate(last.date) : last.saved) + '）</b><br><span style="white-space:pre-wrap">' + esc(last.v.t_msg) + '</span></div>' : '') +
     rs.map(function(x, i){
       var v = x.v || {}, rows = [['観察（バイタル）', nrVital(v)], ['カテーテル・点滴注射', nrDevice(v)], ['バイタルの所見', v.r_vital], ['血糖・SpO₂の所見', v.r_bs], ['処置・カテ・点滴の所見', v.r_proc],
@@ -1951,7 +1999,7 @@ function nrSection(no){
 }
 function nrRender(){
   if(!$('cardNr')) return;
-  $('cardNr').style.display = (D().k === 'nurse') ? '' : 'none';
+  $('cardNr').style.display = (D().k === 'nurse' && tcOk()) ? '' : 'none';
   var all = live('records'), pmap = {};
   patients().forEach(function(p){ pmap[dn(p.no)] = 1; });
   var orphan = all.filter(function(x){ return !x.patientNo || !pmap[x.patientNo]; });
@@ -1980,7 +2028,7 @@ function ptView(no){
   var p = patient(no); if(!p){ $('ptView').innerHTML = ''; return; }
   var d = D(), m = ym(ymd(new Date())), hi = hardInfo(no, m), cp = p.copied || {};
   var sec = function(title, rows){ rows = rows.filter(function(r){ return r[1]; }); return rows.length ? '<h3>' + esc(title) + '</h3><table>' + rows.map(function(r){ return '<tr><th style="width:30%">' + esc(r[0]) + '</th><td style="white-space:pre-wrap">' + esc(r[1]) + '</td></tr>'; }).join('') + '</table>' : ''; };
-  var h = '<div class="card" style="margin-top:14px;box-shadow:none"><h2>' + esc(dn(no)) + ' <small class="muted">' + esc(p.area || '') + '・' + esc(p.status || '利用中') + (p.ins ? '・' + esc(p.ins) : '') + '</small></h2>' +
+  var h = '<div class="card" style="margin-top:14px;box-shadow:none"><h2 data-no="' + esc(no) + '">' + esc(dn(no)) + ' <small class="muted">' + esc(p.area || '') + '・' + esc(p.status || '利用中') + (p.ins ? '・' + esc(p.ins) : '') + '</small></h2>' +
     (hi.on ? '<p><span class="tag red">困難患者（' + esc(hi.why.join('・')) + '）</span></p>' : '') +
     sec('訪問先', [['目印・駐車', p.spot]]) +
     (d.doctor ? sec('指示書', [['医療機関', p.hosp], ['主治医', p.doc], ['指示期間', (p.instDate ? jpDate(p.instDate) : '') + (p.instEnd ? '〜' + jpDate(p.instEnd) : '')], ['指示の内容', p.instPoint], ['特別指示', p.special ? p.special + (p.specialEnd ? '（' + jpDate(p.specialEnd) + 'まで）' : '') : '']]) : '') +
@@ -2511,7 +2559,7 @@ function pushChunks(items){
   return out;
 }
 function syncNow(){
-  nrScanLocal();
+  if(nrScanLocal()){ try{ renderPtList(); nrRender(); }catch(e){} }   /* 2026-10-28：トライケアから戻ったとき、共有を切っていても一覧に出す */
   if(!dev().share || syncing) return Promise.resolve();
   syncing = true;
   var key0 = null, mk0 = null, mgNote = '';
@@ -3322,7 +3370,7 @@ document.querySelectorAll('#tabs button').forEach(function(b){
     if(t === 'admin') renderAdmin();
     if(t === 'model') renderModel();
     if(t === 'mihon') mhRender();
-    if(t === 'pt'){ nrScanLocal(); renderPtList(); nrRender(); }
+    if(t === 'pt'){ nrScanLocal(); renderPtList(); nrRender(); tcRender(); }
     if(t === 'req') renderReq();
   });
 });
@@ -3456,6 +3504,7 @@ $('dv_now').addEventListener('click', function(){
 });
 setInterval(function(){ if(document.visibilityState === 'visible') syncNow(); }, 30000);
 document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') syncNow(); });
+window.addEventListener('pageshow', function(e){ if(e.persisted) syncNow(); });   /* 2026-10-28：トライケアの「前のページに戻る」で戻ったとき */
 
 
 /* ---- 記録の保管フォルダ（2026-10-26・宏史さんの指示）----
@@ -4420,6 +4469,8 @@ refreshAll = function(){ refreshAll0(); renderLeave(); renderWorkRule(); renderA
 nrScanLocal();
 $('rd_go').onclick = rdGo;
 $('nr_pick').onclick = function(){ $('nr_file').click(); };
+$('tc_go').onclick = tcGo; tcRender();
+window.addEventListener('storage', function(e){ if(e.key === TC_KEY) tcRender(); });
 $('nr_file').addEventListener('change', function(){ nrFiles(this.files); this.value = ''; });
 applyDept(); refreshAll();
 sheetPull({ silent:true });
@@ -4442,6 +4493,14 @@ fetch('version.json', { cache:'no-store' }).then(function(r){ return r.ok ? r.js
    職員の呼び名の欄には入れない（基本情報シートの職員名簿と同じ扱い）。 */
 if(window.TriVoice && TriVoice.dictation) TriVoice.dictation({ exclude:'#st_name' });
 if(window.TriVoice && TriVoice.command) TriVoice.command({ exclude:'#st_name', mergeWithDictation:true });  /* 2026-10-27：右下のマイク1つで、欄の文字入れとボタン操作の両方 */
+/* 2026-10-28：利用者登録とキャンセル受付は、文字の欄ごとに「🎤 話して入力」を付ける（宏史さんの指示）。聞き取った全文の欄（読むだけ）には付けない */
+if(window.TriVoice && TriVoice.fieldMics) TriVoice.fieldMics({ within:'#tab-pt, #tab-intake', exclude:'#st_name, #c_raw' });
+</script>
+<script src="TriScope.js"></script>
+<script>
+/* 2026-10-28：契約の範囲（認証コードに紐づく）。トライタイムが範囲に無ければ使えなくし、
+   トライケアが範囲に無ければ看護記録の取り込み・トライケアの読み込みを出さない（トライタイムの契約にはトライケアが付く）。 */
+if(window.TriScope) TriScope.check('tritime').then(function(){ try{ nrRender(); tcRender(); var pv = document.querySelector('#ptView h2'); if(pv) ptView(pv.getAttribute('data-no')); }catch(e){} });
 </script>
 <script src="TriSheetSync.js"></script>
 <script>

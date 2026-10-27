@@ -51,7 +51,7 @@ function tsGoBack(){
     <div style="font-size:20px;font-weight:500">トライケア　アセスメント・モニタリング</div>
   </div>
   <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">発行：合同会社トライサイト</div>
-  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-15-02</span> <span id="verMsg"></span></div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-28-01</span> <span id="verMsg"></span></div>
   <div style="border-top:1px solid var(--border-strong);margin:8px 0 12px"></div>
   <div style="font-size:13px"><a href="index.html">トライサイト ファミリー（表札）へ戻る</a>　<a href="TriSight_Report_CarePlan.html">ケアプランの帳票へ</a></div>
 
@@ -311,4 +311,7 @@ fetch('version.json',{cache:'no-store'}).then(function(r){return r.ok?r.json():n
   if(j&&j.tricare_asm&&lab&&j.tricare_asm!==lab.textContent)msg.innerHTML='<span style="color:var(--text-danger)">この画面は古い版です。Ctrl＋Shift＋R で読み直してください（最新：'+j.tricare_asm+'）</span>';
 }).catch(function(){});
 </script>
+<script src="TriScope.js"></script>
+<script>/* 2026-10-28：契約の範囲（認証コードに紐づく）。トライケアが範囲に無い認証コードでは使えなくする。トライタイムの契約にはトライケアが付く */
+if(window.TriScope) TriScope.check('tricare');</script>
 </body></html>

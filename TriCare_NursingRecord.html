@@ -194,6 +194,8 @@
 <div id="tsBackBar" data-guard="0" style="padding:8px 16px 4px;box-sizing:border-box;text-align:left;width:100%;align-self:stretch"><button type="button" onclick="tsGoBack()" title="ひとつ前に開いていた画面へ戻ります" style="font-family:inherit;font-size:13px;line-height:1.4;color:#1f2328;background:#ffffff;border:1px solid #afb8c1;border-radius:999px;padding:4px 14px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.12)">‹ 前のページに戻る</button></div>
 <style>@media print{#tsBackBar{display:none !important}}</style>
 <script>
+/* 2026-10-28：トライタイムとのセット利用（トライタイムだけの契約でも、トライタイムから開いて戻れるように） */
+(function(){try{var q=new URLSearchParams(location.search);if(q.get("from")==="tritime")sessionStorage.setItem("tc_from","tritime");}catch(e){}})();
 function tsGoBack(){
   var b=document.getElementById("tsBackBar");
   if(b&&b.getAttribute("data-guard")==="1"){
@@ -201,7 +203,8 @@ function tsGoBack(){
     if(typed&&!confirm("この画面に入力した内容は保存されていません。前のページに戻ると消えます。戻りますか？"))return;
   }
   var r="";try{r=document.referrer?new URL(document.referrer).origin:"";}catch(e){}
-  if(history.length>1&&r===location.origin){history.back();}else{location.href="index.html";}
+  var fromTT=false;try{fromTT=sessionStorage.getItem("tc_from")==="tritime";}catch(e){}
+  if(history.length>1&&r===location.origin){history.back();}else{location.href=fromTT?"TriTime.html":"index.html";}
 }
 </script>
 
@@ -691,7 +694,8 @@ function tsGoBack(){
       document.body.appendChild(a);
       a.click();
       setTimeout(function(){ try{ URL.revokeObjectURL(a.href); }catch(_){ } a.remove(); }, 1000);
-      setStatus('保存しました：' + fname + '（端末の控え。オフィスで一括転送してください）');
+      var fromTT2 = false; try{ fromTT2 = sessionStorage.getItem('tc_from') === 'tritime'; }catch(_){}
+      setStatus('保存しました：' + fname + (fromTT2 ? '（「前のページに戻る」でトライタイムへ戻ると、この記録が自動で取り込まれます）' : '（端末の控え。オフィスで一括転送してください）'));
     }catch(e){
       setStatus('保存に失敗しました。端末内バックアップは保持しています。');
     }
@@ -709,8 +713,18 @@ function tsGoBack(){
     setStatus('クリアしました。');
   });
 
+  /* 2026-10-28：トライタイムの患者さんの「見る」から開いたときは、契約書番号を入れておく */
+  try{
+    var qno = new URLSearchParams(location.search).get('no');
+    var cEl = document.getElementById('c_no');
+    if(qno && cEl && !cEl.value) cEl.value = qno.trim().slice(0, 40);
+  }catch(e){}
+
   setStatus(window.MediaRecorder ? '準備完了。入力したい欄をタップして、右上の🎤を押して話してください。' : 'この端末は録音に未対応です（手入力・印刷は可能です）。');
 })();
 </script>
+<script src="TriScope.js"></script>
+<script>/* 2026-10-28：契約の範囲（認証コードに紐づく）。トライケアが範囲に無い認証コードでは使えなくする。トライタイムの契約にはトライケアが付く */
+if(window.TriScope) TriScope.check('tricare');</script>
 </body>
 </html>

@@ -179,7 +179,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-16</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-17</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -395,7 +395,16 @@ function tsGoBack(){
     <p class="muted" id="mh_note"></p>
   </div>
   <div class="card">
-    <h2>このコースをこなせるようになるまでの、成長の段階（管理者が、いまの立ち位置を知るための目安）</h2>
+    <h2>選んだコースに届くまでの道のり（いまの状態から）</h2>
+    <p class="lead">上で選んだ目標設定額に、いまの利用者と週間予定から届くまでに、週の訪問をあと何件ふやすか、どうふやすかを、期限までの月ごとの目標にして出します。</p>
+    <div class="row">
+      <div><label class="f" for="mi_to">達成の期限（この月に届かせる）</label><input type="month" id="mi_to"></div>
+      <div><label class="f" for="mi_nf">新しい利用者の週の回数（見込み）</label><select id="mi_nf"><option value="1">週1回</option><option value="2" selected>週2回</option><option value="3">週3回</option></select></div>
+    </div>
+    <div id="mi_out"></div>
+  </div>
+  <div class="card">
+    <details><summary style="cursor:pointer;font-weight:700;font-size:16px">参考：成長の段階（管理者が、いまの立ち位置を知るための目安）</summary>
     <div class="judge free" style="margin:8px 0;font-size:15px;line-height:1.8">この表は「明日からこれをこなしなさい」という表ではありません。一つずつ技術を身につけて、ここまで来られたときの1週間の姿です。段階が一つ上がるごとに、自分の手で生み出せる売上が増え、それがそのまま自分の成長の証になります。</div>
     <p class="lead">常勤は1日5〜8件、非常勤は1日3〜6件を段階にしています。月の売上の目安は「1日の件数 × 月の勤務日数 × 1回の売上」です。</p>
     <div class="row">
@@ -414,6 +423,7 @@ function tsGoBack(){
       <div><label class="f" for="sc_pk">非常勤の1日の件数</label><select id="sc_pk"><option>3</option><option>4</option><option>5</option><option>6</option></select></div>
     </div>
     <div id="sc_mix"></div>
+    </details>
   </div>
   <div class="card">
     <h2>利用者を増やしたときの、月ごとの売上の見込み</h2>
@@ -2543,6 +2553,52 @@ function mhNow(){
     '<div class="tbl-scroll"><table><tr><th>目標設定額</th><th class="num">コースに要る週の訪問</th><th class="num">現在との差</th><th>判定</th></tr>' + rows + '</table></div>' +
     '<p class="muted">コースに要る週の訪問は「目標設定額 ÷ 4週 ÷ 1回 ' + yen(P) + '」です。差がマイナス（赤）はそのコースに足りない件数、プラス（緑）は届いていて上のコースを狙える件数です。</p>';
 }
+/* 選んだコースに届くまでの道のり（2026-10-27 宏史さんの指示）
+   いまの週の訪問（週間予定）から、コースに要る週の訪問までの差を、期限までの月ごとの目標に割る。
+   10月からの加算＝利用者1人あたり月1,050円（宏史さんの指示の額）は売上に足す。2名体制の加算は上振れとして別に出す。 */
+var MI_KASAN = 1050;
+function miMake(){
+  var P = mhPrice().v, goal = +$('mh_goal').value || 0, capF = Math.max(1, Math.min(7, +$('mh_cap').value || 3)), nf = +$('mi_nf').value || 2, wFee = (FEE.psyWith && FEE.psyWith.n) || 4500;
+  if(!goal){ $('mi_out').innerHTML = ''; return; }
+  var cnt = {}, two = 0, act = patients().filter(function(p){ return !p.status || p.status === '利用中'; }), nos = {};
+  act.forEach(function(p){ nos[p.no] = 1; });
+  weekly().forEach(function(v){ cnt[v.no] = (cnt[v.no] || 0) + 1; if(nos[v.no] && v.withId) two++; });
+  var U = act.length, cur = act.reduce(function(t, p){ return t + (cnt[p.no] || 0); }, 0);
+  var room = 0, roomN = 0; act.forEach(function(p){ var r = Math.max(0, capF - (cnt[p.no] || 0)); room += r; if(r) roomN++; });
+  var kasan = U * MI_KASAN, base = cur * 4 * P, wUp = two * 4 * wFee;
+  var needW = Math.ceil(Math.max(0, goal - kasan) / 4 / P), gap = needW - cur, diffY = goal - base - kasan;
+  if(!$('mi_to').value){ var y = new Date().getFullYear(), mm = new Date().getMonth() + 1; $('mi_to').value = (mm >= 3 ? y + 1 : y) + '-02'; }
+  var red = gap > 0, col = red ? 'var(--red)' : 'var(--ok)';
+  var h = '<table><tr><th>見るもの</th><th class="num">週の訪問</th><th class="num">4週の売上</th></tr>' +
+    '<tr><td>いま（患者さん登録 ' + U + '人の週間予定）</td><td class="num">' + cur + '件</td><td class="num">' + yen(base) + '</td></tr>' +
+    '<tr><td>10月からの加算（利用者 ' + U + '人 × 月 ' + yen(MI_KASAN) + '）</td><td class="num">—</td><td class="num">＋' + yen(kasan) + '</td></tr>' +
+    '<tr><td><b>いまの合計</b></td><td class="num"><b>' + cur + '件</b></td><td class="num"><b>' + yen(base + kasan) + '</b></td></tr>' +
+    '<tr><td>目標設定額 ' + esc(mdYenShort(goal)) + 'コース（加算の分を引いて要る訪問）</td><td class="num">' + needW + '件</td><td class="num">' + yen(goal) + '</td></tr>' +
+    '<tr style="background:' + (red ? '#fbecea' : '#eef5ef') + '"><td><b>' + (red ? '足りない分' : '上回っている分') + '</b></td><td class="num"><b style="color:' + col + '">' + (red ? '−' : '+') + Math.abs(gap) + '件</b></td><td class="num"><b style="color:' + col + '">' + (diffY > 0 ? '−' : '+') + yen(Math.abs(diffY)) + '</b></td></tr>' +
+    (two ? '<tr><td>上振れ：2名体制の加算（いまの週間予定で週 ' + two + '回 × ' + yen(wFee) + '）</td><td class="num">—</td><td class="num">＋' + yen(wUp) + '</td></tr>' : '<tr><td>上振れ：2名体制の加算（いまの週間予定には2名体制の訪問がありません。入ると1回 ' + yen(wFee) + ' ふえます）</td><td class="num">—</td><td class="num">—</td></tr>') + '</table>';
+  if(!red){ $('mi_out').innerHTML = h + '<div class="judge free" style="margin:8px 0"><b>このコースには、いまの週間予定で届いています。上のコースを狙えます。</b></div>'; return; }
+  var useRoom = Math.min(gap, room), rest = gap - useRoom, newN = Math.ceil(rest / nf);
+  h += '<h3 style="margin:12px 0 4px">週にあと ' + gap + '件 ふやす方法</h3><table><tr><th>ふやし方</th><th class="num">ふやせる・要る件数</th><th>中身</th></tr>' +
+    '<tr><td>1. いまの利用者の回数を上げる</td><td class="num">最大 週' + room + '件</td><td>週' + capF + '回に届いていない利用者が ' + roomN + '人います。この人たちの回数を上げると、最大で週' + room + '件ふえます。</td></tr>' +
+    '<tr><td>2. 新しい利用者をふやす</td><td class="num">週' + nf + '回の人で ' + Math.ceil(gap / nf) + '人</td><td>新しい利用者だけでふやすときの人数です（週1回なら ' + gap + '人、週3回なら ' + Math.ceil(gap / 3) + '人）。</td></tr>' +
+    '<tr style="background:#fffaf2"><td><b>組み合わせ</b></td><td class="num"><b>週' + gap + '件</b></td><td>まず 1 でいまの利用者の回数を週' + useRoom + '件ふやし、' + (rest > 0 ? '残りの週' + rest + '件を、新しい利用者 ' + newN + '人（週' + nf + '回）でふやします。' : 'それで届きます。') + '</td></tr></table>';
+  var to = $('mi_to').value, d0 = new Date(), ms = [], m = new Date(d0.getFullYear(), d0.getMonth() + 1, 1);
+  while(ymd(m).slice(0, 7) <= to && ms.length < 24){ ms.push(ymd(m).slice(0, 7)); m.setMonth(m.getMonth() + 1); }
+  if(!ms.length){ $('mi_out').innerHTML = h + '<p class="muted">達成の期限を、来月以降の月にしてください。</p>'; return; }
+  var k = ms.length, per = Math.ceil(gap / k), done = 0, rUse = 0, nUse = 0, rows = '';
+  ms.forEach(function(mo, i){
+    var add = Math.min(per, gap - done); done += add;
+    var fromRoom = Math.min(add, useRoom - rUse); rUse += fromRoom;
+    var fromNew = add - fromRoom, before = Math.ceil(nUse / nf); nUse += fromNew; var nNew = Math.ceil(nUse / nf) - before;
+    var wk = cur + done, sales = wk * 4 * P + (U + Math.ceil(nUse / nf)) * MI_KASAN, todo = [];
+    if(fromRoom) todo.push('いまの利用者の回数を 週' + fromRoom + '件 ふやす');
+    if(fromNew) todo.push('新しい利用者を ' + nNew + '人（週' + nf + '回）ふやす（週' + fromNew + '件分）');
+    rows += '<tr' + (i === k - 1 ? ' style="background:#fffaf2"' : '') + '><td><b>ステップ' + (i + 1) + '</b><br><small class="muted">' + esc(jpMonth(mo)) + 'の末まで</small></td><td>週の訪問を <b>' + wk + '件</b> にする<br><small class="muted">（前の月より＋' + add + '件）</small></td><td>' + (todo.length ? todo.join('<br>') : '—') + '</td><td class="num">' + yen(sales) + '<br><small class="muted">（加算込み）</small></td></tr>';
+  });
+  h += '<h3 style="margin:12px 0 4px">' + esc(jpMonth(to)) + 'までの段取り（毎月の目標）</h3><table><tr><th>段取り</th><th>目標</th><th>やること</th><th class="num">4週の売上の目安</th></tr>' + rows + '</table>' +
+    '<p class="muted">毎月の目標は、足りない週' + gap + '件を、' + k + 'か月（' + esc(jpMonth(ms[0])) + '〜' + esc(jpMonth(to)) + '）で均等に割ったものです。先に、いまの利用者の回数を上げる分から当てています。4週の売上の目安は「週の訪問 × 4週 × ' + yen(P) + '」に、10月からの加算（利用者1人 月' + yen(MI_KASAN) + '・新しい利用者の分を含む）を足したものです。2名体制の加算・月の初日の管理療養費・キャンセルは入れていません。</p>';
+  $('mi_out').innerHTML = h;
+}
 function mhRender(){
   var pr = mhPrice();
   $('mh_pricev').innerHTML = yen(pr.v) + '<br><small class="muted" style="font-weight:400">' + esc(pr.t) + '</small>';
@@ -2551,7 +2607,7 @@ function mhRender(){
   mhNow();
   if(!$('mh_tbl').innerHTML) mhMake();
   grFill(); if(!$('gr_out').innerHTML) grMake();
-  scMake();
+  scMake(); miMake();
 }
 /* 1日の流れ（見本用）：訪問を詰めて並べず、午前（出発〜休憩）と午後（休憩明け〜内勤の前）に均して置き、
    訪問と訪問の間に移動と「ゆとり」を持たせる（2026-10-27 宏史さんの指示：移動の時間も予備時間を使うように、間隔に余裕を）。 */
@@ -2578,9 +2634,9 @@ function mhMake(){
   var plan = $('mh_who').value === 'real' ? mhStaffPlan(N) : [];
   if(plan.length){
     S = plan.length;
-    plan.forEach(function(x){ var g = {}; x.days.forEach(function(d){ g[d] = x.n; }); grid.push(g);
-      var h = x.full ? weekH : Math.round(x.days.length * dayMin / 60 * 10) / 10, st = (x.n - x.lo) + 1;
-      who.push({ days:x.days, head:esc(x.s.name) + '<small>' + (x.full ? '常勤' : '非常勤') + '・週' + x.days.length + '日' + (x.guess ? '（休みの曜日が名簿に無いため月〜金で置いています）' : '') + '</small><small>人員基準 ' + (h / 40).toFixed(1) + '（常勤換算）</small><small class="mhStage">段階' + st + '（1日' + x.n + '件）' + (x.n >= x.hi ? '・上限' : '') + '</small>' }); });
+    plan.forEach(function(x){ var g = {}; x.days.forEach(function(d){ g[d] = x.per[d]; }); grid.push(g);
+      var h = x.full ? weekH : Math.round(x.days.length * dayMin / 60 * 10) / 10, st = Math.max(0, x.max - x.lo) + 1;
+      who.push({ days:x.days, head:esc(x.s.name) + '<small>' + (x.full ? '常勤' : '非常勤') + '・週' + x.days.length + '日' + (x.guess ? '（休みの曜日が名簿に無いため月〜金で置いています）' : '') + '</small><small>人員基準 ' + (h / 40).toFixed(1) + '（常勤換算）</small><small class="mhStage">1日 ' + (x.min === x.max ? x.max : x.min + '〜' + x.max) + '件' + (x.max >= x.lo ? '（段階' + st + (x.max >= x.hi ? '・上限' : '') + '）' : '（段階1の手前）') + '</small>' }); });
   } else {
     S = Math.max(1, Math.ceil(N / (n * days.length)));
     var slots = S * days.length, base = Math.floor(N / slots), extra = N % slots;
@@ -2722,6 +2778,18 @@ function mhStaffPlan(N){
   var tot = function(){ return list.reduce(function(t, x){ return t + x.n * x.days.length; }, 0); };
   var up = true;
   while(tot() < N && up){ up = false; for(var i = 0; i < list.length && tot() < N; i++){ if(list[i].n < list[i].hi){ list[i].n++; up = true; } } }
+  /* 曜日ごとの件数：コースに要る件数（N）ちょうどを、各職員の出る日に、1日の件数の重み（常勤＞非常勤）で振り分ける（2026-10-27 宏史さんの指示「88件を常勤2名・非常勤8名で振り分けて」） */
+  /* 常勤は1日5件（段階1）を先に置き、残りを非常勤の出る日に振り分ける。常勤だけで足りるときは常勤の中で振り分ける */
+  var want = Math.min(N, tot()), share = function(sl, n){ var W = 0, given = 0; sl.forEach(function(x){ W += x.w; }); if(!W || n <= 0){ sl.forEach(function(x){ x.c = 0; }); return; }
+    sl.forEach(function(x){ x.q = n * x.w / W; x.c = Math.min(x.w, Math.floor(x.q)); given += x.c; });
+    var left = n - given; while(left > 0){ var c = sl.filter(function(x){ return x.c < x.w; }).sort(function(a, b){ return (b.q - b.c) - (a.q - a.c); }); if(!c.length) break; c.slice(0, left).forEach(function(x){ x.c++; left--; }); } };
+  var fs = [], ps = [];
+  list.forEach(function(x, i){ x.per = {}; x.days.forEach(function(d){ (x.full ? fs : ps).push({ i:i, d:d, w:x.n }); }); });
+  var fullMin = fs.length * 5;
+  if(want <= fullMin){ share(fs, want); share(ps, 0); }
+  else { var pCap = ps.reduce(function(t, x){ return t + x.w; }, 0), pWant = Math.min(pCap, want - fullMin); share(ps, pWant); fs.forEach(function(x){ x.w = Math.max(5, x.w); }); share(fs, want - pWant); }
+  fs.concat(ps).forEach(function(sl){ list[sl.i].per[sl.d] = sl.c; });
+  list.forEach(function(x){ var v = x.days.map(function(d){ return x.per[d]; }); x.min = Math.min.apply(null, v); x.max = Math.max.apply(null, v); });
   return list;
 }
 function mhCourseOf(v){ var c = Math.floor(v / 1000000); return c >= 3 ? '月' + c + '00万円台' : '月300万円に届かない'; }
@@ -2738,8 +2806,9 @@ function mhPrint(){
     $('mh_sum').innerHTML + $('mh_tbl').innerHTML + '<p>' + $('mh_note').innerHTML + '</p><script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script></body></html>');
   win.document.close();
 }
-document.querySelectorAll('[data-mh]').forEach(function(b){ b.addEventListener('click', function(){ $('mh_goal').value = b.getAttribute('data-mh'); mhMake(); mhNow(); }); });
-$('mh_goal').addEventListener('change', mhNow);
+document.querySelectorAll('[data-mh]').forEach(function(b){ b.addEventListener('click', function(){ $('mh_goal').value = b.getAttribute('data-mh'); mhMake(); mhNow(); miMake(); }); });
+$('mh_goal').addEventListener('change', function(){ mhNow(); miMake(); });
+['mi_to','mi_nf','mh_cap'].forEach(function(id){ $(id).addEventListener('change', miMake); });
 $('mh_make').addEventListener('click', mhMake);
 $('mh_print').addEventListener('click', mhPrint);
 ['mh_users','mh_cap','mh_n','mh_who'].forEach(function(id){ $(id).addEventListener('change', mhMake); });

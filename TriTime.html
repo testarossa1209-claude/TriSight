@@ -180,7 +180,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-28-02</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-28-03</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -370,10 +370,22 @@ function tsGoBack(){
       <label class="f" for="pt_ctrNote">別の取り決め・契約の特記</label><textarea id="pt_ctrNote" maxlength="800" style="min-height:48px"></textarea>
     </details>
     <details class="ptsec" id="ptsLike" open><summary>好き嫌い・関わり方</summary>
-      <p class="muted">本人が好むこと・嫌がることを、聞いた言葉や見た事実で書きます。特定の職員を嫌がる申し出は、ここではなく「経過」の「拒否の申し出」に本人の言葉で記録してください（記録した拒否だけが、配置の条件になります）。</p>
+      <p class="muted">本人が好むこと・嫌がることを、聞いた言葉や見た事実で書きます。特定の職員を嫌がる申し出や、「男性の看護師は嫌」のような要望は、ここではなく下の「看護師への要望（拒否の申し出）」に本人の言葉で記録してください（記録した要望だけが、配置の条件になります）。</p>
       <label class="f" for="pt_like">好むこと・喜ぶこと</label><textarea id="pt_like" maxlength="800" style="min-height:48px"></textarea>
       <label class="f" for="pt_dislike">嫌がること・避けること</label><textarea id="pt_dislike" maxlength="800" style="min-height:48px"></textarea>
       <label class="f" for="pt_tips">関わり方のこつ（うまくいった話し方・順番など）</label><textarea id="pt_tips" maxlength="800" style="min-height:48px"></textarea>
+    </details>
+    <details class="ptsec" id="ptsReq" open><summary data-t="{worker}への要望（拒否の申し出）">看護師への要望（拒否の申し出）</summary>
+      <div class="note refNote"></div>
+      <div id="pr_list"></div>
+      <div class="row">
+        <div><label class="f" for="pr_kind">申し出の種類</label><select id="pr_kind"></select></div>
+        <div><label class="f" for="pr_staff" data-t="対象の{worker}（特定の人のとき）">対象の看護師（特定の人のとき）</label><select id="pr_staff"></select></div>
+        <div><label class="f" for="pr_date">申し出のあった日</label><input type="date" id="pr_date"></div>
+        <div><label class="f" for="pr_by">聞いた人</label><select id="pr_by"></select></div>
+      </div>
+      <label class="f" for="pr_words" data-t="{client}の言葉のまま">患者さんの言葉のまま</label><textarea id="pr_words" maxlength="800" style="min-height:48px"></textarea>
+      <div class="btns"><button type="button" class="btn sub" id="pr_save">この要望を記録する</button><span class="muted" id="pr_msg"></span></div>
     </details>
     <details class="ptsec" id="ptsHard" open><summary>困難事例</summary>
       <p class="muted">当てはまるものに印を付け、あったことを事実だけで書きます。キャンセル・変更が月の決まった回数を超えた患者さんには、印を付けなくても自動で「困難患者」の印が付きます（回数は「名簿・設定」の決まりごとで変えられます）。</p>
@@ -565,9 +577,11 @@ function tsGoBack(){
 
     <details id="dRefusal"><summary data-t="{worker}についての拒否の申し出を記録する">看護師についての拒否の申し出を記録する</summary>
       <p class="muted" data-t="{client}本人が言ったことだけを記録します。記録した拒否だけが、予定の案を出すときの条件になります。">患者さん本人が言ったことだけを記録します。記録した拒否だけが、予定の案を出すときの条件になります。</p>
+      <div class="note refNote"></div>
       <div class="row">
         <div><label class="f" for="r_date">申し出のあった日</label><input type="date" id="r_date"></div>
-        <div><label class="f" for="r_staff" data-t="対象の{worker}">対象の看護師</label><select id="r_staff"></select></div>
+        <div><label class="f" for="r_kind">申し出の種類</label><select id="r_kind"></select></div>
+        <div><label class="f" for="r_staff" data-t="対象の{worker}（特定の人のとき）">対象の看護師（特定の人のとき）</label><select id="r_staff"></select></div>
         <div><label class="f" for="r_by">聞いた人</label><select id="r_by"></select></div>
       </div>
       <label class="f" for="r_words" data-t="{client}の言葉のまま">患者さんの言葉のまま</label><textarea id="r_words"></textarea>
@@ -653,6 +667,11 @@ function tsGoBack(){
     <h2>記録の無い配置不可</h2>
     <p class="lead">代わりの案を、記録された拒否が無いのに断った件です。誰がいつ断ったかを事実として並べます。</p>
     <div class="tbl-scroll" id="adDecline"></div>
+  </div>
+  <div class="card">
+    <h2 data-t="{worker}への要望（拒否の申し出）の状況">看護師への要望（拒否の申し出）の状況</h2>
+    <div class="note refNote"></div>
+    <div class="tbl-scroll" id="adRef"></div>
   </div>
   <div class="card" id="cardAdDoctor">
     <h2>主治医への確認がまだの患者さん</h2>
@@ -750,6 +769,7 @@ function tsGoBack(){
       <div><label class="f" for="st_job">職種</label><select id="st_job"><option>看護師（正看）</option><option>准看護師</option><option>介護福祉士</option><option>介護職（実務者研修修了）</option><option>介護職（初任者研修修了）</option><option>介護職（資格なし）</option><option>相談員・ケアマネジャー</option><option>事務局</option><option>その他</option></select></div>
       <div><label class="f" for="st_dept">所属部門</label><select id="st_dept"><option value="">（職種から当てる）</option><option>訪問看護部</option><option>訪問介護部</option><option>特定障害相談部</option><option>居宅介護支援部</option><option>経営企画事務職</option><option>管理部門</option></select></div>
       <div><label class="f" for="st_emp">雇用形態</label><select id="st_emp"><option>常勤</option><option>非常勤</option></select></div>
+      <div><label class="f" for="st_sex">性別（「男性の看護師は嫌」などの要望を予定に生かすときだけ使います）</label><select id="st_sex"><option value="">入れない</option><option>男性</option><option>女性</option></select></div>
       <div><label class="f">&nbsp;</label><label><input type="checkbox" id="st_mgr"> 管理者</label></div>
     </div>
     <div style="margin-top:8px"><label class="f">兼務する部署（所属部門のほかに横断して入る部署に印を付けます）</label><div id="st_sub" class="btns" style="margin-top:2px"></div></div>
@@ -849,6 +869,7 @@ function tsGoBack(){
       <div><label class="f" for="s_fee">キャンセル料（円）</label><input type="number" id="s_fee" min="0"></div>
       <div><label class="f" for="s_review">拒否の記録を見直すまでの日数</label><input type="number" id="s_review" min="7"></div>
       <div><label class="f" for="s_hard">月のキャンセル・変更が何回以上で「困難患者」の印を付けるか</label><input type="number" id="s_hard" min="1"></div>
+      <div><label class="f" for="s_refRate">担当の予定のうち、拒否で外れる分が何%以上で「改善の計画を一緒に立てる」にするか</label><input type="number" id="s_refRate" min="1" max="100"></div>
     </div>
     <div class="btns"><button class="btn" id="s_save">保存する</button><span class="muted" id="s_msg"></span></div>
   </div>
@@ -934,7 +955,7 @@ function settings(){
   /* 訪問看護部はこれまでどおり上の段の値。ほかの部署は byDept に部署ごとに持つ（無ければ訪問看護部と同じ値から始める） */
   var b = (D().k !== 'nurse' && s.byDept && s.byDept[D().k]) ? s.byDept[D().k] : null;
   var o = b ? Object.assign({}, s, b) : s;
-  return { cut: (o.cut == null ? 17 : +o.cut), price: o.price || '', fee: o.fee || '', review: (o.review == null ? 90 : +o.review), hard: (o.hard == null ? 3 : Math.max(1, +o.hard || 3)) };
+  return { cut: (o.cut == null ? 17 : +o.cut), price: o.price || '', fee: o.fee || '', review: (o.review == null ? 90 : +o.review), hard: (o.hard == null ? 3 : Math.max(1, +o.hard || 3)), refRate: (o.refRate == null ? 30 : Math.max(1, Math.min(100, +o.refRate || 30))) };
 }
 function saveSettings(o){ o.upd = Date.now(); sj(K.settings, o); markDirty('settings', 'main'); scheduleSync(); fdSoon(); }
 /* ---- 部署（2026-10-19・宏史さんの指示）----
@@ -1020,7 +1041,11 @@ function refreshSelects(){
   ['c_staff','p_staff','d_staff','r_staff','wk_staff','pt_staff'].forEach(function(id){ fillSelect(id, ns, '選んでください'); });
   fillSelect('wk_with', ns, 'なし（1名）');
   fillSelect('c_fwdTo', ns, '回していない');
-  ['c_by','r_by','pt_by','rq_by'].forEach(function(id){ fillSelect(id, all, '選んでください'); });
+  ['c_by','r_by','pt_by','rq_by','pr_by'].forEach(function(id){ fillSelect(id, all, '選んでください'); });
+  fillSelect('pr_staff', ns, '選んでください');
+  ['r_kind','pr_kind'].forEach(function(id){ fillSelect(id, refKinds().map(function(k){ return { v:k[0], t:k[1] }; }), null); });
+  if(!$('pr_by').value && dev().me) $('pr_by').value = dev().me;
+  document.querySelectorAll('.refNote').forEach(function(n){ n.textContent = refNote(); });
   if(!$('pt_by').value && dev().me) $('pt_by').value = dev().me;
   if(!$('rq_by').value && dev().me) $('rq_by').value = dev().me;
   $('rq_fromList').innerHTML = staff().map(function(x){ return '<option value="' + esc(x.name) + '">'; }).join('');
@@ -1039,8 +1064,38 @@ function isLate(visitDate, recv){
 }
 
 /* ---- 判定：記録された拒否・主治医への確認 ---- */
+/* 2026-10-28（宏史さんの指示）：看護師への要望（拒否の申し出）は、特定の人だけでなく「男性の看護師は嫌」のような要望も残す。
+   人を特定しない「そのほかの要望」は配置の条件にはせず、記録として残す。種類の無い古い記録は「特定の人」として扱う。 */
+function refKinds(){ var w = D().worker; return [['staff', '特定の' + w + 'を断る'], ['male', '男性の' + w + 'を断る'], ['female', '女性の' + w + 'を断る'], ['other', 'そのほかの要望（人を特定しない）']]; }
+function refKind(e){ return e.kind || 'staff'; }
+function refHits(e, staffId){
+  var k = refKind(e);
+  if(k === 'staff') return e.staffId === staffId;
+  if(k === 'male' || k === 'female'){ var st = staff().filter(function(x){ return x.id === staffId; })[0]; return !!st && st.sex === (k === 'male' ? '男性' : '女性'); }
+  return false;
+}
+function refTarget(e){ var k = refKind(e); return k === 'staff' ? staffName(e.staffId) : (refKinds().filter(function(x){ return x[0] === k; })[0] || ['', ''])[1].replace(/を断る$/, ''); }
 function activeRefusal(no, staffId){
-  return events().some(function(e){ return e.type === 'refusal' && e.patientNo === no && e.staffId === staffId && e.status !== '取り下げ'; });
+  return events().some(function(e){ return e.type === 'refusal' && e.patientNo === no && e.status !== '取り下げ' && refHits(e, staffId); });
+}
+/* 大義の説明（2026-10-28・宏史さんの言葉から）。批判・指導のためではなく、改善の道を一緒に探すための記録 */
+function refNote(){
+  var ws = D().workerSan, rate = settings().refRate;
+  return 'この記録は、' + ws + 'を批判したり指導したりするためのものではありません。人の好き嫌いは誰にでもあり、避けられないものです。大切なのは、それをどう乗り越えるかを一緒に考えることです。' +
+    '申し出は聞いた人がその日のうちに残し、対象の' + ws + 'は「改善の取り組み」に、関わり方の工夫や学び直しを書きます。早く手を打つほど受け持てる幅が広がり、それがその人の力として評価されます。記録を伏せると、工夫の機会も評価の機会も失われます。' +
+    'なお、担当の予定のうち、拒否で外れる分が' + rate + '%以上になったときは、管理者と一緒に改善の計画を立てます。そうならないように先回りして手を打つのが、プロの仕事です。';
+}
+/* 職員ごとの拒否の状況：担当の予定（週）と、拒否で外れる分（その患者さんの週の回数） */
+function refStat(staffId){
+  var cnt = {}; weekly().forEach(function(v){ cnt[v.no] = (cnt[v.no] || 0) + 1; });
+  var refs = events().filter(function(e){ var p = patient(e.patientNo); return e.type === 'refusal' && e.status !== '取り下げ' && inDept(e.patientNo) && p && (!p.status || p.status === '利用中') && refHits(e, staffId); });
+  var nos = {}; refs.forEach(function(e){ nos[e.patientNo] = 1; });
+  /* 担当の予定は、断っている患者さんへの訪問を除いて数える（外れる分と二重に数えないため） */
+  var mine = weekly().filter(function(v){ return (v.staffId === staffId || v.withId === staffId) && !nos[v.no]; }).length;
+  var lost = Object.keys(nos).reduce(function(t, no){ return t + Math.max(1, cnt[no] || 0); }, 0);
+  var plans = refs.reduce(function(t, e){ return t + (e.plans || []).length; }, 0);
+  var rate = (mine + lost) ? Math.round(lost / (mine + lost) * 100) : 0;
+  return { mine:mine, lost:lost, pts:Object.keys(nos).length, refs:refs, plans:plans, rate:rate, over:rate >= settings().refRate && lost > 0 };
 }
 function doctorStatus(no){
   var p = patient(no); var last = null;
@@ -1520,7 +1575,7 @@ function renderCourse(){
     if(e.type === 'doctor') b = esc(staffName(e.staffId)) + 'が確認。気を付けて見ること「' + esc(e.a1 || '—') + '」／サイン「' + esc(e.a2 || '—') + '」／すぐ連絡「' + esc(e.a3 || '—') + '」／キャンセルが続いたとき「' + esc(e.a4 || '—') + '」';
     if(e.type === 'refusal'){
       var due = e.reviewBy && e.reviewBy <= today && e.status !== '取り下げ';
-      b = '対象：' + esc(staffName(e.staffId)) + '。本人の言葉「' + esc(e.words) + '」。聞いた人：' + esc(staffName(e.by)) + '。' +
+      b = '対象：' + esc(refTarget(e)) + '。本人の言葉「' + esc(e.words) + '」。聞いた人：' + esc(staffName(e.by)) + '。' + refPlansHtml(e) +
         (e.status === '取り下げ' ? '<span class="tag gray">取り下げ済み</span>' : '<span class="tag ' + (due ? 'amber' : 'gray') + '">見直し ' + esc(jpDate(e.reviewBy)) + '</span>' +
         ' <button class="btn small sub" data-rev="' + esc(e.id) + '">今も同じと確認した</button> <button class="btn small danger" data-wd="' + esc(e.id) + '">取り下げる</button>');
     }
@@ -1533,6 +1588,7 @@ function renderCourse(){
       saveEvents(a); renderCourse();
     });
   });
+  refPlansBind($('courseLine'), renderCourse);
   $('courseLine').querySelectorAll('[data-wd]').forEach(function(btn){
     btn.addEventListener('click', function(){
       if(!confirm('この拒否の記録を取り下げますか？（記録は消えず、取り下げ済みとして残ります）')) return;
@@ -1540,6 +1596,24 @@ function renderCourse(){
       saveEvents(a); renderCourse();
     });
   });
+}
+/* 改善の取り組み（2026-10-28）：拒否の申し出ごとに、対象の職員が工夫や学び直しを書き足す。書いた日と書いた人が残る */
+function refPlansHtml(e){
+  var ps = e.plans || [];
+  return '<div class="sm" style="margin-top:4px"><b>改善の取り組み</b>' + (ps.length ? '<ul style="margin:2px 0 0 18px">' + ps.map(function(x){ return '<li>' + esc(jpDate(x.d)) + '　' + esc(staffName(x.by) || '（書いた人の記入なし）') + '：' + esc(x.text) + '</li>'; }).join('') + '</ul>' : '：まだありません') +
+    (e.status === '取り下げ' ? '' : '<div><button type="button" class="btn small sub" data-planopen="' + esc(e.id) + '">改善の取り組みを書く</button></div>' +
+    '<div data-planbox="' + esc(e.id) + '" style="display:none;margin-top:4px"><textarea maxlength="600" style="min-height:48px" placeholder="例：初回は同行してもらい、話し方を変えた／精神科の認定研修に申し込んだ"></textarea><button type="button" class="btn small" data-plansave="' + esc(e.id) + '">この内容で残す</button></div>') + '</div>';
+}
+function refPlansBind(root, after){
+  root.querySelectorAll('[data-planopen]').forEach(function(b){ b.onclick = function(){ var box = root.querySelector('[data-planbox="' + b.getAttribute('data-planopen') + '"]'); if(box){ box.style.display = ''; var t = box.querySelector('textarea'); if(t) t.focus(); } }; });
+  root.querySelectorAll('[data-plansave]').forEach(function(b){ b.onclick = function(){
+    var id = b.getAttribute('data-plansave'), box = root.querySelector('[data-planbox="' + id + '"]'), t = box && box.querySelector('textarea'), v = t ? t.value.trim() : '';
+    if(!v){ alert('改善の取り組みを書いてください。'); return; }
+    var by = dev().me || '';
+    if(!by && !confirm('この端末を使う人が選ばれていないため、書いた人が残りません。このまま残しますか？（「名簿・設定」の「この端末を使う人」で選べます）')) return;
+    var a = events(); a.forEach(function(e){ if(e.id === id){ (e.plans = e.plans || []).push({ d:ymd(new Date()), by:by, text:v }); } });
+    saveEvents(a); after();
+  }; });
 }
 function addCourseEvent(obj, need){
   var no = selNo('k_no');
@@ -1690,6 +1764,13 @@ function renderAdmin(){
       return '<tr><td>' + esc(staffName(k)) + '</td><td class="num">' + by[k].length + '</td><td>' + by[k].map(function(e){ return esc(jpDate(e.date)) + ' ' + esc(dn(e.patientNo)) + '「' + esc(e.reason) + '」'; }).join('<br>') + '</td></tr>';
     }).join('') + '</table>';
   }
+  /* 2026-10-28：職員ごとの拒否の状況（担当の予定のうち、拒否で外れる分の割合） */
+  var rl = deptStaff().filter(function(x){ return !staffOrphan(x); }).map(function(x){ return { s:x, r:refStat(x.id) }; }).filter(function(o){ return o.r.mine || o.r.lost; }).sort(function(a, b){ return b.r.rate - a.r.rate; });
+  $('adRef').innerHTML = rl.length ? '<table><tr><th>' + D().worker + '</th><th class="num">担当の予定（週）</th><th class="num">拒否で外れる分（週）</th><th class="num">割合</th><th class="num">改善の取り組み</th><th>見立て</th></tr>' + rl.map(function(o){
+    var r = o.r;
+    return '<tr><td>' + esc(o.s.name) + '</td><td class="num">' + r.mine + '件</td><td class="num">' + r.lost + '件<br><small class="muted">' + r.pts + '人の申し出</small></td><td class="num" style="font-weight:700;color:' + (r.over ? 'var(--red)' : 'inherit') + '">' + r.rate + '%</td><td class="num">' + r.plans + '件</td><td>' +
+      (r.over ? '<span class="tag red">改善の計画を一緒に立てる（' + settings().refRate + '%以上）</span>' : (r.lost ? (r.plans ? '<span class="tag green">取り組み中</span>' : '<span class="tag amber">取り組みの記入を待っています</span>') : '<span class="tag gray">申し出なし</span>')) + '</td></tr>';
+  }).join('') + '</table><p class="muted">割合＝拒否で外れる分 ÷（担当の予定＋拒否で外れる分）。拒否で外れる分は、その' + D().worker + 'を断っている' + D().client + '（利用中）の、週間予定の週の回数です。「男性の' + D().worker + 'を断る」などの要望は、名簿の性別が当てはまる人に数えます。</p>' : '<p class="empty">担当の予定も、申し出もまだありません。</p>';
   var nd = D().doctor ? patients().filter(function(p){ return !doctorStatus(p.no).ok; }) : [];
   $('adDoctor').innerHTML = nd.length ? '<ul style="margin-left:18px">' + nd.map(function(p){
     var ds = doctorStatus(p.no);
@@ -1864,8 +1945,31 @@ function ptLoad(no){
   var cp = p.copied || {}; document.querySelectorAll('#pt_copied input').forEach(function(c){ c.checked = !!cp[c.value]; });
   $('pt_copiedNote').textContent = ptDocs().filter(function(x){ return cp[x[0]]; }).map(function(x){ return x[1] + '：' + jpDate(cp[x[0]].d) + (cp[x[0]].by ? '・' + staffName(cp[x[0]].by) : ''); }).join('　');
   $('pt_msg').textContent = '呼び出しました。直したら「この内容で登録する」を押してください。';
+  prRender();
   var t = document.querySelector('#tabs button[data-tab=pt]'); if(t && !t.classList.contains('on')) t.click();
   if($('cardPt').scrollIntoView) $('cardPt').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+/* 利用者登録の「看護師への要望」（2026-10-28・宏史さんの指示「利用者の欄に看護師へ対する要望を」）
+   記録は経過の「拒否の申し出」と同じもの（同じ場所に残り、予定の条件・評価シートに使われる） */
+function prRender(){
+  var no = keyNo($('pt_no').value), box = $('pr_list'); if(!box) return;
+  if(!no || !patient(no)){ box.innerHTML = '<p class="muted">患者さんを登録（または「呼び出す」）すると、これまでの要望がここに並びます。</p>'; return; }
+  var rs = events().filter(function(e){ return e.type === 'refusal' && e.patientNo === no; }).sort(function(a, b){ return a.date < b.date ? 1 : -1; });
+  box.innerHTML = rs.length ? '<ul class="timeline">' + rs.map(function(e){
+    return '<li class="refusal"><div class="d">' + esc(jpDate(e.date)) + '　' + esc(refTarget(e)) + (e.status === '取り下げ' ? '　<span class="tag gray">取り下げ済み</span>' : '') + '</div>本人の言葉「' + esc(e.words) + '」。聞いた人：' + esc(staffName(e.by)) + '。' + refPlansHtml(e) + '</li>';
+  }).join('') + '</ul>' : '<p class="muted">この患者さんの要望は、まだ記録されていません。</p>';
+  refPlansBind(box, prRender);
+}
+function prSave(){
+  var no = keyNo($('pt_no').value), kind = $('pr_kind').value || 'staff';
+  if(!no || !patient(no)){ alert('先にこの患者さんを登録してください（契約書番号を入れて「この内容で登録する」）。'); return; }
+  if(kind === 'staff' && !$('pr_staff').value){ alert('「対象の' + D().worker + '」を選んでください。'); $('pr_staff').focus(); return; }
+  var need = [['pr_date','申し出のあった日'],['pr_by','聞いた人'],['pr_words',D().client + 'の言葉']];
+  for(var i = 0; i < need.length; i++){ if(!$(need[i][0]).value.trim()){ alert('「' + need[i][1] + '」が入っていません。'); $(need[i][0]).focus(); return; } }
+  var date = $('pr_date').value, a = events();
+  a.push({ id:uid(), type:'refusal', kind:kind, patientNo:no, date:date, staffId:kind === 'staff' ? $('pr_staff').value : '', words:$('pr_words').value.trim(), by:$('pr_by').value, status:'有効', reviewBy:ymd(addDays(parseYmd(date), settings().review)), created:nowLocal() });
+  saveEvents(a); $('pr_words').value = ''; $('pr_msg').textContent = '記録しました。経過にも同じものが並びます。';
+  prRender();
 }
 function ptSave(){
   var no = keyNo($('pt_no').value); if(!no){ alert('契約書番号を入れてください。'); $('pt_no').focus(); return; }
@@ -2279,12 +2383,13 @@ function renderSetup(){
     return '<tr><td>' + DOW[+v.dow] + '</td><td>' + esc(v.time) + '（' + esc(v.min) + '分）</td><td>' + esc(dn(v.no)) + '</td><td>' + esc(staffName(v.staffId)) + (v.withId ? '<br><small class="muted">同行：' + esc(staffName(v.withId)) + '</small>' : '') + '</td><td><button class="btn small danger" data-wkdel="' + esc(v.id) + '">外す</button></td></tr>';
   }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var s = settings();
-  $('s_cut').value = s.cut; $('s_price').value = s.price; $('s_fee').value = s.fee; $('s_review').value = s.review; $('s_hard').value = s.hard;
+  $('s_cut').value = s.cut; $('s_price').value = s.price; $('s_fee').value = s.fee; $('s_review').value = s.review; $('s_hard').value = s.hard; $('s_refRate').value = s.refRate;
   $('rulesDept').textContent = '（' + D().name + '）';
 
   $('stList').querySelectorAll('[data-stedit]').forEach(function(b){ b.addEventListener('click', function(){
     var s = staff().filter(function(x){ return x.id === b.getAttribute('data-stedit'); })[0]; if(!s) return;
     $('st_id').value = s.id; $('st_name').value = s.name; (function(){ var sj = $('st_job'), jv = jobOf(s) || 'その他'; [].slice.call(sj.querySelectorAll('option[data-old]')).forEach(function(o){ o.remove(); }); if(![].some.call(sj.options, function(o){ return o.value === jv; })){ var op = document.createElement('option'); op.textContent = jv; op.dataset.old = '1'; sj.appendChild(op); } sj.value = jv; })(); $('st_dept').value = s.dept || ''; stSubDraw(staffSub(s)); stOffDraw(staffOff(s)); $('st_hol').checked = !!s.holOff; $('st_emp').value = s.emp || '常勤'; $('st_mgr').checked = isMgr(s);
+    $('st_sex').value = s.sex || '';
     $('st_add').textContent = 'この内容で直す'; $('st_cancel').style.display = ''; $('st_name').focus();
   }); });
   $('stList').querySelectorAll('[data-stdel]').forEach(function(b){ b.addEventListener('click', function(){
@@ -3438,7 +3543,9 @@ $('d_save').addEventListener('click', function(){
 });
 $('r_save').addEventListener('click', function(){
   var date = $('r_date').value;
-  if(addCourseEvent({ type:'refusal', date:date, staffId:$('r_staff').value, words:$('r_words').value.trim(), by:$('r_by').value, status:'有効', reviewBy: date ? ymd(addDays(parseYmd(date), settings().review)) : '' }, [['r_date','申し出のあった日'],['r_staff','対象の看護師'],['r_by','聞いた人'],['r_words','患者さんの言葉']])){ $('r_words').value = ''; }
+  var kind = $('r_kind').value || 'staff';
+  if(kind === 'staff' && !$('r_staff').value){ alert('「対象の' + D().worker + '」を選んでください。'); $('r_staff').focus(); return; }
+  if(addCourseEvent({ type:'refusal', kind:kind, date:date, staffId:kind === 'staff' ? $('r_staff').value : '', words:$('r_words').value.trim(), by:$('r_by').value, status:'有効', reviewBy: date ? ymd(addDays(parseYmd(date), settings().review)) : '' }, [['r_date','申し出のあった日'],['r_by','聞いた人'],['r_words','患者さんの言葉']])){ $('r_words').value = ''; }
 });
 
 var mNow = ymd(new Date()).slice(0,7);
@@ -3471,7 +3578,11 @@ $('rp_copy').addEventListener('click', function(){
     .catch(function(){ $('rp_msg').textContent = '写せませんでした。上の枠の文字を選んで写してください。'; });
 });
 
-$('pt_add').addEventListener('click', ptSave);
+$('pt_add').addEventListener('click', function(){ ptSave(); prRender(); });
+$('pr_save').addEventListener('click', prSave);
+$('pt_no').addEventListener('change', prRender);
+if(!$('pr_date').value) $('pr_date').value = ymd(new Date());
+prRender();
 ['td_date','td_staff'].forEach(function(id){ $(id).addEventListener('change', renderToday); });
 $('td_geo').addEventListener('click', geoFillAll);
 $('au_make').addEventListener('click', auMake);
@@ -3496,12 +3607,12 @@ function stSubDraw(cur){
 function stSubVal(){ var main = $('st_dept').value; return [].slice.call($('st_sub').querySelectorAll('[data-stsub]:checked')).map(function(c){ return c.getAttribute('data-stsub'); }).filter(function(x){ return x !== main; }); }
 $('st_dept').addEventListener('change', function(){ stSubDraw(stSubVal()); });
 stSubDraw([]);
-function stFormReset(){ $('st_id').value = ''; $('st_name').value = ''; $('st_mgr').checked = false; stSubDraw([]); if($('st_off')) stOffDraw([]); if($('st_hol')) $('st_hol').checked = $('st_emp').value === '常勤'; $('st_add').textContent = '追加する'; $('st_cancel').style.display = 'none'; }
+function stFormReset(){ $('st_id').value = ''; $('st_name').value = ''; $('st_sex').value = ''; $('st_mgr').checked = false; stSubDraw([]); if($('st_off')) stOffDraw([]); if($('st_hol')) $('st_hol').checked = $('st_emp').value === '常勤'; $('st_add').textContent = '追加する'; $('st_cancel').style.display = 'none'; }
 $('st_cancel').addEventListener('click', stFormReset);
 $('st_add').addEventListener('click', function(){
   var n = $('st_name').value.trim(); if(!n){ $('st_name').focus(); return; }
   var a = staff(), id = $('st_id').value;
-  var rec = { name:n, job:$('st_job').value, dept:$('st_dept').value, sub:stSubVal(), off:stOffVal(), holOff:$('st_hol').checked, emp:$('st_emp').value, mgr:$('st_mgr').checked };
+  var rec = { name:n, job:$('st_job').value, dept:$('st_dept').value, sub:stSubVal(), off:stOffVal(), holOff:$('st_hol').checked, emp:$('st_emp').value, mgr:$('st_mgr').checked, sex:$('st_sex').value };
   var cur = id ? a.filter(function(x){ return x.id === id; })[0] : null;
   var sid = cur ? cur.id : uid();
   if(cur){ delete cur.role; Object.assign(cur, rec); } else { a.push(Object.assign({ id:sid }, rec)); }
@@ -3513,7 +3624,7 @@ $('wk_add').addEventListener('click', function(){
   saveCol('weekly', a); $('wk_time').value = ''; refreshAll();
 });
 $('s_save').addEventListener('click', function(){
-  var v = { cut:+$('s_cut').value || 17, price:$('s_price').value, fee:$('s_fee').value, review:+$('s_review').value || 90, hard:Math.max(1, +$('s_hard').value || 3) };
+  var v = { cut:+$('s_cut').value || 17, price:$('s_price').value, fee:$('s_fee').value, review:+$('s_review').value || 90, hard:Math.max(1, +$('s_hard').value || 3), refRate:Math.max(1, Math.min(100, +$('s_refRate').value || 30)) };
   var cur = lj(K.settings, {}) || {};
   if(D().k === 'nurse') saveSettings(Object.assign({}, cur, v));
   else { var by = Object.assign({}, cur.byDept || {}); by[D().k] = v; saveSettings(Object.assign({}, cur, { byDept:by })); }
@@ -4261,8 +4372,14 @@ function evSheet(s, kind, m){
       '<tr><td>決まりの長さ（' + w.visit + '分）を超えた訪問</td><td class="n">' + (r.actSrc === '看護記録' ? r.overrun + '件' : '<span class="sm">看護記録が無いため数えていません</span>') + '</td>' + (mgr ? '<td class="n sm">件数が伸びない理由の参考</td>' : '') + '</tr>' +
     '</table>' +
     '<p class="sm">空き枠は、予定を組む側（管理者・事務局）が' + esc(D().client) + 'を入れて埋めるものです。' + (mgr ? '' : 'この表の数字だけで本人の良し悪しを決めるものではありません。') + '</p>';
+  var rf = refStat(s.id), wk = D().worker;
+  h += '<h2>4　' + esc(wk) + 'への要望（拒否の申し出）と改善の取り組み</h2>' +
+    '<p>いま有効な申し出 <b>' + rf.refs.length + '件</b>（' + rf.pts + '人）・担当の予定のうち拒否で外れる分 <b>週' + rf.lost + '件（' + rf.rate + '%）</b>・改善の取り組みの記入 <b>' + rf.plans + '件</b>' +
+      (rf.over ? '　<b class="red">' + settings().refRate + '%以上のため、管理者と一緒に改善の計画を立てます。</b>' : '') + '</p>' +
+    (rf.refs.length ? '<ul class="sm">' + rf.refs.map(function(e){ return '<li>' + esc(jpDate(e.date)) + '　' + esc(dn(e.patientNo)) + '：' + esc(refTarget(e)) + '「' + esc(e.words) + '」' + ((e.plans || []).length ? '　→ 取り組み：' + e.plans.map(function(x){ return esc(x.text); }).join('／') : '　→ 取り組みの記入なし') + '</li>'; }).join('') + '</ul>' : '') +
+    '<p class="sm">' + esc(refNote()) + '</p>';
   if(mgr){
-    h += '<h2>4　管理者が見ること</h2><ul class="sm">' +
+    h += '<h2>5　管理者が見ること</h2><ul class="sm">' +
       '<li>本人に関わる差（休みの届け）：' + r.leave + '件' + (r.price ? '（' + yenOf(r.leave) + '）' : '') + '。配置に関わる差（空き枠）：' + r.empty + '件' + (r.price ? '（' + yenOf(r.empty) + '）' : '') + '。</li>' +
       (r.clash ? '<li>休みの届けの日に入っている予定：' + r.clash + '件（要調整）</li>' : '') +
       (r.clashFix ? '<li>公休・祝日に入っている予定：' + r.clashFix + '件（要調整）</li>' : '') +
@@ -4271,7 +4388,7 @@ function evSheet(s, kind, m){
       (r.ng ? '<li>週4日目以降で算定できない訪問：' + r.ng + '件（特別指示の期間を確かめてください）</li>' : '') +
       '<li>1件あたりの売上：' + (r.price ? mdYen(r.price) + '（いまの週間予定を料金表で計算した平均）' : '出せません') + '</li></ul>';
   }
-  h += '<h2>' + (mgr ? '5　所見' : '4　面談で話したこと・来月に向けて') + '</h2><div class="memo"></div>' +
+  h += '<h2>' + (mgr ? '6　所見' : '5　面談で話したこと・来月に向けて') + '</h2><div class="memo"></div>' +
     (mgr ? '' : '<table class="sign"><tr><th>面談日</th><td></td><th>面談者</th><td></td><th>本人</th><td></td></tr></table>') +
     '</section>';
   return h;

@@ -179,7 +179,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-15</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-16</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -377,15 +377,15 @@ function tsGoBack(){
 <!-- ===== モデルコースの見本（2026-10-27・宏史さんの指示）===== -->
 <section class="tab" id="tab-mihon">
   <div class="card">
-    <h2>モデルコースの見本（月の売上の目標から作る、1週間の表）</h2>
-    <p class="lead">月の売上の目標を選ぶと、その目標に届く1週間の訪問の組み方を、仮スケジュール表と同じ「職員 × 曜日」の表で作ります。見本の職員（職員A・B…）で作る架空の表なので、誰でも、どの目標でも試せます。実際の職員でモデルコースを作ると（「モデルコース」タブ）、職員ごとにこのような表になり、各職員のタブレットの「予定」タブには、その人の1日の流れと曜日ごとの件数が届きます。</p>
-    <div class="btns"><button class="btn" data-mh="3000000">月300万円コース</button><button class="btn" data-mh="4000000">月400万円コース</button><button class="btn" data-mh="5000000">月500万円コース</button><button class="btn" data-mh="6000000">月600万円コース</button></div>
+    <h2>モデルコースの見本（目標設定額から作る、1週間の表）</h2>
+    <p class="lead">目標設定額を選ぶと、その目標に届く1週間の訪問の組み方を、仮スケジュール表と同じ「職員 × 曜日」の表で作ります。見本の職員（職員A・B…）で作る架空の表なので、誰でも、どの目標でも試せます。実際の職員でモデルコースを作ると（「モデルコース」タブ）、職員ごとにこのような表になり、各職員のタブレットの「予定」タブには、その人の1日の流れと曜日ごとの件数が届きます。</p>
+    <div class="btns" style="align-items:center"><b style="margin-right:4px">目標設定額</b><button class="btn" data-mh="3000000">300万円コース</button><button class="btn" data-mh="4000000">400万円コース</button><button class="btn" data-mh="5000000">500万円コース</button><button class="btn" data-mh="6000000">600万円コース</button></div>
+    <div id="mh_now"></div>
     <div class="row">
-      <div><label class="f" for="mh_goal">月の売上の目標（円）</label><input type="number" id="mh_goal" min="100000" step="100000" value="3000000"></div>
-      <div><label class="f" for="mh_price">1回の訪問の売上</label><select id="mh_price"></select></div>
-      <div><label class="f" for="mh_own">「自分で入れる」ときの1回の売上（円）</label><input type="number" id="mh_own" min="1000" step="10" placeholder="例：9000"></div>
+      <div><label class="f" for="mh_goal">目標設定額（月・円）</label><input type="number" id="mh_goal" min="100000" step="100000" value="3000000"></div>
+      <div><label class="f">1回の訪問の売上（料金表で決まった額）</label><div id="mh_pricev" style="padding:4px 0;font-weight:700;line-height:1.4"></div></div>
       <div><label class="f" for="mh_n">1人1日の訪問件数（上限）</label><input type="number" id="mh_n" min="1" max="12"></div>
-      <div><label class="f" for="mh_users">利用者の人数（人）</label><input type="number" id="mh_users" min="1" step="1"></div>
+      <div><label class="f" for="mh_users">利用者の人数（患者さん登録の数）</label><input type="number" id="mh_users" readonly style="background:#f4f1ea"></div>
       <div><label class="f" for="mh_cap">1人の利用者の週の回数（上限）</label><input type="number" id="mh_cap" min="1" max="7" value="3"></div>
       <div><label class="f" for="mh_who">表に入れる職員</label><select id="mh_who"><option value="real">部署の職員（名簿の名前・常勤／非常勤・休みの曜日で組む）</option><option value="demo">見本の職員（職員A・B…）</option></select></div>
     </div>
@@ -2523,11 +2523,32 @@ function mhPrices(){
     { k:'own', t:'自分で入れる（右の欄）', v:0 }
   ];
 }
+/* 1回の訪問の売上は料金表で決まる額で固定（2026-10-27 宏史さんの指示「金額は決まってますから固定で」） */
+function mhPrice(){ return mhPrices().filter(function(x){ return x.k === 'psy'; })[0] || mhPrices()[0]; }
+/* 現状：患者さん登録（利用中）の人数と、その人たちの週間予定の訪問の合計 */
+function mhNowUsers(){
+  var cnt = {}; weekly().forEach(function(v){ cnt[v.no] = (cnt[v.no] || 0) + 1; });
+  var act = patients().filter(function(p){ return !p.status || p.status === '利用中'; });
+  return { users:act.length, visits:act.reduce(function(t, p){ return t + (cnt[p.no] || 0); }, 0) };
+}
+/* 各コースに要る週の訪問件数と、いまの週の訪問件数の差。足りなければ赤、届いていれば「上のコースを狙えます」 */
+function mhNow(){
+  var now = mhNowUsers(), P = mhPrice().v, C = [3000000, 4000000, 5000000, 6000000], sel = +$('mh_goal').value || 0;
+  var rows = C.map(function(g, i){
+    var need = Math.ceil(g / 4 / P), d = now.visits - need, ok = d >= 0;
+    var j = ok ? (i < C.length - 1 ? '届いています。上のコースを狙えます' : '届いています') : '週 ' + (-d) + '件 足りません';
+    return '<tr' + (g === sel ? ' style="background:#fffaf2"' : '') + '><td><b>' + mdYenShort(g) + 'コース</b></td><td class="num">週 ' + need + '件</td><td class="num" style="font-weight:700;color:' + (ok ? 'var(--ok)' : 'var(--red)') + '">' + (d > 0 ? '+' : '') + d + '件</td><td><span class="tag ' + (ok ? 'green' : 'red') + '">' + j + '</span></td></tr>';
+  }).join('');
+  $('mh_now').innerHTML = '<div class="judge free" style="margin:8px 0"><b style="font-size:15px;color:var(--ink)">現在の訪問件数：週 ' + now.visits + '件</b>（患者さん登録 ' + now.users + '人の、週間予定の訪問の合計）。4週でおよそ ' + yen(now.visits * 4 * P) + 'です。</div>' +
+    '<div class="tbl-scroll"><table><tr><th>目標設定額</th><th class="num">コースに要る週の訪問</th><th class="num">現在との差</th><th>判定</th></tr>' + rows + '</table></div>' +
+    '<p class="muted">コースに要る週の訪問は「目標設定額 ÷ 4週 ÷ 1回 ' + yen(P) + '」です。差がマイナス（赤）はそのコースに足りない件数、プラス（緑）は届いていて上のコースを狙える件数です。</p>';
+}
 function mhRender(){
-  var sel = $('mh_price');
-  if(!sel.options.length){ sel.innerHTML = mhPrices().map(function(x){ return '<option value="' + x.k + '">' + esc(x.t) + '</option>'; }).join(''); }
+  var pr = mhPrice();
+  $('mh_pricev').innerHTML = yen(pr.v) + '<br><small class="muted" style="font-weight:400">' + esc(pr.t) + '</small>';
   if(!$('mh_n').value) $('mh_n').value = workRule().target;
-  if(!$('mh_users').value){ var nu = patients().filter(function(p){ return !p.status || p.status === '利用中'; }).length; if(nu) $('mh_users').value = nu; }
+  $('mh_users').value = mhNowUsers().users;
+  mhNow();
   if(!$('mh_tbl').innerHTML) mhMake();
   grFill(); if(!$('gr_out').innerHTML) grMake();
   scMake();
@@ -2547,10 +2568,10 @@ function mhDay(k){
   return out;
 }
 function mhMake(){
-  var goal = Math.max(0, +$('mh_goal').value || 0), pk = $('mh_price').value, n = Math.max(1, Math.min(12, +$('mh_n').value || workRule().target));
+  var goal = Math.max(0, +$('mh_goal').value || 0), n = Math.max(1, Math.min(12, +$('mh_n').value || workRule().target));
   var users = Math.max(0, +$('mh_users').value || 0), cap = Math.max(1, Math.min(7, +$('mh_cap').value || 3));
-  var pr = mhPrices().filter(function(x){ return x.k === pk; })[0] || mhPrices()[0], P = pr.k === 'own' ? (+$('mh_own').value || 0) : pr.v;
-  if(!goal || !P){ $('mh_msg').textContent = !goal ? '月の売上の目標を入れてください。' : '1回の売上を入れてください。'; return; }
+  var pr = mhPrice(), P = pr.v;
+  if(!goal){ $('mh_msg').textContent = '目標設定額を入れてください。'; return; }
   $('mh_msg').textContent = '';
   var w = workRule(), dayMin = toMin(w.end) - toMin(w.start) - (w.brk || 0), weekH = dayMin * 5 / 60;
   var week = goal / 4, N = Math.ceil(week / P), days = ['1','2','3','4','5'], S, grid = [], i, L = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', who = [];
@@ -2604,10 +2625,10 @@ function mhMake(){
     }
     lim += '</div>';
   }
-  $('mh_sum').innerHTML = '<div class="judge free" style="margin:8px 0">' + (plan.length ? '<b style="font-size:15px;color:var(--ink)">職員ごとの段階（1日の件数）は、左の欄にあります。' + minLabel(dayMin) + 'の勤務の中に、休憩' + minLabel(w.brk || 0) + '・内勤' + minLabel(w.inner || 0) + 'と、訪問の間の移動とゆとりを含みます。</b><br>' : '<b style="font-size:15px;color:var(--ink)">1人1日' + n + '件＝訪問は' + minLabel(visitH) + '。' + minLabel(dayMin) + 'の勤務の中に、休憩' + minLabel(w.brk || 0) + '・内勤' + minLabel(w.inner || 0) + '・訪問の間の移動とゆとり' + minLabel(restM) + 'を含みます。</b><br>') + '月' + esc(mdYenShort(goal)) + 'コース：1週間この表のとおりにサービスを当て込めれば、<b>1週間に ' + N + '回</b> のサービス × 1回 ' + yen(P) + ' ＝ <b>週 ' + yen(wy) + '</b>。<b>4週で ' + yen(wy * 4) + '</b> です（月の目標 ' + yen(goal) + '）。' + (plan.length ? '部署の職員 ' + S + '人を、常勤は1日5〜8件・非常勤は1日3〜6件の中で組んでいます。' + (wy * 4 < goal ? '<br><b style="color:var(--red)">全員が上限の段階まで上がっても、4週で ' + yen(goal - wy * 4) + ' 足りません。職員を増やすか、このコースより下のコースを選んでください。</b>' : '') : '職員 ' + S + '人・1人1日 最大 ' + n + '件・月〜金で組んでいます。') + '</div>' + lim;
+  $('mh_sum').innerHTML = '<div class="judge free" style="margin:8px 0">' + (plan.length ? '<b style="font-size:15px;color:var(--ink)">職員ごとの段階（1日の件数）は、左の欄にあります。' + minLabel(dayMin) + 'の勤務の中に、休憩' + minLabel(w.brk || 0) + '・内勤' + minLabel(w.inner || 0) + 'と、訪問の間の移動とゆとりを含みます。</b><br>' : '<b style="font-size:15px;color:var(--ink)">1人1日' + n + '件＝訪問は' + minLabel(visitH) + '。' + minLabel(dayMin) + 'の勤務の中に、休憩' + minLabel(w.brk || 0) + '・内勤' + minLabel(w.inner || 0) + '・訪問の間の移動とゆとり' + minLabel(restM) + 'を含みます。</b><br>') + '目標設定額 ' + esc(mdYenShort(goal)) + 'コース：1週間この表のとおりにサービスを当て込めれば、<b>1週間に ' + N + '回</b> のサービス × 1回 ' + yen(P) + ' ＝ <b>週 ' + yen(wy) + '</b>。<b>4週で ' + yen(wy * 4) + '</b> です（月の目標 ' + yen(goal) + '）。' + (plan.length ? '部署の職員 ' + S + '人を、常勤は1日5〜8件・非常勤は1日3〜6件の中で組んでいます。' + (wy * 4 < goal ? '<br><b style="color:var(--red)">全員が上限の段階まで上がっても、4週で ' + yen(goal - wy * 4) + ' 足りません。職員を増やすか、このコースより下のコースを選んでください。</b>' : '') : '職員 ' + S + '人・1人1日 最大 ' + n + '件・月〜金で組んでいます。') + '</div>' + lim;
   $('mh_note').innerHTML = '週の目標は「月の目標 ÷ 4」（' + yen(Math.round(week)) + '）で、それに届く回数（' + N + '回）を、月〜金に均して並べています。訪問は詰めて並べず、午前（' + esc(w.start) + '〜12:00）と午後（休憩明け〜内勤の前）に均して置き、間に移動とゆとりを持たせています。実際の予定は、利用者の住所の近い順に寄せて組みます。人員基準は、常勤の週の勤務時間（' + weekH + '時間）÷40時間で出した常勤換算です。' +
     (lastV && lastV.b > toMin(w.end) - (w.inner || 0) ? '<br><b style="color:var(--red)">1日 ' + n + '件では、内勤の時間に食い込みます。1人1日の件数を減らすか、勤務の決まりを見直してください。</b>' : '') +
-    '<br>1回の売上：' + esc(pr.k === 'own' ? '自分で入れた額 ' + yen(P) : pr.t) + '。料金表の出所は「モデルコース」タブの「料金表（令和8年6月1日から）と出所」にあります。見本なので、どこにも保存しません。';
+    '<br>1回の売上：' + esc(pr.t) + '。料金表の出所は「モデルコース」タブの「料金表（令和8年6月1日から）と出所」にあります。見本なので、どこにも保存しません。';
 }
 /* ---- 利用者を増やしたときの見込み（2026-10-27・宏史さんの指示「12月から毎月3名、3月で38名・9月末で56名。500万円以上コースを想定。基本は看護師1名・30分、週1〜3回の人がいる。2名体制は入れずアドバンテージとして見る」）----
    1人の月の売上＝月の初日（基本療養費＋管理療養費の初日）＋（月の回数−1）×（基本療養費＋管理療養費の2日目以降）。月の回数＝週の回数×30.4÷7 を四捨五入。 */
@@ -2717,10 +2738,10 @@ function mhPrint(){
     $('mh_sum').innerHTML + $('mh_tbl').innerHTML + '<p>' + $('mh_note').innerHTML + '</p><script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script></body></html>');
   win.document.close();
 }
-document.querySelectorAll('[data-mh]').forEach(function(b){ b.addEventListener('click', function(){ $('mh_goal').value = b.getAttribute('data-mh'); mhMake(); }); });
+document.querySelectorAll('[data-mh]').forEach(function(b){ b.addEventListener('click', function(){ $('mh_goal').value = b.getAttribute('data-mh'); mhMake(); mhNow(); }); });
+$('mh_goal').addEventListener('change', mhNow);
 $('mh_make').addEventListener('click', mhMake);
 $('mh_print').addEventListener('click', mhPrint);
-$('mh_price').addEventListener('change', mhMake);
 ['mh_users','mh_cap','mh_n','mh_who'].forEach(function(id){ $(id).addEventListener('change', mhMake); });
 ['sc_pd','sc_fn','sc_fk','sc_pn','sc_pk','mh_users','mh_cap'].forEach(function(id){ $(id).addEventListener('change', scMake); });
 $('gr_make').addEventListener('click', grMake);

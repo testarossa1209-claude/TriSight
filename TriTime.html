@@ -169,7 +169,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-07</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-08</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -1815,7 +1815,9 @@ function sheetPull(opt){
   if(!ro.length){ msg.textContent = 'トライシートの「' + sheetName(o) + '」に、職員名簿がまだありません。「トライシートの職員名簿を開く」から一人ずつ入れてから、もう一度押してください。'; return; }
   var tt = staff(), add = 0, upd = 0;
   ro.forEach(function(r){
-    var st = tt.filter(function(x){ return x.sheetId === r.id; })[0] || tt.filter(function(x){ return !x.sheetId && x.name === r.name; })[0];
+    /* 2026-10-27：名簿にもう無い行（まとめて消した会社の行など）につながっている職員は、同じ名前なら付け替える（二重にしない） */
+    var ids = {}; ro.forEach(function(y){ ids[y.id] = 1; });
+    var st = tt.filter(function(x){ return x.sheetId === r.id; })[0] || tt.filter(function(x){ return (!x.sheetId || !ids[x.sheetId]) && normName(x.name) === normName(r.name); })[0];
     if(!st){ st = { id:'sh-' + r.id }; tt.push(st); add++; }
     else upd++;
     st.sheetId = r.id; st.name = String(r.name).trim();

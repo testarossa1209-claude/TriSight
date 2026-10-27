@@ -266,5 +266,26 @@
       return 1;
     });
   }
-  window.TriSheetSync = { init:init, syncNow:syncNow, soon:soon, enabled:enabled, setEnabled:setEnabled, info:info, showBar:showBar, held:HOLD, forceSend:forceSend };
+  /* 2026-10-27：同じ名前の会社を一つにまとめたあと、その結果（消した会社・自社の印）を一度だけ送り、中継の版で確かめる */
+  function forceSync(keepId, goneIds){
+    if(!enabled()) return Promise.reject(new Error('この端末は、基本情報シートの共有の印が付いていません。'));
+    var s = state(); s.joined = true; sj(STATE_KEY, s);
+    (goneIds || []).forEach(function(g){ if(!s.h['org:' + g]) s.h['org:' + g] = 'x'; });   /* 中継にあるかもしれない会社は、消した印を必ず送る */
+    s.h.__self = ''; delete s.pendSelf; sj(STATE_KEY, s);
+    busy = false; try{ localStorage.removeItem(LOCK_KEY); }catch(e){}
+    return syncNow(true, true).then(function(){
+      var e = state().err; if(e) throw new Error(e);
+      return call('pull', { since:0, cols:['sheet'] }, true);
+    }).then(function(j){
+      var items = j.items || [], byId = {};
+      items.forEach(function(it){ byId[String(it.id)] = it.data || {}; });
+      var bad = [];
+      if(!byId.__self || byId.__self.activeOrg !== keepId) bad.push('自社の印');
+      (goneIds || []).forEach(function(g){ var x = byId['org:' + g]; if(x && !x.del) bad.push('消した会社'); });
+      if(!byId['org:' + keepId] || byId['org:' + keepId].del) bad.push('残す会社');
+      if(bad.length) throw new Error('中継の版が、まとめた結果になっていません（' + bad.join('・') + '）。もう一度押してください。');
+      return true;
+    });
+  }
+  window.TriSheetSync = { init:init, syncNow:syncNow, soon:soon, enabled:enabled, setEnabled:setEnabled, info:info, showBar:showBar, held:HOLD, forceSend:forceSend, forceSync:forceSync };
 })();

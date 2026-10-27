@@ -132,6 +132,9 @@
   .mhT td.mhOff{background:repeating-linear-gradient(45deg,#f3f0ea,#f3f0ea 4px,#ebe6dc 4px,#ebe6dc 8px);color:var(--muted);text-align:center}
   .mhT .ssChip{display:block;border-radius:5px;background:#eef3f8;margin:0 0 3px;padding:2px 4px}
   .mhCnt{text-align:right;font-size:12px;font-weight:700;color:var(--muted)}.mhCnt.full{color:var(--ok)}
+  .mhT th.who small+small{margin-top:1px}
+  .mhT .ssChip{white-space:normal}.mhT .ssChip.mhV{background:#1f4e79;color:#fff;font-weight:700}.mhT .ssChip.mhB{background:#fbf3e4;color:#9a6a2a}.mhT .ssChip.mhI{background:#eef3f8;color:#46607a}
+  .mhGap{display:block;font-size:11px;color:#2e6b45;text-align:center;margin:0 0 3px}
   .ssBody th,.ssBody td{border:1px solid var(--paper-deep);padding:4px;vertical-align:top}
   .ssBody thead th{position:sticky;top:0;background:var(--paper);font-weight:700;z-index:1}
   .ssBody thead th.we{color:var(--red)}
@@ -176,7 +179,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-11</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-13</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -376,17 +379,37 @@ function tsGoBack(){
   <div class="card">
     <h2>モデルコースの見本（月の売上の目標から作る、1週間の表）</h2>
     <p class="lead">月の売上の目標を選ぶと、その目標に届く1週間の訪問の組み方を、仮スケジュール表と同じ「職員 × 曜日」の表で作ります。見本の職員（職員A・B…）で作る架空の表なので、誰でも、どの目標でも試せます。実際の職員でモデルコースを作ると（「モデルコース」タブ）、職員ごとにこのような表になり、各職員のタブレットの「予定」タブには、その人の1日の流れと曜日ごとの件数が届きます。</p>
-    <div class="btns"><button class="btn" data-mh="2500000">月250万円コース</button><button class="btn" data-mh="3000000">月300万円コース</button><button class="btn" data-mh="3500000">月350万円コース</button></div>
+    <div class="btns"><button class="btn" data-mh="3000000">月300万円コース</button><button class="btn" data-mh="4000000">月400万円コース</button><button class="btn" data-mh="5000000">月500万円コース</button><button class="btn" data-mh="6000000">月600万円コース</button></div>
     <div class="row">
       <div><label class="f" for="mh_goal">月の売上の目標（円）</label><input type="number" id="mh_goal" min="100000" step="100000" value="3000000"></div>
       <div><label class="f" for="mh_price">1回の訪問の売上</label><select id="mh_price"></select></div>
       <div><label class="f" for="mh_own">「自分で入れる」ときの1回の売上（円）</label><input type="number" id="mh_own" min="1000" step="10" placeholder="例：9000"></div>
       <div><label class="f" for="mh_n">1人1日の訪問件数（上限）</label><input type="number" id="mh_n" min="1" max="12"></div>
+      <div><label class="f" for="mh_users">利用者の人数（人）</label><input type="number" id="mh_users" min="1" step="1"></div>
+      <div><label class="f" for="mh_cap">1人の利用者の週の回数（上限）</label><input type="number" id="mh_cap" min="1" max="7" value="3"></div>
     </div>
     <div class="btns"><button class="btn" id="mh_make">この条件で表を作る</button><button class="btn sub" id="mh_print">表を印刷する</button><span class="muted" id="mh_msg"></span></div>
     <div id="mh_sum"></div>
     <div class="tbl-scroll" id="mh_tbl"></div>
     <p class="muted" id="mh_note"></p>
+  </div>
+  <div class="card">
+    <h2>利用者を増やしたときの、月ごとの売上の見込み</h2>
+    <p class="lead">いまの利用者の内訳（週に何回の人が何名か）と、毎月の増やし方から、期末までの月ごとの利用者数・売上の見込み・要る看護師の人数を出します。売上は、看護師1名・30分以上の訪問で、実際の月（約4.3週）で数えます（月の初日は管理療養費が高い額）。2名体制の加算は入れません（多い分は上振れとして見ます）。</p>
+    <div class="row">
+      <div><label class="f" for="gr_f1">いま週1回の利用者（名）</label><input type="number" id="gr_f1" min="0"></div>
+      <div><label class="f" for="gr_f2">いま週2回の利用者（名）</label><input type="number" id="gr_f2" min="0"></div>
+      <div><label class="f" for="gr_f3">いま週3回の利用者（名）</label><input type="number" id="gr_f3" min="0"></div>
+    </div>
+    <div class="row">
+      <div><label class="f" for="gr_add">毎月増やす人数（名）</label><input type="number" id="gr_add" min="0" value="3"></div>
+      <div><label class="f" for="gr_from">増え始める月</label><input type="month" id="gr_from"></div>
+      <div><label class="f" for="gr_to">期末の月</label><input type="month" id="gr_to"></div>
+      <div><label class="f" for="gr_nf">新しい利用者の週の回数</label><select id="gr_nf"><option value="1">週1回</option><option value="2" selected>週2回</option><option value="3">週3回</option></select></div>
+    </div>
+    <div class="btns"><button class="btn" id="gr_make">見込みを出す</button><span class="muted" id="gr_msg"></span></div>
+    <div class="tbl-scroll" id="gr_out"></div>
+    <p class="muted" id="gr_note"></p>
   </div>
 </section>
 
@@ -2482,13 +2505,31 @@ function mhRender(){
   var sel = $('mh_price');
   if(!sel.options.length){ sel.innerHTML = mhPrices().map(function(x){ return '<option value="' + x.k + '">' + esc(x.t) + '</option>'; }).join(''); }
   if(!$('mh_n').value) $('mh_n').value = workRule().target;
+  if(!$('mh_users').value){ var nu = patients().filter(function(p){ return !p.status || p.status === '利用中'; }).length; if(nu) $('mh_users').value = nu; }
   if(!$('mh_tbl').innerHTML) mhMake();
+  grFill(); if(!$('gr_out').innerHTML) grMake();
+}
+/* 1日の流れ（見本用）：訪問を詰めて並べず、午前（出発〜休憩）と午後（休憩明け〜内勤の前）に均して置き、
+   訪問と訪問の間に移動と「ゆとり」を持たせる（2026-10-27 宏史さんの指示：移動の時間も予備時間を使うように、間隔に余裕を）。 */
+function mhDay(k){
+  var w = workRule(), st = toMin(w.start), en = toMin(w.end), lb = 12 * 60, le = lb + (w.brk || 0), ie = en - (w.inner || 0);
+  var amLen = Math.max(0, lb - st), pmLen = Math.max(0, ie - le), tot = amLen + pmLen;
+  var am = tot ? Math.round(k * amLen / tot) : 0; am = Math.min(am, k); var pm = k - am;
+  var out = [];
+  var put = function(a, len, c){ if(!c) return; var L = len / c; for(var i = 0; i < c; i++){ var s0 = Math.round(a + L * i), vs = s0 + Math.min(w.mvMax, Math.max(0, L - w.visit)); out.push({ k:'v', a:vs, b:vs + w.visit, gap:Math.max(0, Math.round(L - w.visit)) }); } };
+  put(st, amLen, am);
+  if(w.brk) out.push({ k:'brk', a:lb, b:le });
+  put(le, pmLen, pm);
+  if(w.inner) out.push({ k:'in', a:ie, b:en });
+  return out;
 }
 function mhMake(){
   var goal = Math.max(0, +$('mh_goal').value || 0), pk = $('mh_price').value, n = Math.max(1, Math.min(12, +$('mh_n').value || workRule().target));
+  var users = Math.max(0, +$('mh_users').value || 0), cap = Math.max(1, Math.min(7, +$('mh_cap').value || 3));
   var pr = mhPrices().filter(function(x){ return x.k === pk; })[0] || mhPrices()[0], P = pr.k === 'own' ? (+$('mh_own').value || 0) : pr.v;
   if(!goal || !P){ $('mh_msg').textContent = !goal ? '月の売上の目標を入れてください。' : '1回の売上を入れてください。'; return; }
   $('mh_msg').textContent = '';
+  var w = workRule(), dayMin = toMin(w.end) - toMin(w.start) - (w.brk || 0), weekH = dayMin * 5 / 60;
   var week = goal / 4, N = Math.ceil(week / P), days = ['1','2','3','4','5'], S = Math.max(1, Math.ceil(N / (n * days.length)));
   var slots = S * days.length, base = Math.floor(N / slots), extra = N % slots, grid = [], i, L = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   for(i = 0; i < S; i++) grid.push({});
@@ -2499,26 +2540,84 @@ function mhMake(){
     var cells = MD_DOW.map(function(d){
       var c = g[d] || 0; dayTot[d] += c; tw += c;
       if(!c) return '<td class="mhOff">' + (days.indexOf(d) < 0 ? '休' : '') + '</td>';
-      var vs = mdCourse(c).list.filter(function(x){ return x.k === 'v'; });
-      return '<td>' + vs.map(function(x){ return '<span class="ssChip">' + hm(x.a) + ' 訪問</span>'; }).join('') + '<div class="mhCnt' + (c >= n ? ' full' : '') + '">' + c + '件</div></td>';
+      var fl = mhDay(c), h = '';
+      fl.forEach(function(x, ix){
+        if(x.k === 'v'){
+          h += '<span class="ssChip mhV">' + hm(x.a) + ' 訪問</span>';
+          var nx = fl[ix + 1];
+          if(nx && nx.k === 'v') h += '<span class="mhGap">移動・ゆとり ' + (nx.a - x.b) + '分</span>';
+        } else h += '<span class="ssChip ' + (x.k === 'brk' ? 'mhB' : 'mhI') + '">' + (x.k === 'brk' ? '休憩' : '内勤') + ' ' + hm(x.a) + '〜' + hm(x.b) + '</span>';
+      });
+      return '<td>' + h + '<div class="mhCnt' + (c >= n ? ' full' : '') + '">' + c + '件</div></td>';
     }).join('');
-    return '<tr><th class="who">職員' + (si < 26 ? L.charAt(si) : si + 1) + '<small>週 ' + tw + '件・' + yen(tw * P) + '</small></th>' + cells + '</tr>';
+    return '<tr><th class="who">職員' + (si < 26 ? L.charAt(si) : si + 1) + '<small>常勤・週' + weekH + '時間</small><small>人員基準 ' + (weekH / 40).toFixed(1) + '（常勤換算）</small><small>週 ' + tw + '件・' + yen(tw * P) + '</small></th>' + cells + '</tr>';
   }).join('');
-  var wy = N * P, over = mdCourse(n).over;
+  var wy = N * P, ex = mhDay(n), lastV = ex.filter(function(x){ return x.k === 'v'; }).pop();
+  var visitH = n * w.visit, restM = dayMin - visitH - (w.inner || 0);
   $('mh_tbl').innerHTML = '<table class="mhT"><thead><tr><th class="who">職員</th>' + MD_DOW.map(function(d){ return '<th' + (d === '0' || d === '6' ? ' class="we"' : '') + '>' + DOW[+d] + '</th>'; }).join('') + '</tr></thead><tbody>' + rows +
     '<tr><th class="who">日の計</th>' + MD_DOW.map(function(d){ return '<td class="num"><b>' + (dayTot[d] ? dayTot[d] + '件' : '') + '</b></td>'; }).join('') + '</tr></tbody></table>';
-  $('mh_sum').innerHTML = '<div class="judge free" style="margin:8px 0">月' + esc(mdYenShort(goal)) + 'コース：1週間この表のとおりにサービスを当て込めれば、<b>1週間に ' + N + '回</b> のサービス × 1回 ' + yen(P) + ' ＝ <b>週 ' + yen(wy) + '</b>。<b>4週で ' + yen(wy * 4) + '</b> です（月の目標 ' + yen(goal) + '）。<br>職員 ' + S + '人・1人1日 最大 ' + n + '件・月〜金で組んでいます。</div>';
-  $('mh_note').innerHTML = '週の目標は「月の目標 ÷ 4」（' + yen(Math.round(week)) + '）で、それに届く回数（' + N + '回）を、月〜金に均して並べています。実際の月はおよそ4.3週あるので、4週を超える日の訪問は上乗せになります。時刻は「名簿・設定」の「勤務の決まり」（出発 ' + esc(workRule().start) + '・1件 ' + workRule().visit + '分・移動 ' + workRule().mvMax + '分まで・休憩 ' + workRule().brk + '分）で当てています。' +
-    (over > 0 ? '<br><b style="color:var(--red)">1日 ' + n + '件では、退勤時刻を ' + minLabel(over) + ' 超えます。1人1日の件数を減らすか、勤務の決まりを見直してください。</b>' : '') +
+  /* 利用者の人数から見た上限（精神科訪問看護は、同じ利用者へは週3日目まで＝特別指示の期間を除く） */
+  var lim = '';
+  if(users){
+    var maxW = users * cap, need = N;
+    lim = '<div class="judge ' + (maxW >= need ? 'free' : 'fee') + '" style="margin:8px 0">利用者 ' + users + '人 × 週' + cap + '回まで ＝ <b>週' + maxW + '回</b>が、この人数でできる訪問の上限です。' +
+      (maxW >= need ? 'この目標に要る週' + need + '回は、上限の ' + mdPct(need, maxW) + ' に当たります（利用者の多くが週' + Math.ceil(need / users) + '回前後の利用で届きます）。'
+        : 'この目標に要る週' + need + '回（4週で数えた場合）には、週' + (need - maxW) + '回足りません。週' + cap + '回の利用者であと' + Math.ceil((need - maxW) / cap) + '人いるか、1回の売上を上げる（2名体制の加算など）必要があります。');
+    if(pr.k === 'psy'){
+      var v = Math.round(cap * 30.4 / 7), first = FEE.psy.n.o30 + (FEE.kanriFirst[mdCfg().kanri] || FEE.kanriFirst.other), per = first + (v - 1) * P;
+      lim += '<br><small>参考：実際の月（約4.3週）で数えると、週' + cap + '回の利用者は月におよそ' + v + '回で、月の初日は管理療養費が ' + yen(FEE.kanriFirst[mdCfg().kanri] || FEE.kanriFirst.other) + ' になります。1人の月の売上はおよそ ' + yen(per) + '、' + users + '人全員で月およそ ' + yen(per * users) + ' です（月の日の並びで前後します）。</small>';
+    }
+    lim += '</div>';
+  }
+  $('mh_sum').innerHTML = '<div class="judge free" style="margin:8px 0"><b style="font-size:15px;color:var(--ink)">1人1日' + n + '件＝訪問は' + minLabel(visitH) + '。' + minLabel(dayMin) + 'の勤務の中に、休憩' + minLabel(w.brk || 0) + '・内勤' + minLabel(w.inner || 0) + '・訪問の間の移動とゆとり' + minLabel(restM) + 'を含みます。</b><br>月' + esc(mdYenShort(goal)) + 'コース：1週間この表のとおりにサービスを当て込めれば、<b>1週間に ' + N + '回</b> のサービス × 1回 ' + yen(P) + ' ＝ <b>週 ' + yen(wy) + '</b>。<b>4週で ' + yen(wy * 4) + '</b> です（月の目標 ' + yen(goal) + '）。職員 ' + S + '人・1人1日 最大 ' + n + '件・月〜金で組んでいます。</div>' + lim;
+  $('mh_note').innerHTML = '週の目標は「月の目標 ÷ 4」（' + yen(Math.round(week)) + '）で、それに届く回数（' + N + '回）を、月〜金に均して並べています。訪問は詰めて並べず、午前（' + esc(w.start) + '〜12:00）と午後（休憩明け〜内勤の前）に均して置き、間に移動とゆとりを持たせています。実際の予定は、利用者の住所の近い順に寄せて組みます。人員基準は、常勤の週の勤務時間（' + weekH + '時間）÷40時間で出した常勤換算です。' +
+    (lastV && lastV.b > toMin(w.end) - (w.inner || 0) ? '<br><b style="color:var(--red)">1日 ' + n + '件では、内勤の時間に食い込みます。1人1日の件数を減らすか、勤務の決まりを見直してください。</b>' : '') +
     '<br>1回の売上：' + esc(pr.k === 'own' ? '自分で入れた額 ' + yen(P) : pr.t) + '。料金表の出所は「モデルコース」タブの「料金表（令和8年6月1日から）と出所」にあります。見本なので、どこにも保存しません。';
 }
+/* ---- 利用者を増やしたときの見込み（2026-10-27・宏史さんの指示「12月から毎月3名、3月で38名・9月末で56名。500万円以上コースを想定。基本は看護師1名・30分、週1〜3回の人がいる。2名体制は入れずアドバンテージとして見る」）----
+   1人の月の売上＝月の初日（基本療養費＋管理療養費の初日）＋（月の回数−1）×（基本療養費＋管理療養費の2日目以降）。月の回数＝週の回数×30.4÷7 を四捨五入。 */
+function grPerUser(f){
+  var v = Math.round(f * 30.4 / 7), base = FEE.psy.n.o30, first = base + (FEE.kanriFirst[mdCfg().kanri] || FEE.kanriFirst.other), next = base + FEE.kanriNext;
+  return { v:v, yen:first + (v - 1) * next };
+}
+function grFill(){
+  if($('gr_f1').value !== '' || $('gr_f2').value !== '' || $('gr_f3').value !== '') return;
+  var cnt = {}; weekly().forEach(function(v){ cnt[v.no] = (cnt[v.no] || 0) + 1; });
+  var c = [0, 0, 0, 0];
+  patients().filter(function(p){ return !p.status || p.status === '利用中'; }).forEach(function(p){ var k = Math.min(3, cnt[p.no] || 0); if(k) c[k]++; });
+  $('gr_f1').value = c[1]; $('gr_f2').value = c[2]; $('gr_f3').value = c[3];
+  if(!$('gr_from').value){ var d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + 2); $('gr_from').value = ymd(d).slice(0, 7); }
+  if(!$('gr_to').value){ var y = new Date().getFullYear(), m = new Date().getMonth() + 1; $('gr_to').value = (m <= 9 ? y : y + 1) + '-09'; }
+}
+function grMake(){
+  var f = [0, +$('gr_f1').value || 0, +$('gr_f2').value || 0, +$('gr_f3').value || 0], add = Math.max(0, +$('gr_add').value || 0), nf = +$('gr_nf').value || 2;
+  var from = $('gr_from').value, to = $('gr_to').value, now = ymd(new Date()).slice(0, 7);
+  if(!to || to < now){ $('gr_msg').textContent = '期末の月を入れてください。'; return; }
+  $('gr_msg').textContent = '';
+  var u = [grPerUser(0), grPerUser(1), grPerUser(2), grPerUser(3)], n = Math.max(1, +$('mh_n').value || workRule().target), perNurse = n * 30.4 / 7 * 5;
+  var rows = '', m = now, added = 0, last = null;
+  while(m <= to){
+    if(from && m >= from) added += add;
+    var users = f[1] + f[2] + f[3] + added;
+    var visits = f[1] * u[1].v + f[2] * u[2].v + f[3] * u[3].v + added * u[nf].v;
+    var sales = f[1] * u[1].yen + f[2] * u[2].yen + f[3] * u[3].yen + added * u[nf].yen;
+    var nurse = Math.ceil(visits / perNurse * 10) / 10;
+    rows += '<tr' + (m === now ? ' style="background:#fffaf2"' : '') + '><td>' + esc(jpMonth(m)) + (m === now ? '<br><small class="muted">いま</small>' : '') + '</td><td class="num">' + users + '名' + (added && m >= from ? '<br><small class="muted">うち新規 ' + added + '名</small>' : '') + '</td><td class="num">' + visits + '回</td><td class="num"><b>' + yen(sales) + '</b></td><td class="num">' + nurse.toFixed(1) + '人</td><td>' + mhCourseOf(sales) + '</td></tr>';
+    last = { m:m, users:users, sales:sales, nurse:nurse };
+    var d = parseYmd(m + '-01'); d.setMonth(d.getMonth() + 1); m = ymd(d).slice(0, 7);
+  }
+  $('gr_out').innerHTML = '<table><tr><th>月</th><th class="num">利用者</th><th class="num">月の訪問の回数</th><th class="num">月の売上の見込み</th><th class="num">要る看護師<br><small>（常勤換算）</small></th><th>コースの目安</th></tr>' + rows + '</table>';
+  $('gr_note').innerHTML = '1人の月の売上：週1回＝約' + u[1].v + '回・' + yen(u[1].yen) + '、週2回＝約' + u[2].v + '回・' + yen(u[2].yen) + '、週3回＝約' + u[3].v + '回・' + yen(u[3].yen) + '（精神科訪問看護・看護師・30分以上の基本療養費 ' + yen(FEE.psy.n.o30) + '、管理療養費は月の初日 ' + yen(FEE.kanriFirst[mdCfg().kanri] || FEE.kanriFirst.other) + '・2日目以降 ' + yen(FEE.kanriNext) + '）。月の回数は「週の回数×30.4÷7」を四捨五入したもので、月の日の並びで前後します。' +
+    '要る看護師は、月の訪問の回数を「1人1日' + n + '件×月〜金（月におよそ21.7日）」で割った常勤換算です。2名体制の加算・週4日目以降（特別指示）・キャンセルは入れていません。' + (last ? '<br><b>' + esc(jpMonth(last.m)) + '：利用者 ' + last.users + '名・月の売上の見込み ' + yen(last.sales) + '・要る看護師 常勤換算 ' + last.nurse.toFixed(1) + '人。</b>' : '');
+}
+function mhCourseOf(v){ var c = Math.floor(v / 1000000); return c >= 3 ? '月' + c + '00万円台' : '月300万円に届かない'; }
 function mdYenShort(v){ return (v % 10000 === 0) ? (v / 10000).toLocaleString('ja-JP') + '万円' : yen(v); }
 function mhPrint(){
   if(!$('mh_tbl').innerHTML) mhMake();
   var css = '@page{size:A4 landscape;margin:12mm}*{box-sizing:border-box}body{font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic",sans-serif;color:#10243b;font-size:9.5pt;line-height:1.5;margin:0}' +
     '.hd{display:flex;align-items:center;gap:10px;border-bottom:1.5px solid #10243b;padding-bottom:6px;margin-bottom:8px}.hd img{width:30px;height:30px}.hd h1{font-size:14pt;margin:0}.hd p{margin:0;font-size:9pt;color:#5d6b7a}' +
     'table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #cfc6b4;padding:3px;vertical-align:top;text-align:left}th{background:#f4f1ea}th.we{color:#b0402f}th.who small{display:block;font-weight:400;color:#5d6b7a}' +
-    '.ssChip{display:block;background:#eef3f8;border-radius:4px;margin:0 0 2px;padding:1px 3px}.mhCnt{text-align:right;font-weight:700;color:#5d6b7a}.mhCnt.full{color:#2e7d4f}.num{text-align:right}.judge{border:1px solid #cfc6b4;border-radius:6px;padding:6px 8px;margin:6px 0;background:#eef5ef}p{margin:4px 0;font-size:8.5pt;color:#5d6b7a}';
+    '.ssChip{display:block;background:#eef3f8;border-radius:4px;margin:0 0 2px;padding:1px 3px}.mhV{background:#1f4e79;color:#fff;font-weight:700}.mhB{background:#fbf3e4}.mhGap{display:block;font-size:7.5pt;color:#2e6b45;text-align:center}.judge.fee{background:#fbecea}.mhCnt{text-align:right;font-weight:700;color:#5d6b7a}.mhCnt.full{color:#2e7d4f}.num{text-align:right}.judge{border:1px solid #cfc6b4;border-radius:6px;padding:6px 8px;margin:6px 0;background:#eef5ef}p{margin:4px 0;font-size:8.5pt;color:#5d6b7a}';
   var win = window.open('', '_blank');
   if(!win){ $('mh_msg').textContent = '印刷の画面を開けませんでした。ブラウザのポップアップの許可を確かめてください。'; return; }
   win.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>モデルコースの見本</title><style>' + css + '</style></head><body><div class="hd"><img src="' + esc(new URL('TriSight_icon_512.png', location.href).href) + '" alt="TriSight®"><div><h1>モデルコースの見本</h1><p>' + esc(D().name) + '　作成日 ' + esc(jpDate(ymd(new Date()))) + '</p></div></div>' +
@@ -2529,6 +2628,9 @@ document.querySelectorAll('[data-mh]').forEach(function(b){ b.addEventListener('
 $('mh_make').addEventListener('click', mhMake);
 $('mh_print').addEventListener('click', mhPrint);
 $('mh_price').addEventListener('change', mhMake);
+['mh_users','mh_cap','mh_n'].forEach(function(id){ $(id).addEventListener('change', mhMake); });
+$('gr_make').addEventListener('click', grMake);
+['gr_f1','gr_f2','gr_f3','gr_add','gr_from','gr_to','gr_nf'].forEach(function(id){ $(id).addEventListener('change', grMake); });
 function refreshAll(){
   mgMigrate(); applyDept();
   setShareNote(); renderAlerts();

@@ -179,7 +179,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-14</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-15</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -387,6 +387,7 @@ function tsGoBack(){
       <div><label class="f" for="mh_n">1人1日の訪問件数（上限）</label><input type="number" id="mh_n" min="1" max="12"></div>
       <div><label class="f" for="mh_users">利用者の人数（人）</label><input type="number" id="mh_users" min="1" step="1"></div>
       <div><label class="f" for="mh_cap">1人の利用者の週の回数（上限）</label><input type="number" id="mh_cap" min="1" max="7" value="3"></div>
+      <div><label class="f" for="mh_who">表に入れる職員</label><select id="mh_who"><option value="real">部署の職員（名簿の名前・常勤／非常勤・休みの曜日で組む）</option><option value="demo">見本の職員（職員A・B…）</option></select></div>
     </div>
     <div class="btns"><button class="btn" id="mh_make">この条件で表を作る</button><button class="btn sub" id="mh_print">表を印刷する</button><span class="muted" id="mh_msg"></span></div>
     <div id="mh_sum"></div>
@@ -394,7 +395,7 @@ function tsGoBack(){
     <p class="muted" id="mh_note"></p>
   </div>
   <div class="card">
-    <h2>このコースをこなせるようになるまでの、成長の段階</h2>
+    <h2>このコースをこなせるようになるまでの、成長の段階（管理者が、いまの立ち位置を知るための目安）</h2>
     <div class="judge free" style="margin:8px 0;font-size:15px;line-height:1.8">この表は「明日からこれをこなしなさい」という表ではありません。一つずつ技術を身につけて、ここまで来られたときの1週間の姿です。段階が一つ上がるごとに、自分の手で生み出せる売上が増え、それがそのまま自分の成長の証になります。</div>
     <p class="lead">常勤は1日5〜8件、非常勤は1日3〜6件を段階にしています。月の売上の目安は「1日の件数 × 月の勤務日数 × 1回の売上」です。</p>
     <div class="row">
@@ -2552,16 +2553,26 @@ function mhMake(){
   if(!goal || !P){ $('mh_msg').textContent = !goal ? '月の売上の目標を入れてください。' : '1回の売上を入れてください。'; return; }
   $('mh_msg').textContent = '';
   var w = workRule(), dayMin = toMin(w.end) - toMin(w.start) - (w.brk || 0), weekH = dayMin * 5 / 60;
-  var week = goal / 4, N = Math.ceil(week / P), days = ['1','2','3','4','5'], S = Math.max(1, Math.ceil(N / (n * days.length)));
-  var slots = S * days.length, base = Math.floor(N / slots), extra = N % slots, grid = [], i, L = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  for(i = 0; i < S; i++) grid.push({});
-  for(var di = 0, k = 0; di < days.length; di++) for(i = 0; i < S; i++, k++) grid[i][days[di]] = base + (k < extra ? 1 : 0);
+  var week = goal / 4, N = Math.ceil(week / P), days = ['1','2','3','4','5'], S, grid = [], i, L = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', who = [];
+  var plan = $('mh_who').value === 'real' ? mhStaffPlan(N) : [];
+  if(plan.length){
+    S = plan.length;
+    plan.forEach(function(x){ var g = {}; x.days.forEach(function(d){ g[d] = x.n; }); grid.push(g);
+      var h = x.full ? weekH : Math.round(x.days.length * dayMin / 60 * 10) / 10, st = (x.n - x.lo) + 1;
+      who.push({ days:x.days, head:esc(x.s.name) + '<small>' + (x.full ? '常勤' : '非常勤') + '・週' + x.days.length + '日' + (x.guess ? '（休みの曜日が名簿に無いため月〜金で置いています）' : '') + '</small><small>人員基準 ' + (h / 40).toFixed(1) + '（常勤換算）</small><small class="mhStage">段階' + st + '（1日' + x.n + '件）' + (x.n >= x.hi ? '・上限' : '') + '</small>' }); });
+  } else {
+    S = Math.max(1, Math.ceil(N / (n * days.length)));
+    var slots = S * days.length, base = Math.floor(N / slots), extra = N % slots;
+    for(i = 0; i < S; i++) grid.push({});
+    for(var di = 0, k = 0; di < days.length; di++) for(i = 0; i < S; i++, k++) grid[i][days[di]] = base + (k < extra ? 1 : 0);
+    for(i = 0; i < S; i++) who.push({ days:days, head:'職員' + (i < 26 ? L.charAt(i) : i + 1) + '<small>常勤・週' + weekH + '時間</small><small>人員基準 ' + (weekH / 40).toFixed(1) + '（常勤換算）</small>' });
+  }
   var dayTot = {}; MD_DOW.forEach(function(d){ dayTot[d] = 0; });
   var rows = grid.map(function(g, si){
     var tw = 0;
     var cells = MD_DOW.map(function(d){
       var c = g[d] || 0; dayTot[d] += c; tw += c;
-      if(!c) return '<td class="mhOff">' + (days.indexOf(d) < 0 ? '休' : '') + '</td>';
+      if(!c) return '<td class="mhOff">' + (who[si].days.indexOf(d) < 0 ? '休' : '') + '</td>';
       var fl = mhDay(c), h = '';
       fl.forEach(function(x, ix){
         if(x.k === 'v'){
@@ -2572,8 +2583,10 @@ function mhMake(){
       });
       return '<td>' + h + '<div class="mhCnt' + (c >= n ? ' full' : '') + '">' + c + '件</div></td>';
     }).join('');
-    return '<tr><th class="who">職員' + (si < 26 ? L.charAt(si) : si + 1) + '<small>常勤・週' + weekH + '時間</small><small>人員基準 ' + (weekH / 40).toFixed(1) + '（常勤換算）</small><small>週 ' + tw + '件・' + yen(tw * P) + '</small></th>' + cells + '</tr>';
+    return '<tr><th class="who">' + who[si].head + '<small>週 ' + tw + '件・' + yen(tw * P) + '</small></th>' + cells + '</tr>';
   }).join('');
+  var W = 0; grid.forEach(function(g){ for(var d in g) W += g[d]; });
+  if(plan.length) N = W;
   var wy = N * P, ex = mhDay(n), lastV = ex.filter(function(x){ return x.k === 'v'; }).pop();
   var visitH = n * w.visit, restM = dayMin - visitH - (w.inner || 0);
   $('mh_tbl').innerHTML = '<table class="mhT"><thead><tr><th class="who">職員</th>' + MD_DOW.map(function(d){ return '<th' + (d === '0' || d === '6' ? ' class="we"' : '') + '>' + DOW[+d] + '</th>'; }).join('') + '</tr></thead><tbody>' + rows +
@@ -2591,7 +2604,7 @@ function mhMake(){
     }
     lim += '</div>';
   }
-  $('mh_sum').innerHTML = '<div class="judge free" style="margin:8px 0"><b style="font-size:15px;color:var(--ink)">1人1日' + n + '件＝訪問は' + minLabel(visitH) + '。' + minLabel(dayMin) + 'の勤務の中に、休憩' + minLabel(w.brk || 0) + '・内勤' + minLabel(w.inner || 0) + '・訪問の間の移動とゆとり' + minLabel(restM) + 'を含みます。</b><br>月' + esc(mdYenShort(goal)) + 'コース：1週間この表のとおりにサービスを当て込めれば、<b>1週間に ' + N + '回</b> のサービス × 1回 ' + yen(P) + ' ＝ <b>週 ' + yen(wy) + '</b>。<b>4週で ' + yen(wy * 4) + '</b> です（月の目標 ' + yen(goal) + '）。職員 ' + S + '人・1人1日 最大 ' + n + '件・月〜金で組んでいます。</div>' + lim;
+  $('mh_sum').innerHTML = '<div class="judge free" style="margin:8px 0">' + (plan.length ? '<b style="font-size:15px;color:var(--ink)">職員ごとの段階（1日の件数）は、左の欄にあります。' + minLabel(dayMin) + 'の勤務の中に、休憩' + minLabel(w.brk || 0) + '・内勤' + minLabel(w.inner || 0) + 'と、訪問の間の移動とゆとりを含みます。</b><br>' : '<b style="font-size:15px;color:var(--ink)">1人1日' + n + '件＝訪問は' + minLabel(visitH) + '。' + minLabel(dayMin) + 'の勤務の中に、休憩' + minLabel(w.brk || 0) + '・内勤' + minLabel(w.inner || 0) + '・訪問の間の移動とゆとり' + minLabel(restM) + 'を含みます。</b><br>') + '月' + esc(mdYenShort(goal)) + 'コース：1週間この表のとおりにサービスを当て込めれば、<b>1週間に ' + N + '回</b> のサービス × 1回 ' + yen(P) + ' ＝ <b>週 ' + yen(wy) + '</b>。<b>4週で ' + yen(wy * 4) + '</b> です（月の目標 ' + yen(goal) + '）。' + (plan.length ? '部署の職員 ' + S + '人を、常勤は1日5〜8件・非常勤は1日3〜6件の中で組んでいます。' + (wy * 4 < goal ? '<br><b style="color:var(--red)">全員が上限の段階まで上がっても、4週で ' + yen(goal - wy * 4) + ' 足りません。職員を増やすか、このコースより下のコースを選んでください。</b>' : '') : '職員 ' + S + '人・1人1日 最大 ' + n + '件・月〜金で組んでいます。') + '</div>' + lim;
   $('mh_note').innerHTML = '週の目標は「月の目標 ÷ 4」（' + yen(Math.round(week)) + '）で、それに届く回数（' + N + '回）を、月〜金に均して並べています。訪問は詰めて並べず、午前（' + esc(w.start) + '〜12:00）と午後（休憩明け〜内勤の前）に均して置き、間に移動とゆとりを持たせています。実際の予定は、利用者の住所の近い順に寄せて組みます。人員基準は、常勤の週の勤務時間（' + weekH + '時間）÷40時間で出した常勤換算です。' +
     (lastV && lastV.b > toMin(w.end) - (w.inner || 0) ? '<br><b style="color:var(--red)">1日 ' + n + '件では、内勤の時間に食い込みます。1人1日の件数を減らすか、勤務の決まりを見直してください。</b>' : '') +
     '<br>1回の売上：' + esc(pr.k === 'own' ? '自分で入れた額 ' + yen(P) : pr.t) + '。料金表の出所は「モデルコース」タブの「料金表（令和8年6月1日から）と出所」にあります。見本なので、どこにも保存しません。';
@@ -2676,6 +2689,20 @@ function scMake(){
   h += '<p class="muted">月の売上は1回 ' + yen(P) + 'で数えた目安で、月の初日の管理療養費・2名体制の加算・キャンセルは入れていません。利用者の上限は、週の回数 × 30.4 ÷ 7 で月に直しています。</p>';
   $('sc_mix').innerHTML = h;
 }
+/* 部署の職員で1週間を組む：常勤は1日5〜8件、非常勤は1日3〜6件。全員を段階1から始め、週の目標に届くまで常勤から順に1件ずつ上げる。
+   出る曜日は名簿の「公休」（休みの曜日）から。休みの曜日が無い人は月〜金で置く。 */
+function mhStaffPlan(N){
+  var list = deptStaff().filter(function(s){ return !staffOrphan(s) && NURSE_JOBS.indexOf(jobOf(s)) >= 0; }).map(function(s){
+    var off = staffOff(s), full = s.emp !== '非常勤', set = off.length > 0;
+    var days = MD_DOW.filter(function(d){ return set ? off.indexOf(d) < 0 : ['1','2','3','4','5'].indexOf(d) >= 0; });
+    return { s:s, full:full, days:days, guess:!set, lo:full ? 5 : 3, hi:full ? 8 : 6, n:full ? 5 : 3 };
+  }).filter(function(x){ return x.days.length; });
+  list.sort(function(a, b){ return (b.full - a.full) || (b.days.length - a.days.length); });
+  var tot = function(){ return list.reduce(function(t, x){ return t + x.n * x.days.length; }, 0); };
+  var up = true;
+  while(tot() < N && up){ up = false; for(var i = 0; i < list.length && tot() < N; i++){ if(list[i].n < list[i].hi){ list[i].n++; up = true; } } }
+  return list;
+}
 function mhCourseOf(v){ var c = Math.floor(v / 1000000); return c >= 3 ? '月' + c + '00万円台' : '月300万円に届かない'; }
 function mdYenShort(v){ return (v % 10000 === 0) ? (v / 10000).toLocaleString('ja-JP') + '万円' : yen(v); }
 function mhPrint(){
@@ -2694,7 +2721,7 @@ document.querySelectorAll('[data-mh]').forEach(function(b){ b.addEventListener('
 $('mh_make').addEventListener('click', mhMake);
 $('mh_print').addEventListener('click', mhPrint);
 $('mh_price').addEventListener('change', mhMake);
-['mh_users','mh_cap','mh_n'].forEach(function(id){ $(id).addEventListener('change', mhMake); });
+['mh_users','mh_cap','mh_n','mh_who'].forEach(function(id){ $(id).addEventListener('change', mhMake); });
 ['sc_pd','sc_fn','sc_fk','sc_pn','sc_pk','mh_users','mh_cap'].forEach(function(id){ $(id).addEventListener('change', scMake); });
 $('gr_make').addEventListener('click', grMake);
 ['gr_f1','gr_f2','gr_f3','gr_add','gr_from','gr_to','gr_nf'].forEach(function(id){ $(id).addEventListener('change', grMake); });

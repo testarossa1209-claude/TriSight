@@ -180,7 +180,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-28-01</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-28-02</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -414,7 +414,7 @@ function tsGoBack(){
       <div><label class="f" for="mh_goal">目標設定額（月・円）</label><input type="number" id="mh_goal" min="100000" step="100000" value="3000000"></div>
       <div><label class="f">1回の訪問の売上（料金表で決まった額）</label><div id="mh_pricev" style="padding:4px 0;font-weight:700;line-height:1.4"></div></div>
       <div><label class="f" for="mh_n">1人1日の訪問件数（上限）</label><input type="number" id="mh_n" min="1" max="12"></div>
-      <div><label class="f" for="mh_users">利用者の人数（患者さん登録の数）</label><input type="number" id="mh_users" readonly style="background:#f4f1ea"></div>
+      <div><label class="f" for="mh_umode">利用者の人数</label><select id="mh_umode"><option value="reg">患者さん登録の数で数える</option><option value="free">自由に入れる（仮の人数で試す）</option></select><input type="number" id="mh_users" min="0" max="999" readonly style="background:#f4f1ea;margin-top:4px" aria-label="利用者の人数"><small class="muted" id="mh_unote" style="display:block"></small></div>
       <div><label class="f" for="mh_cap">1人の利用者の週の回数（上限）</label><input type="number" id="mh_cap" min="1" max="7" value="3"></div>
       <div><label class="f" for="mh_who">表に入れる職員</label><select id="mh_who"><option value="real">部署の職員（名簿の名前・常勤／非常勤・休みの曜日で組む）</option><option value="demo">見本の職員（職員A・B…）</option></select></div>
     </div>
@@ -2930,7 +2930,7 @@ function mhRender(){
   var pr = mhPrice();
   $('mh_pricev').innerHTML = yen(pr.v) + '<br><small class="muted" style="font-weight:400">' + esc(pr.t) + '</small>';
   if(!$('mh_n').value) $('mh_n').value = workRule().target;
-  $('mh_users').value = mhNowUsers().users;
+  mhUMode();
   mhNow();
   if(!$('mh_tbl').innerHTML) mhMake();
   grFill(); if(!$('gr_out').innerHTML) grMake();
@@ -2938,6 +2938,43 @@ function mhRender(){
 }
 /* 1日の流れ（見本用）：訪問を詰めて並べず、午前（出発〜休憩）と午後（休憩明け〜内勤の前）に均して置き、
    訪問と訪問の間に移動と「ゆとり」を持たせる（2026-10-27 宏史さんの指示：移動の時間も予備時間を使うように、間隔に余裕を）。 */
+/* 利用者の人数の入れ方（2026-10-28・宏史さんの指示「自由に入れられる選択も」）：
+   患者さん登録の数（実態）か、自由に入れる仮の人数か。仮の人数のときは、その人数で目標に届かせるアプローチの見本も出す */
+function mhUMode(){
+  var free = $('mh_umode').value === 'free', reg = mhNowUsers().users, el = $('mh_users');
+  el.readOnly = !free; el.style.background = free ? '#fff' : '#f4f1ea';
+  if(!free) el.value = reg; else if(el.value === '') el.value = reg;
+  $('mh_unote').textContent = free ? '仮の人数です（患者さん登録は ' + reg + '人）。人数を変えて、どんなやり方で届くかを試せます。' : '患者さん登録（利用中）の人数です。';
+}
+/* 利用者の人数で届かないときのアプローチの見本（2026-10-28・宏史さんの指示「実態ではない少数の場合にはどのようなやり方ができるだろうか、のイメージに」）
+   1回の売上（P）と2名体制の加算（FEE.psyWith.n）は料金表（令和8年6月1日から）の額。精神科訪問看護は同じ利用者へ週3日まで（4日目以降は特別指示の期間だけ）。 */
+function mhApproach(users, cap, need0, P, goal){
+  if(!users || !P || !goal) return '';
+  /* 件数は目標設定額から数える（職員の上限で頭打ちした件数ではなく）。精神科訪問看護は同じ利用者へ週3日まで */
+  var wFee = (FEE.psyWith && FEE.psyWith.n) || 0, need = Math.ceil(goal / 4 / P), maxW = users * cap;
+  if(maxW >= need) return '';
+  var man = function(v){ return '約' + Math.round(v / 10000).toLocaleString('ja-JP') + '万円'; };
+  var c3 = users * 3, rows = [];
+  var per = Math.ceil(need / users);
+  rows.push(['1. 1人あたりの回数を上げる', per <= 3
+    ? '利用者 ' + users + '人それぞれを週' + per + '回にすると、週' + (users * per) + '回で届きます。'
+    : '1人あたり週' + per + '回が要りますが、精神科訪問看護は同じ利用者へ週3日までです（4日目以降は特別指示の期間だけ）。全員を週3回にしても週' + c3 + '回・4週で' + man(c3 * 4 * P) + 'までです。']);
+  if(wFee){
+    var v = Math.min(c3, Math.max(maxW, need)), lack = goal / 4 - v * P, n2 = Math.ceil(Math.max(0, lack) / wFee);
+    rows.push(['2. 2名体制の加算で、1回の売上を上げる', per <= 3 ? '1 の回数で届くため、ここは上振れの分です（1回 ' + yen(wFee) + '）。'
+      : (n2 <= c3 ? '全員を週3回（週' + c3 + '回）にし、そのうち週' + n2 + '回を2名体制にすると、加算で届きます。'
+        : '全員を週3回にし、すべてを2名体制にしても、4週で' + man(c3 * 4 * (P + wFee)) + 'までです。') +
+      '<br><small class="muted">2名体制の加算は30分以上の訪問だけで、利用者の状態などの決まった条件があります（料金表の出所の留意事項）。同行する職員の手も要ります。</small>']);
+  }
+  var addCap = Math.ceil((need - maxW) / cap), add3 = Math.ceil(Math.max(0, need - c3) / 3);
+  rows.push(['3. 新しい利用者をふやす', 'いまの回数（週' + cap + '回まで）のまま、週' + cap + '回の人をあと ' + addCap + '人ふやすと届きます（合わせて ' + (users + addCap) + '人）。' + (cap !== 3 && add3 ? 'いまの利用者を週3回にしたうえでなら、週3回の人をあと ' + add3 + '人です。' : '')]);
+  rows.push(['4. 組み合わせ', per <= 3 ? '1 だけで届きます。'
+    : 'いまの ' + users + '人を週3回にし（週' + c3 + '回）、週3回の新しい利用者を ' + add3 + '人ふやすと、週' + (c3 + add3 * 3) + '回で届きます。2名体制の加算が付く訪問があれば、その分だけ迎える人数は少なくて済みます（1回 ' + yen(wFee) + '）。']);
+  rows.push(['5. この人数で狙える上限', '週3回 × ' + users + '人で、4週' + man(c3 * 4 * P) + (wFee ? '（すべて2名体制なら' + man(c3 * 4 * (P + wFee)) + '）' : '') + 'までです。' + (c3 * 4 * P >= 3000000 ? '目標を ' + esc(mhCourseOf(c3 * 4 * P)) + 'のコースに置き直すやり方もあります。' : '300万円コースにも届かないため、まず利用者をふやす（3）が先です。')]);
+  return '<h3 style="margin:12px 0 4px">利用者 ' + users + '人で、' + esc(mdYenShort(goal)) + 'コース（週' + need + '回）に近づけるやり方（アプローチの見本）</h3>' +
+    '<table><tr><th style="width:30%">やり方</th><th>この人数で当てはめると</th></tr>' + rows.map(function(r){ return '<tr><td><b>' + r[0] + '</b></td><td>' + r[1] + '</td></tr>'; }).join('') + '</table>' +
+    '<p class="muted">週' + need + '回は「目標設定額 ÷ 4週 ÷ 1回 ' + yen(P) + '」です。1回の売上と2名体制の加算 1回 ' + yen(wFee) + 'は、料金表（令和8年6月1日から）の額です（出所は「モデルコース」タブの料金表）。利用者をふやすときは、職員が出せる量も上の表と「成長の段階」で確かめてください。どれも見本で、実際に組めるかは利用者さんの状態と主治医の指示で決まります。</p>';
+}
 function mhDay(k){
   var w = workRule(), st = toMin(w.start), en = toMin(w.end), lb = 12 * 60, le = lb + (w.brk || 0), ie = en - (w.inner || 0);
   var amLen = Math.max(0, lb - st), pmLen = Math.max(0, ie - le), tot = amLen + pmLen;
@@ -2959,7 +2996,7 @@ function mhMake(){
   var w = workRule(), dayMin = toMin(w.end) - toMin(w.start) - (w.brk || 0), weekH = dayMin * 5 / 60;
   var week = goal / 4, N = Math.ceil(week / P), days = ['1','2','3','4','5'], S, grid = [], i, L = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', who = [];
   var plan = $('mh_who').value === 'real' ? mhStaffPlan(N) : [];
-  mhLast = plan.length ? { goal:goal, caps:plan.reduce(function(o, x){ o[x.s.id] = x.per; return o; }, {}) } : null;
+  mhLast = plan.length ? { goal:goal, caps:plan.reduce(function(o, x){ o[x.s.id] = x.per; return o; }, {}), free:$('mh_umode').value === 'free', users:users } : null;
   $('mh_use').style.display = mhLast ? '' : 'none';
   if(plan.length){
     S = plan.length;
@@ -3008,7 +3045,7 @@ function mhMake(){
       var v = Math.round(cap * 30.4 / 7), first = FEE.psy.n.o30 + (FEE.kanriFirst[mdCfg().kanri] || FEE.kanriFirst.other), per = first + (v - 1) * P;
       lim += '<br><small>参考：実際の月（約4.3週）で数えると、週' + cap + '回の利用者は月におよそ' + v + '回で、月の初日は管理療養費が ' + yen(FEE.kanriFirst[mdCfg().kanri] || FEE.kanriFirst.other) + ' になります。1人の月の売上はおよそ ' + yen(per) + '、' + users + '人全員で月およそ ' + yen(per * users) + ' です（月の日の並びで前後します）。</small>';
     }
-    lim += '</div>';
+    lim += '</div>' + mhApproach(users, cap, need, P, goal);
   }
   $('mh_sum').innerHTML = '<div class="judge free" style="margin:8px 0">' + (plan.length ? '<b style="font-size:15px;color:var(--ink)">職員ごとの段階（1日の件数）は、左の欄にあります。' + minLabel(dayMin) + 'の勤務の中に、休憩' + minLabel(w.brk || 0) + '・内勤' + minLabel(w.inner || 0) + 'と、訪問の間の移動とゆとりを含みます。</b><br>' : '<b style="font-size:15px;color:var(--ink)">1人1日' + n + '件＝訪問は' + minLabel(visitH) + '。' + minLabel(dayMin) + 'の勤務の中に、休憩' + minLabel(w.brk || 0) + '・内勤' + minLabel(w.inner || 0) + '・訪問の間の移動とゆとり' + minLabel(restM) + 'を含みます。</b><br>') + '目標設定額 ' + esc(mdYenShort(goal)) + 'コース：1週間この表のとおりにサービスを当て込めれば、<b>1週間に ' + N + '回</b> のサービス × 1回 ' + yen(P) + ' ＝ <b>週 ' + yen(wy) + '</b>。<b>4週で ' + yen(wy * 4) + '</b> です（月の目標 ' + yen(goal) + '）。' + (plan.length ? '部署の職員 ' + S + '人を、常勤は1日5〜8件・非常勤は1日3〜6件の中で組んでいます。' + (wy * 4 < goal ? '<br><b style="color:var(--red)">全員が上限の段階まで上がっても、4週で ' + yen(goal - wy * 4) + ' 足りません。職員を増やすか、このコースより下のコースを選んでください。</b>' : '') : '職員 ' + S + '人・1人1日 最大 ' + n + '件・月〜金で組んでいます。') + '</div>' + lim;
   $('mh_note').innerHTML = '週の目標は「月の目標 ÷ 4」（' + yen(Math.round(week)) + '）で、それに届く回数（' + N + '回）を、月〜金に均して並べています。訪問は詰めて並べず、午前（' + esc(w.start) + '〜12:00）と午後（休憩明け〜内勤の前）に均して置き、間に移動とゆとりを持たせています。実際の予定は、利用者の住所の近い順に寄せて組みます。人員基準は、常勤の週の勤務時間（' + weekH + '時間）÷40時間で出した常勤換算です。' +
@@ -3142,6 +3179,8 @@ $('mh_make').addEventListener('click', mhMake);
 $('mh_print').addEventListener('click', mhPrint);
 $('mh_use').addEventListener('click', mhUse);
 ['mh_users','mh_cap','mh_n','mh_who'].forEach(function(id){ $(id).addEventListener('change', mhMake); });
+$('mh_umode').addEventListener('change', function(){ mhUMode(); mhMake(); scMake(); });   /* 2026-10-28：利用者の人数の入れ方 */
+$('mh_users').addEventListener('input', function(){ if($('mh_umode').value === 'free'){ mhMake(); scMake(); } });
 ['sc_pd','sc_fn','sc_fk','sc_pn','sc_pk','mh_users','mh_cap'].forEach(function(id){ $(id).addEventListener('change', scMake); });
 $('gr_make').addEventListener('click', grMake);
 ['gr_f1','gr_f2','gr_f3','gr_add','gr_from','gr_to','gr_nf'].forEach(function(id){ $(id).addEventListener('change', grMake); });
@@ -3309,7 +3348,7 @@ function auMake(course){
     return '<tr><th class="who">' + esc(x.s.name) + '<small>' + (x.full ? '常勤' : '非常勤') + (course ? '・コースの枠' : '・1日 ' + x.cap + '件まで') + '</small><small>週 ' + w + '件</small></th>' + cells + '</tr>';
   }).join('');
   var slotsW = course ? ST.reduce(function(t, x){ return t + x.days.reduce(function(u, d){ return u + capOf(x, d); }, 0); }, 0) : 0;
-  $('au_out').innerHTML = (course ? '<div class="judge ' + (tot < slotsW ? 'fee' : 'free') + '" style="margin:8px 0"><b style="font-size:15px;color:var(--ink)">目標設定額 ' + esc(mdYenShort(course.goal)) + 'コースの枠（週 ' + slotsW + '件）に、いまの患者さんを当てはめました。埋まったのは週 ' + tot + '件、空きは週 ' + Math.max(0, slotsW - tot) + '件です。</b>' + (tot < slotsW ? '<br>空き（点線の枠）は、新しい患者さんと、いまの患者さんの回数を上げる分で埋めていく枠です。埋め方は「モデルコースの見本」の「選んだコースに届くまでの道のり」にあります。' : '') + '</div>' : '') +
+  $('au_out').innerHTML = (course ? '<div class="judge ' + (tot < slotsW ? 'fee' : 'free') + '" style="margin:8px 0"><b style="font-size:15px;color:var(--ink)">目標設定額 ' + esc(mdYenShort(course.goal)) + 'コースの枠（週 ' + slotsW + '件）に、いまの患者さんを当てはめました。埋まったのは週 ' + tot + '件、空きは週 ' + Math.max(0, slotsW - tot) + '件です。</b>' + (tot < slotsW ? '<br>空き（点線の枠）は、新しい患者さんと、いまの患者さんの回数を上げる分で埋めていく枠です。埋め方は「モデルコースの見本」の「選んだコースに届くまでの道のり」と「アプローチの見本」にあります。' : '') + (course.free ? '<br>このコースは、利用者を仮に <b>' + course.users + '人</b>として組んだ見本です（患者さん登録は ' + P.length + '人）。' + (course.users > P.length ? '仮の ' + course.users + '人までは、あと ' + (course.users - P.length) + '人です。' : '') + 'その人数でこのコースに届かせるやり方は、「モデルコースの見本」の「アプローチの見本」にあります。' : '') + '</div>' : '') +
     '<div class="judge ' + (miss.length ? 'fee' : 'free') + '" style="margin:8px 0">利用中の患者さん ' + P.length + '人・週 ' + need + '回のうち、<b>週 ' + tot + '回</b>を振り分けました。' +
     (miss.length ? '<br><b>入りきらなかった患者さん：' + miss.map(function(p){ return esc(dn(p.no)) + '（' + esc(p.area) + '・週' + p.f + '回）'; }).join('、') + '</b>。1日の件数の上限を上げるか、手で入れてください。' : '') + '</div>' +
     '<div class="tbl-scroll"><table class="mhT">' + head + body + '</table></div>' +
@@ -4475,6 +4514,8 @@ $('nr_file').addEventListener('change', function(){ nrFiles(this.files); this.va
 applyDept(); refreshAll();
 sheetPull({ silent:true });
 window.ttSheetPull = sheetPull;   /* 下の基本情報シート共有部品から呼ぶ口（2026-10-26） */
+/* 2026-10-28：契約の範囲を確かめた後に、トライケアの入口を出し直す口（下の TriScope の確認から呼ぶ） */
+window.ttScopeRefresh = function(){ nrRender(); tcRender(); var pv = document.querySelector('#ptView h2[data-no]'); if(pv) ptView(pv.getAttribute('data-no')); };
 fdRestore();
 syncNow();
 
@@ -4500,7 +4541,7 @@ if(window.TriVoice && TriVoice.fieldMics) TriVoice.fieldMics({ within:'#tab-pt, 
 <script>
 /* 2026-10-28：契約の範囲（認証コードに紐づく）。トライタイムが範囲に無ければ使えなくし、
    トライケアが範囲に無ければ看護記録の取り込み・トライケアの読み込みを出さない（トライタイムの契約にはトライケアが付く）。 */
-if(window.TriScope) TriScope.check('tritime').then(function(){ try{ nrRender(); tcRender(); var pv = document.querySelector('#ptView h2'); if(pv) ptView(pv.getAttribute('data-no')); }catch(e){} });
+if(window.TriScope) TriScope.check('tritime').then(function(){ if(window.ttScopeRefresh) window.ttScopeRefresh(); });
 </script>
 <script src="TriSheetSync.js"></script>
 <script>

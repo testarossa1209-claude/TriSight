@@ -397,10 +397,108 @@
     });
   }
 
+  /* =====================================================================
+     ④ 声で操作（command）— 画面のボタン・タブ・選び欄・日付を声で操作する（2026-10-27）
+     話した言葉を文字にし、いま画面に見えているボタン・タブ・見出し・選び欄の文字と照らし合わせて、
+     いちばん近いものを押す（選ぶ）。文字にするところだけリレー（Whisper）を使い、照らし合わせは端末の中で行う。
+     ===================================================================== */
+  var cmd = null;
+  function normJa(t){
+    return String(t || '').replace(/[\s　、。,.・「」（）()！!？?…:：]/g, '').replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
+      .replace(/(を|に)?(押して|押す|おして|開いて|開く|ひらいて|して|する|ください|下さい|お願いします|おねがいします|頼む)+$/g, '').replace(/(ボタン|タブ)$/g, '');
+  }
+  function bigrams(s){ var a = []; for(var i = 0; i < s.length - 1; i++) a.push(s.slice(i, i + 2)); return a.length ? a : [s]; }
+  function dice(a, b){ if(!a || !b) return 0; var A = bigrams(a), B = bigrams(b).slice(), hit = 0; A.forEach(function(x){ var i = B.indexOf(x); if(i >= 0){ hit++; B.splice(i, 1); } }); return 2 * hit / (A.length + bigrams(b).length); }
+  function visible(n){ if(!n || n.disabled) return false; var r = n.getBoundingClientRect(); if(!r.width && !r.height) return false; var s = getComputedStyle(n); return s.visibility !== 'hidden' && s.display !== 'none'; }
+  function labelOf(n){
+    if(n.id){ var l = document.querySelector('label[for="' + n.id + '"]'); if(l) return l.textContent; }
+    var p = n.closest('label'); if(p) return p.textContent;
+    var prev = n.parentNode && n.parentNode.querySelector('label.f'); return prev ? prev.textContent : '';
+  }
+  function cmdTip(t, kind, picks){
+    var tip = cmd.tip; tip.innerHTML = ''; tip.setAttribute('data-kind', kind || ''); tip.style.display = t ? 'block' : 'none';
+    var d = document.createElement('div'); d.textContent = t || ''; tip.appendChild(d);
+    (picks || []).forEach(function(p){ var b = document.createElement('button'); b.type = 'button'; b.className = 'tv-cmd-pick'; b.textContent = p.t; b.onclick = function(){ tip.style.display = 'none'; doAct(p); }; tip.appendChild(b); });
+    clearTimeout(cmd.timer); if(t && kind === 'done') cmd.timer = setTimeout(function(){ tip.style.display = 'none'; }, 5000);
+  }
+  function doAct(a){
+    if(a.k === 'click'){ a.n.scrollIntoView && a.n.scrollIntoView({ block:'center', behavior:'smooth' }); a.n.click(); a.n.classList.add('tv-cmd-hit'); setTimeout(function(){ a.n.classList.remove('tv-cmd-hit'); }, 2000); cmdTip('「' + a.t + '」を押しました。', 'done'); }
+    else if(a.k === 'sel' || a.k === 'date'){ a.n.value = a.v; a.n.dispatchEvent(new Event('input', { bubbles:true })); a.n.dispatchEvent(new Event('change', { bubbles:true })); a.n.classList.add('tv-cmd-hit'); setTimeout(function(){ a.n.classList.remove('tv-cmd-hit'); }, 2000); cmdTip('「' + a.lab + '」を「' + a.t + '」にしました。', 'done'); }
+  }
+  function runCommand(txt){
+    var u = normJa(txt), acts = [];
+    if(!u){ cmdTip('聞き取れませんでした。もう一度お試しください。', 'warn'); return; }
+    /* 日付：「11月2日」「明日」「今日」 */
+    var dm = txt.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日/), dd = null, now = new Date();
+    if(dm){ var y = now.getFullYear(), mo = +dm[1]; if(mo < now.getMonth() + 1 - 6) y++; dd = y + '-' + ('0' + mo).slice(-2) + '-' + ('0' + dm[2]).slice(-2); }
+    else if(/明日|あした/.test(txt)){ var t1 = new Date(now.getTime() + 864e5); dd = t1.getFullYear() + '-' + ('0' + (t1.getMonth() + 1)).slice(-2) + '-' + ('0' + t1.getDate()).slice(-2); }
+    else if(/今日|きょう/.test(txt)){ dd = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2) + '-' + ('0' + now.getDate()).slice(-2); }
+    if(dd){
+      var ds = [].slice.call(document.querySelectorAll('input[type=date]')).filter(visible);
+      if(ds.length){ var best = ds[0], bs = -1; ds.forEach(function(n){ var s = dice(u, normJa(labelOf(n))); if(s > bs){ bs = s; best = n; } }); acts.push({ k:'date', n:best, v:dd, t:dd.replace(/^(\d+)-0?(\d+)-0?(\d+)$/, '$2月$3日'), lab:normJa(labelOf(best)) || '日付', sc:2 }); }
+    }
+    /* 選び欄：選択肢の文字が言葉に含まれていれば、その欄をその選択肢にする */
+    [].slice.call(document.querySelectorAll('select')).filter(visible).forEach(function(n){
+      if(cmd.exclude && n.closest(cmd.exclude)) return;
+      var lab = normJa(labelOf(n)), ls = lab ? dice(u, lab) : 0;
+      [].slice.call(n.options).forEach(function(o){
+        var ot = normJa(o.textContent); if(!ot || ot.length < 2 || !o.value) return;
+        var core = normJa(String(o.textContent || '').replace(/[（(].*$/, ''));
+        if(u.indexOf(ot) >= 0 || (core.length >= 2 && u.indexOf(core) >= 0)) acts.push({ k:'sel', n:n, v:o.value, t:o.textContent.trim(), lab:lab || '選び欄', sc:1 + ls + core.length / 20 });
+      });
+    });
+    /* ボタン・タブ・見出し（開く・閉じる） */
+    var clicks = [].slice.call(document.querySelectorAll('button, summary, [role=button]')).filter(function(n){ return visible(n) && !n.classList.contains('tv-dict-btn') && !n.classList.contains('tv-cmd-btn') && !n.classList.contains('tv-cmd-pick') && !(cmd.exclude && n.closest(cmd.exclude)); });
+    clicks.forEach(function(n){
+      var t = normJa(n.textContent); if(!t) return;
+      var sc = u === t ? 3 : (u.indexOf(t) >= 0 && t.length >= 2 ? 1.5 + t.length / 40 : (t.indexOf(u) >= 0 && u.length >= 3 ? 1.2 + u.length / 40 : dice(u, t)));
+      if(sc >= 0.45) acts.push({ k:'click', n:n, t:n.textContent.trim().replace(/\s+/g, ' '), sc:sc });
+    });
+    if(!acts.length){ cmdTip('当てはまるボタンや欄が、いまの画面に見つかりませんでした。聞き取った言葉：「' + txt + '」', 'warn'); return; }
+    /* 日付・選び欄は全部当てる（例：「11月2日の看護一郎さん」）。ボタンはいちばん近い1つ */
+    /* 日付は1つ、選び欄は「いちばん近い1つ」だけ（同じ点なら画面の上にあるもの） */
+    var pos = function(n){ var r = n.getBoundingClientRect(); return r.top + window.scrollY; };
+    var dts = acts.filter(function(a){ return a.k === 'date'; }), box = function(n){ return n.closest('.card, section, form') || document.body; };
+    /* 日付も言ったときは、その日付の欄と同じカードの選び欄を先にする（例：「11月2日の看護一郎さん」→1日の予定の職員） */
+    var sls = acts.filter(function(a){ return a.k === 'sel'; }).map(function(a){ if(dts.length && box(a.n) === box(dts[0].n)) a.sc += 1; return a; })
+      .sort(function(a, b){ return (b.sc - a.sc) || (pos(a.n) - pos(b.n)); });
+    var sets = dts.concat(sls.length ? [sls[0]] : []);
+    sets.forEach(function(a){ doAct(a); });
+    var cl = acts.filter(function(a){ return a.k === 'click'; }).sort(function(a, b){ return b.sc - a.sc; });
+    if(!cl.length) return;
+    if(sets.length && cl[0].sc < 1.2) return;
+    if(cl.length > 1 && cl[0].sc < 1 && cl[1].sc > cl[0].sc - 0.1){ cmdTip('どれを押しますか（聞き取った言葉：「' + txt + '」）', '', cl.slice(0, 3)); return; }
+    if(cl[0].sc < 0.6){ cmdTip('「' + cl[0].t + '」でよければ押してください（聞き取った言葉：「' + txt + '」）', '', cl.slice(0, 3)); return; }
+    setTimeout(function(){ doAct(cl[0]); }, sets.length ? 300 : 0);
+  }
+  function command(opts){
+    opts = opts || {};
+    if(cmd) return;
+    var cfg = merge(opts);
+    var css = document.createElement('style');
+    css.textContent =
+      '.tv-cmd-btn{position:fixed;right:84px;bottom:16px;z-index:2147483000;height:56px;padding:0 16px;border-radius:28px;border:0;background:#1f4e79;color:#fff;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.3)}'+
+      '.tv-cmd-btn.listening{background:#2e6da4;animation:tvDictPulse 1s infinite}'+
+      '.tv-cmd-tip{position:fixed;right:84px;bottom:80px;z-index:2147483000;max-width:min(380px,calc(100vw - 32px));display:none;background:#1f2328;color:#fff;font-size:13px;line-height:1.6;padding:8px 12px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.3)}'+
+      '.tv-cmd-tip[data-kind="warn"]{background:#9a3412}.tv-cmd-pick{display:block;margin:6px 0 0;width:100%;text-align:left;background:#fff;color:#1f2328;border:0;border-radius:6px;padding:6px 8px;font-size:13px;cursor:pointer}'+
+      '.tv-cmd-hit{outline:3px solid #1f4e79 !important;outline-offset:2px}@media print{.tv-cmd-btn,.tv-cmd-tip{display:none !important}}';
+    document.head.appendChild(css);
+    var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'tv-cmd-btn'; btn.textContent = '🗣 声で操作';
+    btn.title = '押してから「予定タブ」「組み方を出す」「11月2日」「看護一郎さん」のように、押したいボタンや選びたいものの名前を話し、もう一度押します';
+    var tip = document.createElement('div'); tip.className = 'tv-cmd-tip'; tip.setAttribute('role', 'status');
+    document.body.appendChild(tip); document.body.appendChild(btn);
+    cmd = { btn:btn, tip:tip, exclude:opts.exclude || '' };
+    cmd.owner = { button:btn, conf:cfg, recordingMessage:'聞いています… 押したいボタンや選びたいものの名前を話し、もう一度「声で操作」を押してください。',
+      status:function(t){ cmdTip(t, /失敗|エラー|できません|未対応|不一致|認識できません/.test(t) ? 'warn' : ''); }, onText:runCommand };
+    btn.addEventListener('click', function(){ if(rec.owner === cmd.owner && isRecording()){ stopRec(); return; } startRec(cmd.owner); });
+  }
+
   /* ---- 公開API --------------------------------------------------------- */
   global.TriVoice = {
     init:      init,        // ①② フォーム初期化
     dictation: dictation,   // ③ 汎用の音声入力（画面右下のマイク）
+    command:   command,     // ④ 声で操作（画面のボタン・タブ・選び欄・日付）
+    _runCommand: function(t){ if(cmd) runCommand(t); },  // 試験用：文字で渡して照らし合わせだけ行う
     stop:      stopRec,     // 録音停止（印刷・クリア前に呼ぶ）
     version:   '2.0'
   };

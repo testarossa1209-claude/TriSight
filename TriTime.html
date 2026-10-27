@@ -180,7 +180,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-20</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-21</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -2949,7 +2949,7 @@ function auMake(course){
   if(course && course.type) course = null;
   var capF = Math.max(1, +$('au_full').value || 5), capP = Math.max(1, +$('au_part').value || 3);
   var ST = deptStaff().filter(function(s){ return !staffOrphan(s) && NURSE_JOBS.indexOf(jobOf(s)) >= 0; }).map(function(s){
-    var off = staffOff(s), days = MD_DOW.filter(function(d){ return off.length ? off.indexOf(d) < 0 : ['1','2','3','4','5'].indexOf(d) >= 0; }).filter(function(d){ return d !== '0'; });
+    var off = staffOff(s), days = MD_DOW.filter(function(d){ return off.length ? off.indexOf(d) < 0 : ['1','2','3','4','5'].indexOf(d) >= 0; });
     var x = { s:s, full:s.emp !== '非常勤', days:days, cap:s.emp !== '非常勤' ? capF : capP, load:{}, areas:{} };
     if(course){ var pd = course.caps[s.id] || {}; x.capDay = pd; x.days = days.filter(function(d){ return (pd[d] || 0) > 0; }); }
     return x;

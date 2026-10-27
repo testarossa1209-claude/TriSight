@@ -169,7 +169,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-09</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-10</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -601,7 +601,7 @@ function tsGoBack(){
     <div class="row">
       <div><label class="f" for="st_name">呼び名</label><input type="text" id="st_name"></div>
       <div><label class="f" for="st_job">職種</label><select id="st_job"><option>看護師（正看）</option><option>准看護師</option><option>介護福祉士</option><option>介護職（実務者研修修了）</option><option>介護職（初任者研修修了）</option><option>介護職（資格なし）</option><option>相談員・ケアマネジャー</option><option>事務局</option><option>その他</option></select></div>
-      <div><label class="f" for="st_dept">所属部門</label><select id="st_dept"><option value="">（職種から当てる）</option><option>訪問看護部</option><option>訪問介護部</option><option>特定障害相談部</option><option>居宅介護支援部</option><option>経営企画事務職</option></select></div>
+      <div><label class="f" for="st_dept">所属部門</label><select id="st_dept"><option value="">（職種から当てる）</option><option>訪問看護部</option><option>訪問介護部</option><option>特定障害相談部</option><option>居宅介護支援部</option><option>経営企画事務職</option><option>管理部門</option></select></div>
       <div><label class="f" for="st_emp">雇用形態</label><select id="st_emp"><option>常勤</option><option>非常勤</option></select></div>
       <div><label class="f">&nbsp;</label><label><input type="checkbox" id="st_mgr"> 管理者</label></div>
     </div>
@@ -805,7 +805,8 @@ var DEPTS = [
 ];
 var DEPT_KEY = 'tritime_dept';
 function D(){ var k = ''; try{ k = localStorage.getItem(DEPT_KEY) || ''; }catch(e){} return DEPTS.filter(function(d){ return d.k === k; })[0] || DEPTS[0]; }
-function deptByName(n){ return DEPTS.filter(function(d){ return d.name === n; })[0] || null; }
+/* 2026-10-27：基本情報シートの「管理部門」は、トライタイムでは経営企画事務職の画面で扱う（見る範囲も同じ） */
+function deptByName(n){ if(n === '管理部門') n = '経営企画事務職'; return DEPTS.filter(function(d){ return d.name === n; })[0] || null; }
 function deptOfNo(no){ var m = /^([a-z]+):/.exec(String(no || '')); if(!m) return DEPTS[0]; return DEPTS.filter(function(d){ return d.pfx === m[1] + ':'; })[0] || null; }
 function inDept(no, d){ return deptOfNo(no) === (d || D()); }
 function dn(no){ return String(no == null ? '' : no).replace(/^[a-z]+:/, ''); }   /* 画面に出す番号 */
@@ -848,13 +849,13 @@ var NURSE_JOBS = ['看護師（正看）', '准看護師'];
 function jobOf(s){ if(s.job) return s.job; if(s.role === '看護師') return '看護師（正看）'; if(s.role === '事務局') return '事務局'; return ''; }
 function isMgr(s){ return !!s.mgr || s.role === '管理者'; }
 var JOB_SHORT = { '看護師（正看）':'正看', '准看護師':'准看', '介護福祉士':'介福', '介護職（実務者研修修了）':'実務者', '介護職（初任者研修修了）':'初任者', '介護職（資格なし）':'資格なし' };
-function staffLabel(s){ var j = jobOf(s); var p = [JOB_SHORT[j] || j, s.emp || '', isMgr(s) ? '管理者' : ''].filter(Boolean); return s.name + (p.length ? '（' + p.join('・') + '）' : ''); }
+function staffLabel(s){ var j = jobOf(s); var p = [s.post || '', JOB_SHORT[j] || j, s.emp || '', isMgr(s) ? '管理者' : ''].filter(Boolean); return s.name + (p.length ? '（' + p.join('・') + '）' : ''); }
 function nurses(){ return staff().filter(function(s){ return NURSE_JOBS.indexOf(jobOf(s)) >= 0; }); }
 /* 部署の職員：名簿の「所属部門」で分ける。所属部門が無い人は職種から当てる */
 function staffDept(s){ if(s.dept) return deptByName(s.dept); var j = jobOf(s); return DEPTS.filter(function(d){ return d.jobs.indexOf(j) >= 0; })[0] || null; }
 function staffSub(s){ return Array.isArray(s.sub) ? s.sub.filter(function(x){ return x && x !== s.dept; }) : []; }
 /* 2026-10-26：兼務する部署に入っている職員も、その部署の職員として扱う（担当の選ぶ欄・連絡板の宛先など） */
-function deptStaff(d){ d = d || D(); return staff().filter(function(s){ if(staffSub(s).indexOf(d.name) >= 0) return true; if(s.dept) return s.dept === d.name; return d.jobs.indexOf(jobOf(s)) >= 0; }); }
+function deptStaff(d){ d = d || D(); return staff().filter(function(s){ if(staffSub(s).indexOf(d.name) >= 0) return true; if(s.dept) return deptByName(s.dept) === d; return d.jobs.indexOf(jobOf(s)) >= 0; }); }
 
 /* ---- 共通：選択肢 ---- */
 function fillSelect(sel, items, blank){
@@ -1845,6 +1846,7 @@ function sheetPull(opt){
     var e = empToTT(r.emp); if(e) st.emp = e; else if(st.emp == null) st.emp = '';
     st.mgr = !!r.mgr;
     st.dept = r.dept || '';
+    st.post = r.post || '';   /* 2026-10-27：役職（基本情報シートで入れたもの） */
     st.sub = Array.isArray(r.sub) ? r.sub.filter(function(x){ return x && x !== st.dept; }) : [];
     if(Array.isArray(r.off)) st.off = r.off.map(String);
     if(r.holOff != null) st.holOff = !!r.holOff; else if(st.holOff == null) st.holOff = (st.emp === '常勤');
@@ -1870,7 +1872,7 @@ function renderSetup(){
   var st = staff();
   $('stList').innerHTML = st.length ? '<table><tr><th>呼び名</th><th>職種</th><th>所属部門</th><th>兼務する部署</th><th>公休</th><th>雇用形態</th><th>管理者</th><th></th></tr>' + st.map(function(s){
     var sd = staffDept(s);
-    return '<tr' + (staffOrphan(s) ? ' style="background:#fdecea"' : '') + '><td>' + esc(s.name) + (staffOrphan(s) ? ' <span class="tag red">名簿にいません</span>' : '') + '</td><td>' + esc(jobOf(s) || '未設定') + '</td><td>' + esc(s.dept || (sd ? sd.name + '（職種から）' : '未設定')) + '</td><td>' + esc(staffSub(s).join('・')) + '</td><td>' + esc([1,2,3,4,5,6,0].filter(function(w){ return staffOff(s).indexOf(String(w)) >= 0; }).map(function(w){ return DOW[w]; }).join('・') + (s.holOff ? (staffOff(s).length ? '・' : '') + '祝日' : '')) + '</td><td>' + esc(s.emp || '未設定') + '</td><td>' + (isMgr(s) ? '管理者' : '') + '</td><td><button class="btn small sub" data-stedit="' + esc(s.id) + '">直す</button> <button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
+    return '<tr' + (staffOrphan(s) ? ' style="background:#fdecea"' : '') + '><td>' + esc(s.name) + (s.post ? ' <small class="muted">（' + esc(s.post) + '）</small>' : '') + (staffOrphan(s) ? ' <span class="tag red">名簿にいません</span>' : '') + '</td><td>' + esc(jobOf(s) || '未設定') + '</td><td>' + esc(s.dept || (sd ? sd.name + '（職種から）' : '未設定')) + '</td><td>' + esc(staffSub(s).join('・')) + '</td><td>' + esc([1,2,3,4,5,6,0].filter(function(w){ return staffOff(s).indexOf(String(w)) >= 0; }).map(function(w){ return DOW[w]; }).join('・') + (s.holOff ? (staffOff(s).length ? '・' : '') + '祝日' : '')) + '</td><td>' + esc(s.emp || '未設定') + '</td><td>' + (isMgr(s) ? '管理者' : '') + '</td><td><button class="btn small sub" data-stedit="' + esc(s.id) + '">直す</button> <button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
   }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var wk = weekly().slice().sort(function(a,b){ var da = (+a.dow + 6) % 7, db = (+b.dow + 6) % 7; return da - db || (a.time < b.time ? -1 : 1); });
   $('wkList').innerHTML = wk.length ? '<table><tr><th>曜日</th><th>時刻</th><th>契約書番号</th><th>担当</th><th></th></tr>' + wk.map(function(v){

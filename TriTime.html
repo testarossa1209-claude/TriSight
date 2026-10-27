@@ -169,7 +169,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-06</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-07</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -1827,12 +1827,16 @@ function sheetPull(opt){
     if(Array.isArray(r.off)) st.off = r.off.map(String);
     if(r.holOff != null) st.holOff = !!r.holOff; else if(st.holOff == null) st.holOff = (st.emp === '常勤');
   });
-  var keep = tt.filter(function(x){ return !x.sheetId || ro.some(function(r){ return r.id === x.sheetId; }); });
+  /* 2026-10-27：自動の読み込み（開いたとき・名簿が届いたとき）では、職員を外さず、基本情報シートへの書き戻しもしない。
+     古い名簿を持った端末でトライタイムを開いただけで、その古い名簿が「新しく保存した版」として共有され、
+     ほかの端末で入れた職員名簿（34名）を3名の版で上書きした（2026-10-27 宏史さんの指摘）。
+     外す・書き戻すのは、人が「トライシートから読み込む」を押したときと、トライタイムで職員を直したときだけ。 */
+  var keep = silent ? tt : tt.filter(function(x){ return !x.sheetId || ro.some(function(r){ return r.id === x.sheetId; }); });
   var rem = tt.length - keep.length;
   var only = keep.filter(function(x){ return !x.sheetId; }).length;
   var before = JSON.stringify(staff());
   saveCol('staff', keep);
-  sheetPush();
+  if(!silent) sheetPush();
   var changedNow = before !== JSON.stringify(staff());
   if(silent){ if(changedNow){ refreshAll(); $('st_pullMsg').textContent = 'トライシートの「' + sheetName(o) + '」の職員名簿から、自動で取り込みました（新しく ' + add + '人）。'; scheduleSync(); } return add; }
   refreshAll();

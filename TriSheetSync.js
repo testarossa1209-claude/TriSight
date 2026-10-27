@@ -21,6 +21,10 @@
   var ME = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   var DEF_URL = 'https://trisight-relay.vercel.app/api/gate';
   var busy = false, timer = null, opts = { notify:true, onPulled:null, onStatus:null };
+  /* 2026-10-27：画面のアドレスの後ろに ?hold=1 を付けて開いたときは、共有（送る・受け取る）を止める。
+     ほかの端末から古い版が届いて、この端末に残っている正しい版を上書きしないようにするための開き方。
+     送るのは、人が「この端末の情報を、共有の正しい版として送る」を押したとき（forceSend）だけ。 */
+  var HOLD = /[?&]hold=1(&|$)/.test(location.search);
 
   function lj(k, d){ try{ var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } }
   function sj(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
@@ -175,8 +179,9 @@
     var c = lj(LOCK_KEY, null); return !!(c && c.by === ME);
   }
   function unlock(){ var l = lj(LOCK_KEY, null); if(l && l.by === ME){ try{ localStorage.removeItem(LOCK_KEY); }catch(e){} } }
-  function syncNow(ask){
+  function syncNow(ask, force){
     if(!enabled() || busy) return Promise.resolve(0);
+    if(HOLD && !force) return Promise.resolve(0);
     if(!lock()) return Promise.resolve(0);
     busy = true;
     var s = state(), got = 0;
@@ -241,5 +246,25 @@
     document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') syncNow(false); });
   }
 
-  window.TriSheetSync = { init:init, syncNow:syncNow, soon:soon, enabled:enabled, setEnabled:setEnabled, info:info, showBar:showBar };
+  /* この端末にある会社（orgId）の中身を、時刻を今にして送り直す。中継の版は、これで置き換わる */
+  function forceSend(orgId){
+    if(!enabled()) return Promise.reject(new Error('この端末は、基本情報シートの共有の印が付いていません。'));
+    var id = 'org:' + orgId, doc = readDoc(), org = doc && doc.orgs.filter(function(o){ return o && o.id === orgId; })[0];
+    if(!org) return Promise.reject(new Error('この端末に、その会社の登録がありません。'));
+    var c = clean(org), h = fp(JSON.stringify(c)), upd = 0;
+    /* 中継にある版より必ず新しい時刻で送る（端末の時計がずれていても負けないように） */
+    return call('pull', { since:0, cols:['sheet'] }, true).then(function(j){
+      (j.items || []).forEach(function(it){ if(String(it.id) === id && it.data) upd = Math.max(upd, Number(it.data.upd) || 0); });
+      upd = Math.max(Date.now(), upd + 1);
+      return call('push', { items:[{ col:'sheet', id:id, data:{ id:id, upd:upd, org:c } }] }, true);
+    }).then(function(){
+      return call('pull', { since:0, cols:['sheet'] }, true);
+    }).then(function(j){
+      var it = (j.items || []).filter(function(x){ return String(x.id) === id; })[0];
+      if(!it || !it.data || !it.data.org || fp(JSON.stringify(clean(it.data.org))) !== h) throw new Error('中継の版が置き換わっていません。もう一度押してください。');
+      var s = state(); s.joined = true; s.h[id] = h; s.u[id] = upd; sj(STATE_KEY, s); status('', false);
+      return 1;
+    });
+  }
+  window.TriSheetSync = { init:init, syncNow:syncNow, soon:soon, enabled:enabled, setEnabled:setEnabled, info:info, showBar:showBar, held:HOLD, forceSend:forceSend };
 })();

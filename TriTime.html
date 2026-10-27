@@ -180,7 +180,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-26</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-27</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -199,10 +199,10 @@ function tsGoBack(){
 
 <nav class="tabs" id="tabs">
   <button data-tab="plan" class="on">予定</button>
-  <button data-tab="pt" data-t="{client}の登録">患者さんの登録</button>
+  <button data-tab="pt">利用者登録</button>
   <button data-tab="intake">キャンセル受付</button>
-  <button data-tab="course" data-t="{client}の経過">患者さんの経過</button>
-  <button data-tab="report">報告書の下書き</button>
+  <button data-tab="course">利用者経過</button>
+  <button data-tab="report">訪問看護報告書</button>
   <button data-tab="admin">管理者の窓</button>
   <button data-tab="model">モデルコース</button>
   <button data-tab="mihon">モデルコースの見本</button>
@@ -292,7 +292,7 @@ function tsGoBack(){
 <!-- ===== 患者さんの登録（2026-10-26） ===== -->
 <section class="tab" id="tab-pt">
   <div class="card" id="cardPt">
-    <h2 data-t="{client}の登録">患者さんの登録</h2>
+    <h2>利用者登録</h2>
     <p class="lead" data-t="{ptLead}">氏名は入れず、契約書番号で扱います。地区（町名）は予定を寄せる単位に、住所（番地まで）は地図に使います。カイポケの書類（アセスメント・指示書・計画書・報告書・契約書）から、訪問に要るところだけを写します。</p>
     <p class="muted">番号を入れて「呼び出す」を押すと、登録済みの内容が欄に出ます。写し終えた書類には印を付けてください。何人かで手分けして写すとき、誰がどこまで写したかが下の一覧で分かります。</p>
     <div class="row">
@@ -530,7 +530,7 @@ function tsGoBack(){
 <!-- ===== 経過係 ===== -->
 <section class="tab" id="tab-course">
   <div class="card">
-    <h2 data-t="{client}の経過">患者さんの経過</h2>
+    <h2>利用者経過</h2>
     <p class="lead" data-t="{courseLead}">患者さんごとに、キャンセル・次回の約束・主治医への確認・拒否の申し出を、日付の順に一本の線で持ちます。良い悪いの評価はせず、事実だけを並べます。</p>
     <label class="f" for="k_no">契約書番号</label><select id="k_no"></select>
     <div id="courseHead"></div>
@@ -578,14 +578,22 @@ function tsGoBack(){
 <!-- ===== 報告係 ===== -->
 <section class="tab" id="tab-report">
   <div class="card">
-    <h2>主治医への報告書に載せるキャンセルの欄</h2>
-    <p class="lead">選んだ月のキャンセルを、事実と患者さんの言葉だけで並べた下書きを作ります。訪問看護報告書の該当欄へ写して使います。</p>
+    <h2>訪問看護報告書（主治医への報告）の下書き</h2>
+    <p class="lead">主治医へ毎月出す訪問看護報告書を、様式の欄の順に下書きします。訪問日は看護記録から（取り込んでいない月は週間予定から）自動で入ります。キャンセルは「特記すべき事項」の一部として入ります。病状の経過・看護の内容・家庭での介護の状況は、担当の看護師が書きます。氏名・生年月日・住所は、カイポケの報告書の側で入れてください。</p>
     <div class="row">
       <div><label class="f" for="rp_month">月</label><input type="month" id="rp_month"></div>
       <div><label class="f" for="rp_no">契約書番号</label><select id="rp_no"></select></div>
+      <div><label class="f" for="rp_by">作成者</label><select id="rp_by"></select></div>
     </div>
-    <pre class="out" id="rp_out"></pre>
-    <div class="btns"><button class="btn" id="rp_copy">下書きを写す</button><span class="muted" id="rp_msg"></span></div>
+    <div id="rp_head"></div>
+    <label class="f">訪問日</label><div id="rp_days" class="muted" style="margin:2px 0 8px"></div>
+    <label class="f" for="rp_course">病状の経過</label><textarea id="rp_course" placeholder="例：服薬は自己管理できている。睡眠は5〜6時間。表情は穏やか。"></textarea>
+    <label class="f" for="rp_care">看護・リハビリテーションの内容</label><textarea id="rp_care" placeholder="例：服薬状況の確認と助言。生活リズムの振り返り。"></textarea>
+    <label class="f" for="rp_family">家庭での介護の状況</label><textarea id="rp_family" placeholder="例：独居。週1回、姉が来訪している。"></textarea>
+    <label class="f" for="rp_supply">衛生材料等の使用状況（あれば）</label><textarea id="rp_supply" style="min-height:44px"></textarea>
+    <label class="f" for="rp_special">特記すべき事項</label><textarea id="rp_special"></textarea>
+    <div class="btns"><button class="btn sub" id="rp_cx">キャンセルの状況を特記すべき事項に入れる</button><button class="btn" id="rp_save">下書きを保存する</button><button class="btn sub" id="rp_copy">全体を写す</button><span class="muted" id="rp_msg"></span></div>
+    <pre class="out" id="rp_out" style="display:none"></pre>
   </div>
 </section>
 
@@ -1517,23 +1525,51 @@ function addCourseEvent(obj, need){
 }
 
 /* ---- 報告係 ---- */
+/* ---- 訪問看護報告書の下書き（2026-10-27 宏史さんの指示：キャンセルだけの報告はないので、報告書の様式にする）----
+   欄は「訪問看護計画書及び訪問看護報告書等の取扱いについて」別紙様式2（訪問看護報告書）の順：訪問日・病状の経過・看護（リハビリテーション）の内容・
+   家庭での介護の状況・衛生材料等・特記すべき事項・作成者。キャンセルは特記すべき事項の一部として入れる。
+   下書きは端末の中に、契約書番号と月ごとに残す（rp_draft）。 */
+var RP_KEY = 'tritime_rp_draft', RP_F = ['rp_course','rp_care','rp_family','rp_supply','rp_special'];
+function rpCxText(no, m){
+  var s = monthStats(no, m), cut = settings().cut, cx = s.list.slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; });
+  if(!cx.length) return '';
+  var body = cx.filter(function(e){ return e.cat === '体調・病状'; }).length;
+  var t = '【キャンセルの状況】' + jpMonth(m) + 'は訪問のキャンセルが ' + cx.length + '回ありました（うち体調・病状によるもの ' + body + '回、それ以外 ' + (cx.length - body) + '回。訪問前日' + cut + '時以降の連絡 ' + s.late + '回）。';
+  cx.forEach(function(e){ t += '\n・' + jpDate(e.date) + (e.time ? ' ' + e.time : '') + '：本人の言葉「' + e.words + '」（' + (e.cat === '体調・病状' ? '体調・病状によるもの' : '体調・病状以外') + '）'; });
+  return t;
+}
+function rpDays(no, m){
+  var recs = live('records').filter(function(x){ return x.date && ym(x.date) === m && D().pfx + String(x.patientNo || '') === no; }).map(function(x){ return x.date; });
+  if(recs.length) return { src:'看護記録', days:recs.filter(function(d, i, a){ return a.indexOf(d) === i; }).sort() };
+  var out = [], d = parseYmd(m + '-01');
+  while(d && ym(ymd(d)) === m){ var dd = ymd(d); if(visitsOn(dd).some(function(v){ return v.no === no && !v.cx; })) out.push(dd); d = addDays(d, 1); }
+  return { src:'週間予定（看護記録が未取込）', days:out };
+}
 function renderReport(){
   var m = $('rp_month').value, no = selNo('rp_no');
-  if(!m || !no){ $('rp_out').textContent = '月と契約書番号を選んでください。'; return; }
-  var s = monthStats(no, m);
-  var cut = settings().cut;
-  var cx = s.list.slice().sort(function(a,b){ return a.date < b.date ? -1 : 1; });
-  var t = '【キャンセルの状況（' + jpMonth(m) + '）】\n';
-  if(!cx.length){ t += 'この月のキャンセルはありませんでした。'; $('rp_out').textContent = t; return; }
-  var body = cx.filter(function(e){ return e.cat === '体調・病状'; }).length;
-  t += 'キャンセル ' + cx.length + '回（うち体調・病状によるもの ' + body + '回、それ以外 ' + (cx.length - body) + '回。訪問前日' + cut + '時以降の連絡 ' + s.late + '回）\n';
-  cx.forEach(function(e){
-    var r = new Date(e.recv); var rs = isNaN(r) ? '' : ((r.getMonth()+1) + '月' + r.getDate() + '日 ' + pad(r.getHours()) + ':' + pad(r.getMinutes()) + 'に連絡');
-    t += '・' + jpDate(e.date) + (e.time ? ' ' + e.time : '') + 'の訪問：' + rs + '。本人の言葉「' + e.words + '」（' + (e.cat === '体調・病状' ? '体調・病状によるもの' : '体調・病状以外') + '）\n';
-  });
-  $('rp_out').textContent = t.replace(/\n$/, '');
+  fillSelect('rp_by', deptStaff().filter(function(s){ return !staffOrphan(s); }).map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
+  if(!m || !no){ $('rp_head').innerHTML = '<p class="muted">月と契約書番号を選んでください。</p>'; $('rp_days').textContent = ''; RP_F.forEach(function(id){ $(id).value = ''; }); return; }
+  var all = lj(RP_KEY, {}), dr = all[no + '|' + m] || {};
+  RP_F.forEach(function(id){ $(id).value = dr[id] || ''; });
+  if(dr.by) $('rp_by').value = dr.by;
+  if(!dr.rp_special){ var cx = rpCxText(no, m); if(cx) $('rp_special').value = cx; }
+  var dy = rpDays(no, m), p = patient(no) || {};
+  $('rp_head').innerHTML = '<div class="judge free" style="margin:8px 0">契約書番号 <b>' + esc(dn(no)) + '</b>（' + esc(p.ins || '保険未登録') + '）・' + esc(jpMonth(m)) + '分。' + (dr.saved ? '<small class="muted">　下書きを保存した日時：' + esc(dr.saved.replace('T', ' ')) + '</small>' : '') + '</div>';
+  $('rp_days').textContent = dy.days.length ? dy.days.map(function(d){ return (+d.slice(8)) + '日'; }).join('・') + '（計 ' + dy.days.length + '日・' + dy.src + 'から）' : 'この月の訪問はありません。';
 }
-
+function rpText(){
+  var m = $('rp_month').value, no = selNo('rp_no'), dy = rpDays(no, m);
+  var sec = function(t, v){ return '■' + t + '\n' + (String(v || '').trim() || '（記載なし）') + '\n'; };
+  return '訪問看護報告書（' + jpMonth(m) + '分）　契約書番号 ' + dn(no) + '\n' +
+    sec('訪問日', dy.days.map(function(d){ return (+d.slice(8)) + '日'; }).join('・')) + sec('病状の経過', $('rp_course').value) + sec('看護・リハビリテーションの内容', $('rp_care').value) +
+    sec('家庭での介護の状況', $('rp_family').value) + ($('rp_supply').value.trim() ? sec('衛生材料等の使用状況', $('rp_supply').value) : '') + sec('特記すべき事項', $('rp_special').value) +
+    '■作成者\n' + (staffName($('rp_by').value) || '（未選択）');
+}
+function rpSave(){
+  var m = $('rp_month').value, no = selNo('rp_no'); if(!m || !no){ $('rp_msg').textContent = '月と契約書番号を選んでください。'; return; }
+  var all = lj(RP_KEY, {}), dr = { by:$('rp_by').value, saved:nowLocal() }; RP_F.forEach(function(id){ dr[id] = $(id).value; });
+  all[no + '|' + m] = dr; sj(RP_KEY, all); $('rp_msg').textContent = '下書きを保存しました（この端末の中）。'; renderReport();
+}
 /* ---- 管理者の窓 ---- */
 function hiddenCancels(m){
   var recs = live('records').filter(function(x){ return x.date && ym(x.date) === m; }), days = {}, has = {};
@@ -3035,7 +3071,7 @@ function geoFill(no){
 }
 function geoFillAll(){
   var list = patients().filter(function(p){ return p.addr && p.geoAddr !== p.addr; }).map(function(p){ return p.no; });
-  $('td_msg').textContent = list.length ? '住所から位置を取っています（' + list.length + '件）…' : '位置を取り直す住所はありません（住所の入っていない患者さんは、登録で住所を入れてください）。';
+  $('td_msg').textContent = list.length ? '住所から位置を取っています（' + list.length + '件）…' : '位置を取り直す住所はありません（住所の入っていない利用者は、利用者登録で住所を入れてください）。';
   var ok = 0, miss = [];
   return list.reduce(function(pr, no){ return pr.then(function(){ return geoFill(no).then(function(r){ if(r === 'ok') ok++; else if(r === 'miss') miss.push(dn(no)); }); }); }, Promise.resolve()).then(function(){
     if(list.length) $('td_msg').textContent = '位置を取りました：' + ok + '件。' + (miss.length ? '取れなかった住所：' + miss.join('・') + '（住所の書き方を「東村山市本町2-3-4」の形に直してください）' : '');
@@ -3077,7 +3113,7 @@ function renderToday(){
   $('td_list').innerHTML = vs.length ? '<table><tr><th class="num">順</th><th>時刻</th><th>訪問先</th><th>気を付けること</th></tr>' + rows + '</table><p class="muted">' + esc(jpDate(date)) + '：訪問 ' + live.length + '件' + (vs.length > live.length ? '（キャンセル ' + (vs.length - live.length) + '件）' : '') + '。地図の番号は、この表の「順」と同じです。</p>'
     : '<p class="empty">' + esc(jpDate(date)) + 'の訪問はありません。</p>';
   var pts = live.map(function(v, i){ var p = patient(v.no) || {}; return p.lat ? { n:i + 1, lat:+p.lat, lng:+p.lng, t:v.time + ' ' + dn(v.no) } : null; }).filter(Boolean);
-  if(!pts.length){ $('td_map').style.display = 'none'; if(live.length) $('td_list').insertAdjacentHTML('afterbegin', '<p class="muted">地図に出せる訪問先がありません。患者さんの登録で住所（番地まで）を入れ、「住所から位置を取る」を押してください。</p>'); return; }
+  if(!pts.length){ $('td_map').style.display = 'none'; if(live.length) $('td_list').insertAdjacentHTML('afterbegin', '<p class="muted">地図に出せる訪問先がありません。利用者登録で住所（番地まで）を入れ、「住所から位置を取る」を押してください。</p>'); return; }
   $('td_map').style.display = '';
   leafletLoad().then(function(){
     if(!tdMap){
@@ -3266,8 +3302,15 @@ var mNow = ymd(new Date()).slice(0,7);
 $('rp_month').value = mNow; $('ad_month').value = mNow;
 $('rp_month').addEventListener('change', renderReport); $('rp_no').addEventListener('change', renderReport);
 $('ad_month').addEventListener('change', function(){ renderAdmin(); renderAttend(); });
+$('rp_save').addEventListener('click', rpSave);
+$('rp_cx').addEventListener('click', function(){
+  var t = rpCxText(selNo('rp_no'), $('rp_month').value);
+  if(!t){ $('rp_msg').textContent = 'この月のキャンセルはありません。'; return; }
+  var v = $('rp_special').value.replace(/【キャンセルの状況】[\s\S]*?(?=\n\n|$)/, '').trim();
+  $('rp_special').value = (v ? v + '\n\n' : '') + t; $('rp_msg').textContent = 'キャンセルの状況を入れました。';
+});
 $('rp_copy').addEventListener('click', function(){
-  var t = $('rp_out').textContent;
+  var t = rpText();
   (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function(){ $('rp_msg').textContent = '写しました。報告書の欄に貼り付けてください。'; })
     .catch(function(){ $('rp_msg').textContent = '写せませんでした。上の枠の文字を選んで写してください。'; });
 });

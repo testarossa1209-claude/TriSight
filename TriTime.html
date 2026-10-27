@@ -180,7 +180,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-27</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-27-28</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -202,7 +202,7 @@ function tsGoBack(){
   <button data-tab="pt">利用者登録</button>
   <button data-tab="intake">キャンセル受付</button>
   <button data-tab="course">利用者経過</button>
-  <button data-tab="report">訪問看護報告書</button>
+  <button data-tab="report">計画書・報告書</button>
   <button data-tab="admin">管理者の窓</button>
   <button data-tab="model">モデルコース</button>
   <button data-tab="mihon">モデルコースの見本</button>
@@ -577,6 +577,28 @@ function tsGoBack(){
 
 <!-- ===== 報告係 ===== -->
 <section class="tab" id="tab-report">
+  <div class="card">
+    <h2>訪問看護計画書の下書き</h2>
+    <p class="lead">訪問看護計画書を、様式の欄の順に下書きします。利用者登録で「訪問看護計画書から」に写した目標・作成日・見直しの期限・訪問の回数は、最初から入ります。問題点・解決策・評価は担当の看護師が書きます。氏名・生年月日・住所は、カイポケの計画書の側で入れてください。</p>
+    <div class="row">
+      <div><label class="f" for="pl_no">契約書番号</label><select id="pl_no"></select></div>
+      <div><label class="f" for="pl_made">作成年月日</label><input type="date" id="pl_made"></div>
+      <div><label class="f" for="pl_rev">見直しの年月日</label><input type="date" id="pl_rev"></div>
+      <div><label class="f" for="pl_by">作成者</label><select id="pl_by"></select></div>
+    </div>
+    <label class="f" for="pl_goal">看護・リハビリテーションの目標</label><textarea id="pl_goal" placeholder="例：服薬を自己管理し、週3日は日中に外出できる。"></textarea>
+    <label class="f">問題点・解決策・評価</label>
+    <div class="tbl-scroll"><table><thead><tr><th style="width:130px">年月日</th><th>問題点</th><th>解決策</th><th>評価</th></tr></thead><tbody id="pl_rows"></tbody></table></div>
+    <div class="btns" style="margin-top:4px"><button class="btn small sub" id="pl_addRow">行を足す</button></div>
+    <div class="row">
+      <div><label class="f" for="pl_sup">衛生材料等が必要な処置</label><select id="pl_sup"><option value="なし">なし</option><option value="あり">あり</option></select></div>
+      <div><label class="f" for="pl_supDo">処置の内容</label><input type="text" id="pl_supDo"></div>
+      <div><label class="f" for="pl_supItem">衛生材料等</label><input type="text" id="pl_supItem"></div>
+      <div><label class="f" for="pl_supQty">必要量（1か月）</label><input type="text" id="pl_supQty"></div>
+    </div>
+    <label class="f" for="pl_note">備考</label><textarea id="pl_note" style="min-height:48px"></textarea>
+    <div class="btns"><button class="btn" id="pl_save">下書きを保存する</button><button class="btn sub" id="pl_copy">全体を写す</button><span class="muted" id="pl_msg"></span></div>
+  </div>
   <div class="card">
     <h2>訪問看護報告書（主治医への報告）の下書き</h2>
     <p class="lead">主治医へ毎月出す訪問看護報告書を、様式の欄の順に下書きします。訪問日は看護記録から（取り込んでいない月は週間予定から）自動で入ります。キャンセルは「特記すべき事項」の一部として入ります。病状の経過・看護の内容・家庭での介護の状況は、担当の看護師が書きます。氏名・生年月日・住所は、カイポケの報告書の側で入れてください。</p>
@@ -987,7 +1009,7 @@ function fillSelect(sel, items, blank){
 }
 function refreshSelects(){
   var pts = patients().map(function(p){ return { v:dn(p.no), t:dn(p.no) + (p.area ? '（' + p.area + '）' : '') }; });
-  ['c_no','k_no','rp_no','wk_no'].forEach(function(id){ fillSelect(id, pts, '選んでください'); });
+  ['c_no','k_no','rp_no','wk_no','pl_no'].forEach(function(id){ fillSelect(id, pts, '選んでください'); });
   var ns = deptStaff().map(function(s){ return { v:s.id, t:s.name }; });
   var all = staff().map(function(s){ return { v:s.id, t:staffLabel(s) }; });
   ['c_staff','p_staff','d_staff','r_staff','wk_staff','pt_staff'].forEach(function(id){ fillSelect(id, ns, '選んでください'); });
@@ -1525,6 +1547,40 @@ function addCourseEvent(obj, need){
 }
 
 /* ---- 報告係 ---- */
+/* ---- 訪問看護計画書の下書き（2026-10-27 宏史さんの指示）----
+   欄は「訪問看護計画書及び訪問看護報告書等の取扱いについて」（平成12年3月3日 老企第55号）別紙様式1の記載要領の順：
+   看護・リハビリテーションの目標・年月日（作成・見直し）・問題点・解決策・評価・衛生材料等（処置の有無・内容・衛生材料等・1か月の必要量）・備考・作成者。
+   利用者登録の「訪問看護計画書から」（目標・作成日・見直しの期限・訪問の回数）を最初に入れる。下書きは端末の中に契約書番号ごとに残す。 */
+var PL_KEY = 'tritime_pl_draft', PL_F = ['pl_made','pl_rev','pl_goal','pl_sup','pl_supDo','pl_supItem','pl_supQty','pl_note'];
+function plRow(r){
+  r = r || {};
+  var tr = document.createElement('tr');
+  tr.innerHTML = '<td><input type="date" data-pl="d"></td><td><textarea data-pl="p" style="min-height:48px"></textarea></td><td><textarea data-pl="s" style="min-height:48px"></textarea></td><td><textarea data-pl="e" style="min-height:48px" placeholder="初回は空欄でよい"></textarea></td>';
+  tr.querySelector('[data-pl=d]').value = r.d || ''; tr.querySelector('[data-pl=p]').value = r.p || ''; tr.querySelector('[data-pl=s]').value = r.s || ''; tr.querySelector('[data-pl=e]').value = r.e || '';
+  $('pl_rows').appendChild(tr);
+}
+function plRowsVal(){ return [].slice.call($('pl_rows').querySelectorAll('tr')).map(function(tr){ return { d:tr.querySelector('[data-pl=d]').value, p:tr.querySelector('[data-pl=p]').value, s:tr.querySelector('[data-pl=s]').value, e:tr.querySelector('[data-pl=e]').value }; }); }
+function renderPlanDoc(){
+  if(!$('pl_no')) return;
+  fillSelect('pl_by', deptStaff().filter(function(s){ return !staffOrphan(s); }).map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
+  var no = selNo('pl_no'); $('pl_rows').innerHTML = '';
+  if(!no){ PL_F.forEach(function(id){ $(id).value = id === 'pl_sup' ? 'なし' : ''; }); for(var i = 0; i < 3; i++) plRow(); return; }
+  var dr = lj(PL_KEY, {})[no], p = patient(no) || {};
+  if(dr){ PL_F.forEach(function(id){ $(id).value = dr[id] != null ? dr[id] : (id === 'pl_sup' ? 'なし' : ''); }); if(dr.by) $('pl_by').value = dr.by; (dr.rows && dr.rows.length ? dr.rows : [{}, {}, {}]).forEach(plRow); $('pl_msg').textContent = '保存した下書きを開きました（' + String(dr.saved || '').replace('T', ' ') + '）。'; return; }
+  $('pl_made').value = p.planMade || ymd(new Date()); $('pl_rev').value = p.planDue || ''; $('pl_goal').value = p.goal || ''; $('pl_sup').value = 'なし'; $('pl_supDo').value = ''; $('pl_supItem').value = ''; $('pl_supQty').value = '';
+  $('pl_note').value = [p.freq ? '訪問の回数・時間帯：' + p.freq : '', p.special ? '特別訪問看護指示：' + p.special : ''].filter(Boolean).join('\n');
+  for(var j = 0; j < 3; j++) plRow({ d: j === 0 ? (p.planMade || '') : '' });
+  $('pl_msg').textContent = p.goal || p.planMade ? '利用者登録の「訪問看護計画書から」を入れました。' : '';
+}
+function plText(){
+  var no = selNo('pl_no'), rows = plRowsVal().filter(function(r){ return r.p || r.s || r.e; });
+  var sec = function(t, v){ return '■' + t + '\n' + (String(v || '').trim() || '（記載なし）') + '\n'; };
+  return '訪問看護計画書　契約書番号 ' + dn(no) + '\n' + sec('作成年月日', $('pl_made').value) + ($('pl_rev').value ? sec('見直しの年月日', $('pl_rev').value) : '') +
+    sec('看護・リハビリテーションの目標', $('pl_goal').value) +
+    '■問題点・解決策・評価\n' + (rows.length ? rows.map(function(r){ return (r.d ? r.d + '　' : '') + '問題点：' + (r.p || '') + '／解決策：' + (r.s || '') + '／評価：' + (r.e || ''); }).join('\n') : '（記載なし）') + '\n' +
+    '■衛生材料等が必要な処置\n' + $('pl_sup').value + ($('pl_sup').value === 'あり' ? '（処置の内容：' + $('pl_supDo').value + '／衛生材料等：' + $('pl_supItem').value + '／必要量（1か月）：' + $('pl_supQty').value + '）' : '') + '\n' +
+    sec('備考', $('pl_note').value) + '■作成者\n' + (staffName($('pl_by').value) || '（未選択）');
+}
 /* ---- 訪問看護報告書の下書き（2026-10-27 宏史さんの指示：キャンセルだけの報告はないので、報告書の様式にする）----
    欄は「訪問看護計画書及び訪問看護報告書等の取扱いについて」別紙様式2（訪問看護報告書）の順：訪問日・病状の経過・看護（リハビリテーション）の内容・
    家庭での介護の状況・衛生材料等・特記すべき事項・作成者。キャンセルは特記すべき事項の一部として入れる。
@@ -3262,7 +3318,7 @@ document.querySelectorAll('#tabs button').forEach(function(b){
     if(t === 'intake') initVoice();
     if(t === 'plan'){ renderPlan(); renderToday(); renderAuto(); renderMonitor(); renderSummary(); }
     if(t === 'course') renderCourse();
-    if(t === 'report') renderReport();
+    if(t === 'report'){ renderReport(); renderPlanDoc(); }
     if(t === 'admin') renderAdmin();
     if(t === 'model') renderModel();
     if(t === 'mihon') mhRender();
@@ -3303,6 +3359,19 @@ $('rp_month').value = mNow; $('ad_month').value = mNow;
 $('rp_month').addEventListener('change', renderReport); $('rp_no').addEventListener('change', renderReport);
 $('ad_month').addEventListener('change', function(){ renderAdmin(); renderAttend(); });
 $('rp_save').addEventListener('click', rpSave);
+$('pl_no').addEventListener('change', renderPlanDoc);
+$('pl_addRow').addEventListener('click', function(){ plRow(); });
+$('pl_save').addEventListener('click', function(){
+  var no = selNo('pl_no'); if(!no){ $('pl_msg').textContent = '契約書番号を選んでください。'; return; }
+  var all = lj(PL_KEY, {}), dr = { by:$('pl_by').value, rows:plRowsVal(), saved:nowLocal() }; PL_F.forEach(function(id){ dr[id] = $(id).value; });
+  all[no] = dr; sj(PL_KEY, all); $('pl_msg').textContent = '下書きを保存しました（この端末の中）。';
+});
+$('pl_copy').addEventListener('click', function(){
+  if(!selNo('pl_no')){ $('pl_msg').textContent = '契約書番号を選んでください。'; return; }
+  var t = plText();
+  (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function(){ $('pl_msg').textContent = '写しました。カイポケの計画書の欄に貼り付けてください。'; })
+    .catch(function(){ $('pl_msg').textContent = '写せませんでした。'; });
+});
 $('rp_cx').addEventListener('click', function(){
   var t = rpCxText(selNo('rp_no'), $('rp_month').value);
   if(!t){ $('rp_msg').textContent = 'この月のキャンセルはありません。'; return; }

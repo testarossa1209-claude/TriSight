@@ -2,6 +2,32 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<script>
+/* ---- 実験機（2026-10-29・宏史さんの指示）----
+   1台の端末を「実験機」と「職員の仮利用」で切り替えて使う。
+   ・実験機：記録はこの端末の中の別の入れ物（lab__ を頭に付けた場所）に置き、共有もフォルダへの書き出しもしない。開くたびに実験機の合言葉を求める。
+   ・職員の仮利用：ふつうの端末と同じ。管理者の合言葉を入れなければ管理者の画面は出ない。
+   切り替えても、もう一方の記録は消えずに残る。この仕組みは、この端末の中で確かめるもので、端末を分解して調べる人までは止めない。 */
+(function(){
+  var MODE_KEY = 'tritime_devmode', P = 'lab__', S = null;
+  try{ S = window.localStorage; }catch(e){ return; }
+  if(!S || !window.Storage) return;
+  var SP = Storage.prototype, g = SP.getItem, st = SP.setItem, rm = SP.removeItem, ky = SP.key, ln = Object.getOwnPropertyDescriptor(SP, 'length');
+  var m = null; try{ m = JSON.parse(g.call(S, MODE_KEY) || 'null'); }catch(e){ m = null; }
+  window.TT_DEV = m; window.TT_LAB = !!(m && m.mode === 'lab');
+  window.TT_RAW = { get:function(k){ return g.call(S, k); }, set:function(k, v){ st.call(S, k, v); }, del:function(k){ rm.call(S, k); }, keys:function(){ var a = [], n = ln.get.call(S); for(var i = 0; i < n; i++) a.push(ky.call(S, i)); return a; } };
+  if(!window.TT_LAB) return;
+  var pass = function(k){ k = String(k); return k === MODE_KEY || k === 'trisight_access_code'; };
+  var lk = function(){ return window.TT_RAW.keys().filter(function(k){ return k && k.indexOf(P) === 0; }).map(function(k){ return k.slice(P.length); }); };
+  SP.getItem = function(k){ return (this === S && !pass(k)) ? g.call(this, P + k) : g.call(this, k); };
+  SP.setItem = function(k, v){ return (this === S && !pass(k)) ? st.call(this, P + k, v) : st.call(this, k, v); };
+  SP.removeItem = function(k){ return (this === S && !pass(k)) ? rm.call(this, P + k) : rm.call(this, k); };
+  SP.key = function(i){ return this === S ? (lk()[i] == null ? null : lk()[i]) : ky.call(this, i); };
+  try{ Object.defineProperty(SP, 'length', { configurable:true, get:function(){ return this === S ? lk().length : ln.get.call(this); } }); }catch(e){}
+  var ok = false; try{ ok = sessionStorage.getItem('tritime_lab_open') === '1'; }catch(e){}
+  if(!ok) document.documentElement.className += ' labLocked';
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TriTime（トライタイム） — 部署ごとの予定と記録</title>
 <link rel="icon" href="favicon.ico?v=2" sizes="any">
@@ -16,6 +42,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
+  html.labLocked body > *:not(#labLock){display:none !important}
+  #labLock{position:fixed;inset:0;z-index:999;background:var(--paper,#f4f1ea);display:flex;align-items:center;justify-content:center;padding:16px}
+  #labLock .box{background:#fff;border:1px solid #e9e3d6;border-radius:14px;padding:22px;max-width:380px;width:100%;box-shadow:0 8px 28px rgba(16,36,59,.12)}
+  #labLock input{width:100%;font:inherit;font-size:17px;padding:10px 12px;border:1px solid #cfc6b4;border-radius:10px;margin:8px 0}
+  .labBar{background:#2a4866;color:#fff;border-radius:10px;padding:8px 12px;margin:8px 0;font-size:14px}
   :root{
     --ink:#10243b; --ink-soft:#2a4866; --paper:#f4f1ea; --paper-deep:#e9e3d6;
     --amber:#c9772a; --amber-soft:#e3a55c; --line:#cfc6b4; --ok:#3f7d57; --red:#b0402f;
@@ -196,7 +227,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-29-02</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-29-03</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -228,6 +259,7 @@ function tsGoBack(){
 
 <div id="verNotice"></div>
 <div id="alertBox"></div>
+<div class="labBar" id="labBar" style="display:none">この端末はいま<b>実験機</b>です。ここで入れた記録は、この端末の中だけにあり、ほかの端末へは送られません。</div>
 <div class="note" id="shareNote"></div>
 <div class="note" id="roleNote" style="display:none"></div>
 
@@ -856,6 +888,12 @@ function tsGoBack(){
     <textarea id="im_text" placeholder="ここに貼り付けます" style="min-height:120px"></textarea>
     <div class="btns"><button class="btn sub" id="im_read">読み取る</button></div>
     <div id="im_map"></div>
+  </div>
+  <div class="card" id="cardLab" style="display:none">
+    <h2>この端末の使い方（実験機）</h2>
+    <p class="lead">1台の端末を、「実験機」と「職員の仮利用」で切り替えて使うための設定です。実験機は、共有をしない練習・見本用の使い方で、すべての画面が見えます。開くたびに、実験機の合言葉を求めます。職員の仮利用は、ふつうの看護師さんの端末と同じ使い方です（管理者の合言葉を入れなければ、売上・評価などの画面は出ません）。切り替えても、もう一方の記録は消えずに残ります。</p>
+    <div id="labBody"></div>
+    <p class="muted" id="labMsg"></p>
   </div>
   <div class="card" id="cardDev">
     <h2>この端末と共有</h2>
@@ -2800,6 +2838,9 @@ function applyDept(){
   /* 職員の端末：名簿・設定は、共有と合言葉の枠だけを出す。仮スケジュール表（予定を組む人の道具）も出さない */
   var stf = (R.lv === 'staff');
   ['cardStaff','cardLeave','cardWorkRule','cardBackup','cardFolder'].forEach(function(id){ show(id, !stf); });
+  if(window.TT_LAB) show('cardFolder', false);
+  show('cardLab', !!window.TT_DEV || (R.lv === 'all' && !dev().share));
+  labRender();
   if(stf){ ['cardWk','cardIm','cardRules'].forEach(function(id){ show(id, false); }); }
   var ssHide = (R.lv === 'staff' || R.lv === 'none'); show('ssTab', !ssHide); if(ssHide && document.body.classList.contains('ssOpen')) ssOpen(false);
   show('kpTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('kpOpen')) sideOpen('kp', false);
@@ -3550,8 +3591,72 @@ $('st_pull').addEventListener('click', sheetPull);
 ['nb_kind','nb_to'].forEach(function(id){ $(id).addEventListener('change', nbRefreshForm); });
 $('nb_send').addEventListener('click', nbSend);
 $('nb_mine').addEventListener('change', renderBoard);
+/* ---- 実験機の切り替え（2026-10-29）---- */
+var LAB_MOVE = /^(tritime_|trisheet_|tricare_|trisight_office_master_v1)/;
+function labHash(salt, pw){ return crypto.subtle.digest('SHA-256', new TextEncoder().encode('tritime-lab:' + salt + ':' + pw)).then(function(b){ return Array.prototype.map.call(new Uint8Array(b), function(x){ return ('0' + x.toString(16)).slice(-2); }).join(''); }); }
+function labSetMode(m){ window.TT_RAW.set('tritime_devmode', JSON.stringify(m)); }
+function labGo(open){ try{ if(open) sessionStorage.setItem('tritime_lab_open', '1'); else sessionStorage.removeItem('tritime_lab_open'); }catch(e){} location.reload(); }
+function labRender(){
+  var b = $('labBody'); if(!b) return;
+  var m = window.TT_DEV;
+  var lb = $('labBar'); if(lb) lb.style.display = window.TT_LAB ? '' : 'none';
+  if(window.TT_LAB){ var c = $('dv_share'); if(c){ c.checked = false; c.disabled = true; } }
+  if(!m){
+    b.innerHTML = '<p>この端末を実験機にすると、いまこの端末にある記録は実験機の側へ移ります（職員の仮利用の側は空から始まります）。実験機の合言葉は、宏史さんが決めて覚えておいてください。忘れると、実験機の記録は開けなくなります。</p>' +
+      '<div class="row"><div><label class="f" for="lab_p1">実験機の合言葉</label><input type="password" id="lab_p1" autocomplete="new-password"></div><div><label class="f" for="lab_p2">もう一度</label><input type="password" id="lab_p2" autocomplete="new-password"></div></div>' +
+      '<div class="btns"><button class="btn" type="button" id="lab_make">この端末を実験機にする</button></div>';
+    $('lab_make').onclick = function(){
+      var p1 = $('lab_p1').value, p2 = $('lab_p2').value;
+      if(p1.length < 4){ $('labMsg').textContent = '合言葉は4文字以上にしてください。'; return; }
+      if(p1 !== p2){ $('labMsg').textContent = '2つの合言葉が違います。入れ直してください。'; return; }
+      if(dev().share){ $('labMsg').textContent = '共有している端末は実験機にできません。先に「この端末と共有」の「記録を共有する」の印を外して保存してください。'; return; }
+      if(!confirm('この端末を実験機にします。いまある記録は実験機の側へ移り、以後、開くたびに実験機の合言葉を求めます。よろしいですか。')) return;
+      var salt = uid();
+      labHash(salt, p1).then(function(h){
+        window.TT_RAW.keys().filter(function(k){ return k && LAB_MOVE.test(k); }).forEach(function(k){ window.TT_RAW.set('lab__' + k, window.TT_RAW.get(k)); window.TT_RAW.del(k); });
+        labSetMode({ mode:'lab', salt:salt, hash:h, made:nowLocal() });
+        labGo(true);
+      });
+    };
+    return;
+  }
+  if(m.mode === 'lab'){
+    b.innerHTML = '<p><span class="tag amber">いまは実験機です</span></p><p>職員に貸すときは、下のボタンで「職員の仮利用」に切り替えてください。切り替えたあと、「この端末と共有」で認証コードと共有の合言葉を入れ、この端末を主に使う人を選びます。管理者の合言葉は入れないでください。</p>' +
+      '<div class="btns"><button class="btn" type="button" id="lab_toStaff">職員の仮利用に切り替える</button></div>';
+    $('lab_toStaff').onclick = function(){
+      if(!confirm('職員の仮利用に切り替えます。実験機の記録はそのまま残り、実験機に戻すと元どおり見えます。よろしいですか。')) return;
+      labSetMode(Object.assign({}, m, { mode:'staff' })); labGo(false);
+    };
+    return;
+  }
+  b.innerHTML = '<p><span class="tag green">いまは職員の仮利用です</span></p><p>実験機に戻すには、実験機の合言葉を入れてください。</p>' +
+    '<div class="row"><div><label class="f" for="lab_p">実験機の合言葉</label><input type="password" id="lab_p" autocomplete="current-password"></div></div>' +
+    '<div class="btns"><button class="btn sub" type="button" id="lab_toLab">実験機に戻す</button></div>';
+  $('lab_toLab').onclick = function(){
+    labHash(m.salt, $('lab_p').value).then(function(h){
+      if(h !== m.hash){ $('labMsg').textContent = '合言葉が違います。'; return; }
+      labSetMode(Object.assign({}, m, { mode:'lab' })); labGo(true);
+    });
+  };
+}
+/* 実験機の鍵の画面（開くたびに合言葉を求める） */
+(function(){
+  if(!window.TT_LAB || document.documentElement.className.indexOf('labLocked') < 0) return;
+  var d = document.createElement('div'); d.id = 'labLock';
+  d.innerHTML = '<div class="box"><h2 style="margin:0 0 6px">実験機</h2><p class="muted" style="margin:0 0 6px">この端末は実験機です。開くには、実験機の合言葉を入れてください。</p><input type="password" id="labLockPw" autocomplete="current-password"><div class="btns"><button class="btn" type="button" id="labLockGo">開く</button></div><p class="muted" id="labLockMsg" style="color:var(--red)"></p></div>';
+  document.body.appendChild(d);
+  var go = function(){ var m = window.TT_DEV; labHash(m.salt, $('labLockPw').value).then(function(h){
+    if(h !== m.hash){ $('labLockMsg').textContent = '合言葉が違います。'; $('labLockPw').value = ''; return; }
+    try{ sessionStorage.setItem('tritime_lab_open', '1'); }catch(e){}
+    document.documentElement.className = document.documentElement.className.replace(/\s*labLocked/g, ''); d.remove();
+  }); };
+  $('labLockGo').onclick = go;
+  $('labLockPw').addEventListener('keydown', function(e){ if(e.key === 'Enter') go(); });
+  setTimeout(function(){ try{ $('labLockPw').focus(); }catch(e){} }, 50);
+})();
 $('dv_save').addEventListener('click', function(){
   var was = dev().share;
+  if(window.TT_LAB) $('dv_share').checked = false;   /* 実験機の記録は共有しない */
   sj(DEV_KEY, { me:$('dv_me').value, share:$('dv_share').checked });
   if(!was && $('dv_share').checked){
     /* 共有を始めるとき、この端末にある記録を全部送る対象にする */
@@ -3590,7 +3695,7 @@ function fdMsg(t){ if($('fd_msg')) $('fd_msg').textContent = t; }
 function fdSnapshot(fp){ var d = { app:'TriTime', saved:nowLocal(), codeMark:fp }; Object.keys(K).forEach(function(k){ d[k] = lj(K[k], null); }); return d; }
 function fdWriteFile(dir, name, text){ return dir.getFileHandle(name, { create:true }).then(function(fh){ return fh.createWritable(); }).then(function(w){ return w.write(text).then(function(){ return w.close(); }); }); }
 function fdWrite(){
-  if(!FD.on || !FD.handle) return Promise.resolve();
+  if(window.TT_LAB || !FD.on || !FD.handle) return Promise.resolve();
   return fdFp().then(function(fp){
     if(!fp){ fdMsg('認証コードが入っていないため、書き込みません。'); return; }
     return FD.handle.getDirectoryHandle('TriTime_' + fp, { create:true }).then(function(sub){

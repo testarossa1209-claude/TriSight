@@ -180,7 +180,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-27-30</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-28-03</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -293,10 +293,12 @@ function tsGoBack(){
 <section class="tab" id="tab-pt">
   <div class="card" id="cardPt">
     <h2>利用者登録</h2>
-    <p class="lead" data-t="{ptLead}">氏名は入れず、契約書番号で扱います。地区（町名）は予定を寄せる単位に、住所（番地まで）は地図に使います。カイポケの書類（アセスメント・指示書・計画書・報告書・契約書）から、訪問に要るところだけを写します。</p>
+    <p class="lead" data-t="{ptLead}">契約書番号と氏名を入れます。画面では番号の横に氏名が出ます（番号と氏名の対照表は、下の一覧から印刷できます）。地区（町名）は予定を寄せる単位に、住所（番地まで）は地図に使います。カイポケの書類（アセスメント・指示書・計画書・報告書・契約書）から、訪問に要るところだけを写します。</p>
     <p class="muted">番号を入れて「呼び出す」を押すと、登録済みの内容が欄に出ます。写し終えた書類には印を付けてください。何人かで手分けして写すとき、誰がどこまで写したかが下の一覧で分かります。</p>
     <div class="row">
       <div><label class="f" for="pt_no">契約書番号</label><input type="text" id="pt_no"></div>
+      <div><label class="f" for="pt_name">氏名</label><input type="text" id="pt_name" placeholder="例：山田 花子"></div>
+      <div><label class="f" for="pt_kana">ふりがな</label><input type="text" id="pt_kana" placeholder="例：やまだ はなこ"></div>
       <div><label class="f">&nbsp;</label><button class="btn sub" type="button" id="pt_load">呼び出す</button></div>
       <div><label class="f" for="pt_status">状態</label><select id="pt_status"><option>利用中</option><option>休止中</option><option>契約終了</option></select></div>
       <div><label class="f" for="pt_ins">保険</label><select id="pt_ins"><option value="">選んでください</option><option>医療保険</option><option>介護保険</option><option>精神科訪問看護（医療）</option><option>障害福祉</option><option>自費</option></select></div>
@@ -364,6 +366,20 @@ function tsGoBack(){
       </div>
       <label class="f" for="pt_ctrNote">別の取り決め・契約の特記</label><textarea id="pt_ctrNote" maxlength="800" style="min-height:48px"></textarea>
     </details>
+    <details class="ptsec" id="ptsWish" open><summary>予定の希望（予定を組むときの条件）</summary>
+      <p class="muted">本人・家族から聞いた、訪問の日と時刻の希望です。自動の振り分けは、「訪問できない曜日」は必ず外し、希望の曜日・時刻・時間帯・訪問時間・体制をできるかぎり守って組みます。守れなかった人は、組み方の下に理由付きで出ます。担当の看護師についての希望（「男性は嫌」など）はここに書かず、「経過」の「拒否の申し出」に本人の言葉で残してください。</p>
+      <label class="f">① 希望の曜日（無ければ印を付けない）</label><div id="pt_wDays" class="btns" style="margin-top:2px"></div>
+      <div class="row">
+        <div><label class="f" for="pt_wish">② 希望の時刻</label><input type="time" id="pt_wish"></div>
+        <div><label class="f" for="pt_wBand">② 希望の時間帯</label><select id="pt_wBand"><option value="">指定なし</option><option>午前</option><option>午後</option></select></div>
+        <div><label class="f" for="pt_vmin">④ 1回の訪問時間</label><select id="pt_vmin"><option value="">決まりのとおり</option><option value="30">30分</option><option value="60">60分</option><option value="90">90分</option></select></div>
+        <div><label class="f" for="pt_team">⑤ 体制</label><select id="pt_team"><option value="">1名</option><option>2名</option></select></div>
+        <div><label class="f" for="pt_preCall">⑥ 訪問前の連絡</label><select id="pt_preCall"><option value="">不要</option><option>要（電話）</option><option>要（その他）</option></select></div>
+      </div>
+      <label class="f">③ 訪問できない曜日（通院・デイサービス・就労など）</label><div id="pt_ngDays" class="btns" style="margin-top:2px"></div>
+      <label class="f" for="pt_ngNote">③ 訪問できない時間・理由（例：火曜の午前は通院）</label><input type="text" id="pt_ngNote" maxlength="200">
+      <label class="f" for="pt_wOther">⑦ その他の希望</label><textarea id="pt_wOther" maxlength="800" style="min-height:48px"></textarea>
+    </details>
     <details class="ptsec" id="ptsLike" open><summary>好き嫌い・関わり方</summary>
       <p class="muted">本人が好むこと・嫌がることを、聞いた言葉や見た事実で書きます。特定の職員を嫌がる申し出は、ここではなく「経過」の「拒否の申し出」に本人の言葉で記録してください（記録した拒否だけが、配置の条件になります）。</p>
       <label class="f" for="pt_like">好むこと・喜ぶこと</label><textarea id="pt_like" maxlength="800" style="min-height:48px"></textarea>
@@ -393,6 +409,7 @@ function tsGoBack(){
     <h2 data-t="{client}の一覧">患者さんの一覧</h2>
     <p class="muted" id="ptProgress"></p>
     <div class="row"><div><label class="f" for="ptFilter">表示する</label><select id="ptFilter"><option value="">利用中・休止中</option><option value="all">すべて（契約終了も）</option><option value="hard">困難患者だけ</option><option value="yet">写し終わっていない人だけ</option></select></div></div>
+    <div class="btns"><button class="btn sub" type="button" id="pt_roster">番号と氏名の対照表を印刷する</button><span class="muted" id="pt_rosterMsg"></span></div>
     <div class="tbl-scroll" id="ptList"></div>
     <div id="ptView"></div>
   </div>
@@ -952,6 +969,15 @@ function deptByName(n){ if(n === '管理部門') n = '経営企画事務職'; re
 function deptOfNo(no){ var m = /^([a-z]+):/.exec(String(no || '')); if(!m) return DEPTS[0]; return DEPTS.filter(function(d){ return d.pfx === m[1] + ':'; })[0] || null; }
 function inDept(no, d){ return deptOfNo(no) === (d || D()); }
 function dn(no){ return String(no == null ? '' : no).replace(/^[a-z]+:/, ''); }   /* 画面に出す番号 */
+/* 番号の横に出す氏名（2026-10-28）。患者さんの記録が変わったときだけ引き直す */
+var NM_C = { s:undefined, m:{} };
+function nameOf(no){
+  var r = null; try{ r = localStorage.getItem(K.patients); }catch(e){}
+  if(r !== NM_C.s){ NM_C.s = r; NM_C.m = {}; live('patients').forEach(function(p){ if(p.name) NM_C.m[p.no] = p.name; }); }
+  if(no == null) return '';
+  return NM_C.m[no] || NM_C.m[keyNo(no)] || '';
+}
+function dnn(no){ var n = nameOf(no); return dn(no) + (n ? '　' + n : ''); }   /* 画面に出す番号＋氏名 */
 function keyNo(v){ v = String(v || '').trim(); return v ? D().pfx + v : ''; }       /* 画面の番号 → 内部の番号 */
 function selNo(id){ return keyNo($(id).value); }
 function allPatients(){ return live('patients'); }
@@ -1008,7 +1034,7 @@ function fillSelect(sel, items, blank){
   if(cur && items.some(function(it){ return it.v === cur; })) el.value = cur;
 }
 function refreshSelects(){
-  var pts = patients().map(function(p){ return { v:dn(p.no), t:dn(p.no) + (p.area ? '（' + p.area + '）' : '') }; });
+  var pts = patients().map(function(p){ return { v:dn(p.no), t:dnn(p.no) + (p.area ? '（' + p.area + '）' : '') }; });
   ['c_no','k_no','rp_no','wk_no','pl_no'].forEach(function(id){ fillSelect(id, pts, '選んでください'); });
   var ns = deptStaff().map(function(s){ return { v:s.id, t:s.name }; });
   var all = staff().map(function(s){ return { v:s.id, t:staffLabel(s) }; });
@@ -1099,9 +1125,10 @@ function renderPlan(){
       if(v.moved) tags += '<span class="tag green">組み換え（元 ' + esc(v.moved.from) + (v.moved.fromStaff !== v.staffId ? '・' + esc(staffName(v.moved.fromStaff)) : '') + '）</span> <button class="btn small sub" data-unmove="' + esc(v.moved.id) + '">組み換えを取り消す</button>';
       if(trustOf(v.no).lv === '低') tags += trustTag(v.no);
       var offw = v.cx ? '' : offWhy(v.staffId, v.date); if(offw) tags += '<span class="tag red">要調整：担当が休み（' + esc(offw) + '）</span>';
+      var pp = patient(v.no) || {}, pw = pp.wish; if(pp.preCall && !v.cx) tags += '<span class="tag amber">訪問前に連絡：' + esc(pp.preCall.replace(/^要/, '')) + '</span>'; if(pw && !v.cx && Math.abs(toMin(pw) - toMin(v.time)) > 30) tags += '<span class="tag amber">本人の希望は ' + esc(pw) + '</span>';
       var key = v.date + '|' + v.time + '|' + v.no;
       html += '<div class="visit' + (v.cx ? ' cx' : '') + '"><div class="t">' + esc(v.time) + '</div>' +
-        '<div class="who">' + esc(dn(v.no)) + ' <small>' + esc(v.area) + '・' + esc(staffName(v.staffId)) + '</small><br>' + tags + '</div>' +
+        '<div class="who">' + esc(dnn(v.no)) + ' <small>' + esc(v.area) + '・' + esc(staffName(v.staffId)) + '</small><br>' + tags + '</div>' +
         '<div class="act">' + (v.cx ? '<button class="btn small amber" data-gap="' + esc(key) + '">空いた時間の案</button>' : '') + '</div></div>' +
         (v.cx ? '<div class="gap" id="gap-' + esc(key.replace(/[^0-9A-Za-z]/g,'_')) + '" style="display:none"></div>' : '');
     });
@@ -1157,7 +1184,7 @@ function toggleGap(key){
   h += '<h4>前倒しの候補（' + D().client + 'の了承が要ります）</h4>';
   if(cands.length){
     h += '<ul>' + cands.map(function(v, idx){
-      return '<li>' + esc(v.time) + '　' + esc(dn(v.no)) + '（' + esc(v.area || '地区未登録') + (v.area && v.area === area ? '・同じ地区' : '') + '・現在の担当 ' + esc(staffName(v.staffId)) + '）' +
+      return '<li>' + esc(v.time) + '　' + esc(dnn(v.no)) + '（' + esc(v.area || '地区未登録') + (v.area && v.area === area ? '・同じ地区' : '') + '・現在の担当 ' + esc(staffName(v.staffId)) + '）' +
         ' <button class="btn small amber" data-move="' + idx + '">了承を得て前倒しする</button>' +
         ' <button class="btn small danger" data-decline="' + esc(v.no) + '" data-i="' + idx + '">この案を断る</button>' +
         '<div class="dec" id="dec-' + idx + '-' + esc(key.replace(/[^0-9A-Za-z]/g,'_')) + '" style="display:none;margin-top:6px"><input type="text" placeholder="断る理由を一言（言葉のまま）"> <button class="btn small" data-decsave="1">残す</button></div></li>';
@@ -1166,28 +1193,28 @@ function toggleGap(key){
     h += '<p class="muted">この日の後の時間帯に、候補になる訪問はありません。</p>';
   }
   if(blocked.length){
-    h += '<p class="muted">' + D().client + '本人の申し出で記録された拒否があるため外した訪問：' + blocked.map(function(v){ return esc(v.time + ' ' + dn(v.no)); }).join('、') + '</p>';
+    h += '<p class="muted">' + D().client + '本人の申し出で記録された拒否があるため外した訪問：' + blocked.map(function(v){ return esc(v.time + ' ' + dnn(v.no)); }).join('、') + '</p>';
   }
   h += '<h4>自分の記録を片付ける</h4>';
-  h += mine.length ? '<ul>' + mine.map(function(v){ return '<li>' + esc(jpDate(v.date)) + ' ' + esc(v.time) + '　' + esc(dn(v.no)) + '：次回の約束がまだ残っていません</li>'; }).join('') + '</ul>'
+  h += mine.length ? '<ul>' + mine.map(function(v){ return '<li>' + esc(jpDate(v.date)) + ' ' + esc(v.time) + '　' + esc(dnn(v.no)) + '：次回の約束がまだ残っていません</li>'; }).join('') + '</ul>'
                    : '<p class="muted">直近7日の訪問で、残っていない記録はありません。</p>';
   if(docs.length){
-    h += '<h4>主治医への確認がまだの担当患者さん</h4><ul>' + docs.map(function(n){ return '<li>' + esc(dn(n)) + '</li>'; }).join('') + '</ul>';
+    h += '<h4>主治医への確認がまだの担当患者さん</h4><ul>' + docs.map(function(n){ return '<li>' + esc(dnn(n)) + '</li>'; }).join('') + '</ul>';
   }
   box.innerHTML = h;
   box.style.display = '';
   box.querySelectorAll('[data-move]').forEach(function(b){
     b.addEventListener('click', function(){
       var v = cands[+b.getAttribute('data-move')]; if(!v) return;
-      if(!confirm(dn(v.no) + 'の ' + v.time + ' の訪問を、' + time + '（' + staffName(me) + '）へ前倒しします。' + D().client + 'の了承は得ましたか。')) return;
+      if(!confirm(dnn(v.no) + 'の ' + v.time + ' の訪問を、' + time + '（' + staffName(me) + '）へ前倒しします。' + D().client + 'の了承は得ましたか。')) return;
       var ev = events(), src = weekly().filter(function(w){ return w.no === v.no && +w.dow === parseYmd(date).getDay() && (w.time === v.time || (v.moved && w.time === v.moved.from)); })[0];
       var fromT = v.moved ? v.moved.from : v.time;
       ev = ev.filter(function(e){ return !(e.type === 'move' && e.date === date && e.patientNo === v.no && e.fromTime === fromT); });
       ev.push({ id:uid(), type:'move', patientNo:v.no, date:date, fromTime:fromT, toTime:time, toStaff:me, by:dev().me || '', created:nowLocal() });
       var to = [me, v.staffId].filter(function(x, i, a){ return x && a.indexOf(x) === i; });
-      ev.push({ id:uid(), type:'note', kind:'予定の組み換え', from:dev().me || me, to:to, title:'【予定の組み換え】' + jpDate(date) + '　' + dn(v.no) + ' を ' + v.time + ' → ' + time + '（' + staffName(me) + '）', body:'キャンセルで空いた ' + time + ' に、' + dn(v.no) + '（' + (v.area || '地区未登録') + '）の ' + v.time + ' の訪問を前倒ししました。' + (v.staffId !== me ? '担当は ' + staffName(v.staffId) + ' さんから ' + staffName(me) + ' さんに替わります。' : ''), mDate:'', mTime:'', created:nowLocal(), date:ymd(new Date()) });
+      ev.push({ id:uid(), type:'note', kind:'予定の組み換え', from:dev().me || me, to:to, title:'【予定の組み換え】' + jpDate(date) + '　' + dnn(v.no) + ' を ' + v.time + ' → ' + time + '（' + staffName(me) + '）', body:'キャンセルで空いた ' + time + ' に、' + dn(v.no) + '（' + (v.area || '地区未登録') + '）の ' + v.time + ' の訪問を前倒ししました。' + (v.staffId !== me ? '担当は ' + staffName(v.staffId) + ' さんから ' + staffName(me) + ' さんに替わります。' : ''), mDate:'', mTime:'', created:nowLocal(), date:ymd(new Date()) });
       saveEvents(ev); renderPlan(); renderToday();
-      var nb = $('gap-' + key.replace(/[^0-9A-Za-z]/g,'_')); if(nb){ nb.style.display = ''; nb.innerHTML = '<div class="judge free">' + esc(dn(v.no)) + 'の訪問を ' + esc(time) + ' に前倒ししました。担当の看護師に連絡板で知らせました。</div>'; }
+      var nb = $('gap-' + key.replace(/[^0-9A-Za-z]/g,'_')); if(nb){ nb.style.display = ''; nb.innerHTML = '<div class="judge free">' + esc(dnn(v.no)) + 'の訪問を ' + esc(time) + ' に前倒ししました。担当の看護師に連絡板で知らせました。</div>'; }
     });
   });
   box.querySelectorAll('[data-decline]').forEach(function(b){
@@ -1359,7 +1386,7 @@ function gapCands(date, time, no, me){
     .sort(function(a, b){ var sa = (a.area && a.area === area) ? 0 : 1, sb = (b.area && b.area === area) ? 0 : 1; return sa - sb || (a.time < b.time ? -1 : 1); });
 }
 function dayPlanText(date, sid){
-  return visitsOn(date).filter(function(v){ return !v.cx && (v.staffId === sid || v.withId === sid); }).map(function(v){ return v.time + ' ' + dn(v.no) + '（' + (v.area || '地区未登録') + '）' + (v.moved ? '［組み換え・元 ' + v.moved.from + '］' : ''); }).join('／') || 'この日の訪問はありません';
+  return visitsOn(date).filter(function(v){ return !v.cx && (v.staffId === sid || v.withId === sid); }).map(function(v){ return v.time + ' ' + dnn(v.no) + '（' + (v.area || '地区未登録') + '）' + (v.moved ? '［組み換え・元 ' + v.moved.from + '］' : ''); }).join('／') || 'この日の訪問はありません';
 }
 function afterOpen(c){
   var box = $('c_after'); if(!box) return;
@@ -1368,7 +1395,7 @@ function afterOpen(c){
   var office = DEPTS.filter(function(d){ return d.kind === 'office'; })[0], offIds = office ? deptStaff(office).map(function(s){ return s.id; }) : [];
   box.innerHTML = '<div class="card" style="margin:10px 0;border:2px solid var(--amber)"><h3 style="margin:0 0 6px">事後処理をまとめて行う：' + esc(jpDate(c.date)) + ' ' + esc(c.time) + '（' + esc(staffName(c.staffId)) + '）が空きました</h3>' +
     '<label class="f" for="af_move">① 空いた時間の組み換え</label><select id="af_move"><option value="">組み換えない（空いたままにする）</option>' +
-    cs.map(function(v, i){ return '<option value="' + i + '"' + (i === 0 ? ' selected' : '') + '>' + esc(v.time) + '　' + esc(dn(v.no)) + '（' + esc(v.area || '地区未登録') + '・担当 ' + esc(staffName(v.staffId)) + '）を ' + esc(c.time) + ' に前倒しする</option>'; }).join('') + '</select>' +
+    cs.map(function(v, i){ return '<option value="' + i + '"' + (i === 0 ? ' selected' : '') + '>' + esc(v.time) + '　' + esc(dnn(v.no)) + '（' + esc(v.area || '地区未登録') + '・担当 ' + esc(staffName(v.staffId)) + '）を ' + esc(c.time) + ' に前倒しする</option>'; }).join('') + '</select>' +
     (cs.length ? '<label style="display:block;margin:6px 0"><input type="checkbox" id="af_ok"> 前倒しする患者さんの了承を得た</label>' : '<p class="muted">この日の後の時間帯に、前倒しできる訪問はありません。</p>') +
     '<label class="f">② 知らせる相手（連絡板とタブレットに出ます）</label>' +
     '<label style="margin-right:12px"><input type="checkbox" id="af_toNurse" checked> 担当の看護師（' + esc(staffName(c.staffId)) + '）</label>' +
@@ -1384,24 +1411,24 @@ function afterOpen(c){
       var fromT = v.moved ? v.moved.from : v.time;
       ev = ev.filter(function(e){ return !(e.type === 'move' && e.date === c.date && e.patientNo === v.no && e.fromTime === fromT); });
       ev.push({ id:uid(), type:'move', patientNo:v.no, date:c.date, fromTime:fromT, toTime:c.time, toStaff:c.staffId, by:me, created:now });
-      done.push('組み換え：' + dn(v.no) + ' を ' + v.time + ' → ' + c.time + '（' + staffName(c.staffId) + '）');
+      done.push('組み換え：' + dnn(v.no) + ' を ' + v.time + ' → ' + c.time + '（' + staffName(c.staffId) + '）');
     }
     saveEvents(ev); ev = events();
-    var head = jpDate(c.date) + ' ' + c.time + '　' + dn(c.no);
+    var head = jpDate(c.date) + ' ' + c.time + '　' + dnn(c.no);
     if($('af_toNurse').checked){
       ev.push({ id:uid(), type:'note', kind:'キャンセル', from:me, to:[c.staffId], title:'【キャンセルと組み換え】' + head + ' がキャンセルになりました',
         body:'理由（言葉のまま）：「' + c.words + '」（' + c.cat + '）。' + (c.fee ? 'キャンセル料を請求します。' : (c.late ? 'キャンセル料はいただかない扱い（事務局の判断）です。' : '前日の締め切りまでの連絡のため、キャンセル料はかかりません。')) +
-          (v ? '空いた ' + c.time + ' に ' + dn(v.no) + '（' + (v.area || '地区未登録') + '）を前倒ししました。' : '空いた時間は、記録の片付けに使ってください。') + '　この日のあなたの予定：' + dayPlanText(c.date, c.staffId), mDate:'', mTime:'', created:now, date:ymd(new Date()) });
+          (v ? '空いた ' + c.time + ' に ' + dnn(v.no) + '（' + (v.area || '地区未登録') + '）を前倒ししました。' : '空いた時間は、記録の片付けに使ってください。') + '　この日のあなたの予定：' + dayPlanText(c.date, c.staffId), mDate:'', mTime:'', created:now, date:ymd(new Date()) });
       done.push('担当の看護師（' + staffName(c.staffId) + '）へ知らせ');
     }
     if(v && $('af_toMoved').checked && v.staffId !== c.staffId){
-      ev.push({ id:uid(), type:'note', kind:'予定の組み換え', from:me, to:[v.staffId], title:'【予定の組み換え】' + jpDate(c.date) + '　' + dn(v.no) + ' の ' + v.time + ' の訪問は ' + staffName(c.staffId) + 'さんが ' + c.time + ' に行きます',
+      ev.push({ id:uid(), type:'note', kind:'予定の組み換え', from:me, to:[v.staffId], title:'【予定の組み換え】' + jpDate(c.date) + '　' + dnn(v.no) + ' の ' + v.time + ' の訪問は ' + staffName(c.staffId) + 'さんが ' + c.time + ' に行きます',
         body:'キャンセルで空いた時間に前倒ししたため、この訪問はあなたの予定から外れます。　この日のあなたの予定：' + dayPlanText(c.date, v.staffId), mDate:'', mTime:'', created:now, date:ymd(new Date()) });
       done.push('前倒しした訪問の元の担当（' + staffName(v.staffId) + '）へ知らせ');
     }
     if($('af_toOffice').checked && offIds.length){
       ev.push({ id:uid(), type:'note', kind:'キャンセル', from:me, to:offIds, title:'【事後処理の報告】' + head + '（担当 ' + staffName(c.staffId) + '）' + (c.fee ? '　キャンセル料あり' : ''),
-        body:(c.fee ? 'キャンセル料を請求してください。' : (c.late ? 'キャンセル料はいただかない扱いです。' : 'キャンセル料はかかりません。')) + (v ? '空いた時間に ' + dn(v.no) + ' を ' + v.time + ' → ' + c.time + '（' + staffName(c.staffId) + '）で前倒ししました（患者さんの了承あり）。' : '組み換えはしていません。') + '　信用度：' + trustOf(c.no).lv, mDate:'', mTime:'', created:now, date:ymd(new Date()) });
+        body:(c.fee ? 'キャンセル料を請求してください。' : (c.late ? 'キャンセル料はいただかない扱いです。' : 'キャンセル料はかかりません。')) + (v ? '空いた時間に ' + dnn(v.no) + ' を ' + v.time + ' → ' + c.time + '（' + staffName(c.staffId) + '）で前倒ししました（患者さんの了承あり）。' : '組み換えはしていません。') + '　信用度：' + trustOf(c.no).lv, mDate:'', mTime:'', created:now, date:ymd(new Date()) });
       done.push('事務局へ報告');
     }
     saveEvents(ev); renderPlan(); renderToday(); renderBoard();
@@ -1418,7 +1445,7 @@ function intakeSave(){
   var ev = events(), cxNo = selNo('c_no'), cxDate = $('c_date').value, cxTime = $('c_time').value, cxStaff = $('c_staff').value, fee = !!late && !waive;
   /* 事務局へ連絡板で知らせる（担当の看護師には、共有でキャンセルの知らせが別に届く） */
   var office = DEPTS.filter(function(d){ return d.kind === 'office'; })[0], offIds = office ? deptStaff(office).map(function(s){ return s.id; }).filter(function(id){ return id !== $('c_by').value; }) : [];
-  if(offIds.length) ev.push({ id:uid(), type:'note', kind:'キャンセル', from:$('c_by').value, to:offIds, title:'【キャンセル】' + jpDate(cxDate) + ' ' + cxTime + '　' + dn(cxNo) + '（担当 ' + staffName(cxStaff) + '）' + (fee ? '　キャンセル料あり' : ''),
+  if(offIds.length) ev.push({ id:uid(), type:'note', kind:'キャンセル', from:$('c_by').value, to:offIds, title:'【キャンセル】' + jpDate(cxDate) + ' ' + cxTime + '　' + dnn(cxNo) + '（担当 ' + staffName(cxStaff) + '）' + (fee ? '　キャンセル料あり' : ''),
     body:'理由（言葉のまま）：「' + $('c_words').value.trim() + '」／分類：' + $('c_cat').value + '／連絡を受けた日時：' + $('c_recv').value.replace('T', ' ') + '／' + (late ? '前日の締め切りを過ぎた連絡' : '前日の締め切りまでの連絡') + (fee ? '・キャンセル料を請求' : (late ? '・いただかない（' + $('c_waiveWhy').value.trim() + '）' : '')) + '／信用度：' + trustOf(cxNo).lv, mDate:'', mTime:'', created:nowLocal(), date:ymd(new Date()) });
   ev.push({ id:uid(), type:'cancel', patientNo:selNo('c_no'), date:$('c_date').value, time:$('c_time').value, staffId:$('c_staff').value,
     words:$('c_words').value.trim(), cat:$('c_cat').value, recv:$('c_recv').value, by:$('c_by').value,
@@ -1435,7 +1462,7 @@ function renderIntakeList(){
   if(!cx.length){ $('intakeList').innerHTML = '<p class="empty">まだキャンセルの記録はありません。</p>'; return; }
   $('intakeList').innerHTML = '<div class="tbl-scroll"><table><tr><th>訪問</th><th>契約書番号</th><th>理由（言葉のまま）</th><th>分類</th><th>キャンセル料</th><th>受けた人</th><th></th></tr>' +
     cx.map(function(e){
-      return '<tr><td>' + esc(jpDate(e.date)) + ' ' + esc(e.time || '') + '</td><td>' + esc(dn(e.patientNo)) + '<br>' + trustTag(e.patientNo) + '</td><td>「' + esc(e.words) + '」</td><td>' + esc(e.cat) + '</td><td>' +
+      return '<tr><td>' + esc(jpDate(e.date)) + ' ' + esc(e.time || '') + '</td><td>' + esc(dnn(e.patientNo)) + '<br>' + trustTag(e.patientNo) + '</td><td>「' + esc(e.words) + '」</td><td>' + esc(e.cat) + '</td><td>' +
         (e.fee ? '<span class="tag amber">あり</span>' : (e.late ? '<span class="tag gray">いただかない</span>' : '<span class="tag gray">なし</span>')) +
         '</td><td>' + esc(staffName(e.by)) + (e.fwdTo ? '→' + esc(staffName(e.fwdTo)) : '') + '</td><td><button class="btn small danger" data-del="' + esc(e.id) + '">取り消す</button></td></tr>';
     }).join('') + '</table></div>';
@@ -1450,7 +1477,7 @@ function renderIntakeList(){
 function initVoice(){
   if(!window.TriVoice){ $('micStatus').textContent = '音声エンジンを読み込めませんでした。手で入力してください。'; return; }
   var old = $('micBtn'); var nb = old.cloneNode(true); old.parentNode.replaceChild(nb, old);
-  var nos = patients().map(function(p){ return dn(p.no); }).join('、') || '（未登録）';
+  var nos = patients().map(function(p){ return dn(p.no) + (p.name ? '（' + p.name + (p.kana ? '・' + p.kana : '') + '）' : ''); }).join('、') || '（未登録）';
   var today = ymd(new Date());
   TriVoice.init({
     relay: GATE_URL.replace(/\/api\/gate$/, ''),
@@ -1458,10 +1485,10 @@ function initVoice(){
     recordingMessage:'録音中… 契約書番号、どの日の訪問か、' + D().client + 'が言った理由を話してください。終わったらもう一度マイクを押します。',
     readyMessage:'準備完了。マイクを押して話してください。',
     promptIntro:'あなたは' + (D().k === 'nurse' ? '訪問看護ステーション' : D().name) + 'の事務局で、キャンセルの電話の内容を記録する補助です。今日は ' + today + ' です。'+
-      '登録されている契約書番号は ' + nos + ' です。次の【文字起こし】から、下の【項目一覧】に当てはまる情報だけを抜き出し、JSONオブジェクトとして返してください。'+
+      '登録されている契約書番号（かっこ内は氏名）は ' + nos + ' です。次の【文字起こし】から、下の【項目一覧】に当てはまる情報だけを抜き出し、JSONオブジェクトとして返してください。'+
       '患者さんが言った理由は、言い換えず、話された言葉にできるだけ近い形で残してください。評価や意見は書かないでください。',
     schema:[
-      { id:'c_no',    t:'text', d:'契約書番号。登録されている番号と完全に一致するものだけ。分からなければ省く' },
+      { id:'c_no',    t:'text', d:'契約書番号。登録されている番号と完全に一致するものだけ。氏名で話されたときは、その氏名に当たる番号を入れる。分からなければ省く' },
       { id:'c_date',  t:'text', d:'キャンセルされた訪問の日。YYYY-MM-DD 形式。「明日」等は今日の日付から計算する' },
       { id:'c_time',  t:'text', d:'訪問の時刻。HH:MM 形式（24時間）。述べられていなければ省く' },
       { id:'c_words', t:'text', d:'患者さんが言ったキャンセルの理由。話された言葉のまま' },
@@ -1610,7 +1637,7 @@ function renderReport(){
   if(dr.by) $('rp_by').value = dr.by;
   if(!dr.rp_special){ var cx = rpCxText(no, m); if(cx) $('rp_special').value = cx; }
   var dy = rpDays(no, m), p = patient(no) || {};
-  $('rp_head').innerHTML = '<div class="judge free" style="margin:8px 0">契約書番号 <b>' + esc(dn(no)) + '</b>（' + esc(p.ins || '保険未登録') + '）・' + esc(jpMonth(m)) + '分。' + (dr.saved ? '<small class="muted">　下書きを保存した日時：' + esc(dr.saved.replace('T', ' ')) + '</small>' : '') + '</div>';
+  $('rp_head').innerHTML = '<div class="judge free" style="margin:8px 0">契約書番号 <b>' + esc(dnn(no)) + '</b>（' + esc(p.ins || '保険未登録') + '）・' + esc(jpMonth(m)) + '分。' + (dr.saved ? '<small class="muted">　下書きを保存した日時：' + esc(dr.saved.replace('T', ' ')) + '</small>' : '') + '</div>';
   $('rp_days').textContent = dy.days.length ? dy.days.map(function(d){ return (+d.slice(8)) + '日'; }).join('・') + '（計 ' + dy.days.length + '日・' + dy.src + 'から）' : 'この月の訪問はありません。';
 }
 function rpText(){
@@ -1645,7 +1672,7 @@ function renderHidden(){
   var by = {}; r.list.forEach(function(v){ by[v.staffId] = (by[v.staffId] || 0) + 1; });
   box.innerHTML = '<div class="judge fee" style="margin:8px 0">看護記録を取り込んだ ' + r.days + '日分で、記録の無い訪問が <b>' + r.list.length + '件</b> あります（担当ごと：' + Object.keys(by).map(function(k){ return esc(staffName(k)) + ' ' + by[k] + '件'; }).join('、') + '）。</div>' +
     '<table><tr><th>訪問</th><th>契約書番号</th><th>担当</th><th></th></tr>' + r.list.map(function(v, i){
-      return '<tr><td>' + esc(jpDate(v.date)) + ' ' + esc(v.time) + '</td><td>' + esc(dn(v.no)) + ' ' + trustTag(v.no) + '</td><td>' + esc(staffName(v.staffId)) + '</td><td><button class="btn small amber" data-hid="' + i + '">キャンセルとして受け付ける</button></td></tr>';
+      return '<tr><td>' + esc(jpDate(v.date)) + ' ' + esc(v.time) + '</td><td>' + esc(dnn(v.no)) + ' ' + trustTag(v.no) + '</td><td>' + esc(staffName(v.staffId)) + '</td><td><button class="btn small amber" data-hid="' + i + '">キャンセルとして受け付ける</button></td></tr>';
     }).join('') + '</table>';
   box.querySelectorAll('[data-hid]').forEach(function(b){
     b.addEventListener('click', function(){
@@ -1670,7 +1697,7 @@ function renderAdmin(){
     var h = '<table><tr><th>契約書番号</th><th class="num">今月</th><th class="num">先月</th><th class="num">体調・病状以外</th><th class="num">前日' + s.cut + '時以降</th><th class="num">キャンセル料</th>' + (price ? '<th class="num">訪問できなかった分</th>' : '') + '<th>変わった点</th></tr>';
     rows.forEach(function(r){
       tn += r.a.n; tf += r.a.fee;
-      h += '<tr><td>' + esc(dn(r.no)) + ' <span class="muted">' + esc(r.area || '') + '</span></td><td class="num">' + r.a.n + '</td><td class="num">' + r.b.n + '</td><td class="num">' + r.a.other + '</td><td class="num">' + r.a.late + '</td><td class="num">' + r.a.fee + '回' + (fee ? '<br>' + yen(r.a.fee * fee) : '') + '</td>' +
+      h += '<tr><td>' + esc(dnn(r.no)) + ' <span class="muted">' + esc(r.area || '') + '</span></td><td class="num">' + r.a.n + '</td><td class="num">' + r.b.n + '</td><td class="num">' + r.a.other + '</td><td class="num">' + r.a.late + '</td><td class="num">' + r.a.fee + '回' + (fee ? '<br>' + yen(r.a.fee * fee) : '') + '</td>' +
         (price ? '<td class="num">' + yen(r.a.n * price) + '</td>' : '') + '<td>' + r.f.map(function(t){ return '<span class="tag amber">' + esc(t) + '</span>'; }).join('') + '</td></tr>';
     });
     h += '<tr><th>合計</th><th class="num">' + tn + '</th><th></th><th></th><th></th><th class="num">' + tf + '回' + (fee ? '<br>' + yen(tf * fee) : '') + '</th>' + (price ? '<th class="num">' + yen(tn * price) + '</th>' : '') + '<th></th></tr></table>';
@@ -1682,29 +1709,29 @@ function renderAdmin(){
   else{
     var by = {}; dec.forEach(function(e){ (by[e.staffId] = by[e.staffId] || []).push(e); });
     $('adDecline').innerHTML = '<table><tr><th>' + D().worker + '</th><th class="num">回数</th><th>内容</th></tr>' + Object.keys(by).map(function(k){
-      return '<tr><td>' + esc(staffName(k)) + '</td><td class="num">' + by[k].length + '</td><td>' + by[k].map(function(e){ return esc(jpDate(e.date)) + ' ' + esc(dn(e.patientNo)) + '「' + esc(e.reason) + '」'; }).join('<br>') + '</td></tr>';
+      return '<tr><td>' + esc(staffName(k)) + '</td><td class="num">' + by[k].length + '</td><td>' + by[k].map(function(e){ return esc(jpDate(e.date)) + ' ' + esc(dnn(e.patientNo)) + '「' + esc(e.reason) + '」'; }).join('<br>') + '</td></tr>';
     }).join('') + '</table>';
   }
   var nd = D().doctor ? patients().filter(function(p){ return !doctorStatus(p.no).ok; }) : [];
   $('adDoctor').innerHTML = nd.length ? '<ul style="margin-left:18px">' + nd.map(function(p){
     var ds = doctorStatus(p.no);
-    return '<li>' + esc(dn(p.no)) + (p.instDate ? '（指示書 ' + esc(jpDate(p.instDate)) + '）' : '') + (ds.last ? '　最後の確認 ' + esc(jpDate(ds.last)) : '　確認の記録なし') + '</li>';
+    return '<li>' + esc(dnn(p.no)) + (p.instDate ? '（指示書 ' + esc(jpDate(p.instDate)) + '）' : '') + (ds.last ? '　最後の確認 ' + esc(jpDate(ds.last)) : '　確認の記録なし') + '</li>';
   }).join('') + '</ul>' : '<p class="empty">すべての患者さんで確認が済んでいます。</p>';
   var today = ymd(new Date());
   var rv = events().filter(function(e){ return e.type === 'refusal' && e.status !== '取り下げ' && e.reviewBy && e.reviewBy <= today && inDept(e.patientNo); });
   $('adReview').innerHTML = rv.length ? '<ul style="margin-left:18px">' + rv.map(function(e){
-    return '<li>' + esc(dn(e.patientNo)) + '：対象 ' + esc(staffName(e.staffId)) + '（記録 ' + esc(jpDate(e.date)) + '・見直し ' + esc(jpDate(e.reviewBy)) + '）「' + esc(e.words) + '」</li>';
+    return '<li>' + esc(dnn(e.patientNo)) + '：対象 ' + esc(staffName(e.staffId)) + '（記録 ' + esc(jpDate(e.date)) + '・見直し ' + esc(jpDate(e.reviewBy)) + '）「' + esc(e.words) + '」</li>';
   }).join('') + '</ul><p class="muted">「' + D().client + 'の経過」で、今も同じか確かめた結果を残してください。</p>' : '<p class="empty">見直しの時期が来た記録はありません。</p>';
 }
 
 /* ============================================================
    患者さんの登録（2026-10-26・宏史さんの指示）
    カイポケの書類（アセスメント・指示書・計画書・報告書・契約書）から、訪問に要るところだけを
-   手で写す。氏名は入れず契約書番号で扱う（2026-10-12の決まり）。地区は町名まで。
+   手で写す。契約書番号と氏名を入れる（2026-10-28・宏史さんの指示「契約番号氏名対照表は必須」。患者情報を預からない決まりは他社のコンサル先とのもので、ノアには当たらない）。地区は町名まで。
    何人かで手分けして写すため、書類ごとに「写した日・写した人」を残し、一覧で進み具合を出す。
    特定の職員を嫌がる申し出は、ここに書かせず「経過」の拒否の申し出（本人の言葉・見直し期限つき）へ回す。
    ============================================================ */
-var PT_F = [['pt_status','status'],['pt_ins','ins'],['pt_area','area'],['pt_addr','addr'],['pt_spot','spot'],
+var PT_F = [['pt_name','name'],['pt_kana','kana'],['pt_status','status'],['pt_ins','ins'],['pt_area','area'],['pt_addr','addr'],['pt_spot','spot'],['pt_wish','wish'],['pt_wBand','wBand'],['pt_vmin','vmin'],['pt_team','team'],['pt_preCall','preCall'],['pt_ngNote','ngNote'],['pt_wOther','wOther'],
   ['pt_hosp','hosp'],['pt_doc','doc'],['pt_inst','instDate'],['pt_instEnd','instEnd'],['pt_instPoint','instPoint'],['pt_special','special'],['pt_specialEnd','specialEnd'],
   ['pt_asmDate','asmDate'],['pt_asmState','asmState'],['pt_asmLife','asmLife'],['pt_asmFamily','asmFamily'],['pt_asmRisk','asmRisk'],
   ['pt_goal','goal'],['pt_planMade','planMade'],['pt_freq','freq'],
@@ -1721,7 +1748,11 @@ function ptDocs(){
   return a;
 }
 function ptCopiedN(p){ var c = (p && p.copied) || {}; return ptDocs().filter(function(x){ return c[x[0]]; }).length; }
+var WISH_DOW = ['1','2','3','4','5','6','0'];
+function ptDowBox(id, sel){ var on = {}; (sel || []).forEach(function(d){ on[d] = 1; }); $(id).innerHTML = WISH_DOW.map(function(d){ return '<label style="display:inline-block;margin:2px 12px 2px 0"><input type="checkbox" value="' + d + '"' + (on[d] ? ' checked' : '') + '> ' + DOW[+d] + '</label>'; }).join(''); }
+function ptDowGet(id){ var a = []; document.querySelectorAll('#' + id + ' input:checked').forEach(function(c){ a.push(c.value); }); return a; }
 function ptForm(){
+  ptDowBox('pt_wDays', ptDowGet('pt_wDays')); ptDowBox('pt_ngDays', ptDowGet('pt_ngDays'));
   var keep = {}; document.querySelectorAll('#pt_hardCats input:checked').forEach(function(c){ keep[c.value] = 1; });
   $('pt_hardCats').innerHTML = HARD_CATS.map(function(c){ return '<label style="display:inline-block;margin:2px 14px 2px 0"><input type="checkbox" value="' + esc(c) + '"' + (keep[c] ? ' checked' : '') + '> ' + esc(c) + '</label>'; }).join('');
   var kc = {}; document.querySelectorAll('#pt_copied input:checked').forEach(function(c){ kc[c.value] = 1; });
@@ -1803,7 +1834,7 @@ function ptClear(){
   $('pt_no').value = '';
   PT_F.forEach(function(f){ var el = $(f[0]); if(el) el.value = (el.tagName === 'SELECT') ? el.options[0].value : ''; });
   ['pt_plan','pt_start','pt_pdue'].forEach(function(id){ $(id).value = ''; });
-  document.querySelectorAll('#pt_hardCats input, #pt_copied input').forEach(function(c){ c.checked = false; });
+  document.querySelectorAll('#pt_hardCats input, #pt_copied input, #pt_wDays input, #pt_ngDays input').forEach(function(c){ c.checked = false; });
   var n = $('pt_copiedNote'); if(n) n.textContent = '';
 }
 function ptLoad(no){
@@ -1815,6 +1846,7 @@ function ptLoad(no){
   if(D().kind === 'monitor'){ $('pt_cyc').value = p.cyc || 1; $('pt_staff').value = p.staffId || ''; $('pt_plan').value = p.planDue || ''; $('pt_start').value = p.start || ''; }
   else $('pt_pdue').value = p.planDue || '';
   var hc = p.hardCats || []; document.querySelectorAll('#pt_hardCats input').forEach(function(c){ c.checked = hc.indexOf(c.value) >= 0; });
+  ptDowBox('pt_wDays', p.wDays || []); ptDowBox('pt_ngDays', p.ngDays || []);
   var cp = p.copied || {}; document.querySelectorAll('#pt_copied input').forEach(function(c){ c.checked = !!cp[c.value]; });
   $('pt_copiedNote').textContent = ptDocs().filter(function(x){ return cp[x[0]]; }).map(function(x){ return x[1] + '：' + jpDate(cp[x[0]].d) + (cp[x[0]].by ? '・' + staffName(cp[x[0]].by) : ''); }).join('　');
   $('pt_msg').textContent = '呼び出しました。直したら「この内容で登録する」を押してください。';
@@ -1830,13 +1862,14 @@ function ptSave(){
   if(D().kind === 'monitor'){ p.cyc = +$('pt_cyc').value || 1; p.staffId = $('pt_staff').value; p.planDue = $('pt_plan').value; p.start = $('pt_start').value; }
   else p.planDue = $('pt_pdue').value;
   p.hardCats = []; document.querySelectorAll('#pt_hardCats input:checked').forEach(function(c){ p.hardCats.push(c.value); });
+  p.wDays = ptDowGet('pt_wDays'); p.ngDays = ptDowGet('pt_ngDays').filter(function(d){ return p.wDays.indexOf(d) < 0; });
   var cp = p.copied || {}, nc = {}, by = $('pt_by').value || dev().me || '';
   document.querySelectorAll('#pt_copied input').forEach(function(c){ if(c.checked) nc[c.value] = cp[c.value] || { d:ymd(new Date()), by:by }; });
   p.copied = nc;
   p.editedBy = by; p.edited = nowLocal();
   saveCol('patients', a);
   ptClear();
-  $('pt_msg').textContent = (isNew ? '登録しました：' : '直しました：') + dn(no) + '。続けて次の' + D().client + 'を入れられます。';
+  $('pt_msg').textContent = (isNew ? '登録しました：' : '直しました：') + dnn(no) + '。続けて次の' + D().client + 'を入れられます。';
   refreshAll();
   if(p.addr && p.geoAddr !== p.addr) geoFill(no).then(function(r){ if(r === 'miss') $('pt_msg').textContent += '（住所から地図の位置が取れませんでした。「東村山市本町2-3-4」の形で入れ直してください）'; else if(r === 'ok') renderToday(); });
 }
@@ -1980,9 +2013,9 @@ function ptView(no){
   var p = patient(no); if(!p){ $('ptView').innerHTML = ''; return; }
   var d = D(), m = ym(ymd(new Date())), hi = hardInfo(no, m), cp = p.copied || {};
   var sec = function(title, rows){ rows = rows.filter(function(r){ return r[1]; }); return rows.length ? '<h3>' + esc(title) + '</h3><table>' + rows.map(function(r){ return '<tr><th style="width:30%">' + esc(r[0]) + '</th><td style="white-space:pre-wrap">' + esc(r[1]) + '</td></tr>'; }).join('') + '</table>' : ''; };
-  var h = '<div class="card" style="margin-top:14px;box-shadow:none"><h2>' + esc(dn(no)) + ' <small class="muted">' + esc(p.area || '') + '・' + esc(p.status || '利用中') + (p.ins ? '・' + esc(p.ins) : '') + '</small></h2>' +
+  var h = '<div class="card" style="margin-top:14px;box-shadow:none"><h2>' + esc(dnn(no)) + ' <small class="muted">' + esc(p.area || '') + '・' + esc(p.status || '利用中') + (p.ins ? '・' + esc(p.ins) : '') + '</small></h2>' +
     (hi.on ? '<p><span class="tag red">困難患者（' + esc(hi.why.join('・')) + '）</span></p>' : '') +
-    sec('訪問先', [['目印・駐車', p.spot]]) +
+    sec('訪問先', [['目印・駐車', p.spot]]) + sec('予定の希望', [['希望の曜日', (p.wDays || []).map(function(d){ return DOW[+d]; }).join('・')], ['希望の時刻・時間帯', [p.wish, p.wBand].filter(Boolean).join('・')], ['訪問できない曜日', (p.ngDays || []).map(function(d){ return DOW[+d]; }).join('・')], ['訪問できない時間・理由', p.ngNote], ['1回の訪問時間', p.vmin ? p.vmin + '分' : ''], ['体制', p.team], ['訪問前の連絡', p.preCall], ['その他の希望', p.wOther]]) +
     (d.doctor ? sec('指示書', [['医療機関', p.hosp], ['主治医', p.doc], ['指示期間', (p.instDate ? jpDate(p.instDate) : '') + (p.instEnd ? '〜' + jpDate(p.instEnd) : '')], ['指示の内容', p.instPoint], ['特別指示', p.special ? p.special + (p.specialEnd ? '（' + jpDate(p.specialEnd) + 'まで）' : '') : '']]) : '') +
     sec('アセスメント', [['アセスメントの日', p.asmDate ? jpDate(p.asmDate) : ''], ['主な病名・いまの状態', p.asmState], ['暮らしの様子', p.asmLife], ['家族・キーパーソン', p.asmFamily], ['気を付けること', p.asmRisk]]) +
     (d.kind === 'visit' ? sec('計画書', [['目標', p.goal], ['作成日', p.planMade ? jpDate(p.planMade) : ''], ['次の見直し', p.planDue ? jpDate(p.planDue) : ''], ['回数・時間帯', p.freq]]) : '') +
@@ -2010,10 +2043,10 @@ function renderPtList(){
   var done = act.filter(function(p){ return ptCopiedN(p) >= docs.length; }).length;
   $('ptProgress').textContent = '登録 ' + act.length + '人（契約終了を除く）。カイポケの書類を全部写し終えた人 ' + done + '人、まだの人 ' + (act.length - done) + '人。地区の順に並べています。';
   var mon = D().kind === 'monitor';
-  $('ptList').innerHTML = pts.length ? '<table><tr><th>契約書番号</th><th>地区</th><th>状態</th>' + (mon ? '<th>周期</th><th>担当</th><th>計画の更新期限</th>' : D().doctor ? '<th>指示期間の終わり</th>' : '') + '<th>写した書類</th><th>印</th><th></th></tr>' + pts.map(function(p){
+  $('ptList').innerHTML = pts.length ? '<table><tr><th>契約書番号</th><th>氏名</th><th>地区</th><th>状態</th>' + (mon ? '<th>周期</th><th>担当</th><th>計画の更新期限</th>' : D().doctor ? '<th>指示期間の終わり</th>' : '') + '<th>写した書類</th><th>印</th><th></th></tr>' + pts.map(function(p){
     var hi = hardInfo(p.no, m), n = ptCopiedN(p);
     var instEnd = p.instEnd ? (p.instEnd < ymd(new Date()) ? '<span class="tag red">' + esc(jpDate(p.instEnd)) + '（切れています）</span>' : esc(jpDate(p.instEnd))) : '<span class="muted">未入力</span>';
-    return '<tr><td>' + esc(dn(p.no)) + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + '</td>' +
+    return '<tr><td>' + esc(dn(p.no)) + '</td><td>' + esc(p.name || '') + (p.kana ? '<br><small class="muted">' + esc(p.kana) + '</small>' : '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + '</td>' +
       (mon ? '<td>' + esc(cycLabel(p.cyc)) + '</td><td>' + esc(staffName(p.staffId)) + '</td><td>' + esc(p.planDue ? jpDate(p.planDue) : '') + '</td>' : D().doctor ? '<td>' + instEnd + '</td>' : '') +
       '<td>' + (n >= docs.length ? '<span class="tag green">' + n + '／' + docs.length + '</span>' : '<span class="tag amber">' + n + '／' + docs.length + '</span>') + (p.editedBy ? ' <small class="muted">' + esc(staffName(p.editedBy)) + '</small>' : '') + '</td>' +
       '<td>' + (hi.on ? '<span class="tag red" title="' + esc(hi.why.join('・')) + '">困難患者</span>' : '') + '</td>' +
@@ -2039,7 +2072,7 @@ function hardRows(m){
 function renderHard(m){
   var rows = hardRows(m), sent = events().filter(function(e){ return e.type === 'hardrep' && e.month === m && inDept(e.patientNo || ''); });
   $('adHard').innerHTML = rows.length ? '<table><tr><th>契約書番号</th><th class="num">キャンセル</th><th class="num">うち体調・病状以外</th><th class="num">変更</th><th>理由</th></tr>' + rows.map(function(r){
-    return '<tr><td>' + esc(dn(r.p.no)) + ' <span class="muted">' + esc(r.p.area || '') + '</span></td><td class="num">' + r.cx + '</td><td class="num">' + r.other + '</td><td class="num">' + r.ch + '</td><td>' + esc(r.hi.why.join('・')) + '</td></tr>';
+    return '<tr><td>' + esc(dnn(r.p.no)) + ' <span class="muted">' + esc(r.p.area || '') + '</span></td><td class="num">' + r.cx + '</td><td class="num">' + r.other + '</td><td class="num">' + r.ch + '</td><td>' + esc(r.hi.why.join('・')) + '</td></tr>';
   }).join('') + '</table>' : '<p class="empty">この月に当てはまる' + D().client + 'はいません（基準：キャンセル・変更 ' + settings().hard + '回以上、または困難事例の印）。</p>';
   $('adHardMsg').textContent = sent.length ? 'この月の報告は ' + String(sent[sent.length - 1].created || '').replace('T', ' ') + ' に出しています。' : '';
 }
@@ -2051,7 +2084,7 @@ function hardSend(){
   if(!from){ alert('「名簿・設定」の「この端末を主に使う人」を先に選んでください（連絡板の出す人になります）。'); return; }
   if(events().some(function(e){ return e.type === 'hardrep' && e.month === m && inDept(e.patientNo || ''); }) && !confirm('この月の報告はもう出しています。もう一度出しますか？')) return;
   var body = '基準：月のキャンセル・変更 ' + settings().hard + '回以上、または困難事例の印が付いている' + D().client + '\n' +
-    rows.map(function(r){ return '・' + dn(r.p.no) + '（' + (r.p.area || '地区未登録') + '）キャンセル ' + r.cx + '回（うち体調・病状以外 ' + r.other + '回）・変更 ' + r.ch + '回／' + r.hi.why.join('・'); }).join('\n') +
+    rows.map(function(r){ return '・' + dnn(r.p.no) + '（' + (r.p.area || '地区未登録') + '）キャンセル ' + r.cx + '回（うち体調・病状以外 ' + r.other + '回）・変更 ' + r.ch + '回／' + r.hi.why.join('・'); }).join('\n') +
     '\n詳しい経過は「' + D().client + 'の経過」で番号を選ぶと見られます。';
   var a = events(), nid = uid();
   a.push({ id:nid, type:'note', kind:'連絡事項', from:from, to:'dept:' + D().k, title:'【月の報告】' + jpMonth(m) + '　困難患者 ' + rows.length + '人', body:body, mDate:'', mTime:'', created:nowLocal(), date:ymd(new Date()) });
@@ -2228,7 +2261,7 @@ function renderSetup(){
   }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var wk = weekly().slice().sort(function(a,b){ var da = (+a.dow + 6) % 7, db = (+b.dow + 6) % 7; return da - db || (a.time < b.time ? -1 : 1); });
   $('wkList').innerHTML = wk.length ? '<table><tr><th>曜日</th><th>時刻</th><th>契約書番号</th><th>担当</th><th></th></tr>' + wk.map(function(v){
-    return '<tr><td>' + DOW[+v.dow] + '</td><td>' + esc(v.time) + '（' + esc(v.min) + '分）</td><td>' + esc(dn(v.no)) + '</td><td>' + esc(staffName(v.staffId)) + (v.withId ? '<br><small class="muted">同行：' + esc(staffName(v.withId)) + '</small>' : '') + '</td><td><button class="btn small danger" data-wkdel="' + esc(v.id) + '">外す</button></td></tr>';
+    return '<tr><td>' + DOW[+v.dow] + '</td><td>' + esc(v.time) + '（' + esc(v.min) + '分）</td><td>' + esc(dnn(v.no)) + '</td><td>' + esc(staffName(v.staffId)) + (v.withId ? '<br><small class="muted">同行：' + esc(staffName(v.withId)) + '</small>' : '') + '</td><td><button class="btn small danger" data-wkdel="' + esc(v.id) + '">外す</button></td></tr>';
   }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var s = settings();
   $('s_cut').value = s.cut; $('s_price').value = s.price; $('s_fee').value = s.fee; $('s_review').value = s.review; $('s_hard').value = s.hard;
@@ -2363,7 +2396,7 @@ function renderAlerts(){
   }).join('') + '</ul><div class="btns"><button class="btn small" id="alBoard">連絡板を開く</button></div></div>' : '';
   if(!a.length){ box.innerHTML = nh; wireNoteAlert(); return; }
   box.innerHTML = nh + '<div class="alert"><b>あなたの担当の訪問にキャンセルが入りました</b><ul>' + a.map(function(x){
-    return '<li>' + esc(jpDate(x.date)) + ' ' + esc(x.time) + '　' + esc(dn(x.no)) + (inDept(x.no) ? '' : '（' + esc((deptOfNo(x.no) || {}).name || '') + '）') + '：「' + esc(x.words) + '」（' + esc(x.cat) + '）' + (x.fee ? '・キャンセル料あり' : '') + (x.fwd ? '・事務局から回されました' : '') + '</li>';
+    return '<li>' + esc(jpDate(x.date)) + ' ' + esc(x.time) + '　' + esc(dnn(x.no)) + (inDept(x.no) ? '' : '（' + esc((deptOfNo(x.no) || {}).name || '') + '）') + '：「' + esc(x.words) + '」（' + esc(x.cat) + '）' + (x.fee ? '・キャンセル料あり' : '') + (x.fwd ? '・事務局から回されました' : '') + '</li>';
   }).join('') + '</ul><div class="btns"><button class="btn small amber" id="alGap">予定で空いた時間の案を見る</button><button class="btn small sub" id="alOk">確認した</button></div></div>';
   wireNoteAlert();
   $('alOk').onclick = function(){ sj(ALERT_KEY, lj(ALERT_KEY, []).filter(function(y){ return y.k === 'note'; })); renderAlerts(); };
@@ -2644,7 +2677,7 @@ function renderMonitor(){
   $('monBody').innerHTML = '<table><tr><th>契約書番号</th><th>担当</th><th>周期</th><th>前回</th><th>次に行う月</th><th>計画の更新期限</th></tr>' + rows.map(function(r){
     var t = r.late ? ' <span class="tag red">期限が過ぎています</span>' : r.now ? ' <span class="tag amber">今月</span>' : '';
     var pl = r.p.planDue ? esc(jpDate(r.p.planDue)) + (r.planLate ? ' <span class="tag red">過ぎています</span>' : r.planSoon ? ' <span class="tag amber">30日以内</span>' : '') : '';
-    return '<tr><td>' + esc(dn(r.p.no)) + '</td><td>' + esc(staffName(r.p.staffId)) + '</td><td>' + esc(cycLabel(r.p.cyc || 1)) + '</td><td>' + esc(r.last ? jpDate(r.last) : 'まだ') + '</td><td>' + esc(jpMonth(r.next)) + t + '</td><td>' + pl + '</td></tr>';
+    return '<tr><td>' + esc(dnn(r.p.no)) + '</td><td>' + esc(staffName(r.p.staffId)) + '</td><td>' + esc(cycLabel(r.p.cyc || 1)) + '</td><td>' + esc(r.last ? jpDate(r.last) : 'まだ') + '</td><td>' + esc(jpMonth(r.next)) + t + '</td><td>' + pl + '</td></tr>';
   }).join('') + '</table>';
 }
 function renderSummary(){
@@ -2682,11 +2715,11 @@ function sumMoney(){
 var DEPT_T = {
   nurse:  null,   /* 訪問看護部は画面に書いてある文のまま */
   kaigo:  { board:'連絡板（事務局から訪問介護部へ）', courseLead:'利用者さんごとに、キャンセル・次回の約束・拒否の申し出を、日付の順に一本の線で持ちます。良い悪いの評価はせず、事実だけを並べます。',
-            promiseSum:'今日やったこと・次回の約束を残す', didLabel:'今日やったこと（ヘルパーさんの言葉のまま）', ptLead:'氏名は入れず、契約書番号で扱います。地区（町名）は予定を寄せる単位に、住所（番地まで）は地図に使います。' },
+            promiseSum:'今日やったこと・次回の約束を残す', didLabel:'今日やったこと（ヘルパーさんの言葉のまま）', ptLead:'契約書番号と氏名を入れます。画面では番号の横に氏名が出ます（番号と氏名の対照表は、下の一覧から印刷できます）。地区（町名）は予定を寄せる単位に、住所（番地まで）は地図に使います。' },
   soudan: { board:'連絡板（事務局から特定障害相談部へ）', courseLead:'利用者さんごとに、モニタリング・面談・キャンセル・拒否の申し出を、日付の順に一本の線で持ちます。良い悪いの評価はせず、事実だけを並べます。',
-            promiseSum:'モニタリング・面談を記録する（次回の約束も）', didLabel:'行ったこと（相談員の言葉のまま）', ptLead:'氏名は入れず、契約書番号で扱います。モニタリングの周期と、計画の更新期限を入れると、予定のタブに次に行う月が出ます。' },
+            promiseSum:'モニタリング・面談を記録する（次回の約束も）', didLabel:'行ったこと（相談員の言葉のまま）', ptLead:'契約書番号と氏名を入れます。画面では番号の横に氏名が出ます（番号と氏名の対照表は、下の一覧から印刷できます）。モニタリングの周期と、計画の更新期限を入れると、予定のタブに次に行う月が出ます。' },
   kyotaku:{ board:'連絡板（事務局から居宅介護支援部へ）', courseLead:'利用者さんごとに、モニタリング・面談・キャンセル・拒否の申し出を、日付の順に一本の線で持ちます。良い悪いの評価はせず、事実だけを並べます。',
-            promiseSum:'モニタリング・面談を記録する（次回の約束も）', didLabel:'行ったこと（ケアマネジャーの言葉のまま）', ptLead:'氏名は入れず、契約書番号で扱います。モニタリングの周期と、計画の更新期限を入れると、予定のタブに次に行う月が出ます。' },
+            promiseSum:'モニタリング・面談を記録する（次回の約束も）', didLabel:'行ったこと（ケアマネジャーの言葉のまま）', ptLead:'契約書番号と氏名を入れます。画面では番号の横に氏名が出ます（番号と氏名の対照表は、下の一覧から印刷できます）。モニタリングの周期と、計画の更新期限を入れると、予定のタブに次に行う月が出ます。' },
   office: { board:'連絡板（事務局から各部署へ）' }
 };
 function applyDept(){
@@ -3129,7 +3162,7 @@ function geoFillAll(){
   var list = patients().filter(function(p){ return p.addr && p.geoAddr !== p.addr; }).map(function(p){ return p.no; });
   $('td_msg').textContent = list.length ? '住所から位置を取っています（' + list.length + '件）…' : '位置を取り直す住所はありません（住所の入っていない利用者は、利用者登録で住所を入れてください）。';
   var ok = 0, miss = [];
-  return list.reduce(function(pr, no){ return pr.then(function(){ return geoFill(no).then(function(r){ if(r === 'ok') ok++; else if(r === 'miss') miss.push(dn(no)); }); }); }, Promise.resolve()).then(function(){
+  return list.reduce(function(pr, no){ return pr.then(function(){ return geoFill(no).then(function(r){ if(r === 'ok') ok++; else if(r === 'miss') miss.push(dnn(no)); }); }); }, Promise.resolve()).then(function(){
     if(list.length) $('td_msg').textContent = '位置を取りました：' + ok + '件。' + (miss.length ? '取れなかった住所：' + miss.join('・') + '（住所の書き方を「東村山市本町2-3-4」の形に直してください）' : '');
     renderToday();
   });
@@ -3163,12 +3196,12 @@ function renderToday(){
   var live = vs.filter(function(v){ return !v.cx; });
   var rows = vs.map(function(v){
     var p = patient(v.no) || {}, n = live.indexOf(v) + 1;
-    return '<tr' + (v.cx ? ' style="opacity:.55"' : '') + '><td class="num"><b>' + (v.cx ? '—' : n) + '</b></td><td>' + esc(v.time) + '<br><small class="muted">' + esc(v.min || 30) + '分</small></td><td><b>' + esc(dn(v.no)) + '</b>' + (v.withId ? ' <span class="tag amber">2名体制（' + esc(staffName(v.withId === sid ? v.staffId : v.withId)) + 'さんと）</span>' : '') + (v.cx ? ' <span class="tag red">キャンセル</span>' : '') + (v.moved ? ' <span class="tag green">組み換え（元 ' + esc(v.moved.from) + '）</span>' : '') + (trustOf(v.no).lv === '低' ? ' ' + trustTag(v.no) : '') +
+    return '<tr' + (v.cx ? ' style="opacity:.55"' : '') + '><td class="num"><b>' + (v.cx ? '—' : n) + '</b></td><td>' + esc(v.time) + '<br><small class="muted">' + esc(v.min || 30) + '分</small></td><td><b>' + esc(dnn(v.no)) + '</b>' + (v.withId ? ' <span class="tag amber">2名体制（' + esc(staffName(v.withId === sid ? v.staffId : v.withId)) + 'さんと）</span>' : '') + (v.cx ? ' <span class="tag red">キャンセル</span>' : '') + (v.moved ? ' <span class="tag green">組み換え（元 ' + esc(v.moved.from) + '）</span>' : '') + (trustOf(v.no).lv === '低' ? ' ' + trustTag(v.no) : '') +
       '<br><small>' + esc(p.addr || v.area || '住所未登録') + (p.spot ? '・' + esc(p.spot) : '') + '</small>' + (p.addr && !p.lat ? ' <span class="tag gray">地図の位置が未取得</span>' : '') + '</td><td><small>' + esc(p.asmRisk || '') + '</small></td></tr>';
   }).join('');
   $('td_list').innerHTML = vs.length ? '<table><tr><th class="num">順</th><th>時刻</th><th>訪問先</th><th>気を付けること</th></tr>' + rows + '</table><p class="muted">' + esc(jpDate(date)) + '：訪問 ' + live.length + '件' + (vs.length > live.length ? '（キャンセル ' + (vs.length - live.length) + '件）' : '') + '。地図の番号は、この表の「順」と同じです。</p>'
     : '<p class="empty">' + esc(jpDate(date)) + 'の訪問はありません。</p>';
-  var pts = live.map(function(v, i){ var p = patient(v.no) || {}; return p.lat ? { n:i + 1, lat:+p.lat, lng:+p.lng, t:v.time + ' ' + dn(v.no) } : null; }).filter(Boolean);
+  var pts = live.map(function(v, i){ var p = patient(v.no) || {}; return p.lat ? { n:i + 1, lat:+p.lat, lng:+p.lng, t:v.time + ' ' + dnn(v.no) } : null; }).filter(Boolean);
   if(!pts.length){ $('td_map').style.display = 'none'; if(live.length) $('td_list').insertAdjacentHTML('afterbegin', '<p class="muted">地図に出せる訪問先がありません。利用者登録で住所（番地まで）を入れ、「住所から位置を取る」を押してください。</p>'); return; }
   $('td_map').style.display = '';
   leafletLoad().then(function(){
@@ -3204,7 +3237,7 @@ function auMake(course){
   wk.forEach(function(v){ cnt[v.no] = (cnt[v.no] || 0) + 1; (main[v.no] = main[v.no] || {})[v.staffId] = (main[v.no][v.staffId] || 0) + 1; if(!info[v.no]) info[v.no] = { min:v.min || 30, withId:'', withN:0 }; if(v.withId){ info[v.no].withId = info[v.no].withId || v.withId; info[v.no].withN++; } });
   var P = patients().filter(function(p){ return !p.status || p.status === '利用中'; }).map(function(p){
     var m = main[p.no] || {}, ms = Object.keys(m).sort(function(a, b){ return m[b] - m[a]; })[0] || '';
-    return { no:p.no, area:p.area || '（地区なし）', f:auFreq(p, cnt[p.no] || 0), lat:p.lat, lng:p.lng, main:ms };
+    return { no:p.no, area:p.area || '（地区なし）', f:auFreq(p, cnt[p.no] || 0), lat:p.lat, lng:p.lng, main:ms, wish:p.wish || '', band:p.wBand || '', wDays:p.wDays || [], ngDays:p.ngDays || [], vmin:+p.vmin || 0, team:p.team || '', why:[] };
   });
   var byArea = {}; P.forEach(function(p){ (byArea[p.area] = byArea[p.area] || []).push(p); });
   var areas = Object.keys(byArea).sort(function(a, b){ return byArea[b].length - byArea[a].length || (a < b ? -1 : 1); });
@@ -3218,10 +3251,12 @@ function auMake(course){
         var ra = a.days.reduce(function(t, d){ return t + capOf(a, d) - used(a, d); }, 0), rb = b.days.reduce(function(t, d){ return t + capOf(b, d) - used(b, d); }, 0);
         return (kb - ka) || (rb - ra);
       });
-      var done = false;
+      var done = false, pass = p.wDays.length ? 2 : 1;
+      for(var ps = 0; ps < pass && !done; ps++)
       for(var i = 0; i < cand.length && !done; i++){
         var x = cand[i], best = null, bs = -1e9;
-        auCombos(x.days, Math.min(p.f, x.days.length)).forEach(function(c){
+        var okDays = x.days.filter(function(d){ return p.ngDays.indexOf(d) < 0 && (ps > 0 || !p.wDays.length || p.wDays.indexOf(d) >= 0); });
+        auCombos(okDays, Math.min(p.f, okDays.length)).forEach(function(c){
           if(c.length < p.f) return;
           if(c.some(function(d){ return used(x, d) >= capOf(x, d); })) return;
           var idx = c.map(function(d){ return +d; }), gap = 7;
@@ -3231,7 +3266,7 @@ function auMake(course){
           var sc = (idx.length > 1 ? Math.min(gap, 2) * 20 : 0) + same * 6 - lv * 3;
           if(sc > bs){ bs = sc; best = c; }
         });
-        if(best){ best.forEach(function(d){ (x.load[d] = x.load[d] || []).push(p); }); x.areas[ar] = (x.areas[ar] || 0) + 1; done = true; out.push({ p:p, x:x, days:best }); }
+        if(best){ best.forEach(function(d){ (x.load[d] = x.load[d] || []).push(p); }); x.areas[ar] = (x.areas[ar] || 0) + 1; done = true; out.push({ p:p, x:x, days:best }); if(ps > 0) p.why.push('希望の曜日（' + p.wDays.map(function(d){ return DOW[+d]; }).join('・') + '）では空きが無く、別の曜日で組みました'); }
       }
       if(!done) miss.push(p);
     });
@@ -3243,8 +3278,19 @@ function auMake(course){
       var a = x.load[d].slice().sort(function(p, q){ return p.area < q.area ? -1 : p.area > q.area ? 1 : 0; });
       var g = a.filter(function(p){ return p.lat; });
       if(g.length > 1){ var ord = [g[0]], rest = g.slice(1); while(rest.length){ var last = ord[ord.length - 1], bi = 0, bd = 1e9; rest.forEach(function(q, i){ var dd = Math.pow(q.lat - last.lat, 2) + Math.pow(q.lng - last.lng, 2); if(dd < bd){ bd = dd; bi = i; } }); ord.push(rest.splice(bi, 1)[0]); } a = ord.concat(a.filter(function(p){ return !p.lat; })); }
-      var slots = mhDay(a.length).filter(function(s){ return s.k === 'v'; });
-      a.forEach(function(p, i){ rows.push({ dow:d, time:hm(slots[i] ? slots[i].a : 540 + i * 60), no:p.no, staffId:x.s.id, area:p.area }); });
+      var hasW = a.some(function(p){ return p.wish || p.band; }), slots = mhDay(hasW ? Math.max(a.length, capOf(x, d)) : a.length).filter(function(s){ return s.k === 'v'; }), taken = {}, at = {};
+      /* 2026-10-28：本人の希望の時刻がある人は、希望にいちばん近い枠へ先に当てる */
+      var tgt = function(p){ return p.wish ? toMin(p.wish) : p.band === '午前' ? 600 : p.band === '午後' ? 870 : null; };
+      var inBand = function(p, m){ return p.band === '午前' ? m < 720 : p.band === '午後' ? m >= 720 : true; };
+      a.filter(function(p){ return tgt(p) != null; }).sort(function(p, q){ return (p.wish ? 0 : 1) - (q.wish ? 0 : 1) || tgt(p) - tgt(q); }).forEach(function(p){
+        var w = tgt(p), bi = -1, bd = 1e9;
+        slots.forEach(function(s, i){ var dd = Math.abs(s.a - w) + (inBand(p, s.a) ? 0 : 10000); if(!taken[i] && dd < bd){ bd = dd; bi = i; } });
+        if(bi >= 0){ taken[bi] = 1; at[p.no] = slots[bi].a;
+          var why = p.wish && Math.abs(slots[bi].a - toMin(p.wish)) > 30 ? '希望の時刻 ' + p.wish + ' に近い枠が無く、' + hm(slots[bi].a) + 'で組みました（' + DOW[+d] + '）' : (!inBand(p, slots[bi].a) ? '希望の時間帯（' + p.band + '）に空きが無く、' + hm(slots[bi].a) + 'で組みました（' + DOW[+d] + '）' : '');
+          if(why) p.why.push(why); }
+      });
+      var free = slots.map(function(s, i){ return i; }).filter(function(i){ return !taken[i]; }), fi = 0;
+      a.forEach(function(p, i){ var t = at[p.no] != null ? at[p.no] : (free[fi] != null ? slots[free[fi++]].a : 540 + i * 60); rows.push({ dow:d, time:hm(t), no:p.no, staffId:x.s.id, area:p.area, wish:p.wish || p.band || '', min:p.vmin || 0 }); });
     });
   });
   auPlan = { rows:rows, miss:miss, nos:out.map(function(o){ return o.p.no; }), info:info };
@@ -3256,14 +3302,17 @@ function auMake(course){
       if(x.days.indexOf(d) < 0) return '<td class="mhOff">休</td>';
       var r = rows.filter(function(v){ return v.staffId === x.s.id && v.dow === d; }).sort(function(a, b){ return a.time < b.time ? -1 : 1; }); w += r.length;
       var cp = capOf(x, d), empty = course ? Math.max(0, cp - r.length) : 0;
-      return '<td>' + r.map(function(v){ return '<span class="ssChip">' + esc(v.time) + ' ' + esc(dn(v.no)) + '<br><small>' + esc(v.area) + '</small></span>'; }).join('') + (empty ? '<span class="ssChip" style="background:#fff;border:1px dashed var(--amber);color:var(--amber)">空き ' + empty + '件</span>' : '') + '<div class="mhCnt' + (r.length >= cp ? ' full' : '') + '">' + r.length + (course ? '／' + cp : '') + '件</div></td>';
+      return '<td>' + r.map(function(v){ return '<span class="ssChip">' + esc(v.time) + ' ' + esc(dnn(v.no)) + '<br><small>' + esc(v.area) + (v.wish ? '・<span' + (toMin(v.wish) != null ? (Math.abs(toMin(v.wish) - toMin(v.time)) > 30 ? ' style="color:var(--red)"' : '') : ((v.wish === '午前') !== (toMin(v.time) < 720) ? ' style="color:var(--red)"' : '')) + '>希望 ' + esc(v.wish) + '</span>' : '') + '</small></span>'; }).join('') + (empty ? '<span class="ssChip" style="background:#fff;border:1px dashed var(--amber);color:var(--amber)">空き ' + empty + '件</span>' : '') + '<div class="mhCnt' + (r.length >= cp ? ' full' : '') + '">' + r.length + (course ? '／' + cp : '') + '件</div></td>';
     }).join('');
     return '<tr><th class="who">' + esc(x.s.name) + '<small>' + (x.full ? '常勤' : '非常勤') + (course ? '・コースの枠' : '・1日 ' + x.cap + '件まで') + '</small><small>週 ' + w + '件</small></th>' + cells + '</tr>';
   }).join('');
   var slotsW = course ? ST.reduce(function(t, x){ return t + x.days.reduce(function(u, d){ return u + capOf(x, d); }, 0); }, 0) : 0;
   $('au_out').innerHTML = (course ? '<div class="judge ' + (tot < slotsW ? 'fee' : 'free') + '" style="margin:8px 0"><b style="font-size:15px;color:var(--ink)">目標設定額 ' + esc(mdYenShort(course.goal)) + 'コースの枠（週 ' + slotsW + '件）に、いまの患者さんを当てはめました。埋まったのは週 ' + tot + '件、空きは週 ' + Math.max(0, slotsW - tot) + '件です。</b>' + (tot < slotsW ? '<br>空き（点線の枠）は、新しい患者さんと、いまの患者さんの回数を上げる分で埋めていく枠です。埋め方は「モデルコースの見本」の「選んだコースに届くまでの道のり」にあります。' : '') + '</div>' : '') +
     '<div class="judge ' + (miss.length ? 'fee' : 'free') + '" style="margin:8px 0">利用中の患者さん ' + P.length + '人・週 ' + need + '回のうち、<b>週 ' + tot + '回</b>を振り分けました。' +
-    (miss.length ? '<br><b>入りきらなかった患者さん：' + miss.map(function(p){ return esc(dn(p.no)) + '（' + esc(p.area) + '・週' + p.f + '回）'; }).join('、') + '</b>。1日の件数の上限を上げるか、手で入れてください。' : '') + '</div>' +
+    (miss.length ? '<br><b>入りきらなかった患者さん：' + miss.map(function(p){ return esc(dnn(p.no)) + '（' + esc(p.area) + '・週' + p.f + '回）'; }).join('、') + '</b>。1日の件数の上限を上げるか、手で入れてください。' : '') + '</div>' +
+    (function(){ var w = P.filter(function(p){ return p.why.length; }), t2 = P.filter(function(p){ return p.team === '2名' && !(info[p.no] && info[p.no].withId); });
+      return (w.length ? '<div class="judge fee" style="margin:8px 0"><b>希望どおりに組めなかった人</b><ul style="margin:4px 0 0 18px">' + w.map(function(p){ return '<li>' + esc(dnn(p.no)) + '：' + esc(p.why.join('／')) + '</li>'; }).join('') + '</ul>希望に合わせるには、担当や曜日を週間予定で手直ししてください。</div>' : '') +
+        (t2.length ? '<div class="judge fee" style="margin:8px 0"><b>2名体制の希望で、同行者が決まっていない人</b>：' + t2.map(function(p){ return esc(dnn(p.no)); }).join('、') + '。週間予定の「同行」で入れてください。</div>' : ''); })() +
     '<div class="tbl-scroll"><table class="mhT">' + head + body + '</table></div>' +
     '<p class="muted">同じ地区の患者さんを、同じ職員・同じ曜日に寄せています。いまの担当がいる患者さんは、なるべく同じ職員のままにしています。週の回数は、いまの週間予定の回数（無ければ登録の「訪問の頻度」、それも無ければ週1回）です。1日の中は、地区ごと・位置が分かるものは近い順に並べ、時刻は「勤務の決まり」の1日の流れに当てています。2名体制の同行者は、いまの週間予定の回数の分だけ引き継ぎます。</p>';
   $('au_apply').style.display = rows.length ? '' : 'none';
@@ -3278,7 +3327,7 @@ function auApply(){
   var wUsed = {};
   auPlan.rows.forEach(function(v){ var inf = auPlan.info[v.no] || {}, w = '';
     if(inf.withId && inf.withId !== v.staffId && (wUsed[v.no] || 0) < (inf.withN || 0)){ w = inf.withId; wUsed[v.no] = (wUsed[v.no] || 0) + 1; }
-    keep.push({ id:uid(), dow:v.dow, time:v.time, min:inf.min || 30, no:v.no, staffId:v.staffId, withId:w }); });
+    keep.push({ id:uid(), dow:v.dow, time:v.time, min:v.min || inf.min || 30, no:v.no, staffId:v.staffId, withId:w }); });
   saveCol('weekly', keep);
   $('au_msg').textContent = '週間予定に入れました（' + auPlan.rows.length + '件）。入れ替える前の予定は控えに残しています。';
   auPlan = null; $('au_apply').style.display = 'none'; refreshAll(); auUndoShow();
@@ -3394,6 +3443,28 @@ $('pt_load').addEventListener('click', function(){ ptLoad(keyNo($('pt_no').value
 $('pt_no').addEventListener('change', function(){ var no = keyNo($('pt_no').value); if(no && patient(no)) ptLoad(no); });
 $('pt_clear').addEventListener('click', function(){ ptClear(); $('pt_msg').textContent = ''; });
 $('ptFilter').addEventListener('change', renderPtList);
+/* 2026-10-28：週間予定の手入力で利用者を選んだとき、開始時刻が空なら本人の希望の時刻を入れる */
+$('wk_no').addEventListener('change', function(){ var p = patient(selNo('wk_no')); if(p && p.wish && !$('wk_time').value) $('wk_time').value = p.wish; if(p && p.vmin) $('wk_min').value = p.vmin; });
+/* ---- 番号と氏名の対照表（2026-10-28・宏史さんの指示「契約番号氏名対照表は必須」）----
+   いま選んでいる部署の、契約終了も含めた全員を番号の順に並べて印刷する */
+function ptRosterPrint(){
+  var list = patients().slice().sort(function(a, b){ return dn(a.no) < dn(b.no) ? -1 : dn(a.no) > dn(b.no) ? 1 : 0; });
+  if(!list.length){ $('pt_rosterMsg').textContent = '登録されている' + D().client + 'がいません。'; return; }
+  var noName = list.filter(function(p){ return !p.name; }).length;
+  var css = '@page{size:A4;margin:12mm}body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;font-size:10.5pt;color:#10243b}' +
+    '.hd{display:flex;align-items:center;gap:10px;border-bottom:1.5px solid #10243b;padding-bottom:6px;margin-bottom:8px}.hd img{width:30px;height:30px}.hd h1{font-size:14pt;margin:0}.hd p{margin:0;font-size:9.5pt;color:#5d6b7a}' +
+    'table{width:100%;border-collapse:collapse}th,td{border:1px solid #cfc6b4;padding:3px 6px;text-align:left}th{background:#f4f1ea}tr{page-break-inside:avoid}.sm{font-size:9pt;color:#5d6b7a}.red{color:#b0402f}';
+  var rows = list.map(function(p, i){ return '<tr><td>' + (i + 1) + '</td><td>' + esc(dn(p.no)) + '</td><td>' + (p.name ? esc(p.name) : '<span class="red">未入力</span>') + '</td><td>' + esc(p.kana || '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + '</td></tr>'; }).join('');
+  var body = '<div class="hd"><img src="' + esc(new URL('TriSight_icon_512.png', location.href).href) + '" alt="TriSight®"><div><h1>契約書番号と氏名の対照表</h1><p>' + esc(D().name) + '　' + list.length + '名　作成日 ' + esc(jpDate(ymd(new Date()))) + '</p></div></div>' +
+    '<table><tr><th>No.</th><th>契約書番号</th><th>氏名</th><th>ふりがな</th><th>地区</th><th>状態</th></tr>' + rows + '</table>' +
+    '<p class="sm">個人情報を含む書類です。事業所の外へ持ち出さず、使い終えたら決められた場所に保管してください。</p>';
+  var win = window.open('', '_blank');
+  if(!win){ $('pt_rosterMsg').textContent = '印刷の画面を開けませんでした。ブラウザのポップアップの許可を確かめてください。'; return; }
+  win.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>契約書番号と氏名の対照表</title><style>' + css + '</style></head><body>' + body + '<script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script></body></html>');
+  win.document.close();
+  $('pt_rosterMsg').textContent = '印刷の画面を開きました（' + list.length + '名' + (noName ? '・氏名が未入力の人 ' + noName + '名' : '') + '）。';
+}
+$('pt_roster').addEventListener('click', ptRosterPrint);
 $('rq_date').value = ymd(new Date());
 $('rq_save').addEventListener('click', reqSave);
 $('rq_show').addEventListener('change', renderReq);
@@ -4125,12 +4196,12 @@ function mdDay(){
     h += '<table><tr><th>時刻</th><th>モデルコース</th><th>いまの週間予定</th></tr>' + cs.list.map(function(x){
       if(x.k !== 'v') return '<tr><td>' + hm(x.a) + '〜' + hm(x.b) + '</td><td class="muted">' + lbl[x.k] + '</td><td></td></tr>';
       var i = vi++, v = used[i], p = v ? patient(v.no) : null;
-      return '<tr><td><b>' + hm(x.a) + '〜' + hm(x.b) + '</b></td><td>訪問 ' + (i + 1) + '件目</td><td>' + (v ? (v.staffId !== s.id ? '<span class="tag gray">同行</span> ' : '<span class="tag green">予定あり</span> ') + esc(dn(v.no)) + (p && p.area ? '<small class="muted">（' + esc(p.area) + '）</small>' : '') + '<br><small class="muted">いまの予定の時刻 ' + esc(v.time) + '・' + esc(v.min || w.visit) + '分' + (v.staffId !== s.id ? '・担当 ' + esc(staffName(v.staffId)) : (v.withId ? '・同行 ' + esc(staffName(v.withId)) : '')) + '</small>' : '<span class="tag amber">空き枠</span>') + '</td></tr>';
+      return '<tr><td><b>' + hm(x.a) + '〜' + hm(x.b) + '</b></td><td>訪問 ' + (i + 1) + '件目</td><td>' + (v ? (v.staffId !== s.id ? '<span class="tag gray">同行</span> ' : '<span class="tag green">予定あり</span> ') + esc(dnn(v.no)) + (p && p.area ? '<small class="muted">（' + esc(p.area) + '）</small>' : '') + '<br><small class="muted">いまの予定の時刻 ' + esc(v.time) + '・' + esc(v.min || w.visit) + '分' + (v.staffId !== s.id ? '・担当 ' + esc(staffName(v.staffId)) : (v.withId ? '・同行 ' + esc(staffName(v.withId)) : '')) + '</small>' : '<span class="tag amber">空き枠</span>') + '</td></tr>';
     }).join('') + '</table>';
     if(cs.over > 0) h += '<p style="color:var(--red);font-weight:700;margin-top:6px">この件数では、退勤時刻（' + esc(w.end) + '）を ' + minLabel(cs.over) + ' 超えます。</p>';
     var free = slots.length - Object.keys(used).length;
     h += '<p class="muted" style="margin-top:6px">空き枠 ' + free + '件。' + (Object.keys(areas).length ? 'この日に回っている地区：' + Object.keys(areas).map(function(a){ return esc(a) + '（' + areas[a] + '件）'; }).join('、') + '。空き枠には、同じ地区の' + D().client + 'を入れると移動が短くなります。' : '') + '</p>';
-    if(left.length) h += '<p style="color:var(--red);margin-top:4px">モデルの件数を超えて入っている予定：' + left.map(function(v){ return esc(v.time) + ' ' + esc(dn(v.no)); }).join('、') + '</p>';
+    if(left.length) h += '<p style="color:var(--red);margin-top:4px">モデルの件数を超えて入っている予定：' + left.map(function(v){ return esc(v.time) + ' ' + esc(dnn(v.no)); }).join('、') + '</p>';
   }
   h += '<p class="muted" style="margin-top:6px">移動は「勤務の決まり」の最長の目安（' + w.mvMax + '分）で取っています。訪問先どうしの距離はまだ見ていません。お昼をまたぐ前に休憩（' + w.brk + '分）、最後に内勤（' + w.inner + '分）を入れ、退勤までの残りを予備にしています。</p></div>';
   box.innerHTML = h;
@@ -4401,7 +4472,7 @@ function ssRender(){
           if(!v.cx && prev){ var g = toMin(v.time) - (toMin(prev.time) + (+prev.min || 30)); if(g < wr.mvMin) gap = '<span class="ssGap short">間 ' + g + '分（短い）</span>'; else if(g > wr.mvMax) gap = '<span class="ssGap">空き ' + minLabel(g) + '</span>'; }
           if(!v.cx) prev = v;
           var warn = why && !v.cx;
-          return gap + '<span class="ssChip' + (v.cx ? ' cx' : '') + (warn ? ' warn' : '') + '" title="' + esc(v.time + ' ' + dn(v.no) + '（' + v.min + '分）' + (v.area ? '・' + v.area : '') + (v.cx ? '・キャンセル' : '') + (warn ? '・休みの日の訪問' : '')) + '">' + esc(v.time) + '<br>' + esc(ssShortNo(v.no)) + (warn ? '<br>要調整' : '') + '</span>';
+          return gap + '<span class="ssChip' + (v.cx ? ' cx' : '') + (warn ? ' warn' : '') + '" title="' + esc(v.time + ' ' + dnn(v.no) + '（' + v.min + '分）' + (v.area ? '・' + v.area : '') + (v.cx ? '・キャンセル' : '') + (warn ? '・休みの日の訪問' : '')) + '">' + esc(v.time) + '<br>' + esc(ssShortNo(v.no)) + (nameOf(v.no) ? '<br>' + esc(nameOf(v.no)) : '') + (warn ? '<br>要調整' : '') + '</span>';
         }).join('') + (live2 ? '<span class="ssCnt' + (live2 >= wr.target ? ' ok' : '') + '">' + live2 + '件</span>' : '') + '</td>';
     });
     h += '</tr>';

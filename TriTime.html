@@ -196,7 +196,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-29-01</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-29-02</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -797,6 +797,7 @@ function tsGoBack(){
       <div><label class="f" for="st_dept">所属部門</label><select id="st_dept"><option value="">（職種から当てる）</option><option>訪問看護部</option><option>訪問介護部</option><option>特定障害相談部</option><option>居宅介護支援部</option><option>経営企画事務職</option><option>管理部門</option></select></div>
       <div><label class="f" for="st_emp">雇用形態</label><select id="st_emp"><option>常勤</option><option>非常勤</option></select></div>
       <div><label class="f">&nbsp;</label><label><input type="checkbox" id="st_mgr"> 管理者</label></div>
+      <div><label class="f" for="st_out">退職日（退職した人だけ）</label><input type="date" id="st_out"></div>
     </div>
     <div style="margin-top:8px"><label class="f">兼務する部署（所属部門のほかに横断して入る部署に印を付けます）</label><div id="st_sub" class="btns" style="margin-top:2px"></div></div>
     <div style="margin-top:8px"><label class="f">公休の曜日（毎週決まって休む曜日に印を付けます）</label><div id="st_off" class="btns" style="margin-top:2px"></div>
@@ -1057,7 +1058,11 @@ function nurses(){ return staff().filter(function(s){ return NURSE_JOBS.indexOf(
 function staffDept(s){ if(s.dept) return deptByName(s.dept); var j = jobOf(s); return DEPTS.filter(function(d){ return d.jobs.indexOf(j) >= 0; })[0] || null; }
 function staffSub(s){ return Array.isArray(s.sub) ? s.sub.filter(function(x){ return x && x !== s.dept; }) : []; }
 /* 2026-10-26：兼務する部署に入っている職員も、その部署の職員として扱う（担当の選ぶ欄・連絡板の宛先など） */
-function deptStaff(d){ d = d || D(); return staff().filter(function(s){ if(staffSub(s).indexOf(d.name) >= 0) return true; if(s.dept) return deptByName(s.dept) === d; return d.jobs.indexOf(jobOf(s)) >= 0; }); }
+/* 2026-10-29：退職（宏史さんの指示）。退職した人は名簿から外さず、退職日を入れて残す。
+   退職日の翌日から、担当・選ぶ欄・自動の振り分けから外れる。過去の記録・名前は、そのまま残る。 */
+function staffOut(s, date){ return !!(s && s.out && s.out < (date || ymd(new Date()))); }
+function staffLive(){ return staff().filter(function(s){ return !staffOut(s); }); }
+function deptStaff(d, at){ d = d || D(); return staff().filter(function(s){ return !staffOut(s, at); }).filter(function(s){ if(staffSub(s).indexOf(d.name) >= 0) return true; if(s.dept) return deptByName(s.dept) === d; return d.jobs.indexOf(jobOf(s)) >= 0; }); }
 
 /* ---- 共通：選択肢 ---- */
 function fillSelect(sel, items, blank){
@@ -1071,14 +1076,14 @@ function refreshSelects(){
   var pts = patients().map(function(p){ return { v:dn(p.no), t:dnn(p.no) + (p.area ? '（' + p.area + '）' : '') }; });
   ['c_no','k_no','rp_no','wk_no','pl_no'].forEach(function(id){ fillSelect(id, pts, '選んでください'); });
   var ns = deptStaff().map(function(s){ return { v:s.id, t:s.name }; });
-  var all = staff().map(function(s){ return { v:s.id, t:staffLabel(s) }; });
+  var all = staffLive().map(function(s){ return { v:s.id, t:staffLabel(s) }; });
   ['c_staff','p_staff','d_staff','r_staff','wk_staff','pt_staff'].forEach(function(id){ fillSelect(id, ns, '選んでください'); });
   fillSelect('wk_with', ns, 'なし（1名）');
   fillSelect('c_fwdTo', ns, '回していない');
   ['c_by','r_by','pt_by','rq_by'].forEach(function(id){ fillSelect(id, all, '選んでください'); });
   if(!$('pt_by').value && dev().me) $('pt_by').value = dev().me;
   if(!$('rq_by').value && dev().me) $('rq_by').value = dev().me;
-  $('rq_fromList').innerHTML = staff().map(function(x){ return '<option value="' + esc(x.name) + '">'; }).join('');
+  $('rq_fromList').innerHTML = staffLive().map(function(x){ return '<option value="' + esc(x.name) + '">'; }).join('');
   fillSelect('planStaff', ns, '全員');
   fillSelect('monStaff', ns, '全員');
   var R = role(), lock = R.lv === 'staff' && !!R.s;
@@ -1158,7 +1163,7 @@ function renderPlan(){
       if(hardInfo(v.no, ym(date)).on) tags += '<span class="tag red">困難患者</span>';
       if(v.moved) tags += '<span class="tag green">組み換え（元 ' + esc(v.moved.from) + (v.moved.fromStaff !== v.staffId ? '・' + esc(staffName(v.moved.fromStaff)) : '') + '）</span> <button class="btn small sub" data-unmove="' + esc(v.moved.id) + '">組み換えを取り消す</button>';
       if(trustOf(v.no).lv === '低') tags += trustTag(v.no);
-      var offw = v.cx ? '' : offWhy(v.staffId, v.date); if(offw) tags += '<span class="tag red">要調整：担当が休み（' + esc(offw) + '）</span>';
+      var offw = v.cx ? '' : offWhy(v.staffId, v.date); if(offw) tags += '<span class="tag red">' + (offw === '退職' ? '要調整：担当が退職' : '要調整：担当が休み（' + esc(offw) + '）') + '</span>';
       var pp = patient(v.no) || {}, pw = pp.wish; if(pp.preCall && !v.cx) tags += '<span class="tag amber">訪問前に連絡：' + esc(pp.preCall.replace(/^要/, '')) + '</span>'; if(pw && !v.cx && Math.abs(toMin(pw) - toMin(v.time)) > 30) tags += '<span class="tag amber">本人の希望は ' + esc(pw) + '</span>';
       var key = v.date + '|' + v.time + '|' + v.no;
       html += '<div class="visit' + (v.cx ? ' cx' : '') + '"><div class="t">' + esc(v.time) + '</div>' +
@@ -1272,7 +1277,7 @@ function toggleGap(key){
    1件の連絡は events に type "note" で持つ。読んだ印は連絡そのものを書き換えず、
    別の件（type "read"）として足す。二つの端末で同時に読んだ印を付けても消し合わないため。 */
 function noteRecipients(n){
-  if(n.to === 'all') return staff().map(function(s){ return s.id; });
+  if(n.to === 'all') return staffLive().map(function(s){ return s.id; });
   if(n.to === 'nurses') return deptStaff(DEPTS[0]).map(function(s){ return s.id; });
   if(typeof n.to === 'string' && n.to.indexOf('dept:') === 0){ var dd = DEPTS.filter(function(d){ return d.k === n.to.slice(5); })[0]; return dd ? deptStaff(dd).map(function(s){ return s.id; }) : []; }
   return Array.isArray(n.to) ? n.to : [];
@@ -1318,10 +1323,10 @@ function nbRefreshForm(){
   $('nb_to').innerHTML = '<option value="all">職員全員</option>' + DEPTS.map(function(d){ return '<option value="dept:' + d.k + '">' + esc(d.name) + 'の全員</option>'; }).join('') + '<option value="pick">一人ひとりを選ぶ</option>';
   if(curTo === 'nurses') curTo = 'dept:nurse';
   $('nb_to').value = [].some.call($('nb_to').options, function(o){ return o.value === curTo; }) ? curTo : 'all';
-  fillSelect('nb_from', staff().map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
+  fillSelect('nb_from', staffLive().map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
   if(!$('nb_from').value && dev().me) $('nb_from').value = dev().me;
   var picked = {}; document.querySelectorAll('#nb_pickWrap input:checked').forEach(function(c){ picked[c.value] = 1; });
-  $('nb_pickWrap').innerHTML = staff().map(function(s){ return '<label style="display:inline-block;margin:2px 14px 2px 0"><input type="checkbox" value="' + esc(s.id) + '"' + (picked[s.id] ? ' checked' : '') + '> ' + esc(staffLabel(s)) + '</label>'; }).join('') || '<span class="muted">職員がまだ登録されていません。</span>';
+  $('nb_pickWrap').innerHTML = staffLive().map(function(s){ return '<label style="display:inline-block;margin:2px 14px 2px 0"><input type="checkbox" value="' + esc(s.id) + '"' + (picked[s.id] ? ' checked' : '') + '> ' + esc(staffLabel(s)) + '</label>'; }).join('') || '<span class="muted">職員がまだ登録されていません。</span>';
   $('nb_pickWrap').style.display = $('nb_to').value === 'pick' ? '' : 'none';
   $('nb_meet').style.display = $('nb_kind').value === '会議の案内' ? '' : 'none';
 }
@@ -2192,7 +2197,7 @@ function empToSheet(cur, tt){
   return cur || '';
 }
 function sheetRecount(o, ro){
-  var v = o.sheet.val, a = ro.filter(function(r){ return r && String(r.name || '').trim(); });
+  var v = o.sheet.val, a = ro.filter(function(r){ return r && String(r.name || '').trim(); }).filter(function(r){ return !(r.out && r.out < ymd(new Date())); });
   if(!a.length) return;
   var c = { '従業員数（合計）':a.length, 'うち正社員':a.filter(function(r){ return r.emp === '常勤・正社員'; }).length, 'うち非常勤':a.filter(function(r){ return r.emp === '非常勤'; }).length };
   Object.keys(c).forEach(function(k){ v[k] = String(c[k]); });
@@ -2234,7 +2239,7 @@ function sheetPush(opt){
     var r = st.sheetId ? ro.filter(function(x){ return x.id === st.sheetId; })[0] : null;
     if(st.sheetId && !r) return;   /* 名簿の側に無い行には書かない */
     if(!r){ r = { id:'R' + Date.now().toString(36) + Math.random().toString(36).slice(2,6), name:'', job:'', emp:'', mgr:false }; ro.push(r); st.sheetId = r.id; linked = true; }
-    r.name = st.name; if(jobOf(st)) r.job = jobOf(st); r.emp = empToSheet(r.emp, st.emp); r.mgr = isMgr(st); r.dept = st.dept || r.dept || ''; r.sub = staffSub(st); r.off = staffOff(st); r.holOff = !!st.holOff;
+    r.name = st.name; if(jobOf(st)) r.job = jobOf(st); r.emp = empToSheet(r.emp, st.emp); r.mgr = isMgr(st); r.dept = st.dept || r.dept || ''; r.sub = staffSub(st); r.off = staffOff(st); r.holOff = !!st.holOff; r.out = st.out || '';
   });
   o.sheet.val['職員名簿'] = ro;
   sheetRecount(o, ro);
@@ -2269,6 +2274,7 @@ function sheetPull(opt){
     st.sub = Array.isArray(r.sub) ? r.sub.filter(function(x){ return x && x !== st.dept; }) : [];
     if(Array.isArray(r.off)) st.off = r.off.map(String);
     if(r.holOff != null) st.holOff = !!r.holOff; else if(st.holOff == null) st.holOff = (st.emp === '常勤');
+    st.out = r.out || '';   /* 2026-10-29：退職日 */
   });
   /* 2026-10-27：自動の読み込み（開いたとき・名簿が届いたとき）では、職員を外さず、基本情報シートへの書き戻しもしない。
      古い名簿を持った端末でトライタイムを開いただけで、その古い名簿が「新しく保存した版」として共有され、
@@ -2291,7 +2297,7 @@ function renderSetup(){
   var st = staff();
   $('stList').innerHTML = st.length ? '<table><tr><th>呼び名</th><th>職種</th><th>所属部門</th><th>兼務する部署</th><th>公休</th><th>雇用形態</th><th>管理者</th><th></th></tr>' + st.map(function(s){
     var sd = staffDept(s);
-    return '<tr' + (staffOrphan(s) ? ' style="background:#fdecea"' : '') + '><td>' + esc(s.name) + (s.post ? ' <small class="muted">（' + esc(s.post) + '）</small>' : '') + (staffOrphan(s) ? ' <span class="tag red">名簿にいません</span>' : '') + '</td><td>' + esc(jobOf(s) || '未設定') + '</td><td>' + esc(s.dept || (sd ? sd.name + '（職種から）' : '未設定')) + '</td><td>' + esc(staffSub(s).join('・')) + '</td><td>' + esc([1,2,3,4,5,6,0].filter(function(w){ return staffOff(s).indexOf(String(w)) >= 0; }).map(function(w){ return DOW[w]; }).join('・') + (s.holOff ? (staffOff(s).length ? '・' : '') + '祝日' : '')) + '</td><td>' + esc(s.emp || '未設定') + '</td><td>' + (isMgr(s) ? '管理者' : '') + '</td><td><button class="btn small sub" data-stedit="' + esc(s.id) + '">直す</button> <button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
+    return '<tr' + (staffOrphan(s) ? ' style="background:#fdecea"' : staffOut(s) ? ' style="opacity:.55"' : '') + '><td>' + esc(s.name) + (s.post ? ' <small class="muted">（' + esc(s.post) + '）</small>' : '') + (staffOrphan(s) ? ' <span class="tag red">名簿にいません</span>' : '') + (s.out ? ' <span class="tag gray">' + (staffOut(s) ? '退職' : '退職予定') + ' ' + esc(jpDate(s.out)) + '</span>' : '') + '</td><td>' + esc(jobOf(s) || '未設定') + '</td><td>' + esc(s.dept || (sd ? sd.name + '（職種から）' : '未設定')) + '</td><td>' + esc(staffSub(s).join('・')) + '</td><td>' + esc([1,2,3,4,5,6,0].filter(function(w){ return staffOff(s).indexOf(String(w)) >= 0; }).map(function(w){ return DOW[w]; }).join('・') + (s.holOff ? (staffOff(s).length ? '・' : '') + '祝日' : '')) + '</td><td>' + esc(s.emp || '未設定') + '</td><td>' + (isMgr(s) ? '管理者' : '') + '</td><td><button class="btn small sub" data-stedit="' + esc(s.id) + '">直す</button> <button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
   }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var wk = weekly().slice().sort(function(a,b){ var da = (+a.dow + 6) % 7, db = (+b.dow + 6) % 7; return da - db || (a.time < b.time ? -1 : 1); });
   $('wkList').innerHTML = wk.length ? '<table><tr><th>曜日</th><th>時刻</th><th>契約書番号</th><th>担当</th><th></th></tr>' + wk.map(function(v){
@@ -2304,10 +2310,10 @@ function renderSetup(){
   $('stList').querySelectorAll('[data-stedit]').forEach(function(b){ b.addEventListener('click', function(){
     var s = staff().filter(function(x){ return x.id === b.getAttribute('data-stedit'); })[0]; if(!s) return;
     $('st_id').value = s.id; $('st_name').value = s.name; (function(){ var sj = $('st_job'), jv = jobOf(s) || 'その他'; [].slice.call(sj.querySelectorAll('option[data-old]')).forEach(function(o){ o.remove(); }); if(![].some.call(sj.options, function(o){ return o.value === jv; })){ var op = document.createElement('option'); op.textContent = jv; op.dataset.old = '1'; sj.appendChild(op); } sj.value = jv; })(); $('st_dept').value = s.dept || ''; stSubDraw(staffSub(s)); stOffDraw(staffOff(s)); $('st_hol').checked = !!s.holOff; $('st_emp').value = s.emp || '常勤'; $('st_mgr').checked = isMgr(s);
-    $('st_add').textContent = 'この内容で直す'; $('st_cancel').style.display = ''; $('st_name').focus();
+    $('st_out').value = s.out || ''; $('st_add').textContent = 'この内容で直す'; $('st_cancel').style.display = ''; $('st_name').focus();
   }); });
   $('stList').querySelectorAll('[data-stdel]').forEach(function(b){ b.addEventListener('click', function(){
-    if(!confirm('この職員を名簿から外しますか？（これまでの記録は残ります。この端末のトライシートの職員名簿からも外れます）')) return;
+    if(!confirm('この職員を名簿から外しますか？（これまでの記録は残ります。この端末のトライシートの職員名簿からも外れます）\n\n退職した人は、外さずに「直す」から退職日を入れてください。名簿に残り、退職日の翌日から担当や選ぶ欄から外れます。')) return;
     var gs = staff().filter(function(x){ return x.id === b.getAttribute('data-stdel'); })[0];
     saveCol('staff', staff().filter(function(x){ return x.id !== b.getAttribute('data-stdel'); })); if(gs && gs.sheetId) sheetPush({ gone:[gs.sheetId] }); refreshAll();
   }); });
@@ -3385,7 +3391,7 @@ function refreshAll(){
   mgMigrate(); applyDept();
   setShareNote(); renderAlerts();
   refreshSelects(); nbRefreshForm();
-  fillSelect('dv_me', staff().filter(function(s){ return !staffOrphan(s) || s.id === dev().me; }).map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
+  fillSelect('dv_me', staff().filter(function(s){ return (!staffOrphan(s) && !staffOut(s)) || s.id === dev().me; }).map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
   if(!$('dv_me').value && dev().me) $('dv_me').value = dev().me;
   $('dv_share').checked = dev().share;
   renderSetup(); renderPlan(); renderToday(); renderAuto(); renderIntakeList(); renderCourse(); renderReport(); renderAdmin();
@@ -3516,12 +3522,12 @@ function stSubDraw(cur){
 function stSubVal(){ var main = $('st_dept').value; return [].slice.call($('st_sub').querySelectorAll('[data-stsub]:checked')).map(function(c){ return c.getAttribute('data-stsub'); }).filter(function(x){ return x !== main; }); }
 $('st_dept').addEventListener('change', function(){ stSubDraw(stSubVal()); });
 stSubDraw([]);
-function stFormReset(){ $('st_id').value = ''; $('st_name').value = ''; $('st_mgr').checked = false; stSubDraw([]); if($('st_off')) stOffDraw([]); if($('st_hol')) $('st_hol').checked = $('st_emp').value === '常勤'; $('st_add').textContent = '追加する'; $('st_cancel').style.display = 'none'; }
+function stFormReset(){ $('st_id').value = ''; $('st_name').value = ''; $('st_mgr').checked = false; $('st_out').value = ''; stSubDraw([]); if($('st_off')) stOffDraw([]); if($('st_hol')) $('st_hol').checked = $('st_emp').value === '常勤'; $('st_add').textContent = '追加する'; $('st_cancel').style.display = 'none'; }
 $('st_cancel').addEventListener('click', stFormReset);
 $('st_add').addEventListener('click', function(){
   var n = $('st_name').value.trim(); if(!n){ $('st_name').focus(); return; }
   var a = staff(), id = $('st_id').value;
-  var rec = { name:n, job:$('st_job').value, dept:$('st_dept').value, sub:stSubVal(), off:stOffVal(), holOff:$('st_hol').checked, emp:$('st_emp').value, mgr:$('st_mgr').checked };
+  var rec = { name:n, job:$('st_job').value, dept:$('st_dept').value, sub:stSubVal(), off:stOffVal(), holOff:$('st_hol').checked, emp:$('st_emp').value, mgr:$('st_mgr').checked, out:$('st_out').value || '' };
   var cur = id ? a.filter(function(x){ return x.id === id; })[0] : null;
   var sid = cur ? cur.id : uid();
   if(cur){ delete cur.role; Object.assign(cur, rec); } else { a.push(Object.assign({ id:sid }, rec)); }
@@ -3710,6 +3716,7 @@ function leaves(){ return events().filter(function(e){ return e.type === 'leave'
 /* その日、その職員が休みか。休みなら理由（公休／祝日／届けの種類）を返す */
 function offWhy(staffId, date){
   var s = staff().filter(function(x){ return x.id === staffId; })[0]; if(!s) return '';
+  if(staffOut(s, date)) return '退職';
   var lv = leaves().filter(function(e){ return e.staffId === staffId && e.date === date; })[0]; if(lv) return lv.kind || '休み';
   var d = parseYmd(date); if(d && staffOff(s).indexOf(String(d.getDay())) >= 0) return '公休';
   if(s.holOff && holidayName(date)) return '祝日';
@@ -3725,7 +3732,7 @@ $('st_emp').addEventListener('change', function(){ if(!$('st_id').value) $('st_h
 $('st_hol').checked = true;
 /* 休みの届け */
 function renderLeave(){
-  fillSelect('lv_staff', staff().map(function(x){ return { v:x.id, t:staffLabel(x) }; }), '選んでください');
+  fillSelect('lv_staff', staffLive().map(function(x){ return { v:x.id, t:staffLabel(x) }; }), '選んでください');
   if(!$('lv_month').value) $('lv_month').value = ymd(new Date()).slice(0, 7);
   var m = $('lv_month').value;
   var a = leaves().filter(function(e){ return ym(e.date) === m; }).sort(function(x, y){ return x.date < y.date ? -1 : 1; });
@@ -3774,7 +3781,7 @@ function renderAttend(){
   if(D().k !== 'nurse'){ $('cardAttend').style.display = 'none'; return; }
   $('cardAttend').style.display = '';
   var m = $('ad_month').value; if(!m) return;
-  var w = workRule(), people = deptStaff(), all = staff();
+  var w = workRule(), people = deptStaff(null, m + '-01'), all = staff();
   var y = +m.slice(0, 4), mo = +m.slice(5, 7), days = [];
   for(var d = 1; d <= 31; d++){ var dt = new Date(y, mo - 1, d); if(dt.getMonth() !== mo - 1) break; days.push(ymd(dt)); }
   var recs = live('records').filter(function(r){ return r.date && ym(r.date) === m; });
@@ -4539,6 +4546,7 @@ var MN_MARKS = [
   ['予定に付く印', [
     ['信用度 高・中・低（数字）', '直近90日のキャンセルから出す目安です。100点から、体調・病状によるキャンセルは1回3点、それ以外の理由は1回10点（前日の締め切りを過ぎた連絡なら、さらに5点）を引きます。80点以上が「高」、50点以上が「中」、それより下が「低」です。'],
     ['困難患者', 'その月のキャンセル・変更の回数が決まりの回数（「名簿・設定」の決まりごと。最初は3回）以上になった人、または「利用者登録」の「困難事例」に印を付けた人です。'],
+    ['要調整：担当が退職', '担当の職員の退職日より後の訪問です。担当をほかの職員に替えてください（週間予定の担当を付け替えます）。'],
     ['要調整：担当が休み', '担当の職員が休み（公休の曜日・休みの届け・祝日）の日に、訪問が入っています。担当を替えるか、日を動かしてください。'],
     ['組み換え（元 ○○）', 'キャンセルで空いた時間に前倒しした訪問です。かっこの中は、元の時刻です。'],
     ['主治医への確認：未／済み', '指示書の日付より後に、主治医へ確認した記録（「利用者経過」で記録）があれば「済み」、無ければ「未」です。'],

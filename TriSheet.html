@@ -83,7 +83,7 @@ pre.out{white-space:pre-wrap;font-size:12px;font-family:var(--font-mono);backgro
     <div style="font-size:20px;font-weight:500">基本情報シート</div>
   </div>
   <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">発行：合同会社トライサイト</div>
-  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-27-04</span> <span id="verMsg"></span></div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-29-01</span> <span id="verMsg"></span></div>
   <div style="border-top:1px solid var(--border-strong);margin:8px 0 12px"></div>
   <!-- 2026-10-19：認証コードで端末どうし共有する（宏史さんの指示）。印を付けた端末だけが共有する。部品は TriSheetSync.js -->
   <div id="tssBox" style="margin:0 0 12px;padding:10px 12px;border:0.5px solid var(--border-accent);border-radius:var(--radius);background:var(--surface-1);font-size:13px">
@@ -345,15 +345,18 @@ const RO_COUNT=['従業員数（合計）','うち正社員','うち非常勤'];
 function roList(){if(!Array.isArray(val['職員名簿']))val['職員名簿']=[];return val['職員名簿'];}
 function roId(){return 'R'+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36);}
 function roLive(){return roList().filter(r=>r&&String(r.name||'').trim());}
+/* 2026-10-29：退職（宏史さんの指示）。退職した人は外さず、退職日を入れて残す。退職日の翌日から、従業員数に数えない */
+function roToday(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function roOut(r){return !!(r&&r.out&&r.out<roToday());}
 function roRecount(){
-  const a=roLive();
+  const a=roLive().filter(r=>!roOut(r));
   RO_COUNT.forEach(k=>{const e=el(k);if(e){e.readOnly=!!a.length;e.title=a.length?'職員名簿から数えています。人数を変えるときは名簿を直してください':'';}});
   const nt=document.getElementById('roCountNote');
   if(!a.length){if(nt)nt.textContent='';return;}
   const c={'従業員数（合計）':a.length,'うち正社員':a.filter(r=>r.emp==='常勤・正社員').length,'うち非常勤':a.filter(r=>r.emp==='非常勤').length};
   RO_COUNT.forEach(k=>{val[k]=String(c[k]);const e=el(k);if(e)e.value=val[k];const r=document.getElementById('r_'+k);if(r)r.classList.remove('miss');});
   const no=a.filter(r=>!r.emp).length;
-  if(nt)nt.innerHTML='上の従業員数は、この名簿から数えています（合計 '+a.length+'人）。'+(no?'<span style="color:var(--text-warning)">雇用形態が未設定の人が '+no+'人います。正社員・非常勤の人数に入らないので、選んでください。</span>':'');
+  if(nt)nt.innerHTML='上の従業員数は、この名簿から数えています（合計 '+a.length+'人'+(roLive().length>a.length?'・退職した '+(roLive().length-a.length)+'人は数えていません':'')+'）。'+(no?'<span style="color:var(--text-warning)">雇用形態が未設定の人が '+no+'人います。正社員・非常勤の人数に入らないので、選んでください。</span>':'');
 }
 /* 2026-10-26：兼務する部署（宏史さんの指示）。所属部門はそのまま、ほかの部署にも横断して入る職員に、兼務先を選べるようにする。
    トライタイムは、兼務先の部署の画面でも、この職員を担当として選べる。 */
@@ -380,13 +383,14 @@ function rosterHTML(){
   const dn=a.filter(r=>dk[holdKey(r.name)]>1).length;
   if(dn)h+='<div class="nt" style="color:var(--text-danger);font-weight:700">同じ人らしい名前が '+dn+'行 あります（赤い枠の行）。同じ人なら、片方の「外す」を押してください。</div>';
   a.forEach((r,i)=>{
-    h+='<div class="ro" data-ro="'+i+'"'+(dk[holdKey(r.name)]>1?' style="outline:2px solid #d9534f;background:#fdecea"':'')+'><input type="text" data-rf="name" value="'+esc(r.name||'')+'" placeholder="呼び名" aria-label="呼び名">'
+    h+='<div class="ro" data-ro="'+i+'"'+(dk[holdKey(r.name)]>1?' style="outline:2px solid #d9534f;background:#fdecea"':roOut(r)?' style="opacity:.55"':'')+'><input type="text" data-rf="name" value="'+esc(r.name||'')+'" placeholder="呼び名" aria-label="呼び名">'
       +'<select data-rf="job" aria-label="職種">'+sel(RO_JOB,r.job||'','職種を選ぶ')+'</select>'
       +'<select data-rf="emp" aria-label="雇用形態">'+sel(RO_EMP,r.emp||'','雇用形態を選ぶ')+'</select>'
       +'<select data-rf="dept" aria-label="所属部門">'+sel(RO_DEPT,r.dept||'','所属部門を選ぶ')+'</select>'
       +'<select data-rf="post" aria-label="役職">'+sel(RO_POST,r.post||'','役職：なし')+'</select>'
       +roKjHTML(r)
       +'<label><input type="checkbox" data-rf="mgr"'+(r.mgr?' checked':'')+'>管理者</label>'
+      +'<label title="退職した人だけ入れます">退職日<input type="date" data-rf="out" value="'+esc(r.out||'')+'" aria-label="退職日"></label>'
       +'<button type="button" data-rodel="1">外す</button></div>';
   });
   if(!a.length)h+='<div class="nt">まだ登録がありません。「職員を追加」で一人ずつ入れてください。</div>';
@@ -395,6 +399,7 @@ function rosterHTML(){
   const oldK=a.filter(r=>r&&r.job==='介護職').length;
   h+='<div class="nt">介護職は資格ごとに選びます（介護福祉士・実務者研修修了・初任者研修修了・資格なし）。加算の条件や処遇改善加算の分配で使います（2026-10-25）。'+(oldK?'<span style="color:var(--text-warning)">資格の入っていない「介護職」のままの人が '+oldK+'人います。資格の入った職種を選び直してください。</span>':'')+'</div>';
   h+='<div class="nt">「管理者」は、事業所の管理者（訪問看護ステーションの管理者など）に付ける印です。</div>';
+  h+='<div class="nt">「退職日」は、退職した人だけに入れます。退職した人は「外す」を押さずに退職日を入れてください。名簿に残ったまま、退職日の翌日から従業員数に数えず、トライタイムの担当や選ぶ欄からも外れます。過去の記録は、そのまま残ります（2026-10-29）。</div>';
   h+='<div class="nt">「所属部門」は、トライタイムで部署ごとに予定を組むときの担当の分け方になります（2026-10-19）。選んでいない人は、職種から部署を当てます。</div>';
   h+='<div class="nt">「兼務する部署」は、所属部門のほかに横断して入る部署です。押すと部署の一覧が開くので、入る部署に印を付けてください。トライタイムでは、兼務先の部署の画面でも、この職員を担当として選べます（2026-10-26）。</div>';
   return h;
@@ -413,7 +418,7 @@ function hookRoster(){
       c.onchange=()=>{r.sub=[].slice.call(tr.querySelectorAll('[data-kj]:checked')).map(x=>x.dataset.kj).filter(x=>x!==r.dept);const sm=tr.querySelector('[data-kjsum]');if(sm)sm.textContent=roKjLabel(r)+' ▾';roRecount();};
     });
     tr.querySelector('[data-rodel]').onclick=()=>{
-      if(String(r.name||'').trim()&&!confirm('「'+r.name+'」を職員名簿から外しますか？（トライタイムで読み込むと、トライタイムの名簿からも外れます。これまでの記録は残ります）'))return;
+      if(String(r.name||'').trim()&&!confirm('「'+r.name+'」を職員名簿から外しますか？（トライタイムで読み込むと、トライタイムの名簿からも外れます。これまでの記録は残ります）\n\n退職した人は、外さずに「退職日」を入れてください。名簿に残り、退職日の翌日から従業員数に数えず、トライタイムの担当からも外れます。'))return;
       roList().splice(+tr.dataset.ro,1);draw();
     };
   });

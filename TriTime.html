@@ -227,7 +227,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-29-03</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-29-04</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -365,6 +365,7 @@ function tsGoBack(){
       <div><label class="f" for="pt_no">契約書番号</label><input type="text" id="pt_no"></div>
       <div><label class="f" for="pt_name">氏名</label><input type="text" id="pt_name" placeholder="例：山田 花子"></div>
       <div><label class="f" for="pt_kana">ふりがな</label><input type="text" id="pt_kana" placeholder="例：やまだ はなこ"></div>
+      <div><label class="f" for="pt_sex">性別</label><select id="pt_sex"><option value="">選んでください</option><option>男性</option><option>女性</option></select></div>
       <div><label class="f">&nbsp;</label><button class="btn sub" type="button" id="pt_load">呼び出す</button></div>
       <div><label class="f" for="pt_status">状態</label><select id="pt_status"><option>利用中</option><option>休止中</option><option>契約終了</option></select></div>
       <div><label class="f" for="pt_ins">保険</label><select id="pt_ins"><option value="">選んでください</option><option>医療保険</option><option>介護保険</option><option>精神科訪問看護（医療）</option><option>障害福祉</option><option>自費</option></select></div>
@@ -1808,7 +1809,7 @@ function renderAdmin(){
    何人かで手分けして写すため、書類ごとに「写した日・写した人」を残し、一覧で進み具合を出す。
    特定の職員を嫌がる申し出は、ここに書かせず「経過」の拒否の申し出（本人の言葉・見直し期限つき）へ回す。
    ============================================================ */
-var PT_F = [['pt_name','name'],['pt_kana','kana'],['pt_status','status'],['pt_ins','ins'],['pt_area','area'],['pt_addr','addr'],['pt_spot','spot'],['pt_wish','wish'],['pt_wBand','wBand'],['pt_vmin','vmin'],['pt_team','team'],['pt_preCall','preCall'],['pt_ngNote','ngNote'],['pt_wOther','wOther'],
+var PT_F = [['pt_name','name'],['pt_kana','kana'],['pt_sex','sex'],['pt_status','status'],['pt_ins','ins'],['pt_area','area'],['pt_addr','addr'],['pt_spot','spot'],['pt_wish','wish'],['pt_wBand','wBand'],['pt_vmin','vmin'],['pt_team','team'],['pt_preCall','preCall'],['pt_ngNote','ngNote'],['pt_wOther','wOther'],
   ['pt_hosp','hosp'],['pt_doc','doc'],['pt_inst','instDate'],['pt_instEnd','instEnd'],['pt_instPoint','instPoint'],['pt_special','special'],['pt_specialEnd','specialEnd'],
   ['pt_asmDate','asmDate'],['pt_asmState','asmState'],['pt_asmLife','asmLife'],['pt_asmFamily','asmFamily'],['pt_asmRisk','asmRisk'],
   ['pt_goal','goal'],['pt_planMade','planMade'],['pt_freq','freq'],
@@ -2090,7 +2091,7 @@ function ptView(no){
   var p = patient(no); if(!p){ $('ptView').innerHTML = ''; return; }
   var d = D(), m = ym(ymd(new Date())), hi = hardInfo(no, m), cp = p.copied || {};
   var sec = function(title, rows){ rows = rows.filter(function(r){ return r[1]; }); return rows.length ? '<h3>' + esc(title) + '</h3><table>' + rows.map(function(r){ return '<tr><th style="width:30%">' + esc(r[0]) + '</th><td style="white-space:pre-wrap">' + esc(r[1]) + '</td></tr>'; }).join('') + '</table>' : ''; };
-  var h = '<div class="card" style="margin-top:14px;box-shadow:none"><h2>' + esc(dnn(no)) + ' <small class="muted">' + esc(p.area || '') + '・' + esc(p.status || '利用中') + (p.ins ? '・' + esc(p.ins) : '') + '</small></h2>' +
+  var h = '<div class="card" style="margin-top:14px;box-shadow:none"><h2>' + esc(dnn(no)) + ' <small class="muted">' + (p.sex ? esc(p.sex) + '・' : '') + esc(p.area || '') + '・' + esc(p.status || '利用中') + (p.ins ? '・' + esc(p.ins) : '') + '</small></h2>' +
     (hi.on ? '<p><span class="tag red">困難患者（' + esc(hi.why.join('・')) + '）</span></p>' : '') +
     sec('訪問先', [['目印・駐車', p.spot]]) + sec('予定の希望', [['希望の曜日', (p.wDays || []).map(function(d){ return DOW[+d]; }).join('・')], ['希望の時刻・時間帯', [p.wish, p.wBand].filter(Boolean).join('・')], ['訪問できない曜日', (p.ngDays || []).map(function(d){ return DOW[+d]; }).join('・')], ['訪問できない時間・理由', p.ngNote], ['1回の訪問時間', p.vmin ? p.vmin + '分' : ''], ['体制', p.team], ['訪問前の連絡', p.preCall], ['その他の希望', p.wOther]]) +
     (d.doctor ? sec('指示書', [['医療機関', p.hosp], ['主治医', p.doc], ['指示期間', (p.instDate ? jpDate(p.instDate) : '') + (p.instEnd ? '〜' + jpDate(p.instEnd) : '')], ['指示の内容', p.instPoint], ['特別指示', p.special ? p.special + (p.specialEnd ? '（' + jpDate(p.specialEnd) + 'まで）' : '') : '']]) : '') +
@@ -2123,7 +2124,7 @@ function renderPtList(){
   $('ptList').innerHTML = pts.length ? '<table><tr><th>契約書番号</th><th>氏名</th><th>地区</th><th>状態</th>' + (mon ? '<th>周期</th><th>担当</th><th>計画の更新期限</th>' : D().doctor ? '<th>指示期間の終わり</th>' : '') + '<th>写した書類</th><th>印</th><th></th></tr>' + pts.map(function(p){
     var hi = hardInfo(p.no, m), n = ptCopiedN(p);
     var instEnd = p.instEnd ? (p.instEnd < ymd(new Date()) ? '<span class="tag red">' + esc(jpDate(p.instEnd)) + '（切れています）</span>' : esc(jpDate(p.instEnd))) : '<span class="muted">未入力</span>';
-    return '<tr><td>' + esc(dn(p.no)) + '</td><td>' + esc(p.name || '') + (p.kana ? '<br><small class="muted">' + esc(p.kana) + '</small>' : '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + '</td>' +
+    return '<tr><td>' + esc(dn(p.no)) + '</td><td>' + esc(p.name || '') + (p.kana || p.sex ? '<br><small class="muted">' + esc([p.kana, p.sex].filter(Boolean).join('・')) + '</small>' : '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + '</td>' +
       (mon ? '<td>' + esc(cycLabel(p.cyc)) + '</td><td>' + esc(staffName(p.staffId)) + '</td><td>' + esc(p.planDue ? jpDate(p.planDue) : '') + '</td>' : D().doctor ? '<td>' + instEnd + '</td>' : '') +
       '<td>' + (n >= docs.length ? '<span class="tag green">' + n + '／' + docs.length + '</span>' : '<span class="tag amber">' + n + '／' + docs.length + '</span>') + (p.editedBy ? ' <small class="muted">' + esc(staffName(p.editedBy)) + '</small>' : '') + '</td>' +
       '<td>' + (hi.on ? '<span class="tag red" title="' + esc(hi.why.join('・')) + '">困難患者</span>' : '') + '</td>' +
@@ -3537,9 +3538,9 @@ function ptRosterPrint(){
   var css = '@page{size:A4;margin:12mm}body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;font-size:10.5pt;color:#10243b}' +
     '.hd{display:flex;align-items:center;gap:10px;border-bottom:1.5px solid #10243b;padding-bottom:6px;margin-bottom:8px}.hd img{width:30px;height:30px}.hd h1{font-size:14pt;margin:0}.hd p{margin:0;font-size:9.5pt;color:#5d6b7a}' +
     'table{width:100%;border-collapse:collapse}th,td{border:1px solid #cfc6b4;padding:3px 6px;text-align:left}th{background:#f4f1ea}tr{page-break-inside:avoid}.sm{font-size:9pt;color:#5d6b7a}.red{color:#b0402f}';
-  var rows = list.map(function(p, i){ return '<tr><td>' + (i + 1) + '</td><td>' + esc(dn(p.no)) + '</td><td>' + (p.name ? esc(p.name) : '<span class="red">未入力</span>') + '</td><td>' + esc(p.kana || '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + '</td></tr>'; }).join('');
+  var rows = list.map(function(p, i){ return '<tr><td>' + (i + 1) + '</td><td>' + esc(dn(p.no)) + '</td><td>' + (p.name ? esc(p.name) : '<span class="red">未入力</span>') + '</td><td>' + esc(p.kana || '') + '</td><td>' + esc(p.sex || '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + '</td></tr>'; }).join('');
   var body = '<div class="hd"><img src="' + esc(new URL('TriSight_icon_512.png', location.href).href) + '" alt="TriSight®"><div><h1>契約書番号と氏名の対照表</h1><p>' + esc(D().name) + '　' + list.length + '名　作成日 ' + esc(jpDate(ymd(new Date()))) + '</p></div></div>' +
-    '<table><tr><th>No.</th><th>契約書番号</th><th>氏名</th><th>ふりがな</th><th>地区</th><th>状態</th></tr>' + rows + '</table>' +
+    '<table><tr><th>No.</th><th>契約書番号</th><th>氏名</th><th>ふりがな</th><th>性別</th><th>地区</th><th>状態</th></tr>' + rows + '</table>' +
     '<p class="sm">個人情報を含む書類です。事業所の外へ持ち出さず、使い終えたら決められた場所に保管してください。</p>';
   var win = window.open('', '_blank');
   if(!win){ $('pt_rosterMsg').textContent = '印刷の画面を開けませんでした。ブラウザのポップアップの許可を確かめてください。'; return; }
@@ -4643,7 +4644,7 @@ function kpRender(){
   if(!list.length){ $('kpBody').innerHTML = '<p class="empty">まだ' + esc(D().client) + 'が登録されていません。「利用者登録」で入れると、ここに並びます。</p>'; return; }
   if(!hit.length){ $('kpBody').innerHTML = '<p class="empty">「' + esc(q) + '」に当たる人はいません。</p>'; return; }
   $('kpBody').innerHTML = '<table class="kpT"><tr><th>契約書番号</th><th>氏名</th><th>地区</th><th>状態</th></tr>' + hit.map(function(p){
-    return '<tr><td>' + esc(dn(p.no)) + '</td><td>' + (p.name ? '<b>' + esc(p.name) + '</b>' : '<span style="color:var(--red)">氏名が未入力</span>') + (p.kana ? '<br><small>' + esc(p.kana) + '</small>' : '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + '</td></tr>';
+    return '<tr><td>' + esc(dn(p.no)) + '</td><td>' + (p.name ? '<b>' + esc(p.name) + '</b>' : '<span style="color:var(--red)">氏名が未入力</span>') + (p.kana || p.sex ? '<br><small>' + esc([p.kana, p.sex].filter(Boolean).join('・')) + '</small>' : '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + '</td></tr>';
   }).join('') + '</table><p class="muted">' + hit.length + '人' + (q ? '（全 ' + list.length + '人のうち）' : '') + '</p>';
 }
 /* 印の意味（印が付く決まりを、画面の作りに合わせて書いたもの） */

@@ -227,7 +227,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-29-04</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-29-05</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -376,7 +376,7 @@ function tsGoBack(){
       <div><label class="f" for="pt_spot">訪問先の目印・駐車</label><input type="text" id="pt_spot" placeholder="例：青い屋根の2階・裏の駐車場"></div>
     </div>
     <details class="ptsec" id="ptsRead" open><summary>書類を読み込ませる（PDF・写真から欄を埋める）</summary>
-      <p class="muted">カイポケの書類や契約書のPDF、または書類の写真を選ぶと、AIが読んで下の欄に下書きを入れます。氏名・生年月日・電話番号・番地などは入れません。入った内容を見て直し、「この内容で登録する」を押すと登録されます。読み込ませた書類そのものは、どこにも残しません（読み取りのため、AIの提供元へ送られます）。</p>
+      <p class="muted">カイポケの書類や契約書のPDF、または書類の写真を選ぶと、AIが読んで欄に下書きを入れます。まず「利用者の基本情報（フェースシート）」を読ませると、氏名・ふりがな・性別・住所・地区・保険がまとめて入ります。ほかの書類からも、氏名・ふりがな・性別・住所は拾います。生年月日・電話番号・保険者番号などは入れません。入った内容を見て直し、「この内容で登録する」を押すと登録されます。読み込ませた書類そのものは、どこにも残しません（読み取りのため、AIの提供元へ送られます）。</p>
       <div class="row">
         <div><label class="f" for="rd_kind">書類の種類</label><select id="rd_kind"></select></div>
         <div><label class="f" for="rd_file">ファイル（PDF 1つ、または写真 5枚まで）</label><input type="file" id="rd_file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple></div>
@@ -1842,7 +1842,8 @@ function ptForm(){
    空の欄だけを埋め、すでに入っている欄は変えずに、違う値が読めた欄を知らせる。 */
 function rdKinds(){
   var cur = $('rd_kind').value;
-  $('rd_kind').innerHTML = ptDocs().map(function(x){ return '<option value="' + x[0] + '">' + esc(x[1]) + '</option>'; }).join('');
+  /* 2026-10-29：カイポケの「利用者の基本情報（フェースシート）」を先頭に足した（氏名・ふりがな・性別・住所・地区・保険をまとめて写す） */
+  $('rd_kind').innerHTML = [['base','利用者の基本情報（フェースシート）']].concat(ptDocs()).map(function(x){ return '<option value="' + x[0] + '">' + esc(x[1]) + '</option>'; }).join('');
   if(cur && $('rd_kind').querySelector('option[value="' + cur + '"]')) $('rd_kind').value = cur;
 }
 function rdB64(file){ return new Promise(function(ok, ng){ var r = new FileReader(); r.onload = function(){ ok(String(r.result).split(',')[1] || ''); }; r.onerror = function(){ ng(new Error('ファイルを読めませんでした。')); }; r.readAsDataURL(file); }); }

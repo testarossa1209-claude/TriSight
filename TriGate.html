@@ -361,8 +361,44 @@ function tsGoBack(){
     var typed=[].some.call(document.querySelectorAll("textarea,input[type=text],input:not([type])"),function(e){return e.value&&e.value.trim();});
     if(typed&&!confirm("この画面に入力した内容は保存されていません。前のページに戻ると消えます。戻りますか？"))return;
   }
-  var r="";try{r=document.referrer?new URL(document.referrer).origin:"";}catch(e){}
-  if(history.length>1&&r===location.origin){history.back();}else{location.href="index.html";}
+  var r="",rp="";try{if(document.referrer){var u=new URL(document.referrer);r=u.origin;rp=u.pathname;}}catch(e){}
+  /* 2026-10-30：表札（トライサイトの入口）へ戻るときは、先に認証コードを聞き、
+     契約にトライサイトが含まれるコードだけを通す（トライゲイト単独の契約などは通さない）。宏史さんの指示。 */
+  var toPortal=!(history.length>1&&r===location.origin)||rp===location.pathname||/\/(index\.html)?$/.test(rp);
+  if(!toPortal){history.back();return;}
+  tsPortalAsk();
+}
+function tsPortalAsk(){
+  var old=document.getElementById("tsPortal");if(old)old.remove();
+  var w=document.createElement("div");w.id="tsPortal";
+  w.setAttribute("style","position:fixed;inset:0;background:rgba(15,29,58,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;font-family:inherit");
+  w.innerHTML='<div style="background:#fff;border-radius:12px;max-width:420px;width:100%;padding:20px 20px 16px;box-sizing:border-box;box-shadow:0 8px 30px rgba(0,0,0,.25);color:#1f2328">'
+   +'<div style="font-weight:700;font-size:16px;margin-bottom:6px">トライサイトの入口へ進む</div>'
+   +'<div style="font-size:13px;line-height:1.6;color:#555;margin-bottom:10px">入口の画面へ進むには、認証コードが要ります。事務局の紙にある認証コードを入れてください。</div>'
+   +'<input id="tsPortalCode" type="password" autocomplete="off" style="width:100%;box-sizing:border-box;font-size:15px;padding:8px 10px;border:1px solid #afb8c1;border-radius:8px">'
+   +'<div id="tsPortalMsg" style="font-size:13px;color:#b42318;min-height:1.6em;margin-top:6px"></div>'
+   +'<div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="tsPortalNo" style="font-family:inherit;font-size:14px;padding:6px 14px;border:1px solid #afb8c1;background:#fff;border-radius:999px;cursor:pointer">やめる</button>'
+   +'<button type="button" id="tsPortalGo" style="font-family:inherit;font-size:14px;padding:6px 16px;border:0;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">確かめて進む</button></div></div>';
+  document.body.appendChild(w);
+  var inp=document.getElementById("tsPortalCode"),msg=document.getElementById("tsPortalMsg"),go=document.getElementById("tsPortalGo");
+  document.getElementById("tsPortalNo").onclick=function(){w.remove();};
+  inp.onkeydown=function(e){if(e.key==="Enter")go.click();};
+  go.onclick=function(){
+    var c=inp.value.trim();if(!c){msg.textContent="認証コードを入れてください。";return;}
+    go.disabled=true;msg.style.color="#555";msg.textContent="確かめています…";
+    fetch("https://trisight-relay.vercel.app/api/gate",{method:"POST",headers:{"Content-Type":"application/json","x-trisight-code":c},body:JSON.stringify({task:"portal"})})
+    .then(function(res){return res.json().catch(function(){return {};}).then(function(j){return {s:res.status,j:j};});})
+    .then(function(o){
+      go.disabled=false;msg.style.color="#b42318";
+      if(o.s===200&&o.j&&o.j.portal===true){location.href="index.html";return;}
+      if(o.s===200)msg.textContent="この認証コードのご契約には、トライサイトの入口の画面が含まれていません。";
+      else if(o.s===401)msg.textContent="認証コードが一致しませんでした。";
+      else if(o.s===429)msg.textContent=(o.j&&o.j.error)||"間違いが続いたため、しばらく受け付けません。";
+      else if(o.s===400)msg.textContent="中継の更新がまだ済んでいないため、確かめられません。";
+      else msg.textContent="確かめられませんでした（"+o.s+"）。少しおいてもう一度押してください。";
+    },function(){go.disabled=false;msg.style.color="#b42318";msg.textContent="中継につながりませんでした。通信を確かめて、もう一度押してください。";});
+  };
+  setTimeout(function(){inp.focus();},50);
 }
 </script>
 
@@ -376,7 +412,7 @@ function tsGoBack(){
       <span class="sub">補助金・助成金の門 ／ 受付・仕分け</span>
     </div>
     <a class="famlink" href="TriTask.html" id="taskLink">TriTask で進捗を管理する &rsaquo;</a>
-    <a class="famlink" href="index.html" id="famLink">TriSight ファミリーへ &rsaquo;</a>
+    <a class="famlink" href="index.html" id="famLink" onclick="tsPortalAsk();return false;">TriSight ファミリーへ &rsaquo;</a>
         <a class="famlink" href="TriRobo.html?s=trigate" id="roboLink" target="_blank" rel="noopener" style="margin-left:8px">使い方（トライサイトロボ） &rsaquo;</a>
     </div>
     <div class="codebar" style="margin-top:8px;font-size:13px;color:#666">
@@ -8232,7 +8268,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-10-26-01';
+  const TRIGATE_VERSION = '2026-10-30-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

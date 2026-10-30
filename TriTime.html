@@ -273,7 +273,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-31-02</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-31-03</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -2816,9 +2816,10 @@ function zRender(){
   }).catch(function(e){ var el = $('zdList'); if(el) el.textContent = e.message || '読み込めませんでした。'; });
 }
 /* 入口（登録した端末で開いたときの最初の画面。はじめての登録は #zeus） */
-function zGate(){
+function zGate(force){
   if(window.TT_LAB) return;
-  var first = /^#zeus$/i.test(location.hash || '');
+  /* 2026-10-31：アプリとして入れたトライタイムには住所の欄が無く #zeus を付けられないため、キーボードの Ctrl＋Shift＋Z でも入口を出す */
+  var first = force === true || /^#zeus$/i.test(location.hash || '');
   if(!zIsReg() && !first) return;
   if(hasOwnKey()){
     /* 同じ画面（タブ）の読み込み直し：使用中の印を付け直して続ける */
@@ -2826,7 +2827,7 @@ function zGate(){
     return;
   }
   var cls = document.documentElement.className;
-  if(cls.indexOf('openLocked') >= 0 || cls.indexOf('labLocked') >= 0){ setTimeout(zGate, 800); return; }
+  if(cls.indexOf('openLocked') >= 0 || cls.indexOf('labLocked') >= 0){ setTimeout(function(){ zGate(force); }, 800); return; }
   if($('zeusGate')) return;
   var w = document.createElement('div'); w.id = 'zeusGate';
   w.setAttribute('style', 'position:fixed;inset:0;z-index:99000;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:linear-gradient(165deg,#0c1830,#16264a 55%,#0b1428)');
@@ -2851,6 +2852,9 @@ function zGate(){
   setTimeout(function(){ inp.focus(); }, 50);
 }
 setTimeout(zGate, 0);
+document.addEventListener('keydown', function(e){
+  if(e.ctrlKey && e.shiftKey && !e.altKey && String(e.key).toLowerCase() === 'z'){ e.preventDefault(); if(!hasOwnKey()) zGate(true); }
+});
 function pushChunks(items){
   var out = [], cur = [], size = 0;
   items.forEach(function(it){ var n = JSON.stringify(it).length; if(cur.length && (cur.length >= 200 || size + n > 300000)){ out.push(cur); cur = []; size = 0; } cur.push(it); size += n; });

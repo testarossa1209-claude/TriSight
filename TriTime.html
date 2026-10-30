@@ -2,6 +2,32 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<script>
+/* ---- 実験機（2026-10-29・宏史さんの指示）----
+   1台の端末を「実験機」と「職員の仮利用」で切り替えて使う。
+   ・実験機：記録はこの端末の中の別の入れ物（lab__ を頭に付けた場所）に置き、共有もフォルダへの書き出しもしない。開くたびに実験機の合言葉を求める。
+   ・職員の仮利用：ふつうの端末と同じ。管理者の合言葉を入れなければ管理者の画面は出ない。
+   切り替えても、もう一方の記録は消えずに残る。この仕組みは、この端末の中で確かめるもので、端末を分解して調べる人までは止めない。 */
+(function(){
+  var MODE_KEY = 'tritime_devmode', P = 'lab__', S = null;
+  try{ S = window.localStorage; }catch(e){ return; }
+  if(!S || !window.Storage) return;
+  var SP = Storage.prototype, g = SP.getItem, st = SP.setItem, rm = SP.removeItem, ky = SP.key, ln = Object.getOwnPropertyDescriptor(SP, 'length');
+  var m = null; try{ m = JSON.parse(g.call(S, MODE_KEY) || 'null'); }catch(e){ m = null; }
+  window.TT_DEV = m; window.TT_LAB = !!(m && m.mode === 'lab');
+  window.TT_RAW = { get:function(k){ return g.call(S, k); }, set:function(k, v){ st.call(S, k, v); }, del:function(k){ rm.call(S, k); }, keys:function(){ var a = [], n = ln.get.call(S); for(var i = 0; i < n; i++) a.push(ky.call(S, i)); return a; } };
+  if(!window.TT_LAB) return;
+  var pass = function(k){ k = String(k); return k === MODE_KEY || k === 'trisight_access_code'; };
+  var lk = function(){ return window.TT_RAW.keys().filter(function(k){ return k && k.indexOf(P) === 0; }).map(function(k){ return k.slice(P.length); }); };
+  SP.getItem = function(k){ return (this === S && !pass(k)) ? g.call(this, P + k) : g.call(this, k); };
+  SP.setItem = function(k, v){ return (this === S && !pass(k)) ? st.call(this, P + k, v) : st.call(this, k, v); };
+  SP.removeItem = function(k){ return (this === S && !pass(k)) ? rm.call(this, P + k) : rm.call(this, k); };
+  SP.key = function(i){ return this === S ? (lk()[i] == null ? null : lk()[i]) : ky.call(this, i); };
+  try{ Object.defineProperty(SP, 'length', { configurable:true, get:function(){ return this === S ? lk().length : ln.get.call(this); } }); }catch(e){}
+  var ok = false; try{ ok = sessionStorage.getItem('tritime_lab_open') === '1'; }catch(e){}
+  if(!ok) document.documentElement.className += ' labLocked';
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TriTime（トライタイム） — 部署ごとの予定と記録</title>
 <link rel="icon" href="favicon.ico?v=2" sizes="any">
@@ -16,6 +42,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
+  html.labLocked body > *:not(#labLock){display:none !important}
+  #labLock{position:fixed;inset:0;z-index:999;background:var(--paper,#f4f1ea);display:flex;align-items:center;justify-content:center;padding:16px}
+  #labLock .box{background:#fff;border:1px solid #e9e3d6;border-radius:14px;padding:22px;max-width:380px;width:100%;box-shadow:0 8px 28px rgba(16,36,59,.12)}
+  #labLock input{width:100%;font:inherit;font-size:17px;padding:10px 12px;border:1px solid #cfc6b4;border-radius:10px;margin:8px 0}
+  .labBar{background:#2a4866;color:#fff;border-radius:10px;padding:8px 12px;margin:8px 0;font-size:14px}
   :root{
     --ink:#10243b; --ink-soft:#2a4866; --paper:#f4f1ea; --paper-deep:#e9e3d6;
     --amber:#c9772a; --amber-soft:#e3a55c; --line:#cfc6b4; --ok:#3f7d57; --red:#b0402f;
@@ -196,7 +227,7 @@ function tsGoBack(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-29-02</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-29-05</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -228,6 +259,7 @@ function tsGoBack(){
 
 <div id="verNotice"></div>
 <div id="alertBox"></div>
+<div class="labBar" id="labBar" style="display:none">この端末はいま<b>実験機</b>です。ここで入れた記録は、この端末の中だけにあり、ほかの端末へは送られません。</div>
 <div class="note" id="shareNote"></div>
 <div class="note" id="roleNote" style="display:none"></div>
 
@@ -333,6 +365,7 @@ function tsGoBack(){
       <div><label class="f" for="pt_no">契約書番号</label><input type="text" id="pt_no"></div>
       <div><label class="f" for="pt_name">氏名</label><input type="text" id="pt_name" placeholder="例：山田 花子"></div>
       <div><label class="f" for="pt_kana">ふりがな</label><input type="text" id="pt_kana" placeholder="例：やまだ はなこ"></div>
+      <div><label class="f" for="pt_sex">性別</label><select id="pt_sex"><option value="">選んでください</option><option>男性</option><option>女性</option></select></div>
       <div><label class="f">&nbsp;</label><button class="btn sub" type="button" id="pt_load">呼び出す</button></div>
       <div><label class="f" for="pt_status">状態</label><select id="pt_status"><option>利用中</option><option>休止中</option><option>契約終了</option></select></div>
       <div><label class="f" for="pt_ins">保険</label><select id="pt_ins"><option value="">選んでください</option><option>医療保険</option><option>介護保険</option><option>精神科訪問看護（医療）</option><option>障害福祉</option><option>自費</option></select></div>
@@ -343,7 +376,7 @@ function tsGoBack(){
       <div><label class="f" for="pt_spot">訪問先の目印・駐車</label><input type="text" id="pt_spot" placeholder="例：青い屋根の2階・裏の駐車場"></div>
     </div>
     <details class="ptsec" id="ptsRead" open><summary>書類を読み込ませる（PDF・写真から欄を埋める）</summary>
-      <p class="muted">カイポケの書類や契約書のPDF、または書類の写真を選ぶと、AIが読んで下の欄に下書きを入れます。氏名・生年月日・電話番号・番地などは入れません。入った内容を見て直し、「この内容で登録する」を押すと登録されます。読み込ませた書類そのものは、どこにも残しません（読み取りのため、AIの提供元へ送られます）。</p>
+      <p class="muted">カイポケの書類や契約書のPDF、または書類の写真を選ぶと、AIが読んで欄に下書きを入れます。まず「利用者の基本情報（フェースシート）」を読ませると、氏名・ふりがな・性別・住所・地区・保険がまとめて入ります。ほかの書類からも、氏名・ふりがな・性別・住所は拾います。生年月日・電話番号・保険者番号などは入れません。入った内容を見て直し、「この内容で登録する」を押すと登録されます。読み込ませた書類そのものは、どこにも残しません（読み取りのため、AIの提供元へ送られます）。</p>
       <div class="row">
         <div><label class="f" for="rd_kind">書類の種類</label><select id="rd_kind"></select></div>
         <div><label class="f" for="rd_file">ファイル（PDF 1つ、または写真 5枚まで）</label><input type="file" id="rd_file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple></div>
@@ -856,6 +889,12 @@ function tsGoBack(){
     <textarea id="im_text" placeholder="ここに貼り付けます" style="min-height:120px"></textarea>
     <div class="btns"><button class="btn sub" id="im_read">読み取る</button></div>
     <div id="im_map"></div>
+  </div>
+  <div class="card" id="cardLab" style="display:none">
+    <h2>この端末の使い方（実験機）</h2>
+    <p class="lead">1台の端末を、「実験機」と「職員の仮利用」で切り替えて使うための設定です。実験機は、共有をしない練習・見本用の使い方で、すべての画面が見えます。開くたびに、実験機の合言葉を求めます。職員の仮利用は、ふつうの看護師さんの端末と同じ使い方です（管理者の合言葉を入れなければ、売上・評価などの画面は出ません）。切り替えても、もう一方の記録は消えずに残ります。</p>
+    <div id="labBody"></div>
+    <p class="muted" id="labMsg"></p>
   </div>
   <div class="card" id="cardDev">
     <h2>この端末と共有</h2>
@@ -1770,7 +1809,7 @@ function renderAdmin(){
    何人かで手分けして写すため、書類ごとに「写した日・写した人」を残し、一覧で進み具合を出す。
    特定の職員を嫌がる申し出は、ここに書かせず「経過」の拒否の申し出（本人の言葉・見直し期限つき）へ回す。
    ============================================================ */
-var PT_F = [['pt_name','name'],['pt_kana','kana'],['pt_status','status'],['pt_ins','ins'],['pt_area','area'],['pt_addr','addr'],['pt_spot','spot'],['pt_wish','wish'],['pt_wBand','wBand'],['pt_vmin','vmin'],['pt_team','team'],['pt_preCall','preCall'],['pt_ngNote','ngNote'],['pt_wOther','wOther'],
+var PT_F = [['pt_name','name'],['pt_kana','kana'],['pt_sex','sex'],['pt_status','status'],['pt_ins','ins'],['pt_area','area'],['pt_addr','addr'],['pt_spot','spot'],['pt_wish','wish'],['pt_wBand','wBand'],['pt_vmin','vmin'],['pt_team','team'],['pt_preCall','preCall'],['pt_ngNote','ngNote'],['pt_wOther','wOther'],
   ['pt_hosp','hosp'],['pt_doc','doc'],['pt_inst','instDate'],['pt_instEnd','instEnd'],['pt_instPoint','instPoint'],['pt_special','special'],['pt_specialEnd','specialEnd'],
   ['pt_asmDate','asmDate'],['pt_asmState','asmState'],['pt_asmLife','asmLife'],['pt_asmFamily','asmFamily'],['pt_asmRisk','asmRisk'],
   ['pt_goal','goal'],['pt_planMade','planMade'],['pt_freq','freq'],
@@ -1803,7 +1842,8 @@ function ptForm(){
    空の欄だけを埋め、すでに入っている欄は変えずに、違う値が読めた欄を知らせる。 */
 function rdKinds(){
   var cur = $('rd_kind').value;
-  $('rd_kind').innerHTML = ptDocs().map(function(x){ return '<option value="' + x[0] + '">' + esc(x[1]) + '</option>'; }).join('');
+  /* 2026-10-29：カイポケの「利用者の基本情報（フェースシート）」を先頭に足した（氏名・ふりがな・性別・住所・地区・保険をまとめて写す） */
+  $('rd_kind').innerHTML = [['base','利用者の基本情報（フェースシート）']].concat(ptDocs()).map(function(x){ return '<option value="' + x[0] + '">' + esc(x[1]) + '</option>'; }).join('');
   if(cur && $('rd_kind').querySelector('option[value="' + cur + '"]')) $('rd_kind').value = cur;
 }
 function rdB64(file){ return new Promise(function(ok, ng){ var r = new FileReader(); r.onload = function(){ ok(String(r.result).split(',')[1] || ''); }; r.onerror = function(){ ng(new Error('ファイルを読めませんでした。')); }; r.readAsDataURL(file); }); }
@@ -2052,7 +2092,7 @@ function ptView(no){
   var p = patient(no); if(!p){ $('ptView').innerHTML = ''; return; }
   var d = D(), m = ym(ymd(new Date())), hi = hardInfo(no, m), cp = p.copied || {};
   var sec = function(title, rows){ rows = rows.filter(function(r){ return r[1]; }); return rows.length ? '<h3>' + esc(title) + '</h3><table>' + rows.map(function(r){ return '<tr><th style="width:30%">' + esc(r[0]) + '</th><td style="white-space:pre-wrap">' + esc(r[1]) + '</td></tr>'; }).join('') + '</table>' : ''; };
-  var h = '<div class="card" style="margin-top:14px;box-shadow:none"><h2>' + esc(dnn(no)) + ' <small class="muted">' + esc(p.area || '') + '・' + esc(p.status || '利用中') + (p.ins ? '・' + esc(p.ins) : '') + '</small></h2>' +
+  var h = '<div class="card" style="margin-top:14px;box-shadow:none"><h2>' + esc(dnn(no)) + ' <small class="muted">' + (p.sex ? esc(p.sex) + '・' : '') + esc(p.area || '') + '・' + esc(p.status || '利用中') + (p.ins ? '・' + esc(p.ins) : '') + '</small></h2>' +
     (hi.on ? '<p><span class="tag red">困難患者（' + esc(hi.why.join('・')) + '）</span></p>' : '') +
     sec('訪問先', [['目印・駐車', p.spot]]) + sec('予定の希望', [['希望の曜日', (p.wDays || []).map(function(d){ return DOW[+d]; }).join('・')], ['希望の時刻・時間帯', [p.wish, p.wBand].filter(Boolean).join('・')], ['訪問できない曜日', (p.ngDays || []).map(function(d){ return DOW[+d]; }).join('・')], ['訪問できない時間・理由', p.ngNote], ['1回の訪問時間', p.vmin ? p.vmin + '分' : ''], ['体制', p.team], ['訪問前の連絡', p.preCall], ['その他の希望', p.wOther]]) +
     (d.doctor ? sec('指示書', [['医療機関', p.hosp], ['主治医', p.doc], ['指示期間', (p.instDate ? jpDate(p.instDate) : '') + (p.instEnd ? '〜' + jpDate(p.instEnd) : '')], ['指示の内容', p.instPoint], ['特別指示', p.special ? p.special + (p.specialEnd ? '（' + jpDate(p.specialEnd) + 'まで）' : '') : '']]) : '') +
@@ -2085,7 +2125,7 @@ function renderPtList(){
   $('ptList').innerHTML = pts.length ? '<table><tr><th>契約書番号</th><th>氏名</th><th>地区</th><th>状態</th>' + (mon ? '<th>周期</th><th>担当</th><th>計画の更新期限</th>' : D().doctor ? '<th>指示期間の終わり</th>' : '') + '<th>写した書類</th><th>印</th><th></th></tr>' + pts.map(function(p){
     var hi = hardInfo(p.no, m), n = ptCopiedN(p);
     var instEnd = p.instEnd ? (p.instEnd < ymd(new Date()) ? '<span class="tag red">' + esc(jpDate(p.instEnd)) + '（切れています）</span>' : esc(jpDate(p.instEnd))) : '<span class="muted">未入力</span>';
-    return '<tr><td>' + esc(dn(p.no)) + '</td><td>' + esc(p.name || '') + (p.kana ? '<br><small class="muted">' + esc(p.kana) + '</small>' : '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + '</td>' +
+    return '<tr><td>' + esc(dn(p.no)) + '</td><td>' + esc(p.name || '') + (p.kana || p.sex ? '<br><small class="muted">' + esc([p.kana, p.sex].filter(Boolean).join('・')) + '</small>' : '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + '</td>' +
       (mon ? '<td>' + esc(cycLabel(p.cyc)) + '</td><td>' + esc(staffName(p.staffId)) + '</td><td>' + esc(p.planDue ? jpDate(p.planDue) : '') + '</td>' : D().doctor ? '<td>' + instEnd + '</td>' : '') +
       '<td>' + (n >= docs.length ? '<span class="tag green">' + n + '／' + docs.length + '</span>' : '<span class="tag amber">' + n + '／' + docs.length + '</span>') + (p.editedBy ? ' <small class="muted">' + esc(staffName(p.editedBy)) + '</small>' : '') + '</td>' +
       '<td>' + (hi.on ? '<span class="tag red" title="' + esc(hi.why.join('・')) + '">困難患者</span>' : '') + '</td>' +
@@ -2800,6 +2840,9 @@ function applyDept(){
   /* 職員の端末：名簿・設定は、共有と合言葉の枠だけを出す。仮スケジュール表（予定を組む人の道具）も出さない */
   var stf = (R.lv === 'staff');
   ['cardStaff','cardLeave','cardWorkRule','cardBackup','cardFolder'].forEach(function(id){ show(id, !stf); });
+  if(window.TT_LAB) show('cardFolder', false);
+  show('cardLab', !!window.TT_DEV || (R.lv === 'all' && !dev().share));
+  labRender();
   if(stf){ ['cardWk','cardIm','cardRules'].forEach(function(id){ show(id, false); }); }
   var ssHide = (R.lv === 'staff' || R.lv === 'none'); show('ssTab', !ssHide); if(ssHide && document.body.classList.contains('ssOpen')) ssOpen(false);
   show('kpTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('kpOpen')) sideOpen('kp', false);
@@ -3496,9 +3539,9 @@ function ptRosterPrint(){
   var css = '@page{size:A4;margin:12mm}body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;font-size:10.5pt;color:#10243b}' +
     '.hd{display:flex;align-items:center;gap:10px;border-bottom:1.5px solid #10243b;padding-bottom:6px;margin-bottom:8px}.hd img{width:30px;height:30px}.hd h1{font-size:14pt;margin:0}.hd p{margin:0;font-size:9.5pt;color:#5d6b7a}' +
     'table{width:100%;border-collapse:collapse}th,td{border:1px solid #cfc6b4;padding:3px 6px;text-align:left}th{background:#f4f1ea}tr{page-break-inside:avoid}.sm{font-size:9pt;color:#5d6b7a}.red{color:#b0402f}';
-  var rows = list.map(function(p, i){ return '<tr><td>' + (i + 1) + '</td><td>' + esc(dn(p.no)) + '</td><td>' + (p.name ? esc(p.name) : '<span class="red">未入力</span>') + '</td><td>' + esc(p.kana || '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + '</td></tr>'; }).join('');
+  var rows = list.map(function(p, i){ return '<tr><td>' + (i + 1) + '</td><td>' + esc(dn(p.no)) + '</td><td>' + (p.name ? esc(p.name) : '<span class="red">未入力</span>') + '</td><td>' + esc(p.kana || '') + '</td><td>' + esc(p.sex || '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + '</td></tr>'; }).join('');
   var body = '<div class="hd"><img src="' + esc(new URL('TriSight_icon_512.png', location.href).href) + '" alt="TriSight®"><div><h1>契約書番号と氏名の対照表</h1><p>' + esc(D().name) + '　' + list.length + '名　作成日 ' + esc(jpDate(ymd(new Date()))) + '</p></div></div>' +
-    '<table><tr><th>No.</th><th>契約書番号</th><th>氏名</th><th>ふりがな</th><th>地区</th><th>状態</th></tr>' + rows + '</table>' +
+    '<table><tr><th>No.</th><th>契約書番号</th><th>氏名</th><th>ふりがな</th><th>性別</th><th>地区</th><th>状態</th></tr>' + rows + '</table>' +
     '<p class="sm">個人情報を含む書類です。事業所の外へ持ち出さず、使い終えたら決められた場所に保管してください。</p>';
   var win = window.open('', '_blank');
   if(!win){ $('pt_rosterMsg').textContent = '印刷の画面を開けませんでした。ブラウザのポップアップの許可を確かめてください。'; return; }
@@ -3550,8 +3593,72 @@ $('st_pull').addEventListener('click', sheetPull);
 ['nb_kind','nb_to'].forEach(function(id){ $(id).addEventListener('change', nbRefreshForm); });
 $('nb_send').addEventListener('click', nbSend);
 $('nb_mine').addEventListener('change', renderBoard);
+/* ---- 実験機の切り替え（2026-10-29）---- */
+var LAB_MOVE = /^(tritime_|trisheet_|tricare_|trisight_office_master_v1)/;
+function labHash(salt, pw){ return crypto.subtle.digest('SHA-256', new TextEncoder().encode('tritime-lab:' + salt + ':' + pw)).then(function(b){ return Array.prototype.map.call(new Uint8Array(b), function(x){ return ('0' + x.toString(16)).slice(-2); }).join(''); }); }
+function labSetMode(m){ window.TT_RAW.set('tritime_devmode', JSON.stringify(m)); }
+function labGo(open){ try{ if(open) sessionStorage.setItem('tritime_lab_open', '1'); else sessionStorage.removeItem('tritime_lab_open'); }catch(e){} location.reload(); }
+function labRender(){
+  var b = $('labBody'); if(!b) return;
+  var m = window.TT_DEV;
+  var lb = $('labBar'); if(lb) lb.style.display = window.TT_LAB ? '' : 'none';
+  if(window.TT_LAB){ var c = $('dv_share'); if(c){ c.checked = false; c.disabled = true; } }
+  if(!m){
+    b.innerHTML = '<p>この端末を実験機にすると、いまこの端末にある記録は実験機の側へ移ります（職員の仮利用の側は空から始まります）。実験機の合言葉は、宏史さんが決めて覚えておいてください。忘れると、実験機の記録は開けなくなります。</p>' +
+      '<div class="row"><div><label class="f" for="lab_p1">実験機の合言葉</label><input type="password" id="lab_p1" autocomplete="new-password"></div><div><label class="f" for="lab_p2">もう一度</label><input type="password" id="lab_p2" autocomplete="new-password"></div></div>' +
+      '<div class="btns"><button class="btn" type="button" id="lab_make">この端末を実験機にする</button></div>';
+    $('lab_make').onclick = function(){
+      var p1 = $('lab_p1').value, p2 = $('lab_p2').value;
+      if(p1.length < 4){ $('labMsg').textContent = '合言葉は4文字以上にしてください。'; return; }
+      if(p1 !== p2){ $('labMsg').textContent = '2つの合言葉が違います。入れ直してください。'; return; }
+      if(dev().share){ $('labMsg').textContent = '共有している端末は実験機にできません。先に「この端末と共有」の「記録を共有する」の印を外して保存してください。'; return; }
+      if(!confirm('この端末を実験機にします。いまある記録は実験機の側へ移り、以後、開くたびに実験機の合言葉を求めます。よろしいですか。')) return;
+      var salt = uid();
+      labHash(salt, p1).then(function(h){
+        window.TT_RAW.keys().filter(function(k){ return k && LAB_MOVE.test(k); }).forEach(function(k){ window.TT_RAW.set('lab__' + k, window.TT_RAW.get(k)); window.TT_RAW.del(k); });
+        labSetMode({ mode:'lab', salt:salt, hash:h, made:nowLocal() });
+        labGo(true);
+      });
+    };
+    return;
+  }
+  if(m.mode === 'lab'){
+    b.innerHTML = '<p><span class="tag amber">いまは実験機です</span></p><p>職員に貸すときは、下のボタンで「職員の仮利用」に切り替えてください。切り替えたあと、「この端末と共有」で認証コードと共有の合言葉を入れ、この端末を主に使う人を選びます。管理者の合言葉は入れないでください。</p>' +
+      '<div class="btns"><button class="btn" type="button" id="lab_toStaff">職員の仮利用に切り替える</button></div>';
+    $('lab_toStaff').onclick = function(){
+      if(!confirm('職員の仮利用に切り替えます。実験機の記録はそのまま残り、実験機に戻すと元どおり見えます。よろしいですか。')) return;
+      labSetMode(Object.assign({}, m, { mode:'staff' })); labGo(false);
+    };
+    return;
+  }
+  b.innerHTML = '<p><span class="tag green">いまは職員の仮利用です</span></p><p>実験機に戻すには、実験機の合言葉を入れてください。</p>' +
+    '<div class="row"><div><label class="f" for="lab_p">実験機の合言葉</label><input type="password" id="lab_p" autocomplete="current-password"></div></div>' +
+    '<div class="btns"><button class="btn sub" type="button" id="lab_toLab">実験機に戻す</button></div>';
+  $('lab_toLab').onclick = function(){
+    labHash(m.salt, $('lab_p').value).then(function(h){
+      if(h !== m.hash){ $('labMsg').textContent = '合言葉が違います。'; return; }
+      labSetMode(Object.assign({}, m, { mode:'lab' })); labGo(true);
+    });
+  };
+}
+/* 実験機の鍵の画面（開くたびに合言葉を求める） */
+(function(){
+  if(!window.TT_LAB || document.documentElement.className.indexOf('labLocked') < 0) return;
+  var d = document.createElement('div'); d.id = 'labLock';
+  d.innerHTML = '<div class="box"><h2 style="margin:0 0 6px">実験機</h2><p class="muted" style="margin:0 0 6px">この端末は実験機です。開くには、実験機の合言葉を入れてください。</p><input type="password" id="labLockPw" autocomplete="current-password"><div class="btns"><button class="btn" type="button" id="labLockGo">開く</button></div><p class="muted" id="labLockMsg" style="color:var(--red)"></p></div>';
+  document.body.appendChild(d);
+  var go = function(){ var m = window.TT_DEV; labHash(m.salt, $('labLockPw').value).then(function(h){
+    if(h !== m.hash){ $('labLockMsg').textContent = '合言葉が違います。'; $('labLockPw').value = ''; return; }
+    try{ sessionStorage.setItem('tritime_lab_open', '1'); }catch(e){}
+    document.documentElement.className = document.documentElement.className.replace(/\s*labLocked/g, ''); d.remove();
+  }); };
+  $('labLockGo').onclick = go;
+  $('labLockPw').addEventListener('keydown', function(e){ if(e.key === 'Enter') go(); });
+  setTimeout(function(){ try{ $('labLockPw').focus(); }catch(e){} }, 50);
+})();
 $('dv_save').addEventListener('click', function(){
   var was = dev().share;
+  if(window.TT_LAB) $('dv_share').checked = false;   /* 実験機の記録は共有しない */
   sj(DEV_KEY, { me:$('dv_me').value, share:$('dv_share').checked });
   if(!was && $('dv_share').checked){
     /* 共有を始めるとき、この端末にある記録を全部送る対象にする */
@@ -3590,7 +3697,7 @@ function fdMsg(t){ if($('fd_msg')) $('fd_msg').textContent = t; }
 function fdSnapshot(fp){ var d = { app:'TriTime', saved:nowLocal(), codeMark:fp }; Object.keys(K).forEach(function(k){ d[k] = lj(K[k], null); }); return d; }
 function fdWriteFile(dir, name, text){ return dir.getFileHandle(name, { create:true }).then(function(fh){ return fh.createWritable(); }).then(function(w){ return w.write(text).then(function(){ return w.close(); }); }); }
 function fdWrite(){
-  if(!FD.on || !FD.handle) return Promise.resolve();
+  if(window.TT_LAB || !FD.on || !FD.handle) return Promise.resolve();
   return fdFp().then(function(fp){
     if(!fp){ fdMsg('認証コードが入っていないため、書き込みません。'); return; }
     return FD.handle.getDirectoryHandle('TriTime_' + fp, { create:true }).then(function(sub){
@@ -4538,7 +4645,7 @@ function kpRender(){
   if(!list.length){ $('kpBody').innerHTML = '<p class="empty">まだ' + esc(D().client) + 'が登録されていません。「利用者登録」で入れると、ここに並びます。</p>'; return; }
   if(!hit.length){ $('kpBody').innerHTML = '<p class="empty">「' + esc(q) + '」に当たる人はいません。</p>'; return; }
   $('kpBody').innerHTML = '<table class="kpT"><tr><th>契約書番号</th><th>氏名</th><th>地区</th><th>状態</th></tr>' + hit.map(function(p){
-    return '<tr><td>' + esc(dn(p.no)) + '</td><td>' + (p.name ? '<b>' + esc(p.name) + '</b>' : '<span style="color:var(--red)">氏名が未入力</span>') + (p.kana ? '<br><small>' + esc(p.kana) + '</small>' : '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + '</td></tr>';
+    return '<tr><td>' + esc(dn(p.no)) + '</td><td>' + (p.name ? '<b>' + esc(p.name) + '</b>' : '<span style="color:var(--red)">氏名が未入力</span>') + (p.kana || p.sex ? '<br><small>' + esc([p.kana, p.sex].filter(Boolean).join('・')) + '</small>' : '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + '</td></tr>';
   }).join('') + '</table><p class="muted">' + hit.length + '人' + (q ? '（全 ' + list.length + '人のうち）' : '') + '</p>';
 }
 /* 印の意味（印が付く決まりを、画面の作りに合わせて書いたもの） */

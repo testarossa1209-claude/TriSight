@@ -273,7 +273,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-30-03</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-31-01</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -945,7 +945,7 @@ function tsPortalAsk(){
   <div class="card" id="cardDev">
     <h2>この端末と共有</h2>
     <p class="lead">事務局のパソコンと看護師さんの端末で、同じ記録を見るための設定です。この端末を主に使う人を選ぶと、その人が担当する訪問にキャンセルが入ったとき、画面の上に知らせが出ます。</p>
-    <p class="muted">共有している端末では、ここで選んだ人によって見える範囲が変わります。職員は自分の予定と稼働率、部署の管理者は自分の部署の売上・稼働率・評価シート、経営企画事務職の職員は全部署の予定、経営企画事務職の管理者は全部署の売上と予定が見えます（管理者として見るには、下の「管理者の合言葉」も入れます）。使う人を選ぶまでは、このタブだけが出ます。</p>
+    <p class="muted">共有している端末では、ここで選んだ人によって見える範囲が変わります。職員は自分の予定と稼働率、部署の管理者は自分の部署の売上・稼働率・評価シート、経営企画事務職の職員と管理者は全部署の予定（売上は出しません）が見えます（管理者として見るには、下の「管理者の合言葉」も入れます）。全部署の売上を含むすべての画面は、下のゼウスキーが入った端末だけに出ます。使う人を選ぶまでは、このタブだけが出ます。</p>
     <div class="row">
       <div><label class="f" for="dv_me">この端末を主に使う人</label><select id="dv_me"></select></div>
       <div><label class="f">&nbsp;</label><label><input type="checkbox" id="dv_share"> 記録を共有する</label></div>
@@ -965,13 +965,23 @@ function tsPortalAsk(){
   </div>
   <div class="card" id="cardMgrKey">
     <h2>管理者の合言葉（売上・評価を見る端末）</h2>
-    <p class="lead">売上・稼働率・評価シート・施策と目標は、管理者の端末だけに出します。この合言葉を入れた端末で、上の「この端末を使う人」が職員名簿で管理者になっている人のときに、管理者の画面が出ます。部署の管理者は自分の部署の分、経営企画事務職の管理者は全部署の分が見えます。目標・施策・保存した月の売上の数字は、この合言葉で鍵をかけてから共有するので、合言葉の無い端末には読める形で届きません。</p>
+    <p class="lead">売上・稼働率・評価シート・施策と目標は、管理者の端末だけに出します。この合言葉を入れた端末で、上の「この端末を使う人」が職員名簿で管理者になっている人のときに、管理者の画面が出ます。部署の管理者は自分の部署の分が見えます。全部署の分は、下のゼウスキーが入った端末だけに出ます。目標・施策・保存した月の売上の数字は、この合言葉で鍵をかけてから共有するので、合言葉の無い端末には読める形で届きません。</p>
     <p class="muted">上の「記録の鍵」とは別の合言葉を決めてください（8文字以上）。管理者の人だけに伝え、紙に書いて経営企画事務局で保管してください。忘れると、鍵をかけた売上の数字は誰にも読めなくなります。管理者の端末を職員に渡すときは、「この端末から外す」を押してください。</p>
     <div class="row">
       <div><label class="f" for="mk_pass">管理者の合言葉</label><input type="password" id="mk_pass" autocomplete="off"></div>
       <div><label class="f">&nbsp;</label><button class="btn" id="mk_set">この端末に入れる</button> <button class="btn sub" id="mk_clear">この端末から外す</button></div>
     </div>
     <p class="muted" id="mk_msg"></p>
+  </div>
+  <div class="card" id="cardOwnKey">
+    <h2>ゼウスキー（すべての情報が見られる鍵・野木代表だけ）</h2>
+    <p class="lead">全部署の売上・稼働率・評価と、今後つくる「管理者評価資料」など、代表だけが見る画面は、この合言葉が入った端末にしか出ません。管理者の合言葉を知っている人でも、この合言葉が無ければ開けません。代表だけの資料は、この合言葉で鍵をかけてから共有するので、ほかの端末には読める形で届きません。</p>
+    <p class="muted">「記録の鍵」とも「管理者の合言葉」とも違う合言葉を決めてください（8文字以上）。誰にも伝えず、代表ご自身だけが覚えておいてください。忘れると、代表だけの資料は誰にも読めなくなります。この合言葉は端末に残しません。画面（タブ）を閉じると消え、次に開くときにまた入れます。席を離れるときは「この端末から外す」を押してください。入れるには、先に「管理者の合言葉」が入っている必要があります。</p>
+    <div class="row">
+      <div><label class="f" for="ok_pass">ゼウスキー</label><input type="password" id="ok_pass" autocomplete="off"></div>
+      <div><label class="f">&nbsp;</label><button class="btn" id="ok_set">この端末に入れる</button> <button class="btn sub" id="ok_clear">この端末から外す</button></div>
+    </div>
+    <p class="muted" id="ok_msg"></p>
   </div>
   <div class="card" id="cardRules">
     <h2>決まりごと <small class="muted" id="rulesDept"></small></h2>
@@ -2563,8 +2573,9 @@ function deriveRaw(phrase, salt){
 function encStr(key, s){ var iv = crypto.getRandomValues(new Uint8Array(12)); return crypto.subtle.encrypt({ name:'AES-GCM', iv:iv }, key, TE.encode(s)).then(function(ct){ return b64(iv) + '.' + b64(ct); }); }
 function decStr(key, t){ var p = String(t).split('.'); return crypto.subtle.decrypt({ name:'AES-GCM', iv:unb64(p[0]) }, key, unb64(p[1])).then(function(pt){ return TD.decode(pt); }); }
 function sealItem(key, it, mk){
-  if(it.col === 'mgmt' && String(it.id) === '_chk') return Promise.resolve(it);
-  if(it.col === 'mgmt') key = mk;
+  if(it.col === 'mgmt' && (String(it.id) === '_chk' || String(it.id) === '_ochk')) return Promise.resolve(it);
+  if(it.col === 'mgmt') key = isOwnId(it.id) ? ownKey : mk;
+  if(!key) return Promise.reject(new Error('鍵がありません'));
   else if(!ENC_COLS[it.col]) return Promise.resolve(it);
   var kf = KEYF[it.col];
   return encStr(key, JSON.stringify(it.data)).then(function(c){ var d = { upd:it.data.upd || 0, enc:c }; d[kf] = it.data[kf]; return { col:it.col, id:it.id, data:d }; });
@@ -2573,7 +2584,7 @@ function openItems(items, key, mk){
   var locked = lj(LOCK_KEY, []), out = [];
   return Promise.all(items.map(function(it){
     if(!it || !it.data || !it.data.enc){ out.push(it); return null; }
-    var k = it.col === 'mgmt' ? mk : key;
+    var k = it.col === 'mgmt' ? (isOwnId(it.id) ? ownKey : mk) : key;   /* 代表だけの資料は代表の鍵でしか開けない。鍵の無い端末には取っておかない */
     if(!k){ if(it.col !== 'mgmt') locked.push(it); return null; }   /* 管理者の数字は、合言葉の無い端末には取っておかない */
     return decStr(k, it.data.enc).then(function(t){ var d = JSON.parse(t); if(it.data.srv) d.srv = it.data.srv; out.push({ col:it.col, id:it.id, data:d }); }, function(){ locked.push(it); });
   })).then(function(){
@@ -2663,6 +2674,63 @@ function mkClear(){
   var s = lj(SYNC_KEY, {}); if(s.dirty) delete s.dirty.mgmt; sj(SYNC_KEY, s);
   refreshAll(); mkStatus();
 }
+/* ---- ゼウスキー（2026-10-31・宏史さんの決め）----
+   「私が見える情報は私以外には見えないように」。全部署の売上を含むすべての画面（見る範囲 all）と、
+   代表だけの資料（mgmt の id が own: で始まるもの。今後の管理者評価資料など）は、この合言葉が入った端末だけ。
+   管理者の合言葉とは別の鍵（塩を変えている）。合っているかは mgmt の「_ochk」で見る。
+   代表だけの資料は代表の鍵で鍵をかけて送り、鍵の無い端末には取っておかない。 */
+var OKEY = 'tritime_okey', ownKey = null;
+/* 2026-10-31（宏史さんの指摘「外部のPCで一回入れたら、その後は私でなくても見えてしまうのでは」）：
+   ゼウスキーは端末に残さない。画面（タブ）を閉じれば消え、開くたびに入れ直す（sessionStorage）。
+   代表だけの資料の中身も端末に残さない（鍵が無い状態で開いたら手元から消す）。 */
+function oGet(){ try{ return sessionStorage.getItem(OKEY); }catch(e){ return null; } }
+function hasOwnKey(){ return !!oGet(); }
+function purgeOwn(){ try{ var a = live('mgmt'), b = a.filter(function(x){ return !isOwnId(x.id); }); if(b.length !== a.length) saveCol('mgmt', b); }catch(e){} }
+function isOwnId(id){ return String(id).indexOf('own:') === 0; }
+function loadOKey(){
+  if(ownKey) return Promise.resolve(ownKey);
+  var r = oGet();
+  if(!r || !window.crypto || !crypto.subtle) return Promise.resolve(null);
+  return crypto.subtle.importKey('raw', unb64(r), 'AES-GCM', false, ['encrypt','decrypt']).then(function(k){ ownKey = k; return k; }, function(){ return null; });
+}
+function okStatus(){
+  var el = $('ok_msg'); if(!el) return;
+  el.innerHTML = hasOwnKey() ? '<span class="tag green">いまゼウスキーが入っています</span> この画面（タブ）を閉じると消えます。席を離れるときは「この端末から外す」を押してください。'
+    : '<span class="tag gray">いまゼウスキーは入っていません</span> 全部署の売上と代表だけの資料は出ません。合言葉は端末に残さないので、開くたびに入れ直します。';
+}
+function okSet(){
+  var ph = $('ok_pass').value;
+  if(!window.crypto || !crypto.subtle){ $('ok_msg').textContent = 'この端末のブラウザでは鍵をかけられません。'; return; }
+  if(String(ph).length < 8){ alert('ゼウスキーは8文字以上にしてください。'); return; }
+  if(!dev().share){ alert('先に「この端末と共有」で「記録を共有する」に印を付けて保存してください。'); return; }
+  if(!hasMgrKey()){ alert('先に「管理者の合言葉」をこの端末に入れてください。'); return; }
+  var meS = meStaff(); if(!meS || !isMgr(meS)){ alert('先に「この端末と共有」で、この端末を使う人に代表ご自身（野木　宏史）を選んで保存してください。'); return; }
+  $('ok_msg').textContent = '確かめています…';
+  var rk, key;
+  deriveRaw(ph, 'TriTime-owner-v1').then(function(r){ rk = r; return crypto.subtle.importKey('raw', r, 'AES-GCM', false, ['encrypt','decrypt']); }).then(function(k){
+    key = k;
+    return relayCall('pull', { since:0, cols:['mgmt'] }).then(function(j){ return Array.isArray(j.items) ? j.items : []; });
+  }).then(function(items){
+    var ck = items.filter(function(x){ return String(x.id) === '_ochk'; }).pop(), loc = live('mgmt').filter(function(x){ return x.id === '_ochk'; })[0];
+    var chk = (ck && ck.data && ck.data.chk) || (loc && loc.chk);
+    var mine = items.filter(function(x){ return isOwnId(x.id); });
+    var test = chk ? decStr(key, chk).then(function(t){ if(t !== 'TriTime-OWN-OK') throw new Error('x'); }, function(){ throw new Error('ゼウスキーが、決めたものと違います。入れ直してください。'); })
+      : encStr(key, 'TriTime-OWN-OK').then(function(c){ var all = live('mgmt').filter(function(x){ return x.id !== '_ochk'; }); all.push({ id:'_ochk', chk:c }); saveCol('mgmt', all); markDirty('mgmt', '_ochk'); });
+    return test.then(function(){ return mine; });
+  }).then(function(mine){
+    sessionStorage.setItem(OKEY, b64(rk)); sessionStorage.setItem(OKEY + '_me', String(dev().me || '')); ownKey = key; $('ok_pass').value = '';
+    return loadMKey().then(function(mk){ return openItems(mine, null, mk); }).then(function(items){ if(items.length) mergeIncoming(items); });
+  }).then(function(){ refreshAll(); return syncNow(); }).then(function(){ okStatus(); $('ok_msg').insertAdjacentHTML('beforeend', '<br>ゼウスキーを入れました。'); })
+  .catch(function(e){ $('ok_msg').textContent = e.message || '設定できませんでした。'; });
+}
+function okClear(){
+  if(!hasOwnKey()){ okStatus(); return; }
+  if(!confirm('ゼウスキーを外します。この画面では全部署の売上と代表だけの資料が出なくなり、この端末にある代表だけの資料も消します（中継には鍵のかかった形で残ります）。よろしいですか？')) return;
+  try{ sessionStorage.removeItem(OKEY); sessionStorage.removeItem(OKEY + '_me'); }catch(e){}
+  ownKey = null; purgeOwn();
+  var s = lj(SYNC_KEY, {}); if(s.dirty && s.dirty.mgmt){ Object.keys(s.dirty.mgmt).forEach(function(k){ if(isOwnId(k)) delete s.dirty.mgmt[k]; }); } sj(SYNC_KEY, s);
+  refreshAll(); okStatus();
+}
 function pushChunks(items){
   var out = [], cur = [], size = 0;
   items.forEach(function(it){ var n = JSON.stringify(it).length; if(cur.length && (cur.length >= 200 || size + n > 300000)){ out.push(cur); cur = []; size = 0; } cur.push(it); size += n; });
@@ -2674,10 +2742,10 @@ function syncNow(){
   if(!dev().share || syncing) return Promise.resolve();
   syncing = true;
   var key0 = null, mk0 = null, mgNote = '';
-  return loadKey().then(function(key){ key0 = key; return loadMKey(); }).then(function(mk){
+  return loadKey().then(function(key){ key0 = key; return loadOKey(); }).then(function(){ return loadMKey(); }).then(function(mk){
     mk0 = mk;
     var key = key0;
-    var pushed = collectDirty().filter(function(it){ return it.col === 'mgmt' ? !!mk : (key || !ENC_COLS[it.col]); });
+    var pushed = collectDirty().filter(function(it){ return it.col === 'mgmt' ? (isOwnId(it.id) ? !!(mk && ownKey) : !!mk) : (key || !ENC_COLS[it.col]); });
     return Promise.all(pushed.map(function(it){ return sealItem(key, it, mk).then(function(sealed){ return { o:it, s:sealed }; }); })).then(function(pairs){
       var chain = Promise.resolve();
       var main = pairs.filter(function(p){ return p.o.col !== 'mgmt'; }), mg = pairs.filter(function(p){ return p.o.col === 'mgmt'; });
@@ -2906,11 +2974,18 @@ function applyDept(){
    共有していない端末（1台だけで使う場合）は、これまでどおりすべて見える。 */
 function meStaff(){ var id = dev().me; if(!id) return null; return staff().filter(function(s){ return s.id === id; })[0] || null; }
 function myDepts(s){ var a = DEPTS.filter(function(x){ return deptStaff(x).some(function(y){ return y.id === s.id; }); }); if(!a.length){ var sd = staffDept(s); if(sd) a = [sd]; } return a; }
+function hadKeys(){ try{ return !!(localStorage.getItem(EKEY) || localStorage.getItem(MKEY) || oGet()); }catch(e){ return false; } }
 function role(){
-  if(!dev().share) return { lv:'all', solo:true, depts:DEPTS };
+  /* 2026-10-31：共有の印を外しても、合言葉の入っていた端末ではすべては見せない（印を外して見る抜け道を塞ぐ） */
+  if(window.TT_LAB) return { lv:'all', solo:true, depts:DEPTS };   /* 実験機は開くたびに実験機の合言葉で確かめているので、これまでどおりすべて見える */
+  if(!dev().share) return hadKeys() ? { lv:'none', unshared:true, depts:[] } : { lv:'all', solo:true, depts:DEPTS };
   var s = meStaff(); if(!s) return { lv:'none', depts:[] };
   var ds = myDepts(s), office = ds.some(function(x){ return x.kind === 'office'; });
-  if(isMgr(s) && hasMgrKey()) return office ? { lv:'all', s:s, depts:DEPTS } : { lv:'dept', s:s, depts:ds };
+  /* 2026-10-31：全部署のすべて（見る範囲 all）は、ゼウスキーが入った端末だけ */
+  /* 合言葉を入れたときに選ばれていた人（代表）だけ。同じ画面でほかの人を選び直しても開かない */
+  var oMe = null; try{ oMe = sessionStorage.getItem(OKEY + '_me'); }catch(e){}
+  if(isMgr(s) && hasMgrKey() && hasOwnKey() && oMe && oMe === String(s.id)) return { lv:'all', s:s, depts:DEPTS };
+  if(isMgr(s) && hasMgrKey() && !office) return { lv:'dept', s:s, depts:ds };
   if(office) return { lv:'office', s:s, depts:DEPTS, noKey:isMgr(s) };
   return { lv:'staff', s:s, depts:ds, noKey:isMgr(s) };
 }
@@ -2924,11 +2999,12 @@ function roleFix(){
 function roleNote(R){
   var el = $('roleNote'); if(!el) return;
   var t = '', key = '「名簿・設定」タブの「管理者の合言葉」を入れると、管理者の画面が出ます。';
-  if(R.lv === 'none') t = '<b>この端末を使う人が、まだ選ばれていません。</b>「名簿・設定」タブの「この端末と共有」で、この端末を使う人を選んで「保存する」を押してください。選ぶまでは、このタブだけを出します。';
+  if(R.lv === 'none' && R.unshared) t = '<b>この端末は「記録を共有する」の印が外れています。</b>合言葉の入っていた端末なので、印を外したままでは中身を出しません。「名簿・設定」タブの「この端末と共有」で印を付けて「保存する」を押してください。';
+  else if(R.lv === 'none') t = '<b>この端末を使う人が、まだ選ばれていません。</b>「名簿・設定」タブの「この端末と共有」で、この端末を使う人を選んで「保存する」を押してください。選ぶまでは、このタブだけを出します。';
   else if(R.lv === 'staff') t = '見える範囲：' + esc(R.s.name) + 'さんの予定と稼働率（' + esc(R.depts.map(function(x){ return x.name; }).join('・')) + '）。' + (R.noKey ? key : '');
   else if(R.lv === 'dept') t = '見える範囲：' + esc(R.depts.map(function(x){ return x.name; }).join('・')) + 'の管理者（予定・売上・稼働率・評価シート・施策と目標）。';
   else if(R.lv === 'office') t = '見える範囲：全部署の予定（売上は出しません）。' + (R.noKey ? key : '');
-  else if(!R.solo) t = '見える範囲：経営企画事務職の管理者（全部署の売上と予定）。';
+  else if(!R.solo) t = '見える範囲：代表（全部署の売上と予定のすべて）。この端末にはゼウスキーが入っています。';
   el.innerHTML = t; el.style.display = t ? '' : 'none';
 }
 function withDept(k, fn){
@@ -3485,7 +3561,7 @@ function refreshAll(){
   $('dv_share').checked = dev().share;
   renderSetup(); renderPlan(); renderToday(); renderAuto(); renderIntakeList(); renderCourse(); renderReport(); renderAdmin();
   renderMonitor(); renderSummary();
-  ptForm(); rdKinds(); renderPtList(); nrRender(); renderReq(); keyStatus(); mkStatus(); renderMine();
+  ptForm(); rdKinds(); renderPtList(); nrRender(); renderReq(); keyStatus(); mkStatus(); if(!hasOwnKey()) purgeOwn(); okStatus(); renderMine();
   if(typeof renderModel === 'function' && canMoney()) renderModel();
 }
 
@@ -3604,6 +3680,8 @@ $('adHardSend').addEventListener('click', hardSend);
 $('ky_set').addEventListener('click', keySet);
 $('mk_set').addEventListener('click', mkSet);
 $('mk_clear').addEventListener('click', mkClear);
+$('ok_set').addEventListener('click', okSet);
+$('ok_clear').addEventListener('click', okClear);
 function stSubDraw(cur){
   cur = cur || []; var main = $('st_dept').value;
   $('st_sub').innerHTML = DEPTS.map(function(d){ var m = d.name === main; return '<label style="margin-right:12px"><input type="checkbox" data-stsub="' + esc(d.name) + '"' + (cur.indexOf(d.name) >= 0 && !m ? ' checked' : '') + (m ? ' disabled' : '') + '> ' + esc(d.name) + (m ? '（所属）' : '') + '</label>'; }).join('');

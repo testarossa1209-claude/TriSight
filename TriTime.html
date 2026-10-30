@@ -273,7 +273,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-31-03</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-31-04</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -945,7 +945,7 @@ function tsPortalAsk(){
   <div class="card" id="cardDev">
     <h2>この端末と共有</h2>
     <p class="lead">事務局のパソコンと看護師さんの端末で、同じ記録を見るための設定です。この端末を主に使う人を選ぶと、その人が担当する訪問にキャンセルが入ったとき、画面の上に知らせが出ます。</p>
-    <p class="muted">共有している端末では、ここで選んだ人によって見える範囲が変わります。職員は自分の予定と稼働率、部署の管理者は自分の部署の売上・稼働率・評価シート、経営企画事務職の職員と管理者は全部署の予定（売上は出しません）が見えます（管理者として見るには、下の「管理者の合言葉」も入れます）。使う人を選ぶまでは、このタブだけが出ます。</p>
+    <p class="muted">共有している端末では、ここで選んだ人によって見える範囲が変わります。職員は自分の予定と稼働率、部署の管理者は自分の部署の売上・稼働率・評価シート、経営企画事務職の職員は全部署の予定、経営企画事務職の管理者は全部署の売上と予定が見えます（管理者として見るには、下の「管理者の合言葉」も入れます）。使う人を選ぶまでは、このタブだけが出ます。</p>
     <div class="row">
       <div><label class="f" for="dv_me">この端末を主に使う人</label><select id="dv_me"></select></div>
       <div><label class="f">&nbsp;</label><label><input type="checkbox" id="dv_share"> 記録を共有する</label></div>
@@ -965,7 +965,7 @@ function tsPortalAsk(){
   </div>
   <div class="card" id="cardMgrKey">
     <h2>管理者の合言葉（売上・評価を見る端末）</h2>
-    <p class="lead">売上・稼働率・評価シート・施策と目標は、管理者の端末だけに出します。この合言葉を入れた端末で、上の「この端末を使う人」が職員名簿で管理者になっている人のときに、管理者の画面が出ます。部署の管理者は自分の部署の分が見えます。目標・施策・保存した月の売上の数字は、この合言葉で鍵をかけてから共有するので、合言葉の無い端末には読める形で届きません。</p>
+    <p class="lead">売上・稼働率・評価シート・施策と目標は、管理者の端末だけに出します。この合言葉を入れた端末で、上の「この端末を使う人」が職員名簿で管理者になっている人のときに、管理者の画面が出ます。部署の管理者は自分の部署の分、経営企画事務職の管理者は全部署の分が見えます。目標・施策・保存した月の売上の数字は、この合言葉で鍵をかけてから共有するので、合言葉の無い端末には読める形で届きません。</p>
     <p class="muted">上の「記録の鍵」とは別の合言葉を決めてください（8文字以上）。管理者の人だけに伝え、紙に書いて経営企画事務局で保管してください。忘れると、鍵をかけた売上の数字は誰にも読めなくなります。管理者の端末を職員に渡すときは、「この端末から外す」を押してください。</p>
     <div class="row">
       <div><label class="f" for="mk_pass">管理者の合言葉</label><input type="password" id="mk_pass" autocomplete="off"></div>
@@ -2752,7 +2752,7 @@ function zOpen(ph, name){
     ownKey = key;
     var mine = items.filter(function(x){ return isOwnId(x.id); });
     return loadMKey().then(function(mk){ return openItems(mine, null, mk); }).then(function(got){ if(got.length) mergeIncoming(got); });
-  }).then(function(){ zBeat(); refreshAll(); syncNow(); });
+  }).then(function(){ zBeat(); refreshAll(); var nb = document.querySelector('#tabs [data-tab="nogi"]'); if(nb) nb.click(); syncNow(); });
 }
 /* 開いている間の使用中の印の付け直し（1分ごと） */
 function zBeat(){
@@ -2786,14 +2786,15 @@ window.addEventListener('pagehide', function(){
 function zRender(){
   var on = hasOwnKey() && hasMgrKey();
   var bar = $('zeusBar');
-  if(!on){ if(bar) bar.remove(); var c0 = $('cardZeusDev'); if(c0) c0.remove(); return; }
+  if(!on){ if(bar) bar.remove(); var c0 = $('cardZeusDev'); if(c0) c0.remove(); ngTab(false); return; }
   if(!bar){
     bar = document.createElement('div'); bar.id = 'zeusBar';
     bar.setAttribute('style', 'position:sticky;top:0;z-index:9000;background:#0f1d3a;color:#fff;padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:14px');
-    bar.innerHTML = '<b>野木画面</b><span style="opacity:.8">全部署の売上と予定のすべてを表示しています</span><span style="flex:1"></span><button type="button" id="zeusClose" style="font-family:inherit;font-size:13px;padding:5px 14px;border:1px solid #fff;background:transparent;color:#fff;border-radius:999px;cursor:pointer">野木画面を閉じる</button>';
+    bar.innerHTML = '<b>野木画面</b><span style="opacity:.8">代表だけの資料を開ける状態です</span><span style="flex:1"></span><button type="button" id="zeusClose" style="font-family:inherit;font-size:13px;padding:5px 14px;border:1px solid #fff;background:transparent;color:#fff;border-radius:999px;cursor:pointer">野木画面を閉じる</button>';
     document.body.insertBefore(bar, document.body.firstChild);
     $('zeusClose').addEventListener('click', function(){ zClose(false); });
   }
+  ngTab(true);
   var host = $('tab-setup'); if(!host) return;
   var card = $('cardZeusDev');
   if(!card){ card = document.createElement('div'); card.className = 'card'; card.id = 'cardZeusDev'; host.insertBefore(card, host.firstChild); }
@@ -2855,6 +2856,129 @@ setTimeout(zGate, 0);
 document.addEventListener('keydown', function(e){
   if(e.ctrlKey && e.shiftKey && !e.altKey && String(e.key).toLowerCase() === 'z'){ e.preventDefault(); if(!hasOwnKey()) zGate(true); }
 });
+/* ---- 野木画面の中身（2026-10-31・宏史さんの決め）----
+   トライタイムの作りはそのまま。野木画面は、宏史さんが職員を評価し、将来の幹部候補を選ぶための情報ページで、宏史さん以外（管理者を含む全員）には出さない。
+   ・部門別のボタン（全体／部門ごと）で、トライタイムの情報（人数・予定・実績・稼働率）を評価の情報源の一つとして見る
+   ・人物情報表：一人ずつ、所属・役職・職種（資格）・雇用形態・入職日と勤続年数・追加の資格・出勤状況を並べる（タレントパレットのように個人ごとに見る）
+   ・個人のパーソナルデータ（入職日・生年月日・追加の資格・経歴と特記）は野木画面でだけ入れ、ゼウスキーで鍵をかけて保管する（mgmt の own:person:職員の番号）
+   ・評価項目（職員の評価・評価する管理者の評価）は、この土台ができてから改めて決める（宏史さんの指示） */
+var NG = { dept:'all', month:'', open:'' };
+function ngPerson(id){ return live('mgmt').filter(function(x){ return x.id === 'own:person:' + id; })[0] || { id:'own:person:' + id }; }
+function ngSavePerson(id, data){
+  var all = live('mgmt'), key = 'own:person:' + id, i = -1;
+  all.forEach(function(x, j){ if(x.id === key) i = j; });
+  var it = Object.assign({}, i >= 0 ? all[i] : { id:key }, data, { id:key });
+  if(i >= 0) all[i] = it; else all.push(it);
+  saveCol('mgmt', all); scheduleSync();
+}
+function ngYears(from, at){
+  var a = parseYmd(from), b = parseYmd(at || ymd(new Date())); if(!a || !b || b < a) return null;
+  var y = b.getFullYear() - a.getFullYear(), m = b.getMonth() - a.getMonth();
+  if(b.getDate() < a.getDate()) m--; if(m < 0){ y--; m += 12; }
+  return { y:y, m:m };
+}
+function ngYearsLabel(v){ return v ? (v.y ? v.y + '年' : '') + v.m + 'か月' : '—'; }
+function ngDeptsOf(s){ var a = []; var d = staffDept(s); if(d) a.push(d); staffSub(s).forEach(function(n){ var x = deptByName(n); if(x && a.indexOf(x) < 0) a.push(x); }); return a; }
+/* 出勤状況（月）：看護記録のある日・予定のある日・休み（公休・祝日・届け）・訪問の件数・サービス時間。所属と兼務のすべての部署の予定を見る */
+function ngAttend(s, m){
+  var y = +m.slice(0, 4), mo = +m.slice(5, 7), days = [];
+  for(var d = 1; d <= 31; d++){ var dt = new Date(y, mo - 1, d); if(dt.getMonth() !== mo - 1) break; days.push(ymd(dt)); }
+  var recs = live('records').filter(function(r){ return r.date && ym(r.date) === m; }), all = staff();
+  var mine = recs.filter(function(r){ var st = recStaff(r, all); return st && st.id === s.id; });
+  var recDays = {}, svc = 0; mine.forEach(function(r){ recDays[r.date] = 1; var a = toMin(r.start), b = toMin(r.end); if(a != null && b != null && b >= a) svc += b - a; });
+  var planDays = {}, planN = 0, off = { 公休:0, 祝日:0, 届け:0 };
+  days.forEach(function(date){ var why = offWhy(s.id, date); if(why){ if(why === '公休' || why === '祝日') off[why]++; else off['届け']++; } });
+  ngDeptsOf(s).forEach(function(dp){
+    if(dp.kind === 'office') return;
+    withDept(dp.k, function(){ days.forEach(function(date){ if(offWhy(s.id, date)) return; var n = visitsOn(date).filter(function(v){ return !v.cx && (v.staffId === s.id || v.withId === s.id); }).length; if(n){ planDays[date] = 1; planN += n; } }); });
+  });
+  return { recDays:Object.keys(recDays).length, recN:mine.length, svc:svc, planDays:Object.keys(planDays).length, planN:planN, off:off };
+}
+/* 部門ごとのまとめ（モデルコースと同じ計算を部門ごとに回す） */
+function ngDeptSum(dp, m){
+  return withDept(dp.k, function(){
+    var ppl = deptStaff(dp, m + '-01'), full = ppl.filter(function(s){ return s.emp === '常勤'; }).length;
+    var r = { d:dp, n:ppl.length, full:full, part:ppl.length - full, mgr:ppl.filter(isMgr).map(function(s){ return s.name; }), model:0, plan:0, act:0, hasAct:false };
+    if(dp.kind === 'visit'){ try{ mdRows(m).rows.forEach(function(x){ r.model += x.model; r.plan += x.plan; if(x.act != null){ r.act += x.act; r.hasAct = true; } }); }catch(e){} }
+    return r;
+  });
+}
+function ngPeople(){
+  var list = staff(), at = (NG.month || ymd(new Date()).slice(0, 7)) + '-01';
+  if(NG.dept === 'all') return list.filter(function(s){ return !staffOut(s, at); });
+  var dp = DEPTS.filter(function(x){ return x.k === NG.dept; })[0];
+  return dp ? deptStaff(dp, at) : [];
+}
+function ngRender(){
+  var sec = $('tab-nogi'); if(!sec) return;
+  if(!NG.month) NG.month = ymd(new Date()).slice(0, 7);
+  var m = NG.month, today = ymd(new Date());
+  var btns = [{ k:'all', name:'全体' }].concat(DEPTS).map(function(d){ return '<button type="button" class="btn' + (NG.dept === d.k ? '' : ' sub') + '" data-ngd="' + esc(d.k) + '">' + esc(d.name) + (d.paused ? '（休止中）' : '') + '</button>'; }).join(' ');
+  var sums = (NG.dept === 'all' ? DEPTS : DEPTS.filter(function(x){ return x.k === NG.dept; })).map(function(dp){ return ngDeptSum(dp, m); });
+  var sumTbl = '<table><tr><th>部門</th><th class="num">人数</th><th class="num">常勤</th><th class="num">非常勤</th><th>管理者</th><th class="num">モデルの件数</th><th class="num">予定の件数</th><th class="num">実績の件数</th><th class="num">稼働率（予定）</th></tr>' + sums.map(function(r){
+    var v = r.d.kind === 'visit';
+    return '<tr><td>' + esc(r.d.name) + '</td><td class="num">' + r.n + '人</td><td class="num">' + r.full + '人</td><td class="num">' + r.part + '人</td><td>' + esc(r.mgr.join('・') || '—') + '</td>' +
+      '<td class="num">' + (v ? r.model + '件' : '—') + '</td><td class="num">' + (v ? r.plan + '件' : '—') + '</td><td class="num">' + (v && r.hasAct ? r.act + '件' : '—') + '</td><td class="num">' + (v ? mdPct(r.plan, r.model) : '—') + '</td></tr>';
+  }).join('') + '</table>';
+  var ppl = ngPeople();
+  var rows = ppl.map(function(s){
+    var p = ngPerson(s.id), a = ngAttend(s, m), ten = ngYears(p.joined, today);
+    var dps = ngDeptsOf(s).map(function(d){ return d.name; });
+    return '<tr><td><button type="button" class="btn sub" data-ngp="' + esc(s.id) + '" style="padding:2px 10px">' + esc(s.name) + '</button></td>' +
+      '<td>' + esc(s.post || '') + (isMgr(s) ? (s.post ? '・' : '') + '管理者' : '') + '</td>' +
+      '<td>' + esc(dps[0] || '') + (dps.length > 1 ? '<br><small class="muted">兼務：' + esc(dps.slice(1).join('・')) + '</small>' : '') + '</td>' +
+      '<td>' + esc(jobOf(s)) + (p.quals ? '<br><small class="muted">' + esc(p.quals) + '</small>' : '') + '</td>' +
+      '<td>' + esc(s.emp || '') + '</td>' +
+      '<td>' + (p.joined ? esc(p.joined) + '<br><small class="muted">' + ngYearsLabel(ten) + '</small>' : '<small class="muted">未入力</small>') + '</td>' +
+      '<td class="num">' + a.recDays + '日<br><small class="muted">予定 ' + a.planDays + '日</small></td>' +
+      '<td class="num">' + a.recN + '件<br><small class="muted">予定 ' + a.planN + '件</small></td>' +
+      '<td class="num">' + minLabel(a.svc) + '</td>' +
+      '<td><small>公休 ' + a.off['公休'] + '・祝日 ' + a.off['祝日'] + '・届け ' + a.off['届け'] + '日</small></td></tr>' +
+      (NG.open === s.id ? '<tr><td colspan="10">' + ngCard(s, p) + '</td></tr>' : '');
+  });
+  var depName = NG.dept === 'all' ? '全体' : ((DEPTS.filter(function(x){ return x.k === NG.dept; })[0] || {}).name || '');
+  sec.innerHTML = '<div class="card"><h2>野木画面</h2><p class="lead">職員の評価と、将来の幹部候補を選ぶための情報です。この画面は、ゼウスキーで開いた野木代表の画面にだけ出ます。</p>' +
+    '<div class="row"><div><label class="f" for="ng_month">見る月</label><input type="month" id="ng_month" value="' + esc(m) + '"></div></div>' +
+    '<div class="btns" style="margin-top:6px">' + btns + '</div></div>' +
+    '<div class="card"><h2>部門のようす（' + esc(jpMonth(m)) + '）</h2><p class="muted">モデルコースと同じ計算です。件数は訪問の部門だけです。</p><div class="tbl-scroll">' + sumTbl + '</div></div>' +
+    '<div class="card"><h2>人物情報表（' + esc(depName) + '・' + ppl.length + '人）</h2><p class="muted">名前を押すと、その人のパーソナルデータを入れる欄が開きます。出勤は、看護記録のある日を出勤日として数え、予定のある日を下に並べています。</p>' +
+    (ppl.length ? '<div class="tbl-scroll"><table><tr><th>氏名</th><th>役職</th><th>所属</th><th>職種（資格）</th><th>雇用形態</th><th>入職日・勤続</th><th class="num">出勤日数</th><th class="num">訪問の件数</th><th class="num">サービス時間</th><th>休み</th></tr>' + rows.join('') + '</table></div>' : '<p class="empty">この部門の職員がいません。</p>') + '</div>';
+  sec.querySelectorAll('[data-ngd]').forEach(function(b){ b.addEventListener('click', function(){ NG.dept = b.getAttribute('data-ngd'); NG.open = ''; ngRender(); }); });
+  sec.querySelectorAll('[data-ngp]').forEach(function(b){ b.addEventListener('click', function(){ var id = b.getAttribute('data-ngp'); NG.open = NG.open === id ? '' : id; ngRender(); }); });
+  $('ng_month').addEventListener('change', function(){ NG.month = this.value || ymd(new Date()).slice(0, 7); ngRender(); });
+  var sv = $('ng_save'); if(sv) sv.addEventListener('click', function(){
+    var id = sv.getAttribute('data-id');
+    ngSavePerson(id, { joined:$('ng_joined').value || '', birth:$('ng_birth').value || '', quals:$('ng_quals').value.trim(), career:$('ng_career').value.trim() });
+    ngRender();
+  });
+}
+function ngCard(s, p){
+  var age = ngYears(p.birth);
+  return '<div style="padding:8px 4px"><b>' + esc(s.name) + 'さんのパーソナルデータ</b>　<small class="muted">ここで入れた内容は、ゼウスキーで鍵をかけて保管します。</small>' +
+    '<div class="row" style="margin-top:6px">' +
+    '<div><label class="f" for="ng_joined">入職日</label><input type="date" id="ng_joined" value="' + esc(p.joined || '') + '"></div>' +
+    '<div><label class="f" for="ng_birth">生年月日</label><input type="date" id="ng_birth" value="' + esc(p.birth || '') + '">' + (age ? '<small class="muted">　' + age.y + '歳</small>' : '') + '</div>' +
+    '<div><label class="f" for="ng_quals">職種のほかの資格（読点で区切る）</label><input type="text" id="ng_quals" value="' + esc(p.quals || '') + '" placeholder="例：精神科訪問看護の研修修了、普通自動車免許"></div></div>' +
+    '<div style="margin-top:6px"><label class="f" for="ng_career">経歴・特記</label><textarea id="ng_career" rows="3" style="width:100%">' + esc(p.career || '') + '</textarea></div>' +
+    '<div class="btns"><button type="button" class="btn" id="ng_save" data-id="' + esc(s.id) + '">保存する</button></div></div>';
+}
+/* 野木画面のタブ（野木画面を開いているときだけ作る。閉じたら消す） */
+function ngTab(on){
+  var nav = $('tabs'), btn = nav ? nav.querySelector('[data-tab="nogi"]') : null, sec = $('tab-nogi');
+  if(!on){ if(btn){ var wasOn = btn.classList.contains('on'); btn.remove(); if(wasOn){ var f = nav.querySelector('button[data-tab="plan"]'); if(f) f.click(); } } if(sec) sec.remove(); return; }
+  if(!btn){
+    btn = document.createElement('button'); btn.setAttribute('data-tab', 'nogi'); btn.textContent = '野木画面';
+    btn.setAttribute('style', 'background:#0f1d3a;color:#fff;border-color:#0f1d3a');
+    nav.insertBefore(btn, nav.firstChild);
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('#tabs button').forEach(function(x){ x.classList.toggle('on', x === btn); });
+      document.querySelectorAll('section.tab').forEach(function(s){ s.classList.toggle('on', s.id === 'tab-nogi'); });
+      ngRender();
+    });
+  }
+  if(!sec){ sec = document.createElement('section'); sec.className = 'tab'; sec.id = 'tab-nogi'; var first = document.querySelector('section.tab'); first.parentNode.insertBefore(sec, first); }
+  if(btn.classList.contains('on')) ngRender();
+}
 function pushChunks(items){
   var out = [], cur = [], size = 0;
   items.forEach(function(it){ var n = JSON.stringify(it).length; if(cur.length && (cur.length >= 200 || size + n > 300000)){ out.push(cur); cur = []; size = 0; } cur.push(it); size += n; });
@@ -3062,7 +3186,7 @@ function applyDept(){
     d.kind === 'monitor' ? 'モニタリングの予定・面談の記録・' + d.client + 'の経過を、時間の流れで持つ（' + d.name + '）' :
     '各部署の予定のようすと、事務局からの連絡（' + d.name + '）';
   var show = function(id, on){ var el = $(id); if(el) el.style.display = on ? '' : 'none'; };
-  var tabOn = { plan:true, pt: d.kind !== 'office', intake: d.kind === 'visit', course: d.kind !== 'office', report: !!d.report, admin: d.kind === 'visit', model: d.kind === 'visit', mihon: d.kind === 'visit', req:true, setup:true };
+  var tabOn = { plan:true, pt: d.kind !== 'office', intake: d.kind === 'visit', course: d.kind !== 'office', report: !!d.report, admin: d.kind === 'visit', model: d.kind === 'visit', mihon: d.kind === 'visit', req:true, setup:true, nogi: !!R.zeus };
   /* 見る範囲（2026-10-27）：職員には管理者の窓とモデルコースを出さない。モデルコース（売上・評価）は管理者の端末だけ */
   if(R.lv === 'none') Object.keys(tabOn).forEach(function(k){ tabOn[k] = (k === 'setup'); });
   if(R.lv === 'staff') tabOn.admin = false;
@@ -3103,10 +3227,12 @@ function role(){
   /* 2026-10-31：共有の印を外しても、合言葉の入っていた端末ではすべては見せない（印を外して見る抜け道を塞ぐ） */
   if(window.TT_LAB) return { lv:'all', solo:true, depts:DEPTS };   /* 実験機は開くたびに実験機の合言葉で確かめているので、これまでどおりすべて見える */
   if(!dev().share) return hadKeys() ? { lv:'none', unshared:true, depts:[] } : { lv:'all', solo:true, depts:DEPTS };
-  /* 2026-10-31：全部署のすべて（見る範囲 all）は、野木画面を開いている間だけ（登録した2台・ゼウスキー） */
+  /* 野木画面（ゼウスキー）を開いている間も、見える範囲は全部署のすべて（代表だけの資料はこれに加わる） */
   if(hasOwnKey() && hasMgrKey()) return { lv:'all', s:meStaff(), depts:DEPTS, zeus:true };
   var s = meStaff(); if(!s) return { lv:'none', depts:[] };
   var ds = myDepts(s), office = ds.some(function(x){ return x.kind === 'office'; });
+  /* 2026-10-31（宏史さんの指摘で戻す）：経営企画事務職の管理者は、10/27の決めどおり全部署の売上と予定のすべてを見る */
+  if(isMgr(s) && hasMgrKey() && office) return { lv:'all', s:s, depts:DEPTS };
   if(isMgr(s) && hasMgrKey() && !office) return { lv:'dept', s:s, depts:ds };
   if(office) return { lv:'office', s:s, depts:DEPTS, noKey:isMgr(s) };
   return { lv:'staff', s:s, depts:ds, noKey:isMgr(s) };
@@ -3126,7 +3252,7 @@ function roleNote(R){
   else if(R.lv === 'staff') t = '見える範囲：' + esc(R.s.name) + 'さんの予定と稼働率（' + esc(R.depts.map(function(x){ return x.name; }).join('・')) + '）。' + (R.noKey ? key : '');
   else if(R.lv === 'dept') t = '見える範囲：' + esc(R.depts.map(function(x){ return x.name; }).join('・')) + 'の管理者（予定・売上・稼働率・評価シート・施策と目標）。';
   else if(R.lv === 'office') t = '見える範囲：全部署の予定（売上は出しません）。' + (R.noKey ? key : '');
-  else if(!R.solo) t = '見える範囲：野木画面（全部署の売上と予定のすべて）。';
+  else if(!R.solo) t = R.zeus ? '見える範囲：野木画面（全部署の売上と予定のすべてに、代表だけの資料が加わります）。' : '見える範囲：経営企画事務職の管理者（全部署の売上と予定）。';
   el.innerHTML = t; el.style.display = t ? '' : 'none';
 }
 function withDept(k, fn){

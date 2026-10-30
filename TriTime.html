@@ -273,7 +273,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-31-01</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-31-02</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -945,7 +945,7 @@ function tsPortalAsk(){
   <div class="card" id="cardDev">
     <h2>この端末と共有</h2>
     <p class="lead">事務局のパソコンと看護師さんの端末で、同じ記録を見るための設定です。この端末を主に使う人を選ぶと、その人が担当する訪問にキャンセルが入ったとき、画面の上に知らせが出ます。</p>
-    <p class="muted">共有している端末では、ここで選んだ人によって見える範囲が変わります。職員は自分の予定と稼働率、部署の管理者は自分の部署の売上・稼働率・評価シート、経営企画事務職の職員と管理者は全部署の予定（売上は出しません）が見えます（管理者として見るには、下の「管理者の合言葉」も入れます）。全部署の売上を含むすべての画面は、下のゼウスキーが入った端末だけに出ます。使う人を選ぶまでは、このタブだけが出ます。</p>
+    <p class="muted">共有している端末では、ここで選んだ人によって見える範囲が変わります。職員は自分の予定と稼働率、部署の管理者は自分の部署の売上・稼働率・評価シート、経営企画事務職の職員と管理者は全部署の予定（売上は出しません）が見えます（管理者として見るには、下の「管理者の合言葉」も入れます）。使う人を選ぶまでは、このタブだけが出ます。</p>
     <div class="row">
       <div><label class="f" for="dv_me">この端末を主に使う人</label><select id="dv_me"></select></div>
       <div><label class="f">&nbsp;</label><label><input type="checkbox" id="dv_share"> 記録を共有する</label></div>
@@ -965,23 +965,13 @@ function tsPortalAsk(){
   </div>
   <div class="card" id="cardMgrKey">
     <h2>管理者の合言葉（売上・評価を見る端末）</h2>
-    <p class="lead">売上・稼働率・評価シート・施策と目標は、管理者の端末だけに出します。この合言葉を入れた端末で、上の「この端末を使う人」が職員名簿で管理者になっている人のときに、管理者の画面が出ます。部署の管理者は自分の部署の分が見えます。全部署の分は、下のゼウスキーが入った端末だけに出ます。目標・施策・保存した月の売上の数字は、この合言葉で鍵をかけてから共有するので、合言葉の無い端末には読める形で届きません。</p>
+    <p class="lead">売上・稼働率・評価シート・施策と目標は、管理者の端末だけに出します。この合言葉を入れた端末で、上の「この端末を使う人」が職員名簿で管理者になっている人のときに、管理者の画面が出ます。部署の管理者は自分の部署の分が見えます。目標・施策・保存した月の売上の数字は、この合言葉で鍵をかけてから共有するので、合言葉の無い端末には読める形で届きません。</p>
     <p class="muted">上の「記録の鍵」とは別の合言葉を決めてください（8文字以上）。管理者の人だけに伝え、紙に書いて経営企画事務局で保管してください。忘れると、鍵をかけた売上の数字は誰にも読めなくなります。管理者の端末を職員に渡すときは、「この端末から外す」を押してください。</p>
     <div class="row">
       <div><label class="f" for="mk_pass">管理者の合言葉</label><input type="password" id="mk_pass" autocomplete="off"></div>
       <div><label class="f">&nbsp;</label><button class="btn" id="mk_set">この端末に入れる</button> <button class="btn sub" id="mk_clear">この端末から外す</button></div>
     </div>
     <p class="muted" id="mk_msg"></p>
-  </div>
-  <div class="card" id="cardOwnKey">
-    <h2>ゼウスキー（すべての情報が見られる鍵・野木代表だけ）</h2>
-    <p class="lead">全部署の売上・稼働率・評価と、今後つくる「管理者評価資料」など、代表だけが見る画面は、この合言葉が入った端末にしか出ません。管理者の合言葉を知っている人でも、この合言葉が無ければ開けません。代表だけの資料は、この合言葉で鍵をかけてから共有するので、ほかの端末には読める形で届きません。</p>
-    <p class="muted">「記録の鍵」とも「管理者の合言葉」とも違う合言葉を決めてください（8文字以上）。誰にも伝えず、代表ご自身だけが覚えておいてください。忘れると、代表だけの資料は誰にも読めなくなります。この合言葉は端末に残しません。画面（タブ）を閉じると消え、次に開くときにまた入れます。席を離れるときは「この端末から外す」を押してください。入れるには、先に「管理者の合言葉」が入っている必要があります。</p>
-    <div class="row">
-      <div><label class="f" for="ok_pass">ゼウスキー</label><input type="password" id="ok_pass" autocomplete="off"></div>
-      <div><label class="f">&nbsp;</label><button class="btn" id="ok_set">この端末に入れる</button> <button class="btn sub" id="ok_clear">この端末から外す</button></div>
-    </div>
-    <p class="muted" id="ok_msg"></p>
   </div>
   <div class="card" id="cardRules">
     <h2>決まりごと <small class="muted" id="rulesDept"></small></h2>
@@ -2573,7 +2563,7 @@ function deriveRaw(phrase, salt){
 function encStr(key, s){ var iv = crypto.getRandomValues(new Uint8Array(12)); return crypto.subtle.encrypt({ name:'AES-GCM', iv:iv }, key, TE.encode(s)).then(function(ct){ return b64(iv) + '.' + b64(ct); }); }
 function decStr(key, t){ var p = String(t).split('.'); return crypto.subtle.decrypt({ name:'AES-GCM', iv:unb64(p[0]) }, key, unb64(p[1])).then(function(pt){ return TD.decode(pt); }); }
 function sealItem(key, it, mk){
-  if(it.col === 'mgmt' && (String(it.id) === '_chk' || String(it.id) === '_ochk')) return Promise.resolve(it);
+  if(it.col === 'mgmt' && (String(it.id) === '_chk' || String(it.id) === '_ochk' || String(it.id) === '_zl')) return Promise.resolve(it);
   if(it.col === 'mgmt') key = isOwnId(it.id) ? ownKey : mk;
   if(!key) return Promise.reject(new Error('鍵がありません'));
   else if(!ENC_COLS[it.col]) return Promise.resolve(it);
@@ -2674,63 +2664,193 @@ function mkClear(){
   var s = lj(SYNC_KEY, {}); if(s.dirty) delete s.dirty.mgmt; sj(SYNC_KEY, s);
   refreshAll(); mkStatus();
 }
-/* ---- ゼウスキー（2026-10-31・宏史さんの決め）----
-   「私が見える情報は私以外には見えないように」。全部署の売上を含むすべての画面（見る範囲 all）と、
-   代表だけの資料（mgmt の id が own: で始まるもの。今後の管理者評価資料など）は、この合言葉が入った端末だけ。
-   管理者の合言葉とは別の鍵（塩を変えている）。合っているかは mgmt の「_ochk」で見る。
-   代表だけの資料は代表の鍵で鍵をかけて送り、鍵の無い端末には取っておかない。 */
-var OKEY = 'tritime_okey', ownKey = null;
-/* 2026-10-31（宏史さんの指摘「外部のPCで一回入れたら、その後は私でなくても見えてしまうのでは」）：
-   ゼウスキーは端末に残さない。画面（タブ）を閉じれば消え、開くたびに入れ直す（sessionStorage）。
-   代表だけの資料の中身も端末に残さない（鍵が無い状態で開いたら手元から消す）。 */
+/* ---- 野木画面（ゼウスキー）（2026-10-31・宏史さんの決め）----
+   ・全部署の売上を含むすべての画面と、代表だけの資料（mgmt の id が own: で始まるもの。今後の管理者評価資料など）は、野木画面を開いている間だけ出す。
+   ・職員の画面には、ゼウスキーの入口も説明も出さない。入口は、登録した端末でトライタイムを開いたときの最初の画面だけ。
+     はじめての登録は、トライタイムの住所の後ろに #zeus を付けて開く（登録の済んだ端末では、開くたびに入口が出る）。
+   ・開ける端末は2台まで（端末＝その端末のブラウザ。ブラウザはPCそのものを見分けられないため）。登録の一覧はゼウスキーで鍵をかけて中継に置く（own:zdev）。
+   ・どこかで野木画面を開いている間は、ほかの端末では開けない。中継に「使用中の印」（_zl）を置き、開いている間は1分ごとに付け直す。
+     閉じるボタンで印を外す。閉じずに画面を消したときは、3分で印が切れる。
+   ・ゼウスキーは端末に残さない（画面＝タブを閉じれば消える）。代表だけの資料の中身も、鍵が無いときは手元から消す。 */
+var OKEY = 'tritime_okey', ownKey = null, ZREG = 'tritime_zreg', ZID = 'tritime_zdev_id', ZTTL = 3 * 60 * 1000, zTimer = null;
 function oGet(){ try{ return sessionStorage.getItem(OKEY); }catch(e){ return null; } }
 function hasOwnKey(){ return !!oGet(); }
-function purgeOwn(){ try{ var a = live('mgmt'), b = a.filter(function(x){ return !isOwnId(x.id); }); if(b.length !== a.length) saveCol('mgmt', b); }catch(e){} }
 function isOwnId(id){ return String(id).indexOf('own:') === 0; }
+/* 手元から消すだけ（消したことを中継へは送らない） */
+function purgeOwn(){
+  try{
+    var a = raw('mgmt'), b = a.filter(function(x){ return !(x && isOwnId(x.id)); });
+    if(b.length !== a.length) sj(K.mgmt, b);
+    var s = lj(SYNC_KEY, {}); if(s.dirty && s.dirty.mgmt){ Object.keys(s.dirty.mgmt).forEach(function(k){ if(isOwnId(k)) delete s.dirty.mgmt[k]; }); sj(SYNC_KEY, s); }
+  }catch(e){}
+}
 function loadOKey(){
   if(ownKey) return Promise.resolve(ownKey);
   var r = oGet();
   if(!r || !window.crypto || !crypto.subtle) return Promise.resolve(null);
   return crypto.subtle.importKey('raw', unb64(r), 'AES-GCM', false, ['encrypt','decrypt']).then(function(k){ ownKey = k; return k; }, function(){ return null; });
 }
-function okStatus(){
-  var el = $('ok_msg'); if(!el) return;
-  el.innerHTML = hasOwnKey() ? '<span class="tag green">いまゼウスキーが入っています</span> この画面（タブ）を閉じると消えます。席を離れるときは「この端末から外す」を押してください。'
-    : '<span class="tag gray">いまゼウスキーは入っていません</span> 全部署の売上と代表だけの資料は出ません。合言葉は端末に残さないので、開くたびに入れ直します。';
+function zMyId(){
+  var v = null; try{ v = localStorage.getItem(ZID); }catch(e){}
+  if(!v){ var a = crypto.getRandomValues(new Uint8Array(12)); v = 'z' + Array.prototype.map.call(a, function(x){ return ('0' + x.toString(16)).slice(-2); }).join(''); try{ localStorage.setItem(ZID, v); }catch(e){} }
+  return v;
 }
-function okSet(){
-  var ph = $('ok_pass').value;
-  if(!window.crypto || !crypto.subtle){ $('ok_msg').textContent = 'この端末のブラウザでは鍵をかけられません。'; return; }
-  if(String(ph).length < 8){ alert('ゼウスキーは8文字以上にしてください。'); return; }
-  if(!dev().share){ alert('先に「この端末と共有」で「記録を共有する」に印を付けて保存してください。'); return; }
-  if(!hasMgrKey()){ alert('先に「管理者の合言葉」をこの端末に入れてください。'); return; }
-  var meS = meStaff(); if(!meS || !isMgr(meS)){ alert('先に「この端末と共有」で、この端末を使う人に代表ご自身（野木　宏史）を選んで保存してください。'); return; }
-  $('ok_msg').textContent = '確かめています…';
-  var rk, key;
-  deriveRaw(ph, 'TriTime-owner-v1').then(function(r){ rk = r; return crypto.subtle.importKey('raw', r, 'AES-GCM', false, ['encrypt','decrypt']); }).then(function(k){
-    key = k;
-    return relayCall('pull', { since:0, cols:['mgmt'] }).then(function(j){ return Array.isArray(j.items) ? j.items : []; });
-  }).then(function(items){
-    var ck = items.filter(function(x){ return String(x.id) === '_ochk'; }).pop(), loc = live('mgmt').filter(function(x){ return x.id === '_ochk'; })[0];
-    var chk = (ck && ck.data && ck.data.chk) || (loc && loc.chk);
+function zIsReg(){ try{ return localStorage.getItem(ZREG) === '1'; }catch(e){ return false; } }
+function zPullMgmt(){ return relayCall('pull', { since:0, cols:['mgmt'] }).then(function(j){ return Array.isArray(j.items) ? j.items : []; }); }
+function zPick(items, id){ return items.filter(function(x){ return x && String(x.id) === id; }).pop() || null; }
+function zPush(list){ return relayCall('push', { items:list }); }
+function zLockItem(on){ var now = Date.now(); return { col:'mgmt', id:'_zl', data:{ id:'_zl', dev: on ? zMyId() : '', name: on ? zMyName() : '', at: on ? now : 0, upd:now } }; }
+function zMyName(){ try{ return localStorage.getItem(ZREG + '_name') || ''; }catch(e){ return ''; } }
+function zLockHeldByOther(items){
+  var z = zPick(items, '_zl'), d = z && z.data;
+  if(!d || !d.dev || d.dev === zMyId()) return null;
+  if(Date.now() - (d.at || 0) >= ZTTL) return null;
+  return d;
+}
+function zDevList(items, key){
+  var it = zPick(items, 'own:zdev');
+  if(!it || !it.data || !it.data.enc) return Promise.resolve([]);
+  return decStr(key, it.data.enc).then(function(t){ var d = JSON.parse(t); return Array.isArray(d.devs) ? d.devs : []; }, function(){ return []; });
+}
+function zDevItem(key, devs){
+  var now = Date.now(), d = { id:'own:zdev', devs:devs, upd:now };
+  return encStr(key, JSON.stringify(d)).then(function(c){ return { col:'mgmt', id:'own:zdev', data:{ id:'own:zdev', upd:now, enc:c } }; });
+}
+/* 開く */
+function zOpen(ph, name){
+  if(!window.crypto || !crypto.subtle) return Promise.reject(new Error('この端末のブラウザでは開けません。'));
+  if(String(ph).length < 8) return Promise.reject(new Error('ゼウスキーは8文字以上です。'));
+  if(!dev().share) return Promise.reject(new Error('この端末は「記録を共有する」になっていないため開けません。「名簿・設定」タブの「この端末と共有」で印を付けて保存してから開いてください。'));
+  if(!hasMgrKey()) return Promise.reject(new Error('この端末には「管理者の合言葉」が入っていないため開けません。'));
+  var rk, key, items, push = [], devs;
+  return deriveRaw(ph, 'TriTime-owner-v1').then(function(r){ rk = r; return crypto.subtle.importKey('raw', r, 'AES-GCM', false, ['encrypt','decrypt']); }).then(function(k){
+    key = k; return zPullMgmt();
+  }, function(){ throw new Error('開けませんでした。'); }).then(function(it){
+    items = it;
+    var ck = zPick(items, '_ochk'), chk = ck && ck.data && ck.data.chk;
+    if(chk) return decStr(key, chk).then(function(t){ if(t !== 'TriTime-OWN-OK') throw 0; }).catch(function(){ throw new Error('ゼウスキーが違います。'); });
+    return encStr(key, 'TriTime-OWN-OK').then(function(c){ push.push({ col:'mgmt', id:'_ochk', data:{ id:'_ochk', chk:c, upd:Date.now() } }); });
+  }).then(function(){
+    return zDevList(items, key);
+  }).then(function(list){
+    devs = list; var me = zMyId(), mine = devs.filter(function(d){ return d.id === me; })[0];
+    if(!mine){
+      if(devs.length >= 2) throw new Error('野木画面を開ける端末は2台までで、もう2台（' + devs.map(function(d){ return d.name || '名前なし'; }).join('・') + '）が登録されています。この端末では開けません。');
+      var nm = String(name || '').trim() || 'この端末';
+      devs = devs.concat([{ id:me, name:nm, at:Date.now() }]);
+      try{ localStorage.setItem(ZREG + '_name', nm); }catch(e){}
+      return zDevItem(key, devs).then(function(x){ push.push(x); });
+    }
+    try{ localStorage.setItem(ZREG + '_name', mine.name || ''); }catch(e){}
+  }).then(function(){
+    var other = zLockHeldByOther(items);
+    if(other){ var t = new Date(other.at); throw new Error('いま別の端末（' + (other.name || '名前なし') + '）で野木画面が開いています（' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + ' に確認）。そちらで「野木画面を閉じる」を押してから開いてください。閉じずに画面を消した場合は、3分ほどで開けるようになります。'); }
+    push.push(zLockItem(true));
+    return zPush(push);
+  }).then(function(){
+    try{ sessionStorage.setItem(OKEY, b64(rk)); localStorage.setItem(ZREG, '1'); }catch(e){}
+    ownKey = key;
     var mine = items.filter(function(x){ return isOwnId(x.id); });
-    var test = chk ? decStr(key, chk).then(function(t){ if(t !== 'TriTime-OWN-OK') throw new Error('x'); }, function(){ throw new Error('ゼウスキーが、決めたものと違います。入れ直してください。'); })
-      : encStr(key, 'TriTime-OWN-OK').then(function(c){ var all = live('mgmt').filter(function(x){ return x.id !== '_ochk'; }); all.push({ id:'_ochk', chk:c }); saveCol('mgmt', all); markDirty('mgmt', '_ochk'); });
-    return test.then(function(){ return mine; });
-  }).then(function(mine){
-    sessionStorage.setItem(OKEY, b64(rk)); sessionStorage.setItem(OKEY + '_me', String(dev().me || '')); ownKey = key; $('ok_pass').value = '';
-    return loadMKey().then(function(mk){ return openItems(mine, null, mk); }).then(function(items){ if(items.length) mergeIncoming(items); });
-  }).then(function(){ refreshAll(); return syncNow(); }).then(function(){ okStatus(); $('ok_msg').insertAdjacentHTML('beforeend', '<br>ゼウスキーを入れました。'); })
-  .catch(function(e){ $('ok_msg').textContent = e.message || '設定できませんでした。'; });
+    return loadMKey().then(function(mk){ return openItems(mine, null, mk); }).then(function(got){ if(got.length) mergeIncoming(got); });
+  }).then(function(){ zBeat(); refreshAll(); syncNow(); });
 }
-function okClear(){
-  if(!hasOwnKey()){ okStatus(); return; }
-  if(!confirm('ゼウスキーを外します。この画面では全部署の売上と代表だけの資料が出なくなり、この端末にある代表だけの資料も消します（中継には鍵のかかった形で残ります）。よろしいですか？')) return;
-  try{ sessionStorage.removeItem(OKEY); sessionStorage.removeItem(OKEY + '_me'); }catch(e){}
+/* 開いている間の使用中の印の付け直し（1分ごと） */
+function zBeat(){
+  clearInterval(zTimer);
+  zTimer = setInterval(function(){
+    if(!hasOwnKey()){ clearInterval(zTimer); return; }
+    zPullMgmt().then(function(items){
+      if(zLockHeldByOther(items)){ zClose(true); alert('別の端末で野木画面が開かれたため、この端末の野木画面を閉じました。'); return; }
+      return zPush([zLockItem(true)]);
+    }).catch(function(){});
+  }, 60 * 1000);
+}
+/* 閉じる */
+function zClose(silent){
+  clearInterval(zTimer);
+  var was = hasOwnKey();
+  try{ sessionStorage.removeItem(OKEY); }catch(e){}
   ownKey = null; purgeOwn();
-  var s = lj(SYNC_KEY, {}); if(s.dirty && s.dirty.mgmt){ Object.keys(s.dirty.mgmt).forEach(function(k){ if(isOwnId(k)) delete s.dirty.mgmt[k]; }); } sj(SYNC_KEY, s);
-  refreshAll(); okStatus();
+  if(was && !silent) zPush([zLockItem(false)]).catch(function(){});
+  refreshAll();
 }
+/* 画面を消すときは、使用中の印を外しておく（届かなかったときは3分で切れる） */
+window.addEventListener('pagehide', function(){
+  if(!hasOwnKey()) return;
+  try{
+    var code = tsCode(); if(!code) return;
+    fetch(GATE_URL, { method:'POST', keepalive:true, headers:{ 'Content-Type':'application/json', 'x-trisight-code':code }, body:JSON.stringify({ task:'tritime', payload:{ op:'push', items:[zLockItem(false)] } }) });
+  }catch(e){}
+});
+/* 登録した端末の一覧と、野木画面の帯（野木画面を開いているときだけ作る。職員の画面には一切出さない） */
+function zRender(){
+  var on = hasOwnKey() && hasMgrKey();
+  var bar = $('zeusBar');
+  if(!on){ if(bar) bar.remove(); var c0 = $('cardZeusDev'); if(c0) c0.remove(); return; }
+  if(!bar){
+    bar = document.createElement('div'); bar.id = 'zeusBar';
+    bar.setAttribute('style', 'position:sticky;top:0;z-index:9000;background:#0f1d3a;color:#fff;padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:14px');
+    bar.innerHTML = '<b>野木画面</b><span style="opacity:.8">全部署の売上と予定のすべてを表示しています</span><span style="flex:1"></span><button type="button" id="zeusClose" style="font-family:inherit;font-size:13px;padding:5px 14px;border:1px solid #fff;background:transparent;color:#fff;border-radius:999px;cursor:pointer">野木画面を閉じる</button>';
+    document.body.insertBefore(bar, document.body.firstChild);
+    $('zeusClose').addEventListener('click', function(){ zClose(false); });
+  }
+  var host = $('tab-setup'); if(!host) return;
+  var card = $('cardZeusDev');
+  if(!card){ card = document.createElement('div'); card.className = 'card'; card.id = 'cardZeusDev'; host.insertBefore(card, host.firstChild); }
+  card.innerHTML = '<h2>野木画面を開ける端末</h2><p class="lead">このカードは野木画面を開いているときだけ出ます。登録できるのは2台までです。</p><div id="zdList" class="muted">読み込んでいます…</div><p class="muted" id="zdMsg"></p>';
+  loadOKey().then(function(key){ if(!key) return []; return zPullMgmt().then(function(items){ return zDevList(items, key); }); }).then(function(devs){
+    var me = zMyId(), el = $('zdList'); if(!el) return;
+    if(!devs.length){ el.textContent = '登録はありません。'; return; }
+    el.innerHTML = '<table><tr><th>端末の名前</th><th>登録した日</th><th></th></tr>' + devs.map(function(d){
+      var t = new Date(d.at || 0);
+      return '<tr><td>' + esc(d.name || '名前なし') + (d.id === me ? '（この端末）' : '') + '</td><td>' + t.getFullYear() + '/' + (t.getMonth() + 1) + '/' + t.getDate() + '</td><td><button class="btn sub" type="button" data-zdrm="' + esc(d.id) + '">登録を外す</button></td></tr>';
+    }).join('') + '</table>';
+    el.querySelectorAll('[data-zdrm]').forEach(function(b){ b.addEventListener('click', function(){
+      var id = b.getAttribute('data-zdrm'), self = id === me;
+      if(!confirm(self ? 'この端末の登録を外します。外すと野木画面を閉じ、この端末では入口も出なくなります。よろしいですか？' : 'この登録を外します。外した端末では野木画面を開けなくなります。よろしいですか？')) return;
+      loadOKey().then(function(key){ return zPullMgmt().then(function(items){ return zDevList(items, key); }).then(function(list){ return zDevItem(key, list.filter(function(d){ return d.id !== id; })); }); })
+        .then(function(x){ return zPush([x]); })
+        .then(function(){ if(self){ try{ localStorage.removeItem(ZREG); localStorage.removeItem(ZREG + '_name'); }catch(e){} zClose(false); } else zRender(); })
+        .catch(function(e){ var m = $('zdMsg'); if(m) m.textContent = e.message || '外せませんでした。'; });
+    }); });
+  }).catch(function(e){ var el = $('zdList'); if(el) el.textContent = e.message || '読み込めませんでした。'; });
+}
+/* 入口（登録した端末で開いたときの最初の画面。はじめての登録は #zeus） */
+function zGate(){
+  if(window.TT_LAB) return;
+  var first = /^#zeus$/i.test(location.hash || '');
+  if(!zIsReg() && !first) return;
+  if(hasOwnKey()){
+    /* 同じ画面（タブ）の読み込み直し：使用中の印を付け直して続ける */
+    zPullMgmt().then(function(items){ if(zLockHeldByOther(items)){ zClose(true); return; } return zPush([zLockItem(true)]).then(function(){ zBeat(); }); }).catch(function(){ zBeat(); });
+    return;
+  }
+  var cls = document.documentElement.className;
+  if(cls.indexOf('openLocked') >= 0 || cls.indexOf('labLocked') >= 0){ setTimeout(zGate, 800); return; }
+  if($('zeusGate')) return;
+  var w = document.createElement('div'); w.id = 'zeusGate';
+  w.setAttribute('style', 'position:fixed;inset:0;z-index:99000;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:linear-gradient(165deg,#0c1830,#16264a 55%,#0b1428)');
+  w.innerHTML = '<div style="background:#fff;border-radius:14px;max-width:420px;width:100%;padding:24px 22px 18px;box-sizing:border-box;color:#16213a">' +
+    '<div style="font-weight:800;font-size:20px;margin-bottom:6px">野木画面</div>' +
+    '<div style="font-size:13px;line-height:1.7;color:#5b6680;margin-bottom:10px">ゼウスキーを入れると、全部署の売上と予定のすべてが見られる野木画面が開きます。ふつうに使うときは「ふつうの画面で使う」を押してください。</div>' +
+    '<label style="font-size:13px">ゼウスキー</label><input id="zgKey" type="password" autocomplete="off" style="width:100%;box-sizing:border-box;font-size:15px;padding:9px 10px;border:1px solid #afb8c1;border-radius:8px;margin:2px 0 8px">' +
+    (zIsReg() ? '' : '<label style="font-size:13px">この端末の名前（はじめての端末のときだけ。例：トライサイトPC）</label><input id="zgName" type="text" autocomplete="off" style="width:100%;box-sizing:border-box;font-size:15px;padding:9px 10px;border:1px solid #afb8c1;border-radius:8px;margin:2px 0 8px">') +
+    '<div id="zgMsg" style="font-size:13px;color:#b42318;min-height:1.6em"></div>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="zgSkip" style="font-family:inherit;font-size:14px;padding:7px 14px;border:1px solid #afb8c1;background:#fff;color:#16213a;border-radius:999px;cursor:pointer">ふつうの画面で使う</button>' +
+    '<button type="button" id="zgGo" style="font-family:inherit;font-size:14px;padding:7px 18px;border:0;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">開く</button></div></div>';
+  document.body.appendChild(w);
+  var inp = $('zgKey'), msg = $('zgMsg'), go = $('zgGo');
+  inp.onkeydown = function(e){ if(e.key === 'Enter') go.click(); };
+  $('zgSkip').onclick = function(){ w.remove(); if(first) try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){} };
+  go.onclick = function(){
+    go.disabled = true; msg.style.color = '#5b6680'; msg.textContent = '確かめています…';
+    zOpen(inp.value, $('zgName') ? $('zgName').value : '').then(function(){
+      inp.value = ''; w.remove(); if(first) try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){}
+    }, function(e){ go.disabled = false; msg.style.color = '#b42318'; msg.textContent = (e && e.message) || '開けませんでした。'; });
+  };
+  setTimeout(function(){ inp.focus(); }, 50);
+}
+setTimeout(zGate, 0);
 function pushChunks(items){
   var out = [], cur = [], size = 0;
   items.forEach(function(it){ var n = JSON.stringify(it).length; if(cur.length && (cur.length >= 200 || size + n > 300000)){ out.push(cur); cur = []; size = 0; } cur.push(it); size += n; });
@@ -2745,7 +2865,7 @@ function syncNow(){
   return loadKey().then(function(key){ key0 = key; return loadOKey(); }).then(function(){ return loadMKey(); }).then(function(mk){
     mk0 = mk;
     var key = key0;
-    var pushed = collectDirty().filter(function(it){ return it.col === 'mgmt' ? (isOwnId(it.id) ? !!(mk && ownKey) : !!mk) : (key || !ENC_COLS[it.col]); });
+    var pushed = collectDirty().filter(function(it){ if(it.col === 'mgmt' && String(it.id) === '_zl') return false; return it.col === 'mgmt' ? (isOwnId(it.id) ? !!(mk && ownKey) : !!mk) : (key || !ENC_COLS[it.col]); });
     return Promise.all(pushed.map(function(it){ return sealItem(key, it, mk).then(function(sealed){ return { o:it, s:sealed }; }); })).then(function(pairs){
       var chain = Promise.resolve();
       var main = pairs.filter(function(p){ return p.o.col !== 'mgmt'; }), mg = pairs.filter(function(p){ return p.o.col === 'mgmt'; });
@@ -2979,12 +3099,10 @@ function role(){
   /* 2026-10-31：共有の印を外しても、合言葉の入っていた端末ではすべては見せない（印を外して見る抜け道を塞ぐ） */
   if(window.TT_LAB) return { lv:'all', solo:true, depts:DEPTS };   /* 実験機は開くたびに実験機の合言葉で確かめているので、これまでどおりすべて見える */
   if(!dev().share) return hadKeys() ? { lv:'none', unshared:true, depts:[] } : { lv:'all', solo:true, depts:DEPTS };
+  /* 2026-10-31：全部署のすべて（見る範囲 all）は、野木画面を開いている間だけ（登録した2台・ゼウスキー） */
+  if(hasOwnKey() && hasMgrKey()) return { lv:'all', s:meStaff(), depts:DEPTS, zeus:true };
   var s = meStaff(); if(!s) return { lv:'none', depts:[] };
   var ds = myDepts(s), office = ds.some(function(x){ return x.kind === 'office'; });
-  /* 2026-10-31：全部署のすべて（見る範囲 all）は、ゼウスキーが入った端末だけ */
-  /* 合言葉を入れたときに選ばれていた人（代表）だけ。同じ画面でほかの人を選び直しても開かない */
-  var oMe = null; try{ oMe = sessionStorage.getItem(OKEY + '_me'); }catch(e){}
-  if(isMgr(s) && hasMgrKey() && hasOwnKey() && oMe && oMe === String(s.id)) return { lv:'all', s:s, depts:DEPTS };
   if(isMgr(s) && hasMgrKey() && !office) return { lv:'dept', s:s, depts:ds };
   if(office) return { lv:'office', s:s, depts:DEPTS, noKey:isMgr(s) };
   return { lv:'staff', s:s, depts:ds, noKey:isMgr(s) };
@@ -3004,7 +3122,7 @@ function roleNote(R){
   else if(R.lv === 'staff') t = '見える範囲：' + esc(R.s.name) + 'さんの予定と稼働率（' + esc(R.depts.map(function(x){ return x.name; }).join('・')) + '）。' + (R.noKey ? key : '');
   else if(R.lv === 'dept') t = '見える範囲：' + esc(R.depts.map(function(x){ return x.name; }).join('・')) + 'の管理者（予定・売上・稼働率・評価シート・施策と目標）。';
   else if(R.lv === 'office') t = '見える範囲：全部署の予定（売上は出しません）。' + (R.noKey ? key : '');
-  else if(!R.solo) t = '見える範囲：代表（全部署の売上と予定のすべて）。この端末にはゼウスキーが入っています。';
+  else if(!R.solo) t = '見える範囲：野木画面（全部署の売上と予定のすべて）。';
   el.innerHTML = t; el.style.display = t ? '' : 'none';
 }
 function withDept(k, fn){
@@ -3561,7 +3679,7 @@ function refreshAll(){
   $('dv_share').checked = dev().share;
   renderSetup(); renderPlan(); renderToday(); renderAuto(); renderIntakeList(); renderCourse(); renderReport(); renderAdmin();
   renderMonitor(); renderSummary();
-  ptForm(); rdKinds(); renderPtList(); nrRender(); renderReq(); keyStatus(); mkStatus(); if(!hasOwnKey()) purgeOwn(); okStatus(); renderMine();
+  ptForm(); rdKinds(); renderPtList(); nrRender(); renderReq(); keyStatus(); mkStatus(); if(!hasOwnKey()) purgeOwn(); zRender(); renderMine();
   if(typeof renderModel === 'function' && canMoney()) renderModel();
 }
 
@@ -3680,8 +3798,6 @@ $('adHardSend').addEventListener('click', hardSend);
 $('ky_set').addEventListener('click', keySet);
 $('mk_set').addEventListener('click', mkSet);
 $('mk_clear').addEventListener('click', mkClear);
-$('ok_set').addEventListener('click', okSet);
-$('ok_clear').addEventListener('click', okClear);
 function stSubDraw(cur){
   cur = cur || []; var main = $('st_dept').value;
   $('st_sub').innerHTML = DEPTS.map(function(d){ var m = d.name === main; return '<label style="margin-right:12px"><input type="checkbox" data-stsub="' + esc(d.name) + '"' + (cur.indexOf(d.name) >= 0 && !m ? ' checked' : '') + (m ? ' disabled' : '') + '> ' + esc(d.name) + (m ? '（所属）' : '') + '</label>'; }).join('');

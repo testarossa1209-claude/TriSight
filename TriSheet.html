@@ -1,4 +1,12 @@
-<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!DOCTYPE html><html lang="ja"><head>
+<script>
+/* 2026-10-30：開くときの関所（宏史さんの指示「住所を打てば誰でも開ける仕様はなくしてください。最初に開くときだけで問題ありません」）。
+   この端末で一度、契約に基本情報シートが含まれる認証コードを確かめるまでは、画面の中身を出さない。
+   確かめた後は、開くたびに裏で同じコードを中継に聞き直し、契約が止まっていれば次からまた聞く。 */
+(function(){var R=window.TT_RAW,v="";try{v=R?R.get("trisight_open_trisheet"):localStorage.getItem("trisight_open_trisheet");}catch(e){}
+if(v!=="1")document.documentElement.className+=" openLocked";})();
+</script>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>基本情報シート（見本）</title>
 <style>
 :root{--bg:#ffffff;--text:#1f2328;--text-secondary:#57606a;--text-muted:#8c959f;--border:#d8dee4;--border-strong:#afb8c1;
@@ -13,7 +21,8 @@ body{background:var(--bg);color:var(--text);font-family:"Hiragino Sans","Yu Goth
 input,select,textarea,button{font:inherit;color:var(--text);background:var(--bg);border:0.5px solid var(--border-strong);border-radius:6px;padding:5px 8px;box-sizing:border-box}
 button{cursor:pointer;background:var(--surface-1)}button:hover{border-color:var(--border-accent)}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-</style></head><body>
+</style><style>html.openLocked body>*:not(#openGate){display:none!important}html.openLocked body>#openGate{display:flex!important}</style>
+</head><body>
 <!-- 2026-10-15：前のページに戻るボタン（全画面共通・マウスの「戻る」と同じ動き。前のページが無いときは表札へ） -->
 <div id="tsBackBar" data-guard="0" style="padding:8px 16px 4px;box-sizing:border-box;text-align:left;width:100%;align-self:stretch"><button type="button" onclick="tsGoBack()" title="ひとつ前に開いていた画面へ戻ります" style="font-family:inherit;font-size:13px;line-height:1.4;color:#1f2328;background:#ffffff;border:1px solid #afb8c1;border-radius:999px;padding:4px 14px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.12)">‹ 前のページに戻る</button></div>
 <style>@media print{#tsBackBar{display:none !important}}</style>
@@ -83,7 +92,7 @@ pre.out{white-space:pre-wrap;font-size:12px;font-family:var(--font-mono);backgro
     <div style="font-size:20px;font-weight:500">基本情報シート</div>
   </div>
   <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">発行：合同会社トライサイト</div>
-  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-29-01</span> <span id="verMsg"></span></div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-30-01</span> <span id="verMsg"></span></div>
   <div style="border-top:1px solid var(--border-strong);margin:8px 0 12px"></div>
   <!-- 2026-10-19：認証コードで端末どうし共有する（宏史さんの指示）。印を付けた端末だけが共有する。部品は TriSheetSync.js -->
   <div id="tssBox" style="margin:0 0 12px;padding:10px 12px;border:0.5px solid var(--border-accent);border-radius:var(--radius);background:var(--surface-1);font-size:13px">
@@ -1724,4 +1733,49 @@ window.addEventListener('storage',e=>{
 <!-- 2026-10-15：共通の音声入力（右下のマイク。押した欄へ話した文字を入れる） -->
 <script src="TriVoiceEngine.js"></script>
 <script>if(window.TriVoice)TriVoice.dictation({ exclude:'#r_職員名簿' });</script>
+<script>
+(function(){
+  var KEY="trisight_open_trisheet",CKEY="trisight_open_trisheet_code",PRODUCT="trisheet",NAME="基本情報シート";
+  var RELAY="https://trisight-relay.vercel.app/api/gate";
+  var R=window.TT_RAW||{get:function(k){return localStorage.getItem(k);},set:function(k,v){localStorage.setItem(k,v);},del:function(k){localStorage.removeItem(k);}};
+  function lsGet(k){try{return R.get(k)||"";}catch(e){return "";}}
+  function forget(){try{R.del(KEY);R.del(CKEY);}catch(e){}}
+  function ask(c){return fetch(RELAY,{method:"POST",headers:{"Content-Type":"application/json","x-trisight-code":c},body:JSON.stringify({task:"portal",payload:{product:PRODUCT}})})
+    .then(function(res){return res.json().catch(function(){return {};}).then(function(j){return {s:res.status,j:j};});});}
+  if(document.documentElement.className.indexOf("openLocked")<0){
+    var saved=lsGet(CKEY);
+    if(saved)ask(saved).then(function(o){if(o.s===401||(o.s===200&&o.j&&o.j.portal===false)){forget();location.reload();}},function(){});
+    return;
+  }
+  var w=document.createElement("div");w.id="openGate";
+  w.setAttribute("style","position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:linear-gradient(165deg,#0c1830,#16264a 55%,#0b1428);font-family:inherit");
+  w.innerHTML='<div style="background:#fff;border-radius:14px;max-width:420px;width:100%;padding:24px 22px 18px;box-sizing:border-box;box-shadow:0 26px 60px -30px rgba(0,0,0,.7);color:#16213a">'
+   +'<div style="font-family:Georgia,serif;font-weight:800;font-size:22px;color:#0f1d3a">'+NAME+'</div>'
+   +'<div style="font-weight:700;font-size:16px;margin:8px 0 6px">認証コードを入れてください</div>'
+   +'<div style="font-size:13px;line-height:1.7;color:#5b6680;margin-bottom:10px">この画面は、ご契約の認証コードで開きます。この端末で一度確かめると、次からは聞きません。</div>'
+   +'<input id="ogCode" type="password" autocomplete="off" style="width:100%;box-sizing:border-box;font-size:15px;padding:9px 10px;border:1px solid #afb8c1;border-radius:8px">'
+   +'<div id="ogMsg" style="font-size:13px;color:#b42318;min-height:1.6em;margin-top:6px"></div>'
+   +'<div style="text-align:right"><button type="button" id="ogGo" style="font-family:inherit;font-size:14px;padding:7px 18px;border:0;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">確かめて開く</button></div></div>';
+  document.body.appendChild(w);
+  var inp=document.getElementById("ogCode"),msg=document.getElementById("ogMsg"),go=document.getElementById("ogGo");
+  var pre=lsGet("trisight_access_code");if(pre)inp.value=pre;
+  inp.onkeydown=function(e){if(e.key==="Enter")go.click();};
+  go.onclick=function(){
+    var c=inp.value.trim();if(!c){msg.textContent="認証コードを入れてください。";return;}
+    go.disabled=true;msg.style.color="#5b6680";msg.textContent="確かめています…";
+    ask(c).then(function(o){
+      go.disabled=false;msg.style.color="#b42318";
+      if(o.s===200&&o.j&&o.j.portal===true){
+        try{R.set(KEY,"1");R.set(CKEY,c);if(!lsGet("trisight_access_code"))R.set("trisight_access_code",c);}catch(e){}
+        w.remove();document.documentElement.className=document.documentElement.className.replace(/\s*openLocked/g,"");return;}
+      if(o.s===200)msg.textContent="この認証コードのご契約には、"+NAME+"が含まれていません。";
+      else if(o.s===401)msg.textContent="認証コードが一致しませんでした。";
+      else if(o.s===429)msg.textContent=(o.j&&o.j.error)||"間違いが続いたため、しばらく受け付けません。";
+      else if(o.s===400)msg.textContent="中継の更新がまだ済んでいないため、確かめられません。";
+      else msg.textContent="確かめられませんでした（"+o.s+"）。少しおいてもう一度押してください。";
+    },function(){go.disabled=false;msg.style.color="#b42318";msg.textContent="中継につながりませんでした。通信を確かめて、もう一度押してください。";});
+  };
+  setTimeout(function(){inp.focus();},50);
+})();
+</script>
 </body></html>

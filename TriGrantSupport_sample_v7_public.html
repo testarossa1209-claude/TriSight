@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+<script>
+/* 2026-10-30：開くときの関所（宏史さんの指示「住所を打てば誰でも開ける仕様はなくしてください。最初に開くときだけで問題ありません」）。
+   この端末で一度、契約にトライサイトが含まれる認証コードを確かめるまでは、画面の中身を出さない。
+   確かめた後は、開くたびに裏で同じコードを中継に聞き直し、契約が止まっていれば次からまた聞く。 */
+(function(){var R=window.TT_RAW,v="";try{v=R?R.get("trisight_open_trisight"):localStorage.getItem("trisight_open_trisight");}catch(e){}
+if(v!=="1")document.documentElement.className+=" openLocked";})();
+</script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TriGrantSupport® - 助成金マッチング出口品質保証システム</title>
@@ -211,6 +219,7 @@
     margin-top: 24px;
   }
 </style>
+<style>html.openLocked body>*:not(#openGate){display:none!important}html.openLocked body>#openGate{display:flex!important}</style>
 </head>
 <body>
 <!-- 2026-10-15：前のページに戻るボタン（全画面共通・マウスの「戻る」と同じ動き。前のページが無いときは表札へ） -->
@@ -1112,5 +1121,50 @@ function showExplanation() {
 }
 </script>
 <script src="triform-send.js"></script>
+<script>
+(function(){
+  var KEY="trisight_open_trisight",CKEY="trisight_open_trisight_code",PRODUCT="trisight",NAME="トライサイト";
+  var RELAY="https://trisight-relay.vercel.app/api/gate";
+  var R=window.TT_RAW||{get:function(k){return localStorage.getItem(k);},set:function(k,v){localStorage.setItem(k,v);},del:function(k){localStorage.removeItem(k);}};
+  function lsGet(k){try{return R.get(k)||"";}catch(e){return "";}}
+  function forget(){try{R.del(KEY);R.del(CKEY);}catch(e){}}
+  function ask(c){return fetch(RELAY,{method:"POST",headers:{"Content-Type":"application/json","x-trisight-code":c},body:JSON.stringify({task:"portal",payload:{product:PRODUCT}})})
+    .then(function(res){return res.json().catch(function(){return {};}).then(function(j){return {s:res.status,j:j};});});}
+  if(document.documentElement.className.indexOf("openLocked")<0){
+    var saved=lsGet(CKEY);
+    if(saved)ask(saved).then(function(o){if(o.s===401||(o.s===200&&o.j&&o.j.portal===false)){forget();location.reload();}},function(){});
+    return;
+  }
+  var w=document.createElement("div");w.id="openGate";
+  w.setAttribute("style","position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:linear-gradient(165deg,#0c1830,#16264a 55%,#0b1428);font-family:inherit");
+  w.innerHTML='<div style="background:#fff;border-radius:14px;max-width:420px;width:100%;padding:24px 22px 18px;box-sizing:border-box;box-shadow:0 26px 60px -30px rgba(0,0,0,.7);color:#16213a">'
+   +'<div style="font-family:Georgia,serif;font-weight:800;font-size:22px;color:#0f1d3a">'+NAME+'</div>'
+   +'<div style="font-weight:700;font-size:16px;margin:8px 0 6px">認証コードを入れてください</div>'
+   +'<div style="font-size:13px;line-height:1.7;color:#5b6680;margin-bottom:10px">この画面は、ご契約の認証コードで開きます。この端末で一度確かめると、次からは聞きません。</div>'
+   +'<input id="ogCode" type="password" autocomplete="off" style="width:100%;box-sizing:border-box;font-size:15px;padding:9px 10px;border:1px solid #afb8c1;border-radius:8px">'
+   +'<div id="ogMsg" style="font-size:13px;color:#b42318;min-height:1.6em;margin-top:6px"></div>'
+   +'<div style="text-align:right"><button type="button" id="ogGo" style="font-family:inherit;font-size:14px;padding:7px 18px;border:0;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">確かめて開く</button></div></div>';
+  document.body.appendChild(w);
+  var inp=document.getElementById("ogCode"),msg=document.getElementById("ogMsg"),go=document.getElementById("ogGo");
+  var pre=lsGet("trisight_access_code");if(pre)inp.value=pre;
+  inp.onkeydown=function(e){if(e.key==="Enter")go.click();};
+  go.onclick=function(){
+    var c=inp.value.trim();if(!c){msg.textContent="認証コードを入れてください。";return;}
+    go.disabled=true;msg.style.color="#5b6680";msg.textContent="確かめています…";
+    ask(c).then(function(o){
+      go.disabled=false;msg.style.color="#b42318";
+      if(o.s===200&&o.j&&o.j.portal===true){
+        try{R.set(KEY,"1");R.set(CKEY,c);if(!lsGet("trisight_access_code"))R.set("trisight_access_code",c);}catch(e){}
+        w.remove();document.documentElement.className=document.documentElement.className.replace(/\s*openLocked/g,"");return;}
+      if(o.s===200)msg.textContent="この認証コードのご契約には、"+NAME+"が含まれていません。";
+      else if(o.s===401)msg.textContent="認証コードが一致しませんでした。";
+      else if(o.s===429)msg.textContent=(o.j&&o.j.error)||"間違いが続いたため、しばらく受け付けません。";
+      else if(o.s===400)msg.textContent="中継の更新がまだ済んでいないため、確かめられません。";
+      else msg.textContent="確かめられませんでした（"+o.s+"）。少しおいてもう一度押してください。";
+    },function(){go.disabled=false;msg.style.color="#b42318";msg.textContent="中継につながりませんでした。通信を確かめて、もう一度押してください。";});
+  };
+  setTimeout(function(){inp.focus();},50);
+})();
+</script>
 </body>
 </html>

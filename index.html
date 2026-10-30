@@ -102,6 +102,7 @@ footer{text-align:center;color:#7e8499;font-size:11px;margin-top:14px;line-heigh
   <div class="rule"></div>
 </div>
 
+<div id="optTop" style="display:none;margin:-10px 0 18px;padding:10px 16px;border:1px solid #f0c25a;border-radius:12px;font-size:13px;line-height:1.7;color:#cdd6ea;background:rgba(10,20,40,.55)"></div>
 <a class="parent" href="TriSight_v5.html">
   <div class="p-left">
     <div class="p-ey">MAIN SYSTEM　<span style="color:#fff;letter-spacing:.04em">基本：一段ずつ人が確かめて、次のAIへ渡す</span></div>
@@ -132,7 +133,7 @@ footer{text-align:center;color:#7e8499;font-size:11px;margin-top:14px;line-heigh
     <button type="button" id="optFix" class="opt-btn">AI連携オプションに固定する</button>
   </div>
   <div id="optState" style="margin-top:8px;display:none"></div>
-  <div style="margin-top:6px;font-size:11px;color:#8d93a6">固定は、この端末だけに効きます。固定している間は、アプリのアイコンなどから表札を開くと、自動でAI連携オプションへ進みます。</div>
+  <div style="margin-top:6px;font-size:11px;color:#8d93a6">固定は、この端末だけに効きます。固定している間も表札は出ます。上の「TriSight System」を押すと、AI連携オプションの画面へ進みます。</div>
 </div>
 <style>.opt-btn{display:inline-block;padding:4px 14px;border:1px solid var(--gold);border-radius:999px;color:var(--gold-soft);background:transparent;text-decoration:none;font:inherit;font-size:12px;letter-spacing:.04em;cursor:pointer}.opt-btn:hover,.opt-btn:focus-visible{background:rgba(200,162,74,.18);outline:none}</style>
 <script>
@@ -144,12 +145,21 @@ footer{text-align:center;color:#7e8499;font-size:11px;margin-top:14px;line-heigh
   var q = new URLSearchParams(location.search);
   if(q.get('unfix') === '1'){ try{ localStorage.removeItem(KEY); }catch(e){} }
   var fx = get();
-  /* 外から開いたとき（アイコン・ブックマークなど）だけオプションへ進む。ほかの画面から戻ったとき・stay=1 のときは表札にとどまる */
-  var fromInside = false; try{ fromInside = !!document.referrer && new URL(document.referrer).origin === location.origin; }catch(e){}
-  if(fx && !fromInside && q.get('stay') !== '1'){ location.replace('TriSight_v5_auto.html'); return; }
+  /* 2026-10-30 改：固定中も表紙を出す（宏史さんの指示「固定画面でも一応は表紙は出るようにすることは出来ますか？」）。
+     以前は、外から開いたとき（アイコン・ブックマークなど）に表紙を飛ばしてオプションへ進めていた。
+     いまは表紙にとどまり、上部に「固定中」の帯を出し、本体の入口（TriSight System）を押すとオプションへ進む。 */
   function show(){
     var box = document.getElementById('optState'); if(!box) return;
     var f = get();
+    var main = document.querySelector('a.parent'), top = document.getElementById('optTop');
+    if(main) main.setAttribute('href', f ? 'TriSight_v5_auto.html' : 'TriSight_v5.html');
+    if(top){
+      if(f){
+        top.style.display = '';
+        top.innerHTML = '<span style="color:#f0c25a;font-weight:700">この端末はAI連携オプションに固定中</span>（' + (f.until ? fmt(f.until) + 'まで' : '期限なし') + '）。下の「TriSight System」を押すと、AI連携オプションの画面へ進みます。　<button type="button" id="optUnfixTop" class="opt-btn">固定を外す</button>';
+        document.getElementById('optUnfixTop').onclick = function(){ try{ localStorage.removeItem(KEY); }catch(e){} show(); };
+      } else { top.style.display = 'none'; top.innerHTML = ''; }
+    }
     if(!f){ box.style.display = 'none'; box.innerHTML = ''; return; }
     box.style.display = '';
     box.innerHTML = '<span style="color:#f0c25a;font-weight:700">AI連携オプションに固定中</span>（' + (f.until ? fmt(f.until) + 'まで' : '期限なし') + '）　<button type="button" id="optUnfix" class="opt-btn">固定を外す</button>';

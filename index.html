@@ -99,6 +99,8 @@ footer{text-align:center;color:#7e8499;font-size:11px;margin-top:14px;line-heigh
   <div class="h1row"><h1>TriSight System's</h1><a class="robo-btn" href="TriRobo.html" title="トライサイトロボ（全システムの利用解説書）">TriRobo<span>利用解説書 &rsaquo;</span></a></div>
   <div class="jp">トライサイト ファミリー</div>
   <div class="tag">すべてのシステムを、ひとつの表札から。<br>開きたいものを選んでください。</div>
+  <div style="margin-top:12px"><button type="button" id="bulkAuthBtn" class="opt-btn" style="font-size:13px;padding:6px 16px">まとめて認証する（トライサイトをご契約の方）</button></div>
+  <div id="bulkAuthMsg" style="margin-top:6px;font-size:12px;color:var(--gold-soft);min-height:1.4em"></div>
   <div class="rule"></div>
 </div>
 
@@ -280,7 +282,7 @@ footer{text-align:center;color:#7e8499;font-size:11px;margin-top:14px;line-heigh
     ask(c).then(function(o){
       go.disabled=false;msg.style.color="#b42318";
       if(o.s===200&&o.j&&o.j.portal===true){
-        try{localStorage.setItem("trisight_portal_ok","1");localStorage.setItem("trisight_portal_code",c);}catch(e){}
+        try{localStorage.setItem("trisight_portal_ok","1");localStorage.setItem("trisight_portal_code",c);}catch(e){}if(o.j&&Array.isArray(o.j.allowed))o.j.allowed.forEach(function(p){try{localStorage.setItem("trisight_open_"+p,"1");localStorage.setItem("trisight_open_"+p+"_code",c);if(p==="trisight"){localStorage.setItem("trisight_portal_ok","1");localStorage.setItem("trisight_portal_code",c);}}catch(e){}});
         w.remove();document.documentElement.className=document.documentElement.className.replace(/\s*portalLocked/g,"");return;}
       if(o.s===200)msg.textContent="この認証コードのご契約には、トライサイトの入口の画面が含まれていません。";
       else if(o.s===401)msg.textContent="認証コードが一致しませんでした。";
@@ -290,6 +292,51 @@ footer{text-align:center;color:#7e8499;font-size:11px;margin-top:14px;line-heigh
     },function(){go.disabled=false;msg.style.color="#b42318";msg.textContent="中継につながりませんでした。通信を確かめて、もう一度押してください。";});
   };
   setTimeout(function(){inp.focus();},50);
+})();
+</script>
+<script>
+/* 2026-10-30：一括認証（宏史さんの指示「トライサイト本体を契約のユーザーに対しては一括認証コード入力ボタンをつけてください」）。
+   認証コードを1回入れると、そのコードのご契約で開ける画面をすべて、この端末で認証済みにする。 */
+(function(){
+  var btn=document.getElementById("bulkAuthBtn"),out=document.getElementById("bulkAuthMsg");
+  if(!btn)return;
+  var NAMES={trisight:"トライサイト本体",tritime:"トライタイム",tricare:"トライケア",trioffice:"トライオフィス",trivoice:"トライボイス",report:"レポート",trigate:"トライゲイト",tritask:"トライタスク",triform:"トライフォーム",trireward:"トライリワード",trisheet:"基本情報シート",trirobo:"トライロボ"};
+  btn.onclick=function(){
+    var old=document.getElementById("bulkGate");if(old)old.remove();
+    var w=document.createElement("div");w.id="bulkGate";
+    w.setAttribute("style","position:fixed;inset:0;background:rgba(15,29,58,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box");
+    w.innerHTML='<div style="background:#fff;border-radius:12px;max-width:440px;width:100%;padding:20px 20px 16px;box-sizing:border-box;color:#16213a">'
+      +'<div style="font-weight:700;font-size:16px;margin-bottom:6px">まとめて認証する</div>'
+      +'<div style="font-size:13px;line-height:1.7;color:#5b6680;margin-bottom:10px">認証コードを1回入れると、ご契約で使える画面をすべて、この端末で認証済みにします。次からは、どの画面も聞かずに開きます。</div>'
+      +'<input id="bulkCode" type="password" autocomplete="off" style="width:100%;box-sizing:border-box;font-size:15px;padding:9px 10px;border:1px solid #afb8c1;border-radius:8px">'
+      +'<div id="bulkErr" style="font-size:13px;color:#b42318;min-height:1.6em;margin-top:6px"></div>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" id="bulkNo" style="font-family:inherit;font-size:14px;padding:6px 14px;border:1px solid #afb8c1;background:#fff;border-radius:999px;cursor:pointer">やめる</button>'
+      +'<button type="button" id="bulkGo" style="font-family:inherit;font-size:14px;padding:6px 16px;border:0;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">まとめて認証する</button></div></div>';
+    document.body.appendChild(w);
+    var inp=document.getElementById("bulkCode"),err=document.getElementById("bulkErr"),go=document.getElementById("bulkGo");
+    try{var pre=localStorage.getItem("trisight_portal_code")||localStorage.getItem("trisight_access_code");if(pre)inp.value=pre;}catch(e){}
+    document.getElementById("bulkNo").onclick=function(){w.remove();};
+    inp.onkeydown=function(e){if(e.key==="Enter")go.click();};
+    go.onclick=function(){
+      var c=inp.value.trim();if(!c){err.textContent="認証コードを入れてください。";return;}
+      go.disabled=true;err.style.color="#5b6680";err.textContent="確かめています…";
+      fetch("https://trisight-relay.vercel.app/api/gate",{method:"POST",headers:{"Content-Type":"application/json","x-trisight-code":c},body:JSON.stringify({task:"portal"})})
+      .then(function(res){return res.json().catch(function(){return {};}).then(function(j){return {s:res.status,j:j};});})
+      .then(function(o){
+        go.disabled=false;err.style.color="#b42318";
+        if(o.s===200&&o.j&&Array.isArray(o.j.allowed)){
+          if(!o.j.allowed.length){err.textContent="この認証コードのご契約で開ける画面がありません。";return;}
+          o.j.allowed.forEach(function(p){try{localStorage.setItem("trisight_open_"+p,"1");localStorage.setItem("trisight_open_"+p+"_code",c);if(p==="trisight"){localStorage.setItem("trisight_portal_ok","1");localStorage.setItem("trisight_portal_code",c);}}catch(e){}});
+          try{if(!localStorage.getItem("trisight_access_code"))localStorage.setItem("trisight_access_code",c);}catch(e){}
+          w.remove();out.textContent="認証を済ませました："+o.j.allowed.map(function(p){return NAMES[p]||p;}).join("・");return;}
+        if(o.s===200)err.textContent="中継の更新がまだ済んでいないため、まとめて認証できません。";
+        else if(o.s===401)err.textContent="認証コードが一致しませんでした。";
+        else if(o.s===429)err.textContent=(o.j&&o.j.error)||"間違いが続いたため、しばらく受け付けません。";
+        else err.textContent="確かめられませんでした（"+o.s+"）。少しおいてもう一度押してください。";
+      },function(){go.disabled=false;err.style.color="#b42318";err.textContent="中継につながりませんでした。通信を確かめて、もう一度押してください。";});
+    };
+    setTimeout(function(){inp.focus();},50);
+  };
 })();
 </script>
 </body></html>

@@ -255,7 +255,7 @@ function tsPortalAsk(){
     .then(function(res){return res.json().catch(function(){return {};}).then(function(j){return {s:res.status,j:j};});})
     .then(function(o){
       go.disabled=false;msg.style.color="#b42318";
-      if(o.s===200&&o.j&&o.j.portal===true){try{localStorage.setItem("trisight_portal_ok","1");localStorage.setItem("trisight_portal_code",c);}catch(e){}location.href="index.html";return;}
+      if(o.s===200&&o.j&&o.j.portal===true){try{localStorage.setItem("trisight_portal_ok","1");localStorage.setItem("trisight_portal_code",c);}catch(e){}var R=window.TT_RAW||{set:function(k,v){localStorage.setItem(k,v);}};if(o.j&&Array.isArray(o.j.allowed))o.j.allowed.forEach(function(p){try{R.set("trisight_open_"+p,"1");R.set("trisight_open_"+p+"_code",c);if(p==="trisight"){R.set("trisight_portal_ok","1");R.set("trisight_portal_code",c);}}catch(e){}});location.href="index.html";return;}
       if(o.s===200)msg.textContent="この認証コードのご契約には、トライサイトの入口の画面が含まれていません。";
       else if(o.s===401)msg.textContent="認証コードが一致しませんでした。";
       else if(o.s===429)msg.textContent=(o.j&&o.j.error)||"間違いが続いたため、しばらく受け付けません。";
@@ -273,7 +273,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-30-02</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-30-03</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -4833,7 +4833,7 @@ if('serviceWorker' in navigator){
     ask(c).then(function(o){
       go.disabled=false;msg.style.color="#b42318";
       if(o.s===200&&o.j&&o.j.portal===true){
-        try{R.set(KEY,"1");R.set(CKEY,c);if(!lsGet("trisight_access_code"))R.set("trisight_access_code",c);}catch(e){}
+        try{R.set(KEY,"1");R.set(CKEY,c);if(!lsGet("trisight_access_code"))R.set("trisight_access_code",c);}catch(e){}if(o.j&&Array.isArray(o.j.allowed))o.j.allowed.forEach(function(p){try{R.set("trisight_open_"+p,"1");R.set("trisight_open_"+p+"_code",c);if(p==="trisight"){R.set("trisight_portal_ok","1");R.set("trisight_portal_code",c);}}catch(e){}});
         w.remove();document.documentElement.className=document.documentElement.className.replace(/\s*openLocked/g,"");return;}
       if(o.s===200)msg.textContent="この認証コードのご契約には、"+NAME+"が含まれていません。";
       else if(o.s===401)msg.textContent="認証コードが一致しませんでした。";

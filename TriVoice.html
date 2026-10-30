@@ -561,7 +561,7 @@ initMic();
     ask(c).then(function(o){
       go.disabled=false;msg.style.color="#b42318";
       if(o.s===200&&o.j&&o.j.portal===true){
-        try{R.set(KEY,"1");R.set(CKEY,c);if(!lsGet("trisight_access_code"))R.set("trisight_access_code",c);}catch(e){}
+        try{R.set(KEY,"1");R.set(CKEY,c);if(!lsGet("trisight_access_code"))R.set("trisight_access_code",c);}catch(e){}if(o.j&&Array.isArray(o.j.allowed))o.j.allowed.forEach(function(p){try{R.set("trisight_open_"+p,"1");R.set("trisight_open_"+p+"_code",c);if(p==="trisight"){R.set("trisight_portal_ok","1");R.set("trisight_portal_code",c);}}catch(e){}});
         w.remove();document.documentElement.className=document.documentElement.className.replace(/\s*openLocked/g,"");return;}
       if(o.s===200)msg.textContent="この認証コードのご契約には、"+NAME+"が含まれていません。";
       else if(o.s===401)msg.textContent="認証コードが一致しませんでした。";

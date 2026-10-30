@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+<script>
+/* 2026-10-30：中継へ送るときに、この画面の製品の名前（?p=）を付ける。中継は、認証コードの契約にその製品が
+   含まれるときだけ受け付ける（宏史さんの指示「全部、塞いでください」）。 */
+(function(){var P="trigate",f=window.fetch;if(!f)return;window.fetch=function(u,o){try{var s=typeof u==="string"?u:(u&&u.url)||"";if(s.indexOf("trisight-relay.vercel.app/api/")>=0&&!/[?&]p=/.test(s)){var n=s+(s.indexOf("?")>=0?"&":"?")+"p="+P;u=(typeof u==="string")?n:new Request(n,u);}}catch(e){}return f.call(this,u,o);};})();
+</script>
+
 <meta charset="UTF-8">
 <script>
 /* 2026-10-30：開くときの関所（宏史さんの指示「住所を打てば誰でも開ける仕様はなくしてください。最初に開くときだけで問題ありません」）。
@@ -8278,7 +8284,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-10-30-02';
+  const TRIGATE_VERSION = '2026-10-30-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

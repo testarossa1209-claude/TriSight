@@ -273,7 +273,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-31-03</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-31-04</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -945,7 +945,7 @@ function tsPortalAsk(){
   <div class="card" id="cardDev">
     <h2>この端末と共有</h2>
     <p class="lead">事務局のパソコンと看護師さんの端末で、同じ記録を見るための設定です。この端末を主に使う人を選ぶと、その人が担当する訪問にキャンセルが入ったとき、画面の上に知らせが出ます。</p>
-    <p class="muted">共有している端末では、ここで選んだ人によって見える範囲が変わります。職員は自分の予定と稼働率、部署の管理者は自分の部署の売上・稼働率・評価シート、経営企画事務職の職員と管理者は全部署の予定（売上は出しません）が見えます（管理者として見るには、下の「管理者の合言葉」も入れます）。使う人を選ぶまでは、このタブだけが出ます。</p>
+    <p class="muted">共有している端末では、ここで選んだ人によって見える範囲が変わります。職員は自分の予定と稼働率、部署の管理者は自分の部署の売上・稼働率・評価シート、経営企画事務職の職員は全部署の予定、経営企画事務職の管理者は全部署の売上と予定が見えます（管理者として見るには、下の「管理者の合言葉」も入れます）。使う人を選ぶまでは、このタブだけが出ます。</p>
     <div class="row">
       <div><label class="f" for="dv_me">この端末を主に使う人</label><select id="dv_me"></select></div>
       <div><label class="f">&nbsp;</label><label><input type="checkbox" id="dv_share"> 記録を共有する</label></div>
@@ -965,7 +965,7 @@ function tsPortalAsk(){
   </div>
   <div class="card" id="cardMgrKey">
     <h2>管理者の合言葉（売上・評価を見る端末）</h2>
-    <p class="lead">売上・稼働率・評価シート・施策と目標は、管理者の端末だけに出します。この合言葉を入れた端末で、上の「この端末を使う人」が職員名簿で管理者になっている人のときに、管理者の画面が出ます。部署の管理者は自分の部署の分が見えます。目標・施策・保存した月の売上の数字は、この合言葉で鍵をかけてから共有するので、合言葉の無い端末には読める形で届きません。</p>
+    <p class="lead">売上・稼働率・評価シート・施策と目標は、管理者の端末だけに出します。この合言葉を入れた端末で、上の「この端末を使う人」が職員名簿で管理者になっている人のときに、管理者の画面が出ます。部署の管理者は自分の部署の分、経営企画事務職の管理者は全部署の分が見えます。目標・施策・保存した月の売上の数字は、この合言葉で鍵をかけてから共有するので、合言葉の無い端末には読める形で届きません。</p>
     <p class="muted">上の「記録の鍵」とは別の合言葉を決めてください（8文字以上）。管理者の人だけに伝え、紙に書いて経営企画事務局で保管してください。忘れると、鍵をかけた売上の数字は誰にも読めなくなります。管理者の端末を職員に渡すときは、「この端末から外す」を押してください。</p>
     <div class="row">
       <div><label class="f" for="mk_pass">管理者の合言葉</label><input type="password" id="mk_pass" autocomplete="off"></div>
@@ -2564,8 +2564,8 @@ function encStr(key, s){ var iv = crypto.getRandomValues(new Uint8Array(12)); re
 function decStr(key, t){ var p = String(t).split('.'); return crypto.subtle.decrypt({ name:'AES-GCM', iv:unb64(p[0]) }, key, unb64(p[1])).then(function(pt){ return TD.decode(pt); }); }
 function sealItem(key, it, mk){
   if(it.col === 'mgmt' && (String(it.id) === '_chk' || String(it.id) === '_ochk' || String(it.id) === '_zl')) return Promise.resolve(it);
-  if(it.col === 'mgmt') key = isOwnId(it.id) ? ownKey : mk;
-  if(!key) return Promise.reject(new Error('鍵がありません'));
+  /* 2026-10-31：管理者の数字（mgmt）は必ず鍵をかけて送る。鍵が無ければ送らない（10-31-01〜03 で、ここの順番が崩れて鍵をかけずに送っていたのを直した） */
+  if(it.col === 'mgmt'){ key = isOwnId(it.id) ? ownKey : mk; if(!key) return Promise.reject(new Error('鍵がありません')); }
   else if(!ENC_COLS[it.col]) return Promise.resolve(it);
   var kf = KEYF[it.col];
   return encStr(key, JSON.stringify(it.data)).then(function(c){ var d = { upd:it.data.upd || 0, enc:c }; d[kf] = it.data[kf]; return { col:it.col, id:it.id, data:d }; });
@@ -2863,6 +2863,7 @@ function pushChunks(items){
 }
 function syncNow(){
   nrScanLocal();
+  try{ if(hasMgrKey() && !localStorage.getItem('tritime_reseal_1031')){ live('mgmt').forEach(function(x){ var id = String(x.id); if(id === '_chk' || id === '_ochk' || id === '_zl') return; if(isOwnId(id) && !hasOwnKey()) return; markDirty('mgmt', id); }); localStorage.setItem('tritime_reseal_1031', '1'); } }catch(e){}
   if(!dev().share || syncing) return Promise.resolve();
   syncing = true;
   var key0 = null, mk0 = null, mgNote = '';
@@ -3107,6 +3108,8 @@ function role(){
   if(hasOwnKey() && hasMgrKey()) return { lv:'all', s:meStaff(), depts:DEPTS, zeus:true };
   var s = meStaff(); if(!s) return { lv:'none', depts:[] };
   var ds = myDepts(s), office = ds.some(function(x){ return x.kind === 'office'; });
+  /* 2026-10-31（宏史さんの指摘で戻す）：経営企画事務職の管理者は、10/27の決めどおり全部署の売上と予定のすべてを見る */
+  if(isMgr(s) && hasMgrKey() && office) return { lv:'all', s:s, depts:DEPTS };
   if(isMgr(s) && hasMgrKey() && !office) return { lv:'dept', s:s, depts:ds };
   if(office) return { lv:'office', s:s, depts:DEPTS, noKey:isMgr(s) };
   return { lv:'staff', s:s, depts:ds, noKey:isMgr(s) };
@@ -3126,7 +3129,7 @@ function roleNote(R){
   else if(R.lv === 'staff') t = '見える範囲：' + esc(R.s.name) + 'さんの予定と稼働率（' + esc(R.depts.map(function(x){ return x.name; }).join('・')) + '）。' + (R.noKey ? key : '');
   else if(R.lv === 'dept') t = '見える範囲：' + esc(R.depts.map(function(x){ return x.name; }).join('・')) + 'の管理者（予定・売上・稼働率・評価シート・施策と目標）。';
   else if(R.lv === 'office') t = '見える範囲：全部署の予定（売上は出しません）。' + (R.noKey ? key : '');
-  else if(!R.solo) t = '見える範囲：野木画面（全部署の売上と予定のすべて）。';
+  else if(!R.solo) t = R.zeus ? '見える範囲：野木画面（全部署の売上と予定のすべて）。' : '見える範囲：経営企画事務職の管理者（全部署の売上と予定）。';
   el.innerHTML = t; el.style.display = t ? '' : 'none';
 }
 function withDept(k, fn){

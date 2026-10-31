@@ -273,7 +273,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-31-07</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-31-08</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -2981,6 +2981,7 @@ window.addEventListener('pagehide', function(){
 /* 登録した端末の一覧と、野木画面の帯（野木画面を開いているときだけ作る。職員の画面には一切出さない） */
 function zRender(){
   var on = hasOwnKey() && hasMgrKey();
+  zEntry(on);
   var bar = $('zeusBar');
   if(!on){ if(bar) bar.remove(); var c0 = $('cardZeusDev'); if(c0) c0.remove(); ngTab(false); return; }
   if(!bar){
@@ -3050,7 +3051,29 @@ function zGate(force){
   };
   setTimeout(function(){ (inp || go).focus(); }, 50);
 }
-setTimeout(zGate, 0);
+/* 2026-10-31 改（宏史さんの指摘「通常のトライタイムをどこから開いても、野木画面と普通の画面のどちらにしますか？という画面がでるのはまずい」）：
+   開いたときは、いつもふつうの画面。選ぶ窓は出さない。野木画面は、登録した端末だけに出る小さな「野木画面」ボタン（版の行の右）から開く。
+   窓を出すのは、#zeus を付けて開いたとき・Ctrl＋Shift＋Z・覚えた鍵が合わなかったとき（はじめての登録や入れ直し）だけ。 */
+setTimeout(function(){ if(hasOwnKey() || /^#zeus$/i.test(location.hash || '')) zGate(); }, 0);
+function zEntry(on){
+  var b = $('zeusEntry');
+  if(on || window.TT_LAB || !zIsReg()){ if(b) b.remove(); return; }
+  if(b) return;
+  var vl = document.querySelector('.verline'); if(!vl) return;
+  b = document.createElement('button'); b.type = 'button'; b.id = 'zeusEntry'; b.textContent = '野木画面';
+  b.setAttribute('style', 'margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#fff;color:#0f1d3a;border-radius:999px;cursor:pointer');
+  b.addEventListener('click', zEnter);
+  vl.appendChild(b);
+}
+function zEnter(){
+  var sv = zSaved(), b = $('zeusEntry');
+  if(!sv){ zGate(true); return; }
+  if(b){ b.disabled = true; b.textContent = '開いています…'; }
+  zOpen('', '', sv).then(function(){ var b2 = $('zeusEntry'); if(b2) b2.remove(); }, function(e){
+    var b2 = $('zeusEntry'); if(b2){ b2.disabled = false; b2.textContent = '野木画面'; }
+    zGate(true); var m = $('zgMsg'); if(m) m.textContent = (e && e.message) || '開けませんでした。';
+  });
+}
 document.addEventListener('keydown', function(e){
   if(e.ctrlKey && e.shiftKey && !e.altKey && String(e.key).toLowerCase() === 'z'){ e.preventDefault(); if(!hasOwnKey()) zGate(true); }
 });

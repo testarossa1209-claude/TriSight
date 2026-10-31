@@ -1,5 +1,5 @@
 /*! ===========================================================================
- *  TriVoiceEngine.js  —  TriSight® 横串・共通音声エンジン（正）  v2.1（2026-10-28：欄ごとの「話して入力」fieldMics を追加）
+ *  TriVoiceEngine.js  —  TriSight® 横串・共通音声エンジン（正）  v2.2（2026-10-28：欄ごとの「話して入力」fieldMics／2026-10-15：小さいマイク small）
  *  ---------------------------------------------------------------------------
  *  役割：録音 → リレー → 文字起こし(Whisper) → ［任意］AI構造化(Claude) → 落とし込み
  *  構成：iPad Safari でも確実に動く MediaRecorder 方式。
@@ -13,6 +13,7 @@
  *    ③ 口述モード     … どの画面でも使う汎用の音声入力（2026-10-15 追加）。
  *                       画面右下にマイクを1つ出し、最後に押した入力欄へ、話した文字をカーソル位置に入れる。
  *                       TriVoice.dictation({ exclude:'#r_職員名簿' })
+ *                       small:true で小さいマイク（直径34px）。入力の邪魔をしたくない画面向け（v2.1）。
  *                       exclude に当たる欄（個人情報を送らない約束の欄）には入れない。
  *
  *  2026-10-15：トライケア（看護部採用）の看護記録・看護メモが、それぞれ画面の中に別の録音の仕組みを
@@ -340,13 +341,19 @@
       '.tv-dict-tip[data-kind="warn"]{background:#9a3412}'+
       '.tv-dict-filled{outline:2px solid #c0392b !important;outline-offset:1px}'+
       '@media print{.tv-dict-btn,.tv-dict-tip{display:none !important}}';
+    if(opts.small){
+      css.textContent +=
+        '.tv-dict-btn.tv-small{width:34px;height:34px;font-size:16px;line-height:34px;right:12px;bottom:12px;opacity:.85}'+
+        '.tv-dict-btn.tv-small:hover{opacity:1}'+
+        '.tv-dict-tip.tv-small{right:12px;bottom:54px}';
+    }
     document.head.appendChild(css);
 
     var btn = document.createElement('button');
-    btn.type = 'button'; btn.className = 'tv-dict-btn'; btn.textContent = '🎤';
+    btn.type = 'button'; btn.className = 'tv-dict-btn' + (opts.small ? ' tv-small' : ''); btn.textContent = '🎤';
     btn.title = '音声入力：文字を入れたい欄を押してから、このボタンを押して話します。もう一度押すと止まり、話した文字がその欄に入ります';
     btn.setAttribute('aria-label', '音声入力');
-    var tip = document.createElement('div'); tip.className = 'tv-dict-tip'; tip.setAttribute('role', 'status');
+    var tip = document.createElement('div'); tip.className = 'tv-dict-tip' + (opts.small ? ' tv-small' : ''); tip.setAttribute('role', 'status');
     document.body.appendChild(tip); document.body.appendChild(btn);
 
     dict = { btn: btn, tip: tip, last: null, lastEx: false, selS: null, selE: null, exclude: opts.exclude || '' };
@@ -561,7 +568,7 @@
     fieldMics: fieldMics,   // ⑤ 欄ごとの「話して入力」（2026-10-28）
     _runCommand: function(t){ if(cmd) runCommand(t); },  // 試験用：文字で渡して照らし合わせだけ行う
     stop:      stopRec,     // 録音停止（印刷・クリア前に呼ぶ）
-    version:   '2.1'
+    version:   '2.2'
   };
 
 })(window);

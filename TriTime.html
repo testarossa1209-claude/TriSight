@@ -273,7 +273,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-31-05</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-31-06</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -421,6 +421,11 @@ function tsPortalAsk(){
       <div><label class="f" for="pt_addr">住所（番地まで・地図と予定の振り分けに使う）</label><input type="text" id="pt_addr" placeholder="例：東村山市本町2-3-4"></div>
       <div><label class="f" for="pt_spot">訪問先の目印・駐車</label><input type="text" id="pt_spot" placeholder="例：青い屋根の2階・裏の駐車場"></div>
     </div>
+    <details class="ptsec" id="ptsCare" open><summary>トライケアから読み込む（この端末のアセスメント）</summary>
+      <p class="muted">この端末のトライケア（アセスメント）に入っている利用者さんの情報を、下の欄へ入れます。AIは使わず、通信もしません。氏名・ふりがな・生年月日・住所・電話番号・保険の番号・ご家族の氏名は入れません（トライタイムは契約書番号で扱うため）。すでに書いてある欄は書き換えず、空いている欄だけを埋めます。</p>
+      <div class="row"><div><label class="f" for="tc_pick">トライケアの利用者さん</label><select id="tc_pick"></select></div></div>
+      <div class="btns"><button class="btn sub" type="button" id="tc_go">欄に入れる</button><span class="muted" id="tc_msg"></span></div>
+    </details>
     <details class="ptsec" id="ptsRead" open><summary>書類を読み込ませる（PDF・写真から欄を埋める）</summary>
       <p class="muted">カイポケの書類や契約書のPDF、または書類の写真を選ぶと、AIが読んで欄に下書きを入れます。まず「利用者の基本情報（フェースシート）」を読ませると、氏名・ふりがな・性別・住所・地区・保険がまとめて入ります。ほかの書類からも、氏名・ふりがな・性別・住所は拾います。生年月日・電話番号・保険者番号などは入れません。入った内容を見て直し、「この内容で登録する」を押すと登録されます。読み込ませた書類そのものは、どこにも残しません（読み取りのため、AIの提供元へ送られます）。</p>
       <div class="row">
@@ -494,10 +499,22 @@ function tsPortalAsk(){
       <label class="f" for="pt_wOther">⑦ その他の希望</label><textarea id="pt_wOther" maxlength="800" style="min-height:48px"></textarea>
     </details>
     <details class="ptsec" id="ptsLike" open><summary>好き嫌い・関わり方</summary>
-      <p class="muted">本人が好むこと・嫌がることを、聞いた言葉や見た事実で書きます。特定の職員を嫌がる申し出は、ここではなく「経過」の「拒否の申し出」に本人の言葉で記録してください（記録した拒否だけが、配置の条件になります）。</p>
+      <p class="muted">本人が好むこと・嫌がることを、聞いた言葉や見た事実で書きます。特定の職員を嫌がる申し出や、「男性の看護師は嫌」のような要望は、ここではなく下の「看護師への要望（拒否の申し出）」に本人の言葉で記録してください（記録した要望だけが、配置の条件になります）。</p>
       <label class="f" for="pt_like">好むこと・喜ぶこと</label><textarea id="pt_like" maxlength="800" style="min-height:48px"></textarea>
       <label class="f" for="pt_dislike">嫌がること・避けること</label><textarea id="pt_dislike" maxlength="800" style="min-height:48px"></textarea>
       <label class="f" for="pt_tips">関わり方のこつ（うまくいった話し方・順番など）</label><textarea id="pt_tips" maxlength="800" style="min-height:48px"></textarea>
+    </details>
+    <details class="ptsec" id="ptsReq" open><summary data-t="{worker}への要望（拒否の申し出）">看護師への要望（拒否の申し出）</summary>
+      <div class="note refNote"></div>
+      <div id="pr_list"></div>
+      <div class="row">
+        <div><label class="f" for="pr_kind">申し出の種類</label><select id="pr_kind"></select></div>
+        <div><label class="f" for="pr_staff" data-t="対象の{worker}（特定の人のとき）">対象の看護師（特定の人のとき）</label><select id="pr_staff"></select></div>
+        <div><label class="f" for="pr_date">申し出のあった日</label><input type="date" id="pr_date"></div>
+        <div><label class="f" for="pr_by">聞いた人</label><select id="pr_by"></select></div>
+      </div>
+      <label class="f" for="pr_words" data-t="{client}の言葉のまま">患者さんの言葉のまま</label><textarea id="pr_words" maxlength="800" style="min-height:48px"></textarea>
+      <div class="btns"><button type="button" class="btn sub" id="pr_save">この要望を記録する</button><span class="muted" id="pr_msg"></span></div>
     </details>
     <details class="ptsec" id="ptsHard" open><summary>困難事例</summary>
       <p class="muted">当てはまるものに印を付け、あったことを事実だけで書きます。キャンセル・変更が月の決まった回数を超えた患者さんには、印を付けなくても自動で「困難患者」の印が付きます（回数は「名簿・設定」の決まりごとで変えられます）。</p>
@@ -514,8 +531,8 @@ function tsPortalAsk(){
   </div>
   <div class="card" id="cardNr">
     <h2>看護記録（トライケア）の取り込み</h2>
-    <p class="muted">トライケアの「看護記録」で保存した記録を、契約書番号ごとにこの画面へ取り込みます。同じタブレットで保存した記録は、画面を開いたときと共有のたびに自動で取り込みます。保存のときに落ちた控えのファイル（TriCare_番号_日時.html）は、下のボタンからまとめて取り込めます。取り込んだ記録は、患者さんの一覧の「見る」に出ます。</p>
-    <div class="btns"><button class="btn sub" type="button" id="nr_pick">控えのファイルを選んで取り込む</button><input type="file" id="nr_file" accept=".html,.htm,text/html" multiple style="display:none"><span class="muted" id="nr_msg"></span></div>
+    <p class="muted">トライタイムは、トライケアの看護記録とセットで使えます（トライタイムだけのご契約でも使えます）。下の「看護記録を書く」でトライケアの看護記録の画面が開き、書き終えて保存したら「前のページに戻る」でこの画面へ戻ります。患者さんの一覧の「見る」からは、その患者さんの契約書番号が入った状態で開けます。<br>トライケアの「看護記録」で保存した記録を、契約書番号ごとにこの画面へ取り込みます。同じタブレットで保存した記録は、画面を開いたときと共有のたびに自動で取り込みます。保存のときに落ちた控えのファイル（TriCare_番号_日時.html）は、下のボタンからまとめて取り込めます。取り込んだ記録は、患者さんの一覧の「見る」に出ます。</p>
+    <div class="btns"><a class="btn" href="TriCare_NursingRecord.html?from=tritime" style="text-decoration:none;display:inline-block">看護記録を書く（トライケアを開く）</a><button class="btn sub" type="button" id="nr_pick">控えのファイルを選んで取り込む</button><input type="file" id="nr_file" accept=".html,.htm,text/html" multiple style="display:none"><span class="muted" id="nr_msg"></span></div>
     <div id="nr_orphan"></div>
   </div>
   <div class="card" id="cardPtList">
@@ -539,7 +556,7 @@ function tsPortalAsk(){
       <div><label class="f" for="mh_goal">目標設定額（月・円）</label><input type="number" id="mh_goal" min="100000" step="100000" value="3000000"></div>
       <div><label class="f">1回の訪問の売上（料金表で決まった額）</label><div id="mh_pricev" style="padding:4px 0;font-weight:700;line-height:1.4"></div></div>
       <div><label class="f" for="mh_n">1人1日の訪問件数（上限）</label><input type="number" id="mh_n" min="1" max="12"></div>
-      <div><label class="f" for="mh_users">利用者の人数（患者さん登録の数）</label><input type="number" id="mh_users" readonly style="background:#f4f1ea"></div>
+      <div><label class="f" for="mh_umode">利用者の人数</label><select id="mh_umode"><option value="reg">患者さん登録の数で数える</option><option value="free">自由に入れる（仮の人数で試す）</option></select><input type="number" id="mh_users" min="0" max="999" readonly style="background:#f4f1ea;margin-top:4px" aria-label="利用者の人数"><small class="muted" id="mh_unote" style="display:block"></small></div>
       <div><label class="f" for="mh_cap">1人の利用者の週の回数（上限）</label><input type="number" id="mh_cap" min="1" max="7" value="3"></div>
       <div><label class="f" for="mh_who">表に入れる職員</label><select id="mh_who"><option value="real">部署の職員（名簿の名前・常勤／非常勤・休みの曜日で組む）</option><option value="demo">見本の職員（職員A・B…）</option></select></div>
     </div>
@@ -624,7 +641,7 @@ function tsPortalAsk(){
 <section class="tab" id="tab-intake">
   <div class="card">
     <h2>キャンセルの受付</h2>
-    <p class="lead">電話を受けたら、マイクを押して内容を話してください。AIが欄に下書きし、色の付いた欄を確かめてから「この内容で記録する」を押します。手で入力しても構いません。</p>
+    <p class="lead">電話を受けたら、上の「🎤 話して入力」を押して内容を話してください。AIが欄に下書きし、色の付いた欄を確かめてから「この内容で記録する」を押します。一つの欄だけを話して直したいときは、その欄のすぐ下の「🎤 話して入力」を押します。手で入力しても構いません。</p>
     <div class="mic"><button id="micBtn" type="button">🎤 話して入力</button><span class="st" id="micStatus">準備しています…</span></div>
     <details id="c_rawWrap"><summary>聞き取った全文</summary><textarea id="c_raw" readonly placeholder="マイクで話すと、ここに聞き取った言葉がそのまま残ります。AIの下書きがうまくいかなかったときは、ここを見て手で入れてください。"></textarea></details>
     <div class="row">
@@ -690,9 +707,11 @@ function tsPortalAsk(){
 
     <details id="dRefusal"><summary data-t="{worker}についての拒否の申し出を記録する">看護師についての拒否の申し出を記録する</summary>
       <p class="muted" data-t="{client}本人が言ったことだけを記録します。記録した拒否だけが、予定の案を出すときの条件になります。">患者さん本人が言ったことだけを記録します。記録した拒否だけが、予定の案を出すときの条件になります。</p>
+      <div class="note refNote"></div>
       <div class="row">
         <div><label class="f" for="r_date">申し出のあった日</label><input type="date" id="r_date"></div>
-        <div><label class="f" for="r_staff" data-t="対象の{worker}">対象の看護師</label><select id="r_staff"></select></div>
+        <div><label class="f" for="r_kind">申し出の種類</label><select id="r_kind"></select></div>
+        <div><label class="f" for="r_staff" data-t="対象の{worker}（特定の人のとき）">対象の看護師（特定の人のとき）</label><select id="r_staff"></select></div>
         <div><label class="f" for="r_by">聞いた人</label><select id="r_by"></select></div>
       </div>
       <label class="f" for="r_words" data-t="{client}の言葉のまま">患者さんの言葉のまま</label><textarea id="r_words"></textarea>
@@ -779,6 +798,11 @@ function tsPortalAsk(){
     <p class="lead">代わりの案を、記録された拒否が無いのに断った件です。誰がいつ断ったかを事実として並べます。</p>
     <div class="tbl-scroll" id="adDecline"></div>
   </div>
+  <div class="card">
+    <h2 data-t="{worker}への要望（拒否の申し出）の状況">看護師への要望（拒否の申し出）の状況</h2>
+    <div class="note refNote"></div>
+    <div class="tbl-scroll" id="adRef"></div>
+  </div>
   <div class="card" id="cardAdDoctor">
     <h2>主治医への確認がまだの患者さん</h2>
     <div id="adDoctor"></div>
@@ -788,6 +812,45 @@ function tsPortalAsk(){
     <div id="adReview"></div>
   </div>
 </section>
+
+<!-- ===== 会社評価（2026-10-28・宏史さんの指示。2026-10-31 に野木画面へ移した）=====
+     経営陣は代表お一人のため、会社評価＝野木画面の「職員評価」「管理者評価」（宏史さんの整理）。ふだんは隠した置き場に置き、
+     野木画面でそのボタンを押したときだけ、野木画面の中へ移して見せる。開けるのはゼウスキーで野木画面を開いているときだけ。 -->
+<div id="evHome" style="display:none">
+  <div id="evBody">
+  <div class="card">
+    <h2>会社評価をつける</h2>
+    <div class="row">
+      <div><label class="f" for="ce_period">評価の期間</label><input type="text" id="ce_period" placeholder="例：2026年度下期"></div>
+      <div><label class="f" for="ce_staff">職員（全部署）</label><select id="ce_staff"></select></div>
+      <div><label class="f" for="ce_month">参考の数字を見る月</label><input type="month" id="ce_month"></div>
+    </div>
+    <div id="ce_ref"></div>
+    <div class="tbl-scroll" id="ce_form"></div>
+    <label class="f" for="ce_note">所見（代表の言葉で）</label><textarea id="ce_note" maxlength="2000" style="min-height:64px"></textarea>
+    <div class="row">
+      <div><label class="f">合計とクラス（自動）</label><div id="ce_total" style="padding:4px 0;font-weight:700"></div></div>
+      <div><label class="f" for="ce_cls">クラス（手で決めるとき）</label><select id="ce_cls"></select></div>
+    </div>
+    <div class="btns"><button class="btn" id="ce_save">この評価を保存する</button><button class="btn sub" id="ce_print">この職員の会社評価を印刷する</button><span class="muted" id="ce_msg"></span></div>
+  </div>
+  <div class="card">
+    <h2>会社評価の一覧（クラス分け）</h2>
+    <div class="tbl-scroll" id="ce_list"></div>
+    <div class="btns"><button class="btn sub" id="ce_listPrint">一覧を印刷する</button></div>
+  </div>
+  <div class="card">
+    <h2>評価の基準（代表が決める）</h2>
+    <p class="lead">区分・項目・重みと、クラスの線を決めます。初めに入っているのは<b>見本</b>です。会社の考えに合わせて書き換えてください。各項目は5段階（1＝大きく下回る・2＝下回る・3＝期待どおり・4＝上回る・5＝大きく上回る）でつけ、合計は「点 × 重み」の合計を満点に対する割合（%）で出します。</p>
+    <div class="tbl-scroll" id="cc_items"></div>
+    <div class="btns"><button class="btn sub small" id="cc_addItem">項目を足す</button></div>
+    <h3 style="margin-top:12px">クラスの線</h3>
+    <div class="tbl-scroll" id="cc_classes"></div>
+    <div class="btns"><button class="btn sub small" id="cc_addCls">クラスを足す</button></div>
+    <div class="btns"><button class="btn" id="cc_save">基準を保存する</button><span class="muted" id="cc_msg"></span></div>
+  </div>
+  </div>
+</div>
 
 <!-- ===== モデルコース（2026-10-27・宏史さんの発案。試作）=====
      1日の件数を決めると、職員ごと・曜日ごとのモデルコースを組み、それをこなしたときの月の売上を出す。
@@ -875,6 +938,7 @@ function tsPortalAsk(){
       <div><label class="f" for="st_job">職種</label><select id="st_job"><option>看護師（正看）</option><option>准看護師</option><option>介護福祉士</option><option>介護職（実務者研修修了）</option><option>介護職（初任者研修修了）</option><option>介護職（資格なし）</option><option>相談員・ケアマネジャー</option><option>事務局</option><option>その他</option></select></div>
       <div><label class="f" for="st_dept">所属部門</label><select id="st_dept"><option value="">（職種から当てる）</option><option>訪問看護部</option><option>訪問介護部</option><option>特定障害相談部</option><option>居宅介護支援部</option><option>経営企画事務職</option><option>管理部門</option></select></div>
       <div><label class="f" for="st_emp">雇用形態</label><select id="st_emp"><option>常勤</option><option>非常勤</option></select></div>
+      <div><label class="f" for="st_sex">性別（「男性の看護師は嫌」などの要望を予定に生かすときだけ使います）</label><select id="st_sex"><option value="">入れない</option><option>男性</option><option>女性</option></select></div>
       <div><label class="f">&nbsp;</label><label><input type="checkbox" id="st_mgr"> 管理者</label></div>
       <div><label class="f" for="st_out">退職日（退職した人だけ）</label><input type="date" id="st_out"></div>
     </div>
@@ -981,6 +1045,7 @@ function tsPortalAsk(){
       <div><label class="f" for="s_fee">キャンセル料（円）</label><input type="number" id="s_fee" min="0"></div>
       <div><label class="f" for="s_review">拒否の記録を見直すまでの日数</label><input type="number" id="s_review" min="7"></div>
       <div><label class="f" for="s_hard">月のキャンセル・変更が何回以上で「困難患者」の印を付けるか</label><input type="number" id="s_hard" min="1"></div>
+      <div><label class="f" for="s_refRate">担当の予定のうち、拒否で外れる分が何%以上で「改善の計画を一緒に立てる」にするか</label><input type="number" id="s_refRate" min="1" max="100"></div>
     </div>
     <div class="btns"><button class="btn" id="s_save">保存する</button><span class="muted" id="s_msg"></span></div>
   </div>
@@ -1066,7 +1131,7 @@ function settings(){
   /* 訪問看護部はこれまでどおり上の段の値。ほかの部署は byDept に部署ごとに持つ（無ければ訪問看護部と同じ値から始める） */
   var b = (D().k !== 'nurse' && s.byDept && s.byDept[D().k]) ? s.byDept[D().k] : null;
   var o = b ? Object.assign({}, s, b) : s;
-  return { cut: (o.cut == null ? 17 : +o.cut), price: o.price || '', fee: o.fee || '', review: (o.review == null ? 90 : +o.review), hard: (o.hard == null ? 3 : Math.max(1, +o.hard || 3)) };
+  return { cut: (o.cut == null ? 17 : +o.cut), price: o.price || '', fee: o.fee || '', review: (o.review == null ? 90 : +o.review), hard: (o.hard == null ? 3 : Math.max(1, +o.hard || 3)), refRate: (o.refRate == null ? 30 : Math.max(1, Math.min(100, +o.refRate || 30))) };
 }
 function saveSettings(o){ o.upd = Date.now(); sj(K.settings, o); markDirty('settings', 'main'); scheduleSync(); fdSoon(); }
 /* ---- 部署（2026-10-19・宏史さんの指示）----
@@ -1165,7 +1230,11 @@ function refreshSelects(){
   ['c_staff','p_staff','d_staff','r_staff','wk_staff','pt_staff'].forEach(function(id){ fillSelect(id, ns, '選んでください'); });
   fillSelect('wk_with', ns, 'なし（1名）');
   fillSelect('c_fwdTo', ns, '回していない');
-  ['c_by','r_by','pt_by','rq_by'].forEach(function(id){ fillSelect(id, all, '選んでください'); });
+  ['c_by','r_by','pt_by','rq_by','pr_by'].forEach(function(id){ fillSelect(id, all, '選んでください'); });
+  fillSelect('pr_staff', ns, '選んでください');
+  ['r_kind','pr_kind'].forEach(function(id){ fillSelect(id, refKinds().map(function(k){ return { v:k[0], t:k[1] }; }), null); });
+  if(!$('pr_by').value && dev().me) $('pr_by').value = dev().me;
+  document.querySelectorAll('.refNote').forEach(function(n){ n.textContent = refNote(); });
   if(!$('pt_by').value && dev().me) $('pt_by').value = dev().me;
   if(!$('rq_by').value && dev().me) $('rq_by').value = dev().me;
   $('rq_fromList').innerHTML = staffLive().map(function(x){ return '<option value="' + esc(x.name) + '">'; }).join('');
@@ -1184,8 +1253,38 @@ function isLate(visitDate, recv){
 }
 
 /* ---- 判定：記録された拒否・主治医への確認 ---- */
+/* 2026-10-28（宏史さんの指示）：看護師への要望（拒否の申し出）は、特定の人だけでなく「男性の看護師は嫌」のような要望も残す。
+   人を特定しない「そのほかの要望」は配置の条件にはせず、記録として残す。種類の無い古い記録は「特定の人」として扱う。 */
+function refKinds(){ var w = D().worker; return [['staff', '特定の' + w + 'を断る'], ['male', '男性の' + w + 'を断る'], ['female', '女性の' + w + 'を断る'], ['other', 'そのほかの要望（人を特定しない）']]; }
+function refKind(e){ return e.kind || 'staff'; }
+function refHits(e, staffId){
+  var k = refKind(e);
+  if(k === 'staff') return e.staffId === staffId;
+  if(k === 'male' || k === 'female'){ var st = staff().filter(function(x){ return x.id === staffId; })[0]; return !!st && st.sex === (k === 'male' ? '男性' : '女性'); }
+  return false;
+}
+function refTarget(e){ var k = refKind(e); return k === 'staff' ? staffName(e.staffId) : (refKinds().filter(function(x){ return x[0] === k; })[0] || ['', ''])[1].replace(/を断る$/, ''); }
 function activeRefusal(no, staffId){
-  return events().some(function(e){ return e.type === 'refusal' && e.patientNo === no && e.staffId === staffId && e.status !== '取り下げ'; });
+  return events().some(function(e){ return e.type === 'refusal' && e.patientNo === no && e.status !== '取り下げ' && refHits(e, staffId); });
+}
+/* 大義の説明（2026-10-28・宏史さんの言葉から）。批判・指導のためではなく、改善の道を一緒に探すための記録 */
+function refNote(){
+  var ws = D().workerSan, rate = settings().refRate;
+  return 'この記録は、' + ws + 'を批判したり指導したりするためのものではありません。人の好き嫌いは誰にでもあり、避けられないものです。大切なのは、それをどう乗り越えるかを一緒に考えることです。' +
+    '申し出は聞いた人がその日のうちに残し、対象の' + ws + 'は「改善の取り組み」に、関わり方の工夫や学び直しを書きます。早く手を打つほど受け持てる幅が広がり、それがその人の力として評価されます。記録を伏せると、工夫の機会も評価の機会も失われます。' +
+    'なお、担当の予定のうち、拒否で外れる分が' + rate + '%以上になったときは、管理者と一緒に改善の計画を立てます。そうならないように先回りして手を打つのが、プロの仕事です。';
+}
+/* 職員ごとの拒否の状況：担当の予定（週）と、拒否で外れる分（その患者さんの週の回数） */
+function refStat(staffId){
+  var cnt = {}; weekly().forEach(function(v){ cnt[v.no] = (cnt[v.no] || 0) + 1; });
+  var refs = events().filter(function(e){ var p = patient(e.patientNo); return e.type === 'refusal' && e.status !== '取り下げ' && inDept(e.patientNo) && p && (!p.status || p.status === '利用中') && refHits(e, staffId); });
+  var nos = {}; refs.forEach(function(e){ nos[e.patientNo] = 1; });
+  /* 担当の予定は、断っている患者さんへの訪問を除いて数える（外れる分と二重に数えないため） */
+  var mine = weekly().filter(function(v){ return (v.staffId === staffId || v.withId === staffId) && !nos[v.no]; }).length;
+  var lost = Object.keys(nos).reduce(function(t, no){ return t + Math.max(1, cnt[no] || 0); }, 0);
+  var plans = refs.reduce(function(t, e){ return t + (e.plans || []).length; }, 0);
+  var rate = (mine + lost) ? Math.round(lost / (mine + lost) * 100) : 0;
+  return { mine:mine, lost:lost, pts:Object.keys(nos).length, refs:refs, plans:plans, rate:rate, over:rate >= settings().refRate && lost > 0 };
 }
 function doctorStatus(no){
   var p = patient(no); var last = null;
@@ -1666,7 +1765,7 @@ function renderCourse(){
     if(e.type === 'doctor') b = esc(staffName(e.staffId)) + 'が確認。気を付けて見ること「' + esc(e.a1 || '—') + '」／サイン「' + esc(e.a2 || '—') + '」／すぐ連絡「' + esc(e.a3 || '—') + '」／キャンセルが続いたとき「' + esc(e.a4 || '—') + '」';
     if(e.type === 'refusal'){
       var due = e.reviewBy && e.reviewBy <= today && e.status !== '取り下げ';
-      b = '対象：' + esc(staffName(e.staffId)) + '。本人の言葉「' + esc(e.words) + '」。聞いた人：' + esc(staffName(e.by)) + '。' +
+      b = '対象：' + esc(refTarget(e)) + '。本人の言葉「' + esc(e.words) + '」。聞いた人：' + esc(staffName(e.by)) + '。' + refPlansHtml(e) +
         (e.status === '取り下げ' ? '<span class="tag gray">取り下げ済み</span>' : '<span class="tag ' + (due ? 'amber' : 'gray') + '">見直し ' + esc(jpDate(e.reviewBy)) + '</span>' +
         ' <button class="btn small sub" data-rev="' + esc(e.id) + '">今も同じと確認した</button> <button class="btn small danger" data-wd="' + esc(e.id) + '">取り下げる</button>');
     }
@@ -1679,6 +1778,7 @@ function renderCourse(){
       saveEvents(a); renderCourse();
     });
   });
+  refPlansBind($('courseLine'), renderCourse);
   $('courseLine').querySelectorAll('[data-wd]').forEach(function(btn){
     btn.addEventListener('click', function(){
       if(!confirm('この拒否の記録を取り下げますか？（記録は消えず、取り下げ済みとして残ります）')) return;
@@ -1686,6 +1786,24 @@ function renderCourse(){
       saveEvents(a); renderCourse();
     });
   });
+}
+/* 改善の取り組み（2026-10-28）：拒否の申し出ごとに、対象の職員が工夫や学び直しを書き足す。書いた日と書いた人が残る */
+function refPlansHtml(e){
+  var ps = e.plans || [];
+  return '<div class="sm" style="margin-top:4px"><b>改善の取り組み</b>' + (ps.length ? '<ul style="margin:2px 0 0 18px">' + ps.map(function(x){ return '<li>' + esc(jpDate(x.d)) + '　' + esc(staffName(x.by) || '（書いた人の記入なし）') + '：' + esc(x.text) + '</li>'; }).join('') + '</ul>' : '：まだありません') +
+    (e.status === '取り下げ' ? '' : '<div><button type="button" class="btn small sub" data-planopen="' + esc(e.id) + '">改善の取り組みを書く</button></div>' +
+    '<div data-planbox="' + esc(e.id) + '" style="display:none;margin-top:4px"><textarea maxlength="600" style="min-height:48px" placeholder="例：初回は同行してもらい、話し方を変えた／精神科の認定研修に申し込んだ"></textarea><button type="button" class="btn small" data-plansave="' + esc(e.id) + '">この内容で残す</button></div>') + '</div>';
+}
+function refPlansBind(root, after){
+  root.querySelectorAll('[data-planopen]').forEach(function(b){ b.onclick = function(){ var box = root.querySelector('[data-planbox="' + b.getAttribute('data-planopen') + '"]'); if(box){ box.style.display = ''; var t = box.querySelector('textarea'); if(t) t.focus(); } }; });
+  root.querySelectorAll('[data-plansave]').forEach(function(b){ b.onclick = function(){
+    var id = b.getAttribute('data-plansave'), box = root.querySelector('[data-planbox="' + id + '"]'), t = box && box.querySelector('textarea'), v = t ? t.value.trim() : '';
+    if(!v){ alert('改善の取り組みを書いてください。'); return; }
+    var by = dev().me || '';
+    if(!by && !confirm('この端末を使う人が選ばれていないため、書いた人が残りません。このまま残しますか？（「名簿・設定」の「この端末を使う人」で選べます）')) return;
+    var a = events(); a.forEach(function(e){ if(e.id === id){ (e.plans = e.plans || []).push({ d:ymd(new Date()), by:by, text:v }); } });
+    saveEvents(a); after();
+  }; });
 }
 function addCourseEvent(obj, need){
   var no = selNo('k_no');
@@ -1836,6 +1954,13 @@ function renderAdmin(){
       return '<tr><td>' + esc(staffName(k)) + '</td><td class="num">' + by[k].length + '</td><td>' + by[k].map(function(e){ return esc(jpDate(e.date)) + ' ' + esc(dnn(e.patientNo)) + '「' + esc(e.reason) + '」'; }).join('<br>') + '</td></tr>';
     }).join('') + '</table>';
   }
+  /* 2026-10-28：職員ごとの拒否の状況（担当の予定のうち、拒否で外れる分の割合） */
+  var rl = deptStaff().filter(function(x){ return !staffOrphan(x); }).map(function(x){ return { s:x, r:refStat(x.id) }; }).filter(function(o){ return o.r.mine || o.r.lost; }).sort(function(a, b){ return b.r.rate - a.r.rate; });
+  $('adRef').innerHTML = rl.length ? '<table><tr><th>' + D().worker + '</th><th class="num">担当の予定（週）</th><th class="num">拒否で外れる分（週）</th><th class="num">割合</th><th class="num">改善の取り組み</th><th>見立て</th></tr>' + rl.map(function(o){
+    var r = o.r;
+    return '<tr><td>' + esc(o.s.name) + '</td><td class="num">' + r.mine + '件</td><td class="num">' + r.lost + '件<br><small class="muted">' + r.pts + '人の申し出</small></td><td class="num" style="font-weight:700;color:' + (r.over ? 'var(--red)' : 'inherit') + '">' + r.rate + '%</td><td class="num">' + r.plans + '件</td><td>' +
+      (r.over ? '<span class="tag red">改善の計画を一緒に立てる（' + settings().refRate + '%以上）</span>' : (r.lost ? (r.plans ? '<span class="tag green">取り組み中</span>' : '<span class="tag amber">取り組みの記入を待っています</span>') : '<span class="tag gray">申し出なし</span>')) + '</td></tr>';
+  }).join('') + '</table><p class="muted">割合＝拒否で外れる分 ÷（担当の予定＋拒否で外れる分）。拒否で外れる分は、その' + D().worker + 'を断っている' + D().client + '（利用中）の、週間予定の週の回数です。「男性の' + D().worker + 'を断る」などの要望は、名簿の性別が当てはまる人に数えます。</p>' : '<p class="empty">担当の予定も、申し出もまだありません。</p>';
   var nd = D().doctor ? patients().filter(function(p){ return !doctorStatus(p.no).ok; }) : [];
   $('adDoctor').innerHTML = nd.length ? '<ul style="margin-left:18px">' + nd.map(function(p){
     var ds = doctorStatus(p.no);
@@ -1925,6 +2050,47 @@ function rdApply(kind, j){
   if(cb && filled.length) cb.checked = true;
   return { filled:filled, diff:diff };
 }
+/* ---- トライケアから読み込む（2026-10-28・宏史さんの決定「トライケアが利用している患者情報の読み込みが可能になるシステムに」）----
+   トライケアのアセスメント（TriCare_Assessment.html）は、この端末の tricare_assessment_v1 に利用者さんを持つ。
+   その中から、訪問に要るところだけを利用者登録の欄へ入れる。欄の埋め方は書類の読み取り（rdApply）と同じ。
+   氏名・ふりがな・生年月日・住所・電話・保険の番号・家族の氏名は入れない（2026-10-12の決まり：氏名は入れず契約書番号で扱う）。 */
+var TC_KEY = 'tricare_assessment_v1';
+function tcUsers(){ var d = lj(TC_KEY, null); return (d && Array.isArray(d.users)) ? d.users : []; }
+function tcIsNo(v){ v = String(v || '').trim(); return /\d/.test(v) && /-/.test(v) && v.length <= 30; }
+function tcRender(){
+  var sec = $('ptsCare'); if(!sec) return;
+  var us = tcUsers();
+  sec.style.display = (tcOk() && us.length) ? '' : 'none';
+  if(!us.length) return;
+  $('tc_pick').innerHTML = '<option value="">選んでください</option>' + us.map(function(u, i){
+    var a = u.asm || {};
+    return '<option value="' + i + '">' + esc((u.name || '（名前の欄が空）') + (u.office ? '・' + u.office : '') + (a['asm_作成年月日'] ? '・' + a['asm_作成年月日'] + ' 作成' : '')) + '</option>';
+  }).join('');
+}
+function tcLines(a, keys){
+  return keys.map(function(k){
+    var v = a['asm_' + k]; if(Array.isArray(v)) v = v.join('・');
+    v = String(v == null ? '' : v).trim();
+    return v ? k + '：' + v : '';
+  }).filter(Boolean).join('\n');
+}
+function tcNoPhone(v){ return String(v || '').replace(/[0０][0-9０-９]{1,4}[-‐ー－−(（ ]?[0-9０-９]{1,4}[-‐ー－−)） ]?[0-9０-９]{3,4}/g, '').replace(/(電話|TEL|tel|☎)\s*[:：]?\s*$/,'').trim(); }
+function tcGo(){
+  var i = $('tc_pick').value; if(i === ''){ $('tc_msg').textContent = 'トライケアの利用者さんを選んでください。'; return; }
+  var u = tcUsers()[+i]; if(!u){ $('tc_msg').textContent = 'この端末のトライケアに見つかりません。'; return; }
+  var a = u.asm || {}, f = {};
+  if(/^\d{4}-\d{2}-\d{2}$/.test(a['asm_作成年月日'] || '')) f.asmDate = a['asm_作成年月日'];
+  f.asmState = tcLines(a, ['要介護度','障害高齢者の日常生活自立度','認知症高齢者の日常生活自立度','傷病名・症状・既往歴・治療・処置','麻痺・関節の拘縮','皮膚疾患','じょく瘡','痛み','現在の生活状況']);
+  f.asmLife = tcLines(a, ['1日の生活','日中の過ごし方','外出の頻度','薬の管理','金銭管理','利用者の望む生活','家族の望む生活']);
+  f.asmFamily = tcLines(a, ['世帯区分','介護力','介護に対する考え']);
+  f.asmRisk = tcLines(a, ['嚥下','食事形態','食事の制限','水分摂取','問題行動','物忘れ','認知の状況・課題','ADLの状況・課題','特別な状況']);
+  var doc = tcNoPhone(a['asm_主治医']); if(doc) f.doc = doc;
+  Object.keys(f).forEach(function(k){ if(!f[k]) delete f[k]; else f[k] = String(f[k]).slice(0, k === 'asmFamily' ? 800 : k === 'asmRisk' ? 1000 : 1500); });
+  var r = rdApply('asm', { fields:f, contractNo: tcIsNo(u.name) ? String(u.name).trim() : '' });
+  $('tc_msg').textContent = (r.filled.length ? '入れた欄：' + r.filled.join('・') + '。' : '入れられる空いた欄はありませんでした。') +
+    (r.diff.length ? '　書いてある内容と違う欄（書き換えていません）：' + r.diff.join('・') + '。' : '') +
+    (tcIsNo(u.name) ? '' : '　トライケアでは氏名で登録されているため、契約書番号は手で入れてください。') + '　中身を確かめてから「この内容で登録する」を押してください。';
+}
 function rdGo(){
   var kind = $('rd_kind').value, files = Array.prototype.slice.call($('rd_file').files || []);
   if(!files.length){ $('rd_msg').textContent = 'ファイルを選んでください。'; return; }
@@ -1975,8 +2141,31 @@ function ptLoad(no){
   var cp = p.copied || {}; document.querySelectorAll('#pt_copied input').forEach(function(c){ c.checked = !!cp[c.value]; });
   $('pt_copiedNote').textContent = ptDocs().filter(function(x){ return cp[x[0]]; }).map(function(x){ return x[1] + '：' + jpDate(cp[x[0]].d) + (cp[x[0]].by ? '・' + staffName(cp[x[0]].by) : ''); }).join('　');
   $('pt_msg').textContent = '呼び出しました。直したら「この内容で登録する」を押してください。';
+  prRender();
   var t = document.querySelector('#tabs button[data-tab=pt]'); if(t && !t.classList.contains('on')) t.click();
   if($('cardPt').scrollIntoView) $('cardPt').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+/* 利用者登録の「看護師への要望」（2026-10-28・宏史さんの指示「利用者の欄に看護師へ対する要望を」）
+   記録は経過の「拒否の申し出」と同じもの（同じ場所に残り、予定の条件・評価シートに使われる） */
+function prRender(){
+  var no = keyNo($('pt_no').value), box = $('pr_list'); if(!box) return;
+  if(!no || !patient(no)){ box.innerHTML = '<p class="muted">患者さんを登録（または「呼び出す」）すると、これまでの要望がここに並びます。</p>'; return; }
+  var rs = events().filter(function(e){ return e.type === 'refusal' && e.patientNo === no; }).sort(function(a, b){ return a.date < b.date ? 1 : -1; });
+  box.innerHTML = rs.length ? '<ul class="timeline">' + rs.map(function(e){
+    return '<li class="refusal"><div class="d">' + esc(jpDate(e.date)) + '　' + esc(refTarget(e)) + (e.status === '取り下げ' ? '　<span class="tag gray">取り下げ済み</span>' : '') + '</div>本人の言葉「' + esc(e.words) + '」。聞いた人：' + esc(staffName(e.by)) + '。' + refPlansHtml(e) + '</li>';
+  }).join('') + '</ul>' : '<p class="muted">この患者さんの要望は、まだ記録されていません。</p>';
+  refPlansBind(box, prRender);
+}
+function prSave(){
+  var no = keyNo($('pt_no').value), kind = $('pr_kind').value || 'staff';
+  if(!no || !patient(no)){ alert('先にこの患者さんを登録してください（契約書番号を入れて「この内容で登録する」）。'); return; }
+  if(kind === 'staff' && !$('pr_staff').value){ alert('「対象の' + D().worker + '」を選んでください。'); $('pr_staff').focus(); return; }
+  var need = [['pr_date','申し出のあった日'],['pr_by','聞いた人'],['pr_words',D().client + 'の言葉']];
+  for(var i = 0; i < need.length; i++){ if(!$(need[i][0]).value.trim()){ alert('「' + need[i][1] + '」が入っていません。'); $(need[i][0]).focus(); return; } }
+  var date = $('pr_date').value, a = events();
+  a.push({ id:uid(), type:'refusal', kind:kind, patientNo:no, date:date, staffId:kind === 'staff' ? $('pr_staff').value : '', words:$('pr_words').value.trim(), by:$('pr_by').value, status:'有効', reviewBy:ymd(addDays(parseYmd(date), settings().review)), created:nowLocal() });
+  saveEvents(a); $('pr_words').value = ''; $('pr_msg').textContent = '記録しました。経過にも同じものが並びます。';
+  prRender();
 }
 function ptSave(){
   var no = keyNo($('pt_no').value); if(!no){ alert('契約書番号を入れてください。'); $('pt_no').focus(); return; }
@@ -2091,12 +2280,14 @@ function nrDevice(v){
   return a.join('・');
 }
 function nrIns(v){ return [v.ins_kaigo ? '介護保険' : '', v.ins_yobo ? '介護予防' : '', v.ins_iryo ? '医療保険' : '', v.ins_other ? 'その他' : ''].filter(Boolean).join('・'); }
+function tcOk(){ return true; }   /* 2026-10-31：契約の範囲は入口の関所（認証コード）で確かめる。トライタイムの契約にはトライケアが付く（10/28の決め） */
 function nrSection(no){
-  if(D().k !== 'nurse') return '';
+  if(D().k !== 'nurse' || !tcOk()) return '';
   var rs = nrRecs(no);
-  if(!rs.length) return '<h3>看護記録（トライケア）</h3><p class="muted">まだ取り込んだ記録はありません。</p>';
+  var wr = '<p><a class="btn small" href="TriCare_NursingRecord.html?from=tritime&amp;no=' + encodeURIComponent(dn(no)) + '" style="text-decoration:none;display:inline-block">この患者さんの看護記録を書く（トライケアを開く）</a></p>';
+  if(!rs.length) return '<h3>看護記録（トライケア）</h3>' + wr + '<p class="muted">まだ取り込んだ記録はありません。</p>';
   var last = rs.filter(function(x){ return x.v && x.v.t_msg; })[0];
-  return '<h3>看護記録（トライケア）　<small class="muted">' + rs.length + '件・新しい順</small></h3>' +
+  return '<h3>看護記録（トライケア）　<small class="muted">' + rs.length + '件・新しい順</small></h3>' + wr +
     (last ? '<div class="before"><b>直近の伝達事項（' + esc(last.date ? jpDate(last.date) : last.saved) + '）</b><br><span style="white-space:pre-wrap">' + esc(last.v.t_msg) + '</span></div>' : '') +
     rs.map(function(x, i){
       var v = x.v || {}, rows = [['観察（バイタル）', nrVital(v)], ['カテーテル・点滴注射', nrDevice(v)], ['バイタルの所見', v.r_vital], ['血糖・SpO₂の所見', v.r_bs], ['処置・カテ・点滴の所見', v.r_proc],
@@ -2109,7 +2300,7 @@ function nrSection(no){
 }
 function nrRender(){
   if(!$('cardNr')) return;
-  $('cardNr').style.display = (D().k === 'nurse') ? '' : 'none';
+  $('cardNr').style.display = (D().k === 'nurse' && tcOk()) ? '' : 'none';
   var all = live('records'), pmap = {};
   patients().forEach(function(p){ pmap[dn(p.no)] = 1; });
   var orphan = all.filter(function(x){ return !x.patientNo || !pmap[x.patientNo]; });
@@ -2138,7 +2329,7 @@ function ptView(no){
   var p = patient(no); if(!p){ $('ptView').innerHTML = ''; return; }
   var d = D(), m = ym(ymd(new Date())), hi = hardInfo(no, m), cp = p.copied || {};
   var sec = function(title, rows){ rows = rows.filter(function(r){ return r[1]; }); return rows.length ? '<h3>' + esc(title) + '</h3><table>' + rows.map(function(r){ return '<tr><th style="width:30%">' + esc(r[0]) + '</th><td style="white-space:pre-wrap">' + esc(r[1]) + '</td></tr>'; }).join('') + '</table>' : ''; };
-  var h = '<div class="card" style="margin-top:14px;box-shadow:none"><h2>' + esc(dnn(no)) + ' <small class="muted">' + (p.sex ? esc(p.sex) + '・' : '') + esc(p.area || '') + '・' + esc(p.status || '利用中') + (p.ins ? '・' + esc(p.ins) : '') + '</small></h2>' +
+  var h = '<div class="card" style="margin-top:14px;box-shadow:none"><h2 data-no="' + esc(no) + '">' + esc(dnn(no)) + ' <small class="muted">' + (p.sex ? esc(p.sex) + '・' : '') + esc(p.area || '') + '・' + esc(p.status || '利用中') + (p.ins ? '・' + esc(p.ins) : '') + '</small></h2>' +
     (hi.on ? '<p><span class="tag red">困難患者（' + esc(hi.why.join('・')) + '）</span></p>' : '') +
     sec('訪問先', [['目印・駐車', p.spot]]) + sec('予定の希望', [['希望の曜日', (p.wDays || []).map(function(d){ return DOW[+d]; }).join('・')], ['希望の時刻・時間帯', [p.wish, p.wBand].filter(Boolean).join('・')], ['訪問できない曜日', (p.ngDays || []).map(function(d){ return DOW[+d]; }).join('・')], ['訪問できない時間・理由', p.ngNote], ['1回の訪問時間', p.vmin ? p.vmin + '分' : ''], ['体制', p.team], ['訪問前の連絡', p.preCall], ['その他の希望', p.wOther]]) +
     (d.doctor ? sec('指示書', [['医療機関', p.hosp], ['主治医', p.doc], ['指示期間', (p.instDate ? jpDate(p.instDate) : '') + (p.instEnd ? '〜' + jpDate(p.instEnd) : '')], ['指示の内容', p.instPoint], ['特別指示', p.special ? p.special + (p.specialEnd ? '（' + jpDate(p.specialEnd) + 'まで）' : '') : '']]) : '') +
@@ -2390,13 +2581,13 @@ function renderSetup(){
     return '<tr><td>' + DOW[+v.dow] + '</td><td>' + esc(v.time) + '（' + esc(v.min) + '分）</td><td>' + esc(dnn(v.no)) + '</td><td>' + esc(staffName(v.staffId)) + (v.withId ? '<br><small class="muted">同行：' + esc(staffName(v.withId)) + '</small>' : '') + '</td><td><button class="btn small danger" data-wkdel="' + esc(v.id) + '">外す</button></td></tr>';
   }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var s = settings();
-  $('s_cut').value = s.cut; $('s_price').value = s.price; $('s_fee').value = s.fee; $('s_review').value = s.review; $('s_hard').value = s.hard;
+  $('s_cut').value = s.cut; $('s_price').value = s.price; $('s_fee').value = s.fee; $('s_review').value = s.review; $('s_hard').value = s.hard; $('s_refRate').value = s.refRate;
   $('rulesDept').textContent = '（' + D().name + '）';
 
   $('stList').querySelectorAll('[data-stedit]').forEach(function(b){ b.addEventListener('click', function(){
     var s = staff().filter(function(x){ return x.id === b.getAttribute('data-stedit'); })[0]; if(!s) return;
     $('st_id').value = s.id; $('st_name').value = s.name; (function(){ var sj = $('st_job'), jv = jobOf(s) || 'その他'; [].slice.call(sj.querySelectorAll('option[data-old]')).forEach(function(o){ o.remove(); }); if(![].some.call(sj.options, function(o){ return o.value === jv; })){ var op = document.createElement('option'); op.textContent = jv; op.dataset.old = '1'; sj.appendChild(op); } sj.value = jv; })(); $('st_dept').value = s.dept || ''; stSubDraw(staffSub(s)); stOffDraw(staffOff(s)); $('st_hol').checked = !!s.holOff; $('st_emp').value = s.emp || '常勤'; $('st_mgr').checked = isMgr(s);
-    $('st_out').value = s.out || ''; $('st_add').textContent = 'この内容で直す'; $('st_cancel').style.display = ''; $('st_name').focus();
+    $('st_out').value = s.out || ''; $('st_sex').value = s.sex || ''; $('st_add').textContent = 'この内容で直す'; $('st_cancel').style.display = ''; $('st_name').focus();
   }); });
   $('stList').querySelectorAll('[data-stdel]').forEach(function(b){ b.addEventListener('click', function(){
     if(!confirm('この職員を名簿から外しますか？（これまでの記録は残ります。この端末のトライシートの職員名簿からも外れます）\n\n退職した人は、外さずに「直す」から退職日を入れてください。名簿に残り、退職日の翌日から担当や選ぶ欄から外れます。')) return;
@@ -2913,8 +3104,10 @@ function ngPeople(){
   var dp = DEPTS.filter(function(x){ return x.k === dk; })[0];
   return dp ? deptStaff(dp, at) : [];
 }
+function ngEvHome(){ var eb = $('evBody'), h = $('evHome'); if(eb && h && eb.parentNode !== h) h.appendChild(eb); }
 function ngRender(){
   var sec = $('tab-nogi'); if(!sec) return;
+  ngEvHome();   /* 書き直す前に、会社評価の部品を置き場へ戻す（消さないため） */
   if(!NG.month) NG.month = ymd(new Date()).slice(0, 7);
   var m = NG.month, today = ymd(new Date()), dk = ngDeptKey();
   var depName = dk === 'all' ? '全体' : D().name;
@@ -2946,6 +3139,8 @@ function ngRender(){
         var a = ngAttend(s, m);
         return '<tr><td>' + esc(s.name) + '</td><td>' + esc(s.emp || '') + '</td><td class="num">' + a.recDays + '日<br><small class="muted">予定 ' + a.planDays + '日</small></td><td class="num">' + a.recN + '件<br><small class="muted">予定 ' + a.planN + '件</small></td><td class="num">' + minLabel(a.svc) + '</td><td><small>公休 ' + a.off['公休'] + '・祝日 ' + a.off['祝日'] + '・届け ' + a.off['届け'] + '日</small></td></tr>';
       }).join('') + '</table></div>' : '<p class="empty">この部門の職員がいません。</p>');
+  } else if(NG.view === 'seval' || NG.view === 'meval'){
+    body = '<h2>' + (NG.view === 'meval' ? '管理者評価（管理者を評価する）' : '職員評価（管理者以外の職員を評価する）') + '</h2><p class="muted">会社評価です。評価の基準（区分・項目・重み・クラスの線）は下の「評価の基準」で書き換えます。初めに入っているのは見本です。</p><div id="ngEvSlot"></div>';
   } else {
     var nm = (NG_VIEWS.filter(function(v){ return v[0] === NG.view; })[0] || [])[1] || '';
     body = '<h2>' + esc(nm) + '</h2><p class="muted">評価項目を決めてから、ここに中身を作ります。</p>';
@@ -2957,6 +3152,7 @@ function ngRender(){
   sec.querySelectorAll('[data-ngv]').forEach(function(b){ b.addEventListener('click', function(){ NG.view = b.getAttribute('data-ngv'); NG.open = ''; ngRender(); }); });
   sec.querySelectorAll('[data-ngp]').forEach(function(b){ b.addEventListener('click', function(){ var id = b.getAttribute('data-ngp'); NG.open = NG.open === id ? '' : id; ngRender(); }); });
   $('ng_month').addEventListener('change', function(){ NG.month = this.value || ymd(new Date()).slice(0, 7); ngRender(); });
+  var slot = $('ngEvSlot'); if(slot){ evMode = NG.view; slot.appendChild($('evBody')); evRender(); }
   var sv = $('ng_save'); if(sv) sv.addEventListener('click', function(){
     var id = sv.getAttribute('data-id');
     ngSavePerson(id, { joined:$('ng_joined').value || '', birth:$('ng_birth').value || '', quals:$('ng_quals').value.trim(), career:$('ng_career').value.trim() });
@@ -2976,7 +3172,7 @@ function ngCard(s, p){
 /* 野木画面のタブ（野木画面を開いているときだけ作る。閉じたら消す） */
 function ngTab(on){
   var nav = $('tabs'), btn = nav ? nav.querySelector('[data-tab="nogi"]') : null, sec = $('tab-nogi');
-  if(!on){ if(btn){ var wasOn = btn.classList.contains('on'); btn.remove(); if(wasOn){ var f = nav.querySelector('button[data-tab="plan"]'); if(f) f.click(); } } if(sec) sec.remove(); return; }
+  if(!on){ ngEvHome(); ['ce_ref','ce_form','ce_list','cc_items','cc_classes','ce_total','ce_msg'].forEach(function(id){ var e = $(id); if(e) e.innerHTML = ''; }); var cn = $('ce_note'); if(cn) cn.value = ''; if(btn){ var wasOn = btn.classList.contains('on'); btn.remove(); if(wasOn){ var f = nav.querySelector('button[data-tab="plan"]'); if(f) f.click(); } } if(sec) sec.remove(); return; }
   if(!btn){
     btn = document.createElement('button'); btn.setAttribute('data-tab', 'nogi'); btn.textContent = '野木画面';
     btn.setAttribute('style', 'background:#0f1d3a;color:#fff;border-color:#0f1d3a');
@@ -2997,7 +3193,7 @@ function pushChunks(items){
   return out;
 }
 function syncNow(){
-  nrScanLocal();
+  if(nrScanLocal()){ try{ renderPtList(); nrRender(); }catch(e){} }   /* 2026-10-28：トライケアから戻ったとき、共有を切っていても一覧に出す */
   try{ if(hasMgrKey() && !localStorage.getItem('tritime_reseal_1031')){ live('mgmt').forEach(function(x){ var id = String(x.id); if(id === '_chk' || id === '_ochk' || id === '_zl') return; if(isOwnId(id) && !hasOwnKey()) return; markDirty('mgmt', id); }); localStorage.setItem('tritime_reseal_1031', '1'); } }catch(e){}
   if(!dev().share || syncing) return Promise.resolve();
   syncing = true;
@@ -3387,7 +3583,7 @@ function mhRender(){
   var pr = mhPrice();
   $('mh_pricev').innerHTML = yen(pr.v) + '<br><small class="muted" style="font-weight:400">' + esc(pr.t) + '</small>';
   if(!$('mh_n').value) $('mh_n').value = workRule().target;
-  $('mh_users').value = mhNowUsers().users;
+  mhUMode();
   mhNow();
   if(!$('mh_tbl').innerHTML) mhMake();
   grFill(); if(!$('gr_out').innerHTML) grMake();
@@ -3395,6 +3591,43 @@ function mhRender(){
 }
 /* 1日の流れ（見本用）：訪問を詰めて並べず、午前（出発〜休憩）と午後（休憩明け〜内勤の前）に均して置き、
    訪問と訪問の間に移動と「ゆとり」を持たせる（2026-10-27 宏史さんの指示：移動の時間も予備時間を使うように、間隔に余裕を）。 */
+/* 利用者の人数の入れ方（2026-10-28・宏史さんの指示「自由に入れられる選択も」）：
+   患者さん登録の数（実態）か、自由に入れる仮の人数か。仮の人数のときは、その人数で目標に届かせるアプローチの見本も出す */
+function mhUMode(){
+  var free = $('mh_umode').value === 'free', reg = mhNowUsers().users, el = $('mh_users');
+  el.readOnly = !free; el.style.background = free ? '#fff' : '#f4f1ea';
+  if(!free) el.value = reg; else if(el.value === '') el.value = reg;
+  $('mh_unote').textContent = free ? '仮の人数です（患者さん登録は ' + reg + '人）。人数を変えて、どんなやり方で届くかを試せます。' : '患者さん登録（利用中）の人数です。';
+}
+/* 利用者の人数で届かないときのアプローチの見本（2026-10-28・宏史さんの指示「実態ではない少数の場合にはどのようなやり方ができるだろうか、のイメージに」）
+   1回の売上（P）と2名体制の加算（FEE.psyWith.n）は料金表（令和8年6月1日から）の額。精神科訪問看護は同じ利用者へ週3日まで（4日目以降は特別指示の期間だけ）。 */
+function mhApproach(users, cap, need0, P, goal){
+  if(!users || !P || !goal) return '';
+  /* 件数は目標設定額から数える（職員の上限で頭打ちした件数ではなく）。精神科訪問看護は同じ利用者へ週3日まで */
+  var wFee = (FEE.psyWith && FEE.psyWith.n) || 0, need = Math.ceil(goal / 4 / P), maxW = users * cap;
+  if(maxW >= need) return '';
+  var man = function(v){ return '約' + Math.round(v / 10000).toLocaleString('ja-JP') + '万円'; };
+  var c3 = users * 3, rows = [];
+  var per = Math.ceil(need / users);
+  rows.push(['1. 1人あたりの回数を上げる', per <= 3
+    ? '利用者 ' + users + '人それぞれを週' + per + '回にすると、週' + (users * per) + '回で届きます。'
+    : '1人あたり週' + per + '回が要りますが、精神科訪問看護は同じ利用者へ週3日までです（4日目以降は特別指示の期間だけ）。全員を週3回にしても週' + c3 + '回・4週で' + man(c3 * 4 * P) + 'までです。']);
+  if(wFee){
+    var v = Math.min(c3, Math.max(maxW, need)), lack = goal / 4 - v * P, n2 = Math.ceil(Math.max(0, lack) / wFee);
+    rows.push(['2. 2名体制の加算で、1回の売上を上げる', per <= 3 ? '1 の回数で届くため、ここは上振れの分です（1回 ' + yen(wFee) + '）。'
+      : (n2 <= c3 ? '全員を週3回（週' + c3 + '回）にし、そのうち週' + n2 + '回を2名体制にすると、加算で届きます。'
+        : '全員を週3回にし、すべてを2名体制にしても、4週で' + man(c3 * 4 * (P + wFee)) + 'までです。') +
+      '<br><small class="muted">2名体制の加算は30分以上の訪問だけで、利用者の状態などの決まった条件があります（料金表の出所の留意事項）。同行する職員の手も要ります。</small>']);
+  }
+  var addCap = Math.ceil((need - maxW) / cap), add3 = Math.ceil(Math.max(0, need - c3) / 3);
+  rows.push(['3. 新しい利用者をふやす', 'いまの回数（週' + cap + '回まで）のまま、週' + cap + '回の人をあと ' + addCap + '人ふやすと届きます（合わせて ' + (users + addCap) + '人）。' + (cap !== 3 && add3 ? 'いまの利用者を週3回にしたうえでなら、週3回の人をあと ' + add3 + '人です。' : '')]);
+  rows.push(['4. 組み合わせ', per <= 3 ? '1 だけで届きます。'
+    : 'いまの ' + users + '人を週3回にし（週' + c3 + '回）、週3回の新しい利用者を ' + add3 + '人ふやすと、週' + (c3 + add3 * 3) + '回で届きます。2名体制の加算が付く訪問があれば、その分だけ迎える人数は少なくて済みます（1回 ' + yen(wFee) + '）。']);
+  rows.push(['5. この人数で狙える上限', '週3回 × ' + users + '人で、4週' + man(c3 * 4 * P) + (wFee ? '（すべて2名体制なら' + man(c3 * 4 * (P + wFee)) + '）' : '') + 'までです。' + (c3 * 4 * P >= 3000000 ? '目標を ' + esc(mhCourseOf(c3 * 4 * P)) + 'のコースに置き直すやり方もあります。' : '300万円コースにも届かないため、まず利用者をふやす（3）が先です。')]);
+  return '<h3 style="margin:12px 0 4px">利用者 ' + users + '人で、' + esc(mdYenShort(goal)) + 'コース（週' + need + '回）に近づけるやり方（アプローチの見本）</h3>' +
+    '<table><tr><th style="width:30%">やり方</th><th>この人数で当てはめると</th></tr>' + rows.map(function(r){ return '<tr><td><b>' + r[0] + '</b></td><td>' + r[1] + '</td></tr>'; }).join('') + '</table>' +
+    '<p class="muted">週' + need + '回は「目標設定額 ÷ 4週 ÷ 1回 ' + yen(P) + '」です。1回の売上と2名体制の加算 1回 ' + yen(wFee) + 'は、料金表（令和8年6月1日から）の額です（出所は「モデルコース」タブの料金表）。利用者をふやすときは、職員が出せる量も上の表と「成長の段階」で確かめてください。どれも見本で、実際に組めるかは利用者さんの状態と主治医の指示で決まります。</p>';
+}
 function mhDay(k){
   var w = workRule(), st = toMin(w.start), en = toMin(w.end), lb = 12 * 60, le = lb + (w.brk || 0), ie = en - (w.inner || 0);
   var amLen = Math.max(0, lb - st), pmLen = Math.max(0, ie - le), tot = amLen + pmLen;
@@ -3416,7 +3649,7 @@ function mhMake(){
   var w = workRule(), dayMin = toMin(w.end) - toMin(w.start) - (w.brk || 0), weekH = dayMin * 5 / 60;
   var week = goal / 4, N = Math.ceil(week / P), days = ['1','2','3','4','5'], S, grid = [], i, L = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', who = [];
   var plan = $('mh_who').value === 'real' ? mhStaffPlan(N) : [];
-  mhLast = plan.length ? { goal:goal, caps:plan.reduce(function(o, x){ o[x.s.id] = x.per; return o; }, {}) } : null;
+  mhLast = plan.length ? { goal:goal, caps:plan.reduce(function(o, x){ o[x.s.id] = x.per; return o; }, {}), free:$('mh_umode').value === 'free', users:users } : null;
   $('mh_use').style.display = mhLast ? '' : 'none';
   if(plan.length){
     S = plan.length;
@@ -3465,7 +3698,7 @@ function mhMake(){
       var v = Math.round(cap * 30.4 / 7), first = FEE.psy.n.o30 + (FEE.kanriFirst[mdCfg().kanri] || FEE.kanriFirst.other), per = first + (v - 1) * P;
       lim += '<br><small>参考：実際の月（約4.3週）で数えると、週' + cap + '回の利用者は月におよそ' + v + '回で、月の初日は管理療養費が ' + yen(FEE.kanriFirst[mdCfg().kanri] || FEE.kanriFirst.other) + ' になります。1人の月の売上はおよそ ' + yen(per) + '、' + users + '人全員で月およそ ' + yen(per * users) + ' です（月の日の並びで前後します）。</small>';
     }
-    lim += '</div>';
+    lim += '</div>' + mhApproach(users, cap, need, P, goal);
   }
   $('mh_sum').innerHTML = '<div class="judge free" style="margin:8px 0">' + (plan.length ? '<b style="font-size:15px;color:var(--ink)">職員ごとの段階（1日の件数）は、左の欄にあります。' + minLabel(dayMin) + 'の勤務の中に、休憩' + minLabel(w.brk || 0) + '・内勤' + minLabel(w.inner || 0) + 'と、訪問の間の移動とゆとりを含みます。</b><br>' : '<b style="font-size:15px;color:var(--ink)">1人1日' + n + '件＝訪問は' + minLabel(visitH) + '。' + minLabel(dayMin) + 'の勤務の中に、休憩' + minLabel(w.brk || 0) + '・内勤' + minLabel(w.inner || 0) + '・訪問の間の移動とゆとり' + minLabel(restM) + 'を含みます。</b><br>') + '目標設定額 ' + esc(mdYenShort(goal)) + 'コース：1週間この表のとおりにサービスを当て込めれば、<b>1週間に ' + N + '回</b> のサービス × 1回 ' + yen(P) + ' ＝ <b>週 ' + yen(wy) + '</b>。<b>4週で ' + yen(wy * 4) + '</b> です（月の目標 ' + yen(goal) + '）。' + (plan.length ? '部署の職員 ' + S + '人を、常勤は1日5〜8件・非常勤は1日3〜6件の中で組んでいます。' + (wy * 4 < goal ? '<br><b style="color:var(--red)">全員が上限の段階まで上がっても、4週で ' + yen(goal - wy * 4) + ' 足りません。職員を増やすか、このコースより下のコースを選んでください。</b>' : '') : '職員 ' + S + '人・1人1日 最大 ' + n + '件・月〜金で組んでいます。') + '</div>' + lim;
   $('mh_note').innerHTML = '週の目標は「月の目標 ÷ 4」（' + yen(Math.round(week)) + '）で、それに届く回数（' + N + '回）を、月〜金に均して並べています。訪問は詰めて並べず、午前（' + esc(w.start) + '〜12:00）と午後（休憩明け〜内勤の前）に均して置き、間に移動とゆとりを持たせています。実際の予定は、利用者の住所の近い順に寄せて組みます。人員基準は、常勤の週の勤務時間（' + weekH + '時間）÷40時間で出した常勤換算です。' +
@@ -3599,6 +3832,8 @@ $('mh_make').addEventListener('click', mhMake);
 $('mh_print').addEventListener('click', mhPrint);
 $('mh_use').addEventListener('click', mhUse);
 ['mh_users','mh_cap','mh_n','mh_who'].forEach(function(id){ $(id).addEventListener('change', mhMake); });
+$('mh_umode').addEventListener('change', function(){ mhUMode(); mhMake(); scMake(); });   /* 2026-10-28：利用者の人数の入れ方 */
+$('mh_users').addEventListener('input', function(){ if($('mh_umode').value === 'free'){ mhMake(); scMake(); } });
 ['sc_pd','sc_fn','sc_fk','sc_pn','sc_pk','mh_users','mh_cap'].forEach(function(id){ $(id).addEventListener('change', scMake); });
 $('gr_make').addEventListener('click', grMake);
 ['gr_f1','gr_f2','gr_f3','gr_add','gr_from','gr_to','gr_nf'].forEach(function(id){ $(id).addEventListener('change', grMake); });
@@ -3779,7 +4014,7 @@ function auMake(course){
     return '<tr><th class="who">' + esc(x.s.name) + '<small>' + (x.full ? '常勤' : '非常勤') + (course ? '・コースの枠' : '・1日 ' + x.cap + '件まで') + '</small><small>週 ' + w + '件</small></th>' + cells + '</tr>';
   }).join('');
   var slotsW = course ? ST.reduce(function(t, x){ return t + x.days.reduce(function(u, d){ return u + capOf(x, d); }, 0); }, 0) : 0;
-  $('au_out').innerHTML = (course ? '<div class="judge ' + (tot < slotsW ? 'fee' : 'free') + '" style="margin:8px 0"><b style="font-size:15px;color:var(--ink)">目標設定額 ' + esc(mdYenShort(course.goal)) + 'コースの枠（週 ' + slotsW + '件）に、いまの患者さんを当てはめました。埋まったのは週 ' + tot + '件、空きは週 ' + Math.max(0, slotsW - tot) + '件です。</b>' + (tot < slotsW ? '<br>空き（点線の枠）は、新しい患者さんと、いまの患者さんの回数を上げる分で埋めていく枠です。埋め方は「モデルコースの見本」の「選んだコースに届くまでの道のり」にあります。' : '') + '</div>' : '') +
+  $('au_out').innerHTML = (course ? '<div class="judge ' + (tot < slotsW ? 'fee' : 'free') + '" style="margin:8px 0"><b style="font-size:15px;color:var(--ink)">目標設定額 ' + esc(mdYenShort(course.goal)) + 'コースの枠（週 ' + slotsW + '件）に、いまの患者さんを当てはめました。埋まったのは週 ' + tot + '件、空きは週 ' + Math.max(0, slotsW - tot) + '件です。</b>' + (tot < slotsW ? '<br>空き（点線の枠）は、新しい患者さんと、いまの患者さんの回数を上げる分で埋めていく枠です。埋め方は「モデルコースの見本」の「選んだコースに届くまでの道のり」と「アプローチの見本」にあります。' : '') + (course.free ? '<br>このコースは、利用者を仮に <b>' + course.users + '人</b>として組んだ見本です（患者さん登録は ' + P.length + '人）。' + (course.users > P.length ? '仮の ' + course.users + '人までは、あと ' + (course.users - P.length) + '人です。' : '') + 'その人数でこのコースに届かせるやり方は、「モデルコースの見本」の「アプローチの見本」にあります。' : '') + '</div>' : '') +
     '<div class="judge ' + (miss.length ? 'fee' : 'free') + '" style="margin:8px 0">利用中の患者さん ' + P.length + '人・週 ' + need + '回のうち、<b>週 ' + tot + '回</b>を振り分けました。' +
     (miss.length ? '<br><b>入りきらなかった患者さん：' + miss.map(function(p){ return esc(dnn(p.no)) + '（' + esc(p.area) + '・週' + p.f + '回）'; }).join('、') + '</b>。1日の件数の上限を上げるか、手で入れてください。' : '') + '</div>' +
     (function(){ var w = P.filter(function(p){ return p.why.length; }), t2 = P.filter(function(p){ return p.team === '2名' && !(info[p.no] && info[p.no].withId); });
@@ -3843,8 +4078,9 @@ document.querySelectorAll('#tabs button').forEach(function(b){
     if(t === 'report'){ renderReport(); renderPlanDoc(); }
     if(t === 'admin') renderAdmin();
     if(t === 'model') renderModel();
+    if(t === 'eval') evRender();
     if(t === 'mihon') mhRender();
-    if(t === 'pt'){ nrScanLocal(); renderPtList(); nrRender(); }
+    if(t === 'pt'){ nrScanLocal(); renderPtList(); nrRender(); tcRender(); }
     if(t === 'req') renderReq();
   });
 });
@@ -3873,7 +4109,9 @@ $('d_save').addEventListener('click', function(){
 });
 $('r_save').addEventListener('click', function(){
   var date = $('r_date').value;
-  if(addCourseEvent({ type:'refusal', date:date, staffId:$('r_staff').value, words:$('r_words').value.trim(), by:$('r_by').value, status:'有効', reviewBy: date ? ymd(addDays(parseYmd(date), settings().review)) : '' }, [['r_date','申し出のあった日'],['r_staff','対象の看護師'],['r_by','聞いた人'],['r_words','患者さんの言葉']])){ $('r_words').value = ''; }
+  var kind = $('r_kind').value || 'staff';
+  if(kind === 'staff' && !$('r_staff').value){ alert('「対象の' + D().worker + '」を選んでください。'); $('r_staff').focus(); return; }
+  if(addCourseEvent({ type:'refusal', kind:kind, date:date, staffId:kind === 'staff' ? $('r_staff').value : '', words:$('r_words').value.trim(), by:$('r_by').value, status:'有効', reviewBy: date ? ymd(addDays(parseYmd(date), settings().review)) : '' }, [['r_date','申し出のあった日'],['r_by','聞いた人'],['r_words','患者さんの言葉']])){ $('r_words').value = ''; }
 });
 
 var mNow = ymd(new Date()).slice(0,7);
@@ -3906,7 +4144,11 @@ $('rp_copy').addEventListener('click', function(){
     .catch(function(){ $('rp_msg').textContent = '写せませんでした。上の枠の文字を選んで写してください。'; });
 });
 
-$('pt_add').addEventListener('click', ptSave);
+$('pt_add').addEventListener('click', function(){ ptSave(); prRender(); });
+$('pr_save').addEventListener('click', prSave);
+$('pt_no').addEventListener('change', prRender);
+if(!$('pr_date').value) $('pr_date').value = ymd(new Date());
+prRender();
 ['td_date','td_staff'].forEach(function(id){ $(id).addEventListener('change', renderToday); });
 $('td_geo').addEventListener('click', geoFillAll);
 $('au_make').addEventListener('click', auMake);
@@ -3953,12 +4195,12 @@ function stSubDraw(cur){
 function stSubVal(){ var main = $('st_dept').value; return [].slice.call($('st_sub').querySelectorAll('[data-stsub]:checked')).map(function(c){ return c.getAttribute('data-stsub'); }).filter(function(x){ return x !== main; }); }
 $('st_dept').addEventListener('change', function(){ stSubDraw(stSubVal()); });
 stSubDraw([]);
-function stFormReset(){ $('st_id').value = ''; $('st_name').value = ''; $('st_mgr').checked = false; $('st_out').value = ''; stSubDraw([]); if($('st_off')) stOffDraw([]); if($('st_hol')) $('st_hol').checked = $('st_emp').value === '常勤'; $('st_add').textContent = '追加する'; $('st_cancel').style.display = 'none'; }
+function stFormReset(){ $('st_id').value = ''; $('st_name').value = ''; $('st_sex').value = ''; $('st_mgr').checked = false; $('st_out').value = ''; stSubDraw([]); if($('st_off')) stOffDraw([]); if($('st_hol')) $('st_hol').checked = $('st_emp').value === '常勤'; $('st_add').textContent = '追加する'; $('st_cancel').style.display = 'none'; }
 $('st_cancel').addEventListener('click', stFormReset);
 $('st_add').addEventListener('click', function(){
   var n = $('st_name').value.trim(); if(!n){ $('st_name').focus(); return; }
   var a = staff(), id = $('st_id').value;
-  var rec = { name:n, job:$('st_job').value, dept:$('st_dept').value, sub:stSubVal(), off:stOffVal(), holOff:$('st_hol').checked, emp:$('st_emp').value, mgr:$('st_mgr').checked, out:$('st_out').value || '' };
+  var rec = { name:n, job:$('st_job').value, dept:$('st_dept').value, sub:stSubVal(), off:stOffVal(), holOff:$('st_hol').checked, emp:$('st_emp').value, mgr:$('st_mgr').checked, out:$('st_out').value || '', sex:$('st_sex').value };
   var cur = id ? a.filter(function(x){ return x.id === id; })[0] : null;
   var sid = cur ? cur.id : uid();
   if(cur){ delete cur.role; Object.assign(cur, rec); } else { a.push(Object.assign({ id:sid }, rec)); }
@@ -3970,7 +4212,7 @@ $('wk_add').addEventListener('click', function(){
   saveCol('weekly', a); $('wk_time').value = ''; refreshAll();
 });
 $('s_save').addEventListener('click', function(){
-  var v = { cut:+$('s_cut').value || 17, price:$('s_price').value, fee:$('s_fee').value, review:+$('s_review').value || 90, hard:Math.max(1, +$('s_hard').value || 3) };
+  var v = { cut:+$('s_cut').value || 17, price:$('s_price').value, fee:$('s_fee').value, review:+$('s_review').value || 90, hard:Math.max(1, +$('s_hard').value || 3), refRate:Math.max(1, Math.min(100, +$('s_refRate').value || 30)) };
   var cur = lj(K.settings, {}) || {};
   if(D().k === 'nurse') saveSettings(Object.assign({}, cur, v));
   else { var by = Object.assign({}, cur.byDept || {}); by[D().k] = v; saveSettings(Object.assign({}, cur, { byDept:by })); }
@@ -4064,6 +4306,7 @@ $('dv_now').addEventListener('click', function(){
 });
 setInterval(function(){ if(document.visibilityState === 'visible') syncNow(); }, 30000);
 document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') syncNow(); });
+window.addEventListener('pageshow', function(e){ if(e.persisted) syncNow(); });   /* 2026-10-28：トライケアの「前のページに戻る」で戻ったとき */
 
 
 /* ---- 記録の保管フォルダ（2026-10-26・宏史さんの指示）----
@@ -4782,8 +5025,14 @@ function evSheet(s, kind, m){
       '<tr><td>決まりの長さ（' + w.visit + '分）を超えた訪問</td><td class="n">' + (r.actSrc === '看護記録' ? r.overrun + '件' : '<span class="sm">看護記録が無いため数えていません</span>') + '</td>' + (mgr ? '<td class="n sm">件数が伸びない理由の参考</td>' : '') + '</tr>' +
     '</table>' +
     '<p class="sm">空き枠は、予定を組む側（管理者・事務局）が' + esc(D().client) + 'を入れて埋めるものです。' + (mgr ? '' : 'この表の数字だけで本人の良し悪しを決めるものではありません。') + '</p>';
+  var rf = refStat(s.id), wk = D().worker;
+  h += '<h2>4　' + esc(wk) + 'への要望（拒否の申し出）と改善の取り組み</h2>' +
+    '<p>いま有効な申し出 <b>' + rf.refs.length + '件</b>（' + rf.pts + '人）・担当の予定のうち拒否で外れる分 <b>週' + rf.lost + '件（' + rf.rate + '%）</b>・改善の取り組みの記入 <b>' + rf.plans + '件</b>' +
+      (rf.over ? '　<b class="red">' + settings().refRate + '%以上のため、管理者と一緒に改善の計画を立てます。</b>' : '') + '</p>' +
+    (rf.refs.length ? '<ul class="sm">' + rf.refs.map(function(e){ return '<li>' + esc(jpDate(e.date)) + '　' + esc(dn(e.patientNo)) + '：' + esc(refTarget(e)) + '「' + esc(e.words) + '」' + ((e.plans || []).length ? '　→ 取り組み：' + e.plans.map(function(x){ return esc(x.text); }).join('／') : '　→ 取り組みの記入なし') + '</li>'; }).join('') + '</ul>' : '') +
+    '<p class="sm">' + esc(refNote()) + '</p>';
   if(mgr){
-    h += '<h2>4　管理者が見ること</h2><ul class="sm">' +
+    h += '<h2>5　管理者が見ること</h2><ul class="sm">' +
       '<li>本人に関わる差（休みの届け）：' + r.leave + '件' + (r.price ? '（' + yenOf(r.leave) + '）' : '') + '。配置に関わる差（空き枠）：' + r.empty + '件' + (r.price ? '（' + yenOf(r.empty) + '）' : '') + '。</li>' +
       (r.clash ? '<li>休みの届けの日に入っている予定：' + r.clash + '件（要調整）</li>' : '') +
       (r.clashFix ? '<li>公休・祝日に入っている予定：' + r.clashFix + '件（要調整）</li>' : '') +
@@ -4792,7 +5041,7 @@ function evSheet(s, kind, m){
       (r.ng ? '<li>週4日目以降で算定できない訪問：' + r.ng + '件（特別指示の期間を確かめてください）</li>' : '') +
       '<li>1件あたりの売上：' + (r.price ? mdYen(r.price) + '（いまの週間予定を料金表で計算した平均）' : '出せません') + '</li></ul>';
   }
-  h += '<h2>' + (mgr ? '5　所見' : '4　面談で話したこと・来月に向けて') + '</h2><div class="memo"></div>' +
+  h += '<h2>' + (mgr ? '6　所見' : '5　面談で話したこと・来月に向けて') + '</h2><div class="memo"></div>' +
     (mgr ? '' : '<table class="sign"><tr><th>面談日</th><td></td><th>面談者</th><td></td><th>本人</th><td></td></tr></table>') +
     '</section>';
   return h;
@@ -5106,10 +5355,158 @@ refreshAll = function(){ refreshAll0(); renderLeave(); renderWorkRule(); renderA
 nrScanLocal();
 $('rd_go').onclick = rdGo;
 $('nr_pick').onclick = function(){ $('nr_file').click(); };
+$('tc_go').onclick = tcGo; tcRender();
+window.addEventListener('storage', function(e){ if(e.key === TC_KEY) tcRender(); });
 $('nr_file').addEventListener('change', function(){ nrFiles(this.files); this.value = ''; });
 applyDept(); refreshAll();
 sheetPull({ silent:true });
+/* ---- 会社評価（2026-10-28・宏史さんの指示「職員全員の評価を私自身がつける会社評価。タレントパレットのように多岐にわたる面の評価で、職員をクラス分け」）----
+   2026-10-31：経営陣は代表お一人のため、会社評価＝野木画面の職員評価・管理者評価（宏史さんの整理）。別の合言葉と指名はやめ、ゼウスキーに一本化した。
+   中身：mgmt の「own:evcfg」（基準）と「own:evr_<職員>_<期間>」（評価）。own: で始まるので、中継へはゼウスキーの鍵をかけて送り、野木画面を閉じたら手元から消える。 */
+var evCfgCache = null, evRecCache = {}, evMode = 'seval';
+var CE_DEF = { items:[
+  { id:'a1', g:'業績', t:'予定の稼働率（モデルコースに対して）', w:2 },
+  { id:'a2', g:'業績', t:'受け持てる幅（要望・拒否で外れる割合が低い）', w:1 },
+  { id:'a3', g:'業績', t:'記録をその日のうちに出す', w:1 },
+  { id:'b1', g:'専門性', t:'看護・ケアの技術とアセスメント', w:2 },
+  { id:'b2', g:'専門性', t:'資格・研修（精神科の認定など）', w:1 },
+  { id:'b3', g:'専門性', t:'主治医・多職種との連携', w:1 },
+  { id:'c1', g:'行動・姿勢', t:'時間と約束を守る', w:1 },
+  { id:'c2', g:'行動・姿勢', t:'報告・連絡・相談', w:1 },
+  { id:'c3', g:'行動・姿勢', t:'要望への先回り（改善の取り組み・学び直し）', w:1 },
+  { id:'c4', g:'行動・姿勢', t:'新しい取り組みへの参加（トライサイトの活用など）', w:1 },
+  { id:'d1', g:'組織への貢献', t:'後輩・新人への指導や同行', w:1 },
+  { id:'d2', g:'組織への貢献', t:'部署をまたぐ協力（事務局の業務など）', w:1 },
+  { id:'d3', g:'組織への貢献', t:'会社の方針の理解と実行', w:1 }
+], classes:[ { n:'S', min:90 }, { n:'A', min:75 }, { n:'B', min:60 }, { n:'C', min:45 }, { n:'D', min:0 } ] };
+var CE_SC = ['', '1 大きく下回る', '2 下回る', '3 期待どおり', '4 上回る', '5 大きく上回る'];
+function evOk(){ return !!(hasOwnKey() && ownKey && hasMgrKey()); }
+function evBoxGet(id){ var it = live('mgmt').filter(function(x){ return x.id === id; })[0]; if(!it || !it.box || !ownKey) return Promise.resolve(null); return decStr(ownKey, it.box).then(function(t){ return JSON.parse(t); }, function(){ return null; }); }
+function evBoxPut(id, obj){ return encStr(ownKey, JSON.stringify(obj)).then(function(c){ var all = live('mgmt').filter(function(x){ return x.id !== id; }); all.push({ id:id, box:c }); saveCol('mgmt', all); }); }
+function ceCfg(){ return evCfgCache || CE_DEF; }
+function cePeriodDef(){ var d = new Date(), y = d.getFullYear(), m = d.getMonth() + 1; var fy = m >= 4 ? y : y - 1; return fy + '年度' + (m >= 4 && m <= 9 ? '上期' : '下期'); }
+function ceRecId(sid, per){ return 'own:evr_' + sid + '_' + String(per || '').replace(/[^0-9A-Za-z一-龠ぁ-んァ-ヶー]/g, ''); }
+function ceAllStaff(){ return staff().filter(function(x){ return !staffOrphan(x) && (evMode === 'meval' ? isMgr(x) : !isMgr(x)); }); }   /* 職員評価＝管理者以外、管理者評価＝管理者 */
+function evRender(){
+  if(!evOk()) return;
+  fillSelect('ce_staff', ceAllStaff().map(function(x){ return { v:x.id, t:staffLabel(x) }; }), null);
+  if(!$('ce_period').value) $('ce_period').value = cePeriodDef();
+  if(!$('ce_month').value) $('ce_month').value = ymd(new Date()).slice(0, 7);
+  evBoxGet('own:evcfg').then(function(c){ if(c && Array.isArray(c.items) && c.items.length) evCfgCache = c; ccDraw(); ceLoad(); ceList(); });
+}
+/* 参考の数字：その職員の部署（訪問の部署）で、稼働率・要望で外れる割合・改善の取り組み・記録・記録の無い配置不可を数える */
+function ceRef(s, m){
+  var out = [];
+  myDepts(s).filter(function(d){ return d.kind === 'visit'; }).forEach(function(d){
+    try{ withDept(d.k, function(){
+      var r = mdStats(s, m), rf = refStat(s.id);
+      var recN = live('records').filter(function(x){ return x.nurse && x.nurse === s.name && String(x.date || '').slice(0, 7) === m; }).length;
+      var dec = events().filter(function(e){ return e.type === 'decline' && e.staffId === s.id && ym(e.date) === m && inDept(e.patientNo); }).length;
+      out.push('<tr><th>' + esc(d.name) + '</th><td>予定の稼働率 <b>' + mdPct(r.plan, r.model) + '</b>（予定 ' + r.plan + '件／モデル ' + r.model + '件）' + (r.act != null ? '・実績の稼働率 <b>' + mdPct(r.act, r.modelPast) + '</b>' : '') +
+        '<br>要望・拒否で外れる割合 <b>' + rf.rate + '%</b>（申し出 ' + rf.refs.length + '件・改善の取り組み ' + rf.plans + '件）' + (rf.over ? ' <span class="tag red">線を超えています</span>' : '') +
+        '<br>看護記録の提出 ' + recN + '件・記録の無い配置不可 ' + dec + '件</td></tr>');
+    }); }catch(e){}
+  });
+  return out.length ? '<div class="judge free" style="margin:8px 0"><b>参考の数字（' + esc(jpMonth(m)) + '・トライタイムから）</b><table style="margin-top:4px">' + out.join('') + '</table><small class="muted">点をつけるときの参考です。数字だけで点を決めるものではありません。</small></div>'
+    : '<p class="muted">この職員には、トライタイムの訪問の数字がありません（事務局など）。</p>';
+}
+function ceTotal(rec){
+  var c = ceCfg(), got = 0, full = 0, n = 0;
+  c.items.forEach(function(it){ var v = +((rec.scores || {})[it.id] || 0), w = Math.max(0, +it.w || 0); if(v){ got += v * w; full += 5 * w; n++; } });
+  var pct = full ? Math.round(got / full * 100) : null;
+  var cls = pct == null ? '' : ((c.classes.slice().sort(function(a, b){ return b.min - a.min; }).filter(function(k){ return pct >= +k.min; })[0] || {}).n || '');
+  return { pct:pct, auto:cls, n:n, all:c.items.length };
+}
+function ceFormDraw(rec){
+  var c = ceCfg(), sc = rec.scores || {}, last = '';
+  $('ce_form').innerHTML = '<table><tr><th>区分</th><th>項目</th><th class="num">重み</th><th>評価（5段階）</th></tr>' + c.items.map(function(it){
+    var g = it.g !== last ? esc(it.g) : ''; last = it.g;
+    return '<tr><td>' + g + '</td><td>' + esc(it.t) + '</td><td class="num">' + esc(it.w) + '</td><td><select data-ce="' + esc(it.id) + '">' + CE_SC.map(function(t, i){ return '<option value="' + (i || '') + '"' + (+sc[it.id] === i && i ? ' selected' : '') + '>' + (i ? t : 'まだつけない') + '</option>'; }).join('') + '</select></td></tr>';
+  }).join('') + '</table>';
+  $('ce_form').querySelectorAll('[data-ce]').forEach(function(x){ x.onchange = ceShowTotal; });
+  fillSelect('ce_cls', ceCfg().classes.map(function(k){ return { v:k.n, t:k.n }; }), '自動のまま');
+  $('ce_cls').value = rec.cls || '';
+  $('ce_note').value = rec.note || '';
+  ceShowTotal();
+}
+function ceCur(){ var sc = {}; $('ce_form').querySelectorAll('[data-ce]').forEach(function(x){ if(x.value) sc[x.getAttribute('data-ce')] = +x.value; }); return { scores:sc, note:$('ce_note').value.trim(), cls:$('ce_cls').value }; }
+function ceShowTotal(){ var t = ceTotal(ceCur()); $('ce_total').textContent = t.pct == null ? 'まだ点がありません' : t.pct + '%・クラス ' + (t.auto || '—') + '（' + t.n + '／' + t.all + '項目）'; }
+function ceLoad(){
+  var sid = $('ce_staff').value, per = $('ce_period').value.trim(), s = staff().filter(function(x){ return x.id === sid; })[0];
+  if(!s){ $('ce_form').innerHTML = ''; $('ce_ref').innerHTML = ''; return; }
+  $('ce_ref').innerHTML = ceRef(s, $('ce_month').value || ymd(new Date()).slice(0, 7));
+  evBoxGet(ceRecId(sid, per)).then(function(rec){ evRecCache[ceRecId(sid, per)] = rec; ceFormDraw(rec || {}); $('ce_msg').textContent = rec ? '保存済みの評価を出しています（' + String(rec.at || '').replace('T', ' ') + '）。' : ''; });
+}
+function ceSave(){
+  var sid = $('ce_staff').value, per = $('ce_period').value.trim(); if(!sid || !per){ $('ce_msg').textContent = '職員と評価の期間を入れてください。'; return; }
+  var cur = ceCur(), t = ceTotal(cur);
+  var rec = Object.assign(cur, { staffId:sid, period:per, pct:t.pct, auto:t.auto, by:dev().me || '', at:nowLocal() });
+  evBoxPut(ceRecId(sid, per), rec).then(function(){ evRecCache[ceRecId(sid, per)] = rec; $('ce_msg').textContent = '保存しました。'; scheduleSync(); ceList(); });
+}
+function ceList(){
+  var per = $('ce_period').value.trim(), all = ceAllStaff();
+  Promise.all(all.map(function(x){ return evBoxGet(ceRecId(x.id, per)).then(function(r){ return { s:x, r:r }; }); })).then(function(rows){
+    rows.sort(function(a, b){ return ((b.r && b.r.pct) || -1) - ((a.r && a.r.pct) || -1); });
+    var cnt = {}; rows.forEach(function(o){ var k = o.r ? (o.r.cls || o.r.auto || '—') : 'まだ'; cnt[k] = (cnt[k] || 0) + 1; });
+    $('ce_list').innerHTML = '<p><b>' + esc(per) + '</b>　' + Object.keys(cnt).map(function(k){ return esc(k) + '：' + cnt[k] + '人'; }).join('　') + '</p>' +
+      '<table><tr><th>職員</th><th>部署</th><th class="num">合計</th><th>クラス</th><th>つけた日</th></tr>' + rows.map(function(o){
+        var r = o.r; return '<tr><td>' + esc(o.s.name) + '</td><td>' + esc(myDepts(o.s).map(function(d){ return d.name; }).join('・')) + '</td><td class="num">' + (r && r.pct != null ? r.pct + '%' : '—') + '</td><td>' + (r ? '<b>' + esc(r.cls || r.auto || '—') + '</b>' + (r.cls && r.cls !== r.auto ? ' <small class="muted">（自動は ' + esc(r.auto || '—') + '・代表が決め直し）</small>' : '') : '<span class="muted">まだ</span>') + '</td><td>' + esc(r ? String(r.at || '').replace('T', ' ') : '') + '</td></tr>';
+      }).join('') + '</table>';
+  });
+}
+/* 基準の表（区分・項目・重み）とクラスの線 */
+function ccDraw(){
+  var c = ceCfg();
+  $('cc_items').innerHTML = '<table><tr><th>区分</th><th>項目</th><th class="num">重み</th><th></th></tr>' + c.items.map(function(it, i){
+    return '<tr data-cc="' + i + '"><td><input type="text" value="' + esc(it.g) + '" data-k="g" maxlength="30"></td><td><input type="text" value="' + esc(it.t) + '" data-k="t" maxlength="80"></td><td><input type="number" min="0" max="10" value="' + esc(it.w) + '" data-k="w" style="max-width:80px"></td><td><button type="button" class="btn small danger" data-ccdel="' + i + '">外す</button></td></tr>';
+  }).join('') + '</table>';
+  $('cc_classes').innerHTML = '<table><tr><th>クラス</th><th class="num">何%以上</th><th></th></tr>' + c.classes.map(function(k, i){
+    return '<tr data-cl="' + i + '"><td><input type="text" value="' + esc(k.n) + '" data-k="n" maxlength="10" style="max-width:120px"></td><td><input type="number" min="0" max="100" value="' + esc(k.min) + '" data-k="min" style="max-width:90px"></td><td><button type="button" class="btn small danger" data-cldel="' + i + '">外す</button></td></tr>';
+  }).join('') + '</table>';
+  $('cc_items').querySelectorAll('[data-ccdel]').forEach(function(b){ b.onclick = function(){ var c2 = ccRead(); c2.items.splice(+b.getAttribute('data-ccdel'), 1); evCfgCache = c2; ccDraw(); }; });
+  $('cc_classes').querySelectorAll('[data-cldel]').forEach(function(b){ b.onclick = function(){ var c2 = ccRead(); c2.classes.splice(+b.getAttribute('data-cldel'), 1); evCfgCache = c2; ccDraw(); }; });
+}
+function ccRead(){
+  var old = ceCfg(), items = [], classes = [];
+  $('cc_items').querySelectorAll('[data-cc]').forEach(function(tr){ var i = +tr.getAttribute('data-cc'), g = tr.querySelector('[data-k=g]').value.trim(), t = tr.querySelector('[data-k=t]').value.trim(), w = +tr.querySelector('[data-k=w]').value; if(t) items.push({ id:(old.items[i] && old.items[i].id) || ('x' + Date.now().toString(36) + i), g:g || 'その他', t:t, w:isFinite(w) ? Math.max(0, w) : 1 }); });
+  $('cc_classes').querySelectorAll('[data-cl]').forEach(function(tr){ var n = tr.querySelector('[data-k=n]').value.trim(), mn = +tr.querySelector('[data-k=min]').value; if(n) classes.push({ n:n, min:isFinite(mn) ? Math.max(0, Math.min(100, mn)) : 0 }); });
+  return { items:items, classes:classes };
+}
+function ccSave(){
+  var c = ccRead();
+  if(!c.items.length){ alert('項目を1つ以上入れてください。'); return; }
+  if(!c.classes.length){ alert('クラスを1つ以上入れてください。'); return; }
+  if(!c.classes.some(function(k){ return +k.min === 0; })) c.classes.push({ n:'—', min:0 });
+  evBoxPut('own:evcfg', c).then(function(){ evCfgCache = c; ccDraw(); ceLoad(); ceList(); $('cc_msg').textContent = '保存しました。'; scheduleSync(); });
+}
+function cePrint(html, title){
+  var css = '@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic",sans-serif;color:#10243b;font-size:9.5pt;line-height:1.45;margin:0}' +
+    '.hd{display:flex;align-items:center;gap:10px;border-bottom:1.5px solid #10243b;padding-bottom:6px;margin-bottom:8px}.hd img{width:30px;height:30px}.hd h1{font-size:14pt;margin:0}.hd p{margin:0;font-size:9.5pt;color:#5d6b7a}' +
+    'h2{font-size:10.5pt;margin:8px 0 3px;border-left:4px solid #c9772a;padding-left:6px}table{width:100%;border-collapse:collapse;margin:4px 0}th,td{border:1px solid #cfc6b4;padding:2px 6px;text-align:left;vertical-align:top}th{background:#f4f1ea}.num{text-align:right}.muted,small{color:#5d6b7a}.tag{font-weight:700}.memo{border:1px solid #cfc6b4;min-height:24mm;padding:4px 6px;white-space:pre-wrap}';
+  var win = window.open('', '_blank'); if(!win){ $('ce_msg').textContent = '印刷の画面を開けませんでした。ブラウザのポップアップの許可を確かめてください。'; return; }
+  win.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>' + esc(title) + '</title><style>' + css + '</style></head><body><div class="hd"><img src="' + esc(new URL('TriSight_icon_512.png', location.href).href) + '" alt="TriSight®"><div><h1>' + esc(title) + '</h1><p>' + esc(D().name ? 'ノア・コーポレーション合同会社' : '') + '　作成日 ' + esc(jpDate(ymd(new Date()))) + '</p></div></div>' + html + '<script>setTimeout(function(){print()},300)<\/script></body></html>');
+  win.document.close();
+}
+['ce_staff','ce_period','ce_month'].forEach(function(id){ $(id).addEventListener('change', function(){ if(evOk()){ ceLoad(); if(id === 'ce_period') ceList(); } }); });
+$('ce_cls').addEventListener('change', ceShowTotal);
+$('ce_save').addEventListener('click', function(){ if(evOk()) ceSave(); });
+$('cc_addItem').addEventListener('click', function(){ var c = ccRead(); c.items.push({ id:'x' + Date.now().toString(36), g:'', t:'', w:1 }); evCfgCache = c; ccDraw(); });
+$('cc_addCls').addEventListener('click', function(){ var c = ccRead(); c.classes.push({ n:'', min:0 }); evCfgCache = c; ccDraw(); });
+$('cc_save').addEventListener('click', function(){ if(evOk()) ccSave(); });
+$('ce_print').addEventListener('click', function(){
+  if(!evOk()) return;
+  var sid = $('ce_staff').value, s = staff().filter(function(x){ return x.id === sid; })[0]; if(!s) return;
+  var cur = ceCur(), t = ceTotal(cur), c = ceCfg(), last = '';
+  var html = '<table><tr><th>職員</th><td>' + esc(staffLabel(s)) + '</td><th>評価の期間</th><td>' + esc($('ce_period').value) + '</td></tr><tr><th>合計</th><td>' + (t.pct == null ? '—' : t.pct + '%') + '</td><th>クラス</th><td><b>' + esc(cur.cls || t.auto || '—') + '</b>' + (cur.cls && cur.cls !== t.auto ? '（自動は ' + esc(t.auto || '—') + '）' : '') + '</td></tr></table>' +
+    '<h2>評価の内訳</h2><table><tr><th>区分</th><th>項目</th><th class="num">重み</th><th>評価</th></tr>' + c.items.map(function(it){ var g = it.g !== last ? esc(it.g) : ''; last = it.g; var v = +(cur.scores[it.id] || 0); return '<tr><td>' + g + '</td><td>' + esc(it.t) + '</td><td class="num">' + esc(it.w) + '</td><td>' + (v ? esc(CE_SC[v]) : '—') + '</td></tr>'; }).join('') + '</table>' +
+    '<h2>参考の数字</h2>' + ceRef(s, $('ce_month').value || ymd(new Date()).slice(0, 7)) +
+    '<h2>所見</h2><div class="memo">' + esc(cur.note) + '</div>';
+  cePrint(html, '会社評価シート');
+});
+$('ce_listPrint').addEventListener('click', function(){ if(!evOk()) return; cePrint($('ce_list').innerHTML, '会社評価の一覧（' + $('ce_period').value + '）'); });
 window.ttSheetPull = sheetPull;   /* 下の基本情報シート共有部品から呼ぶ口（2026-10-26） */
+/* 2026-10-28：トライケアの入口を出し直す口 */
+window.ttScopeRefresh = function(){ nrRender(); tcRender(); var pv = document.querySelector('#ptView h2[data-no]'); if(pv) ptView(pv.getAttribute('data-no')); };
 fdRestore();
 syncNow();
 
@@ -5128,6 +5525,8 @@ fetch('version.json', { cache:'no-store' }).then(function(r){ return r.ok ? r.js
    職員の呼び名の欄には入れない（基本情報シートの職員名簿と同じ扱い）。 */
 if(window.TriVoice && TriVoice.dictation) TriVoice.dictation({ exclude:'#st_name' });
 if(window.TriVoice && TriVoice.command) TriVoice.command({ exclude:'#st_name', mergeWithDictation:true });  /* 2026-10-27：右下のマイク1つで、欄の文字入れとボタン操作の両方 */
+/* 2026-10-28：利用者登録とキャンセル受付は、文字の欄ごとに「🎤 話して入力」を付ける（宏史さんの指示）。聞き取った全文の欄（読むだけ）には付けない */
+if(window.TriVoice && TriVoice.fieldMics) TriVoice.fieldMics({ within:'#tab-pt, #tab-intake', exclude:'#st_name, #c_raw' });
 </script>
 <script src="TriSheetSync.js"></script>
 <script>

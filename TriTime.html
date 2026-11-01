@@ -274,7 +274,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-01-02</span></div>
+<div class="verline">版 <span id="verLabel">2026-11-01-03</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -305,6 +305,20 @@ function tsPortalAsk(){
 </aside>
 
 <div id="verNotice"></div>
+<!-- 2026-11-01：いつもの入口（タスクバー・ホーム画面のアイコン）以外で開いたときの知らせ（10/31の決め「すべてのPCを固定のブラウザ・固定のアプリで使う」） -->
+<div id="iriguchiNote" style="display:none;margin:10px 0;padding:12px 14px;border:2px solid #b0402f;border-radius:10px;background:#fdecea;color:#7a1f14;line-height:1.7">
+  <b>ここは、いつもの入口ではありません。</b><br>
+  この画面を閉じて、<b>タスクバー（iPadはホーム画面）のトライタイムのアイコン</b>から開いてください。<br>
+  ここで入れた記録や合言葉は、いつもの入口とは別の場所に残り、ほかの端末とは共有されません。<br>
+  <small>この端末にまだアイコンが無いときだけ、この画面からアプリとして入れてください（Chromeの右上「︙」→「キャスト、保存、共有」→「ページをアプリとしてインストール」。iPadは共有ボタン→「ホーム画面に追加」）。</small>
+</div>
+<script>
+(function(){
+  var app = false;
+  try{ app = window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: window-controls-overlay)').matches || window.navigator.standalone === true; }catch(e){}
+  if(!app){ var n = document.getElementById('iriguchiNote'); if(n) n.style.display = ''; }
+})();
+</script>
 <div id="alertBox"></div>
 <div class="labBar" id="labBar" style="display:none">この端末はいま<b>実験機</b>です。ここで入れた記録は、この端末の中だけにあり、ほかの端末へは送られません。</div>
 <div class="note" id="shareNote"></div>

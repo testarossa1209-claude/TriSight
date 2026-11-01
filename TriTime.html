@@ -70,6 +70,7 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   header h1{font-family:"Shippori Mincho",serif;font-weight:800;font-size:24px;letter-spacing:.02em;line-height:1.3}
   header h1 small{display:block;font-family:"Noto Sans JP",sans-serif;font-weight:500;font-size:13px;color:var(--muted);letter-spacing:0}
   .verline{font-size:12px;color:var(--muted);margin:6px 0 0;text-align:right}
+  .lamp{display:inline-block;width:9px;height:9px;border-radius:50%;background:#22a447;box-shadow:0 0 0 2px rgba(34,164,71,.22);margin:0 5px 1px 2px;vertical-align:middle}
   .note{background:#fbf3e8;border:1px solid var(--amber-soft);border-radius:10px;padding:10px 14px;font-size:13.5px;margin:14px 0}
   nav.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0 18px}
   nav.tabs button{font:inherit;font-size:14px;font-weight:700;border:1px solid var(--line);background:var(--white);color:var(--ink);padding:8px 14px;border-radius:999px;cursor:pointer}
@@ -273,7 +274,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-31-08</span></div>
+<div class="verline">版 <span id="verLabel">2026-10-31-09</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -307,6 +308,7 @@ function tsPortalAsk(){
 <div id="alertBox"></div>
 <div class="labBar" id="labBar" style="display:none">この端末はいま<b>実験機</b>です。ここで入れた記録は、この端末の中だけにあり、ほかの端末へは送られません。</div>
 <div class="note" id="shareNote"></div>
+<div class="note" id="presBar" style="display:none;background:#eef7f0;border-color:#9fd3ad"></div>
 <div class="note" id="roleNote" style="display:none"></div>
 
 <nav class="tabs" id="tabs">
@@ -527,6 +529,7 @@ function tsPortalAsk(){
         <div><label class="f" for="pt_by">写した人</label><select id="pt_by"></select></div>
       </div>
     </details>
+    <div id="pt_lockNote"></div>
     <div class="btns"><button class="btn" id="pt_add">この内容で登録する</button><button class="btn sub" type="button" id="pt_clear">欄を空にする</button><span class="muted" id="pt_msg"></span></div>
   </div>
   <div class="card" id="cardNr">
@@ -1104,12 +1107,15 @@ function yen(n){ return Number(n).toLocaleString('ja-JP') + '円'; }
    1件ずつ見分けるため。画面に出すときは消した印の付いた件を除く。 */
 var KEYF = { patients:'no', staff:'id', weekly:'id', events:'id', records:'id', mgmt:'id' };
 var SYNC_KEY = 'tritime_sync', DEV_KEY = 'tritime_device', ALERT_KEY = 'tritime_alerts';
+/* 2026-10-31：中継の時刻とのずれ・開いている人・利用者ごとの鍵（中身は下の「開いている人と利用者ごとの鍵」） */
+var SRV_OFF = 0, PRES = { list:[], locks:[], off:false, sig:'' }, PT_LOCK = null, PT_BASE = {}, PRES_TTL = 120000;
+function srvNow(){ return Date.now() + (+SRV_OFF || 0); }
 function raw(col){ var a = lj(K[col], []); return Array.isArray(a) ? a : []; }
 function live(col){ return raw(col).filter(function(x){ return x && !x.del; }); }
 function strip(o){ var c = {}; Object.keys(o || {}).forEach(function(k){ if(k !== 'upd' && k !== 'srv' && k !== 'del') c[k] = o[k]; }); return JSON.stringify(c); }
 function markDirty(col, id){ var s = lj(SYNC_KEY, {}); s.dirty = s.dirty || {}; (s.dirty[col] = s.dirty[col] || {})[id] = 1; sj(SYNC_KEY, s); }
 function saveCol(col, liveArr){
-  var kf = KEYF[col], now = Date.now(), old = raw(col), om = {}, seen = {}, out = [];
+  var kf = KEYF[col], now = srvNow(), old = raw(col), om = {}, seen = {}, out = [];   /* 2026-10-31：後先は中継の時刻に合わせて決める（時計のずれた端末が勝たないように） */
   old.forEach(function(o){ if(o && o[kf] != null) om[o[kf]] = o; });
   liveArr.forEach(function(it){
     var k = it[kf]; if(k == null || seen[k]) return; seen[k] = 1;
@@ -1133,7 +1139,7 @@ function settings(){
   var o = b ? Object.assign({}, s, b) : s;
   return { cut: (o.cut == null ? 17 : +o.cut), price: o.price || '', fee: o.fee || '', review: (o.review == null ? 90 : +o.review), hard: (o.hard == null ? 3 : Math.max(1, +o.hard || 3)), refRate: (o.refRate == null ? 30 : Math.max(1, Math.min(100, +o.refRate || 30))) };
 }
-function saveSettings(o){ o.upd = Date.now(); sj(K.settings, o); markDirty('settings', 'main'); scheduleSync(); fdSoon(); }
+function saveSettings(o){ o.upd = srvNow(); sj(K.settings, o); markDirty('settings', 'main'); scheduleSync(); fdSoon(); }
 /* ---- 部署（2026-10-19・宏史さんの指示）----
    部署ごとに予定と記録を分ける。訪問看護部は、これまでの画面と記録をそのまま使う。
    利用者（患者さん）の契約書番号に、部署の頭文字（kaigo: など）を付けて内部で持つ。
@@ -1351,7 +1357,7 @@ function renderPlan(){
       var pp = patient(v.no) || {}, pw = pp.wish; if(pp.preCall && !v.cx) tags += '<span class="tag amber">訪問前に連絡：' + esc(pp.preCall.replace(/^要/, '')) + '</span>'; if(pw && !v.cx && Math.abs(toMin(pw) - toMin(v.time)) > 30) tags += '<span class="tag amber">本人の希望は ' + esc(pw) + '</span>';
       var key = v.date + '|' + v.time + '|' + v.no;
       html += '<div class="visit' + (v.cx ? ' cx' : '') + '"><div class="t">' + esc(v.time) + '</div>' +
-        '<div class="who">' + esc(dnn(v.no)) + ' <small>' + esc(v.area) + '・' + esc(staffName(v.staffId)) + '</small><br>' + tags + '</div>' +
+        '<div class="who">' + esc(dnn(v.no)) + ' <small>' + esc(v.area) + '・' + lampFor(v.staffId) + esc(staffName(v.staffId)) + '</small><br>' + tags + '</div>' +
         '<div class="act">' + (v.cx ? '<button class="btn small amber" data-gap="' + esc(key) + '">空いた時間の案</button>' : '') + '</div></div>' +
         (v.cx ? '<div class="gap" id="gap-' + esc(key.replace(/[^0-9A-Za-z]/g,'_')) + '" style="display:none"></div>' : '');
     });
@@ -2121,7 +2127,8 @@ function rdGo(){
   }).catch(function(e){ $('rd_msg').textContent = '読み込ませられませんでした：' + (e.message || e); })
   .then(function(){ $('rd_go').disabled = false; });
 }
-function ptClear(){
+function ptClear(keepLock){
+  if(!keepLock) ptRelease();
   $('pt_no').value = '';
   PT_F.forEach(function(f){ var el = $(f[0]); if(el) el.value = (el.tagName === 'SELECT') ? el.options[0].value : ''; });
   ['pt_plan','pt_start','pt_pdue'].forEach(function(id){ $(id).value = ''; });
@@ -2132,7 +2139,7 @@ function ptLoad(no){
   if(!no){ $('pt_no').focus(); return; }
   var p = patient(no);
   if(!p){ $('pt_msg').textContent = 'この番号はまだ登録されていません。欄を埋めて「この内容で登録する」を押すと登録されます。'; return; }
-  ptClear(); $('pt_no').value = dn(no);
+  ptClear(true); $('pt_no').value = dn(no);
   PT_F.forEach(function(f){ var el = $(f[0]); if(el && p[f[1]] != null) el.value = p[f[1]]; });
   if(D().kind === 'monitor'){ $('pt_cyc').value = p.cyc || 1; $('pt_staff').value = p.staffId || ''; $('pt_plan').value = p.planDue || ''; $('pt_start').value = p.start || ''; }
   else $('pt_pdue').value = p.planDue || '';
@@ -2141,6 +2148,7 @@ function ptLoad(no){
   var cp = p.copied || {}; document.querySelectorAll('#pt_copied input').forEach(function(c){ c.checked = !!cp[c.value]; });
   $('pt_copiedNote').textContent = ptDocs().filter(function(x){ return cp[x[0]]; }).map(function(x){ return x[1] + '：' + jpDate(cp[x[0]].d) + (cp[x[0]].by ? '・' + staffName(cp[x[0]].by) : ''); }).join('　');
   $('pt_msg').textContent = '呼び出しました。直したら「この内容で登録する」を押してください。';
+  PT_BASE[no] = p.upd || 0; ptClaim(no);
   prRender();
   var t = document.querySelector('#tabs button[data-tab=pt]'); if(t && !t.classList.contains('on')) t.click();
   if($('cardPt').scrollIntoView) $('cardPt').scrollIntoView({ behavior:'smooth', block:'start' });
@@ -3252,6 +3260,7 @@ function syncNow(){
     return openItems(Array.isArray(j.items) ? j.items : [], key0, mk0).then(function(items){ return { j:j, items:items }; });
   }).then(function(r){
     var n = mergeIncoming(r.items); if(n) fdSoon();
+    if(r.j.now) SRV_OFF = (r.j.now + 2000) - Date.now();   /* 中継は2秒前の時刻を返している */
     var s = lj(SYNC_KEY, {}); s.since = r.j.now || s.since || 0; s.last = Date.now(); s.err = ''; s.mg = mgNote; sj(SYNC_KEY, s);
     if(n) refreshAll(); else { setShareNote(); keyStatus(); }
     renderAlerts();
@@ -3259,6 +3268,160 @@ function syncNow(){
     var s = lj(SYNC_KEY, {}); s.err = e.message; sj(SYNC_KEY, s); setShareNote();
   }).then(function(){ syncing = false; });
 }
+
+/* ---- 開いている人と利用者ごとの鍵（2026-10-31・宏史さんの指示）----
+   「同一の契約番号は同時に２つ以上のPCのアクセスができないように」
+   「誰が開いているかを告知して気が付かせる」「職員名の横にアクセス中ランプ」
+   「せっかく登録したものが他人に消去されてしまう問題は最初から回避しなければならない」
+   ・開いている人：共有している端末は20秒ごとに「開いています（誰が・どの画面か）」を中継へ出す。2分で自然に消える。
+     題名の下の緑の帯と、予定の表の職員名の横の緑のランプに出す。
+   ・利用者ごとの鍵：利用者登録で契約書番号を入れた（呼び出した）端末が、その番号の鍵を取る。
+     ほかの端末が持っている間は「○○さんが開いています」と出し、「この内容で登録する」を押せなくする。閉じれば自動で開ける。
+   ・登録の前の突き合わせ：押した時点で中継の最新を取り込み、
+     ①入れている間に同じ番号が新しく登録されていたら止める（上書きしない）
+     ②呼び出した後にほかの人が直していたら止めて、違う欄を並べる
+   ・中身（誰が・どの番号か）は記録の鍵をかけてから中継へ出す。鍵の印も番号から作った指紋で、番号そのものは出さない。 */
+function presOn(){ return dev().share && !window.TT_LAB && !PRES.off; }
+function presErr(e){ if(/操作が正しく/.test((e && e.message) || '')){ PRES.off = true; PRES.list = []; PRES.locks = []; presRender(); ptLockShow(); } }
+function hhmm(ms){ var d = new Date(ms || 0); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+function lockId(no){
+  return crypto.subtle.digest('SHA-256', TE.encode('lk|' + (settings().kchk || '') + '|' + no)).then(function(b){
+    return 'p' + Array.prototype.map.call(new Uint8Array(b), function(x){ return ('0' + x.toString(16)).slice(-2); }).join('').slice(0, 40);
+  });
+}
+function presAct(){
+  var on = document.querySelector('#tabs button.on'), t = on ? on.textContent.trim() : '';
+  var no = (on && on.getAttribute('data-tab') === 'pt') ? keyNo($('pt_no').value) : '';
+  return { me:dev().me, act:t, no:no };
+}
+function presTick(){
+  if(!presOn() || !window.crypto || !crypto.subtle) return Promise.resolve();
+  return loadKey().then(function(key){
+    if(!key) return;
+    return encStr(key, JSON.stringify(presAct())).then(function(d){ return relayCall('here', { dev:zMyId(), data:d, ttl:PRES_TTL }); })
+      .then(function(){ return ptLockTry(); })
+      .then(function(){ return relayCall('presence', {}); })
+      .then(function(j){
+        var me = zMyId(), list = [], locks = [];
+        return Promise.all((j.pres || []).map(function(x){ return decStr(key, x.data).then(function(t){ var o = JSON.parse(t); o.dev = x.dev; o.at = x.at; o.self = x.dev === me; list.push(o); }, function(){}); }))
+          .then(function(){ return Promise.all((j.locks || []).map(function(x){ return decStr(key, x.data).then(function(t){ var o = JSON.parse(t); o.dev = x.dev; o.at = x.at; o.id = x.id; locks.push(o); }, function(){}); })); })
+          .then(function(){
+            list.sort(function(a, b){ return (b.self ? 1 : 0) - (a.self ? 1 : 0) || (a.at || 0) - (b.at || 0); });
+            PRES.list = list; PRES.locks = locks; presRender();
+          });
+      });
+  }).catch(presErr);
+}
+function lampFor(staffId){ return staffId && PRES.list.some(function(x){ return x.me === staffId; }) ? '<span class="lamp" title="いまトライタイムを開いています"></span>' : ''; }
+function presText(x){ return x.no ? '利用者登録で ' + dnn(x.no) + ' を開いています' : (x.act ? x.act + 'を見ています' : '開いています'); }
+function presRender(){
+  var bar = $('presBar'); if(!bar) return;
+  var list = presOn() ? PRES.list : [];
+  if(!list.length){ bar.style.display = 'none'; bar.innerHTML = ''; }
+  else {
+    bar.style.display = '';
+    bar.innerHTML = '<b>いまトライタイムを開いている人</b>　' + list.map(function(x){
+      return '<span style="white-space:nowrap"><span class="lamp"></span>' + esc(staffName(x.me) || '使う人が未設定の端末') + (x.self ? '（この端末）' : '') + ' <small class="muted">' + esc(presText(x)) + '・' + hhmm(x.at) + '</small></span>';
+    }).join('　');
+  }
+  var sig = list.map(function(x){ return x.me; }).sort().join(',');
+  if(sig !== PRES.sig){ PRES.sig = sig; try{ if($('tab-plan') && $('tab-plan').classList.contains('on')) renderPlan(); }catch(e){} }
+}
+function ptClaim(no){
+  if(!no){ ptRelease(); return; }
+  if(PT_LOCK && PT_LOCK.no === no) return;
+  ptRelease();
+  PT_LOCK = { no:no, got:null };
+  ptLockShow(); ptLockTry();
+}
+function ptRelease(){
+  var L = PT_LOCK; PT_LOCK = null;
+  if(L && L.got && L.id) relayCall('unlock', { id:L.id, dev:zMyId() }).catch(function(){});
+  ptLockShow();
+}
+function ptLockTry(){
+  var L = PT_LOCK;
+  if(!L || !presOn()) return Promise.resolve();
+  return loadKey().then(function(key){
+    if(!key) return;
+    return Promise.all([lockId(L.no), encStr(key, JSON.stringify({ me:dev().me, no:L.no }))]).then(function(r){
+      return relayCall('lock', { id:r[0], dev:zMyId(), data:r[1], ttl:PRES_TTL }).then(function(j){
+        if(PT_LOCK !== L){ if(j.got) relayCall('unlock', { id:r[0], dev:zMyId() }).catch(function(){}); return; }
+        var was = L.got; L.id = r[0]; L.got = !!j.got;
+        if(!L.got){ L.by = j.by ? j.by : null; if(L.by && L.by.data) return decStr(key, L.by.data).then(function(t){ L.byMe = JSON.parse(t).me; }, function(){}); return; }
+        if(was === false){
+          /* 待っていた端末：相手が閉じた。相手の保存を取り込んでから呼び出し直す */
+          L.freed = true;
+          return syncFresh().then(function(){ if(patient(L.no)) ptLoad(L.no); else PT_BASE[L.no] = null; });
+        }
+      });
+    });
+  }).then(ptLockShow, function(e){ presErr(e); ptLockShow(); });
+}
+function ptLockShow(){
+  var box = $('pt_lockNote'), btn = $('pt_add'); if(!box || !btn) return;
+  var L = PT_LOCK, h = '';
+  if(L && L.got === false){
+    h = '<div class="judge fee" style="margin:8px 0">この利用者（' + esc(dnn(L.no)) + '）は、いま <b>' + esc(staffName(L.byMe) || 'ほかの端末の人') + '</b> さんが' + (L.by && L.by.at ? ' ' + hhmm(L.by.at) + ' から' : '') +
+      '開いています。<br>その人が閉じるまで、この端末では登録・修正できません（閉じれば自動で開けるようになり、最新の内容を呼び出します）。</div>';
+  } else if(L && L.got && L.freed){
+    h = '<div class="judge" style="margin:8px 0;background:#eef7f0;border-color:#9fd3ad">ほかの人が閉じたので、開けるようになりました。その人が保存した最新の内容を呼び出しています。</div>';
+  } else if(dev().share && PRES.off){
+    h = '<p class="muted" style="margin:6px 0">同じ利用者をほかの人が開いていないかの確かめは、中継の更新が済むと働きます。</p>';
+  }
+  box.innerHTML = h;
+  btn.disabled = !!(L && L.got === false);
+}
+function syncFresh(){
+  /* 共有の途中なら終わるのを待ってから、もう一度取りにいく */
+  var n = 0;
+  return new Promise(function(res){ (function w(){ if(!syncing || n++ > 50) res(); else setTimeout(w, 200); })(); }).then(function(){ return syncNow(); });
+}
+function ptDiff(p){
+  var out = [];
+  PT_F.forEach(function(f){
+    var el = $(f[0]); if(!el) return;
+    var a = String(el.value || '').trim(), b = String(p[f[1]] == null ? '' : p[f[1]]).trim();
+    if(a !== b){ var lb = document.querySelector('label[for="' + f[0] + '"]'); out.push({ k:(lb ? lb.textContent : f[1]).replace(/（.*$/, ''), mine:a, theirs:b }); }
+  });
+  return out;
+}
+function ptConflict(no, p, isNewClash){
+  var d = ptDiff(p), who = staffName(p.editedBy) || 'ほかの端末の人', when = String(p.edited || '').replace('T', ' ');
+  var h = '<div class="judge fee" style="margin:8px 0"><b>' + (isNewClash ? 'この番号は、入れている間にほかの人が登録しました。上書きはしません。' : '呼び出した後に、ほかの人がこの利用者を直しました。') + '</b><br>' +
+    esc(dnn(no)) + '：' + esc(who) + ' さん（' + esc(when) + '）。違う欄は次のとおりです。' +
+    (d.length ? '<table style="margin-top:6px"><tr><th>欄</th><th>この端末で入れた内容</th><th>' + esc(who) + ' さんの内容</th></tr>' + d.map(function(x){ return '<tr><td>' + esc(x.k) + '</td><td>' + esc(x.mine || '（空）') + '</td><td>' + esc(x.theirs || '（空）') + '</td></tr>'; }).join('') + '</table>' : '<br>（欄の違いはありません）') +
+    '<div class="btns"><button type="button" class="btn" id="pc_load">' + esc(who) + ' さんの内容を呼び出す（この端末で入れた内容は消えます）</button>' +
+    (isNewClash ? '' : '<button type="button" class="btn sub" id="pc_mine">この端末の内容で直す（' + esc(who) + ' さんの内容に上書き）</button>') + '</div></div>';
+  $('pt_lockNote').innerHTML = h;
+  $('pt_msg').textContent = '';
+  $('pc_load').onclick = function(){ ptLoad(no); ptLockShow(); };
+  var m = $('pc_mine'); if(m) m.onclick = function(){ PT_BASE[no] = p.upd || 0; ptLockShow(); ptSaveSafe(); };
+}
+function ptSaveSafe(){
+  var no = keyNo($('pt_no').value);
+  if(!no || !dev().share){ ptSave(); prRender(); return; }
+  if(PT_LOCK && PT_LOCK.no === no && PT_LOCK.got === false){ ptLockShow(); return; }
+  var btn = $('pt_add'); btn.disabled = true; $('pt_msg').textContent = 'ほかの端末の最新と突き合わせています…';
+  syncFresh().then(function(){
+    btn.disabled = false; $('pt_msg').textContent = '';
+    var p = patient(no), base = Object.prototype.hasOwnProperty.call(PT_BASE, no) ? PT_BASE[no] : (p ? (p.upd || 0) : null);
+    if(lj(SYNC_KEY, {}).err){ $('pt_msg').textContent = 'ほかの端末の最新を確かめられませんでした（共有の知らせを見てください）。通信が戻ってから、もう一度押してください。'; return; }
+    if(base === null && p){ ptConflict(no, p, true); return; }
+    if(base !== null && p && (p.upd || 0) !== base){ ptConflict(no, p, false); return; }
+    ptSave(); prRender(); delete PT_BASE[no];
+  }, function(){ btn.disabled = false; $('pt_msg').textContent = 'ほかの端末の最新を確かめられませんでした。通信が戻ってから、もう一度押してください。'; });
+}
+setInterval(function(){ if(document.visibilityState === 'visible') presTick(); }, 20000);
+document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') presTick(); });
+document.addEventListener('click', function(e){ if(e.target && e.target.closest && e.target.closest('#tabs button')) setTimeout(presTick, 300); });
+window.addEventListener('pagehide', function(){
+  var L = PT_LOCK; if(!(L && L.got && L.id)) return;
+  try{ var code = tsCode(); if(!code) return;
+    fetch(GATE_URL, { method:'POST', keepalive:true, headers:{ 'Content-Type':'application/json', 'x-trisight-code':code }, body:JSON.stringify({ task:'tritime', payload:{ op:'unlock', id:L.id, dev:zMyId() } }) });
+  }catch(e){}
+});
+setTimeout(presTick, 1500);
 
 /* ---- 表から取り込む ---- */
 var IM_FIELDS = [ ['dow','曜日',true,/曜/], ['time','開始時刻',true,/時刻|開始|時間帯|時間$/], ['no','契約書番号',true,/契約|番号|利用者/], ['staff','担当',true,/担当|看護|職員/], ['min','時間（分）',false,/分|所要/], ['area','地区',false,/地区|町|地域|エリア/] ];
@@ -4174,7 +4337,7 @@ $('rp_copy').addEventListener('click', function(){
     .catch(function(){ $('rp_msg').textContent = '写せませんでした。上の枠の文字を選んで写してください。'; });
 });
 
-$('pt_add').addEventListener('click', function(){ ptSave(); prRender(); });
+$('pt_add').addEventListener('click', ptSaveSafe);
 $('pr_save').addEventListener('click', prSave);
 $('pt_no').addEventListener('change', prRender);
 if(!$('pr_date').value) $('pr_date').value = ymd(new Date());
@@ -4185,7 +4348,7 @@ $('au_make').addEventListener('click', auMake);
 $('au_apply').addEventListener('click', auApply);
 $('au_undo').addEventListener('click', auUndo);
 $('pt_load').addEventListener('click', function(){ ptLoad(keyNo($('pt_no').value)); });
-$('pt_no').addEventListener('change', function(){ var no = keyNo($('pt_no').value); if(no && patient(no)) ptLoad(no); });
+$('pt_no').addEventListener('change', function(){ var no = keyNo($('pt_no').value); if(no && patient(no)) ptLoad(no); else { if(no) PT_BASE[no] = null; ptClaim(no); } });
 $('pt_clear').addEventListener('click', function(){ ptClear(); $('pt_msg').textContent = ''; });
 $('ptFilter').addEventListener('change', renderPtList);
 /* 2026-10-28：週間予定の手入力で利用者を選んだとき、開始時刻が空なら本人の希望の時刻を入れる */

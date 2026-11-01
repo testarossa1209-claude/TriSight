@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
 """トライサイト 関所の点検（2026-10-15 作成／同日 改め）
 二の関所＝機械の点検：版番号・戻るボタン・同じ中身のファイル・画面の書き込みの文法
+  2026-11-02 足した（宏史さんの指摘「結局、私の盲判の作業だけ」）：
+  5 動かす試験：.github/tests/test_*.py を全部、試し用のブラウザで実際に動かす。1つでも落ちたら止める
+  6 試験の無い画面の変更は止める：この申請で変えた画面（*.html）に、test_画面名_*.py が1つも無ければ止める
 三の関所＝宏史さんの確認：申請の本文の印3つ（一行はやめた）
+  2026-11-02 足した：「画面の写し」（なぎさが動かして撮った写し）と「実機で試すこと（誰が・いつ・結果）」の欄。
+  写しが無い・実機の結果が空の申請は、印がそろっても通さない
 止まった理由は、申請の画面の点検一覧に「関所の理由（…）」として出す。
 2026-10-19 改め（宏史さんの指示）：知らせ（申請への書き込み＝宏史さんのGmailに届く）を逆にした。
   ・通ったときは知らせない（点検一覧の「関所の理由（…）：すべて通りました」で分かる）
@@ -116,8 +121,46 @@ def machine_ng():
             ng.append('%s に文法の誤りがあります：%s' % (f, (r.stderr.strip().splitlines() or [''])[-1]))
     return ng
 
+TESTS = '.github/tests'
+
+def run_tests():
+    """5 動かす試験。落ちた試験の名前と理由を返す"""
+    ng = []
+    for f in sorted(glob.glob(os.path.join(TESTS, 'test_*.py'))):
+        try:
+            r = subprocess.run([sys.executable, f], capture_output=True, text=True, timeout=300)
+        except subprocess.TimeoutExpired:
+            ng.append('動かす試験 %s が時間内に終わりませんでした' % os.path.basename(f)); continue
+        out = (r.stdout.strip().splitlines() or [''])[-1]
+        if r.returncode:
+            why = out if out.startswith('NG') else ((r.stderr.strip().splitlines() or ['理由不明'])[-1])
+            ng.append('動かす試験 %s が落ちました：%s' % (os.path.basename(f), why.replace('NG：', '')))
+    return ng
+
+def changed_screens():
+    """この申請で変えた画面（*.html）の名前。申請の番号が分からないときは空"""
+    n = os.environ.get('PR_NUMBER')
+    if not n:
+        return []
+    out, page = [], 1
+    while True:
+        fs = gh('GET', '/pulls/%s/files?per_page=100&page=%d' % (n, page)) or []
+        out += [f['filename'] for f in fs if f.get('status') != 'removed' and re.match(r'^[^/]+\.html$', f.get('filename', ''))]
+        if len(fs) < 100: break
+        page += 1
+    return out
+
+def need_tests():
+    """6 試験の無い画面の変更は止める"""
+    ng = []
+    for f in changed_screens():
+        stem = f[:-5]
+        if not glob.glob(os.path.join(TESTS, 'test_%s_*.py' % stem)):
+            ng.append('%s を変えていますが、動かす試験（.github/tests/test_%s_*.py）がありません。なぎさが試験を書いてから申請してください' % (f, stem))
+    return ng
+
 def machine():
-    ng = machine_ng()
+    ng = machine_ng() + need_tests() + run_tests()
     if ng: fail(ng, '機械の点検')
     show_reason('機械の点検', [])
     print('OK：機械の点検はすべて通りました（版番号・戻るボタン・同じ中身のファイル・文法）')
@@ -133,16 +176,26 @@ def approval():
         waiting.append('宏史さんの確認の印に、まだ付いていないものがあります')
     if len(re.findall(r'^\s*- \[[xX]\]', body_nc, re.M)) < 3:
         waiting.append('宏史さんの確認の印が3つそろっていません')
-    for sec in ('何を直したか', 'どの画面のどこが変わるか', '何を確かめたか', '確かめていないこと'):
+    for sec in ('何を直したか', 'どの画面のどこが変わるか', '何を確かめたか', '確かめていないこと', '画面の写し', '実機で試すこと'):
         mm = re.search(r'##[^\n]*' + sec + r'[^\n]*\n(.*?)(?=\n##|\Z)', body_nc, re.S)
         if not mm or not mm.group(1).strip():
             ng.append('なぎさの欄「%s」が空です' % sec)
+    # 2026-11-02：画面の写しは、なぎさが実際に動かして撮ったもの（写し専用の枝 sekisho-shots に置いた画像）か、「無し」とその理由
+    mm = re.search(r'##[^\n]*画面の写し[^\n]*\n(.*?)(?=\n##|\Z)', body_nc, re.S)
+    if mm and mm.group(1).strip() and 'sekisho-shots/' not in mm.group(1) and not mm.group(1).strip().startswith('無し'):
+        ng.append('「画面の写し」に、動かして撮った写し（sekisho-shots の画像）がありません。画面を変えない申請なら「無し」とその理由を書いてください')
+    # 2026-11-02：実機で試すことは、1行ずつ「結果：」まで埋まるまで待つ（結果が空・「未」は確認待ち）
+    mm = re.search(r'##[^\n]*実機で試すこと[^\n]*\n(.*?)(?=\n##|\Z)', body_nc, re.S)
+    if mm:
+        for line in mm.group(1).splitlines():
+            if '結果：' in line and re.match(r'^\s*(未|まだ|)\s*$', line.split('結果：', 1)[1]):
+                waiting.append('実機で試すことの結果が、まだ入っていません：' + line.split('結果：')[0].strip(' ・-'))
     if owner and actor and actor.lower() != owner.lower():
         ng.append('この点検を最後に動かしたのが宏史さん（%s）ではなく「%s」です。宏史さんが「三」の印を1つ外して付け直すと、もう一度点検されます' % (owner, actor))
     if ng: fail(ng + waiting, '宏史さんの確認')
     if waiting: fail(waiting, '宏史さんの確認', notify=False)
     # 三が通っても、二（機械の点検）が通っていなければ通さない（知らせは機械の点検の側で出るので、ここでは出さない）
-    mng = machine_ng()
+    mng = machine_ng() + need_tests()
     if mng: fail(['機械の点検が通っていません：' + mng[0]], '宏史さんの確認', notify=False)
     show_reason('宏史さんの確認', [])
     print('OK：宏史さんの確認がそろいました')

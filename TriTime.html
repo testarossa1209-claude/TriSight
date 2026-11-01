@@ -274,7 +274,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-01-01</span></div>
+<div class="verline">版 <span id="verLabel">2026-11-01-02</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -565,6 +565,8 @@ function tsPortalAsk(){
     </details>
     <div id="pt_lockNote"></div>
     <div class="btns"><button class="btn" id="pt_add">この内容で登録する</button><button class="btn sub" type="button" id="pt_clear">欄を空にする</button><span class="muted" id="pt_msg"></span></div>
+    <!-- 2026-11-01：登録の後にいちいち上へスクロールしなくて済むように（宏史さんの指示） -->
+    <div class="btns"><button class="btn sub" type="button" id="pt_top">▲ 登録入力画面のトップに戻る</button></div>
   </div>
   <div class="card" id="cardNr">
     <h2>看護記録（トライケア）の取り込み</h2>
@@ -2125,6 +2127,7 @@ function rdApply(kind, j){
     if(el.type === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
     if(el.type === 'month' && !/^\d{4}-\d{2}$/.test(v)) return;
     var lab = document.querySelector('label[for="pt_' + n + '"]'), name = lab ? lab.textContent.replace(/（.*$/, '') : n;
+    var em = /^em([1-3])/.exec(n); if(em) name = '緊急連絡先' + em[1] + 'の' + name;
     var cur = String(el.value || '').trim(), empty = !cur || (el.tagName === 'SELECT' && el.selectedIndex === 0 && !el.options[0].value);
     if(empty){ el.value = v; filled.push(name); var dt = el.closest('details'); if(dt) dt.open = true; }
     else if(cur !== v) diff.push(name + '（書類では「' + v.slice(0, 40) + (v.length > 40 ? '…' : '') + '」）');
@@ -4420,6 +4423,7 @@ $('rp_copy').addEventListener('click', function(){
 });
 
 $('pt_add').addEventListener('click', ptSaveSafe);
+$('pt_top').addEventListener('click', function(){ var c = $('pt_no'); var card = c && c.closest('.card'); (card || c).scrollIntoView({ behavior:'smooth', block:'start' }); setTimeout(function(){ try{ c.focus({ preventScroll:true }); }catch(e){} }, 400); });
 $('pr_save').addEventListener('click', prSave);
 $('pt_no').addEventListener('change', prRender);
 if(!$('pr_date').value) $('pr_date').value = ymd(new Date());

@@ -274,7 +274,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-01-04</span></div>
+<div class="verline">版 <span id="verLabel">2026-11-01-05</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -3751,12 +3751,12 @@ function roleFix(){
 }
 function roleNote(R){
   var el = $('roleNote'); if(!el) return;
-  var t = '', key = '「名簿・設定」タブの「管理者の合言葉」を入れると、管理者の画面が出ます。';
+  var t = '';
   if(R.lv === 'none' && R.unshared) t = '<b>この端末は「記録を共有する」の印が外れています。</b>合言葉の入っていた端末なので、印を外したままでは中身を出しません。「名簿・設定」タブの「この端末と共有」で印を付けて「保存する」を押してください。';
   else if(R.lv === 'none') t = '<b>この端末を使う人が、まだ選ばれていません。</b>「名簿・設定」タブの「この端末と共有」で、この端末を使う人を選んで「保存する」を押してください。選ぶまでは、このタブだけを出します。';
   /* 2026-11-01（宏史さんの指摘「この画面を見ている職員には、見ている画面以外に別の画面があるんだと思いますよね」）：
      「見える範囲」の帯は出さない。管理者の印が付いた人の端末で、管理者の合言葉がまだ入っていないときだけ、入れ方を出す */
-  else if((R.lv === 'staff' || R.lv === 'office') && R.noKey) t = key;
+  /* 2026-11-01（宏史さんの指摘「管理者の合言葉をいれると管理者の画面がでますは残すのですか？」）：合言葉の入れ方の帯も出さない。入れ方は「名簿・設定」の枠「管理者の合言葉」だけに置く */
   el.innerHTML = t; el.style.display = t ? '' : 'none';
 }
 function withDept(k, fn){

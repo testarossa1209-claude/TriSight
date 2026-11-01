@@ -163,7 +163,8 @@ def machine():
     ng = machine_ng() + need_tests() + run_tests()
     if ng: fail(ng, '機械の点検')
     show_reason('機械の点検', [])
-    print('OK：機械の点検はすべて通りました（版番号・戻るボタン・同じ中身のファイル・文法）')
+    ts = [os.path.basename(f) for f in sorted(glob.glob(os.path.join(TESTS, 'test_*.py')))]
+    print('OK：機械の点検はすべて通りました（版番号・戻るボタン・同じ中身のファイル・文法・動かす試験 %d本：%s）' % (len(ts), '、'.join(ts) or 'なし'))
 
 def approval():
     body = os.environ.get('PR_BODY', '') or ''

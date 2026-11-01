@@ -274,7 +274,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-01-03</span></div>
+<div class="verline">版 <span id="verLabel">2026-11-01-04</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -1062,7 +1062,7 @@ function tsPortalAsk(){
   <div class="card" id="cardDev">
     <h2>この端末と共有</h2>
     <p class="lead">事務局のパソコンと看護師さんの端末で、同じ記録を見るための設定です。この端末を主に使う人を選ぶと、その人が担当する訪問にキャンセルが入ったとき、画面の上に知らせが出ます。</p>
-    <p class="muted">共有している端末では、ここで選んだ人によって見える範囲が変わります。職員は自分の予定と稼働率、部署の管理者は自分の部署の売上・稼働率・評価シート、経営企画事務職の職員は全部署の予定、経営企画事務職の管理者は全部署の売上と予定が見えます（管理者として見るには、下の「管理者の合言葉」も入れます）。使う人を選ぶまでは、このタブだけが出ます。</p>
+    <p class="muted">使う人を選ぶまでは、このタブだけが出ます。</p>
     <div class="row">
       <div><label class="f" for="dv_me">この端末を主に使う人</label><select id="dv_me"></select></div>
       <div><label class="f">&nbsp;</label><label><input type="checkbox" id="dv_share"> 記録を共有する</label></div>
@@ -3712,6 +3712,8 @@ function applyDept(){
   var ssHide = (R.lv === 'staff' || R.lv === 'none'); show('ssTab', !ssHide); if(ssHide && document.body.classList.contains('ssOpen')) ssOpen(false);
   show('kpTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('kpOpen')) sideOpen('kp', false);
   if(document.body.classList.contains('kpOpen')) kpRender(); if(document.body.classList.contains('mnOpen')) mnRender();
+  /* 2026-11-01：管理者の合言葉の枠は、管理者の印が付いた人の端末と、管理者の画面が出ている端末だけに出す（職員の端末には出さない） */
+  show('cardMgrKey', !((R.lv === 'staff' || R.lv === 'office') && !R.noKey));
   roleNote(R);
 }
 
@@ -3752,10 +3754,9 @@ function roleNote(R){
   var t = '', key = '「名簿・設定」タブの「管理者の合言葉」を入れると、管理者の画面が出ます。';
   if(R.lv === 'none' && R.unshared) t = '<b>この端末は「記録を共有する」の印が外れています。</b>合言葉の入っていた端末なので、印を外したままでは中身を出しません。「名簿・設定」タブの「この端末と共有」で印を付けて「保存する」を押してください。';
   else if(R.lv === 'none') t = '<b>この端末を使う人が、まだ選ばれていません。</b>「名簿・設定」タブの「この端末と共有」で、この端末を使う人を選んで「保存する」を押してください。選ぶまでは、このタブだけを出します。';
-  else if(R.lv === 'staff') t = '見える範囲：' + esc(R.s.name) + 'さんの予定と稼働率（' + esc(R.depts.map(function(x){ return x.name; }).join('・')) + '）。' + (R.noKey ? key : '');
-  else if(R.lv === 'dept') t = '見える範囲：' + esc(R.depts.map(function(x){ return x.name; }).join('・')) + 'の管理者（予定・売上・稼働率・評価シート・施策と目標）。';
-  else if(R.lv === 'office') t = '見える範囲：全部署の予定（売上は出しません）。' + (R.noKey ? key : '');
-  else if(!R.solo) t = R.zeus ? '見える範囲：野木画面（全部署の売上と予定のすべて）。' : '見える範囲：経営企画事務職の管理者（全部署の売上と予定）。';
+  /* 2026-11-01（宏史さんの指摘「この画面を見ている職員には、見ている画面以外に別の画面があるんだと思いますよね」）：
+     「見える範囲」の帯は出さない。管理者の印が付いた人の端末で、管理者の合言葉がまだ入っていないときだけ、入れ方を出す */
+  else if((R.lv === 'staff' || R.lv === 'office') && R.noKey) t = key;
   el.innerHTML = t; el.style.display = t ? '' : 'none';
 }
 function withDept(k, fn){

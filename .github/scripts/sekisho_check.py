@@ -5,8 +5,8 @@
   5 動かす試験：.github/tests/test_*.py を全部、試し用のブラウザで実際に動かす。1つでも落ちたら止める
   6 試験の無い画面の変更は止める：この申請で変えた画面（*.html）に、test_画面名_*.py が1つも無ければ止める
 三の関所＝宏史さんの確認：申請の本文の印3つ（一行はやめた）
-  2026-11-02 足した：「画面の写し」（なぎさが動かして撮った写し）と「実機で試すこと（誰が・いつ・結果）」の欄。
-  写しが無い・実機の結果が空の申請は、印がそろっても通さない
+  2026-11-02 足した：「画面の写し」（なぎさが動かして撮った写し）の欄。写しが無い申請は、印がそろっても通さない。
+  同日、Merge前に人が実機で試す欄はやめた（宏史さんの判断）。「公開後に試すこと」は Merge を止めず、毎朝知らせるだけ
 止まった理由は、申請の画面の点検一覧に「関所の理由（…）」として出す。
 2026-10-19 改め（宏史さんの指示）：知らせ（申請への書き込み＝宏史さんのGmailに届く）を逆にした。
   ・通ったときは知らせない（点検一覧の「関所の理由（…）：すべて通りました」で分かる）
@@ -166,8 +166,6 @@ def machine():
     ts = [os.path.basename(f) for f in sorted(glob.glob(os.path.join(TESTS, 'test_*.py')))]
     print('OK：機械の点検はすべて通りました（版番号・戻るボタン・同じ中身のファイル・文法・動かす試験 %d本：%s）' % (len(ts), '、'.join(ts) or 'なし'))
 
-PREVIEW_HOST = 'trisight-relay.vercel.app/preview/'
-
 def section(body_nc, name):
     """申請の本文から、見出しに name を含む欄の中身を取り出す（無ければ None）"""
     mm = re.search(r'##[^\n]*' + name + r'[^\n]*\n(.*?)(?=\n##|\Z)', body_nc, re.S)
@@ -182,13 +180,10 @@ def empty_results(text):
     return out
 
 def judge_body(body, screens):
-    """申請の本文を読んで、止める理由（ng）と確認待ち（waiting）を返す。screens＝この申請で変えた画面
-    2026-11-02 改め（宏史さんの了承）：実機の欄を二つに分けた。
-      ・公開前に試すこと＝試し版（中継の住所の下の /preview/）を実機で開いて試す。結果が空なら止める。
-        画面を変えた申請では、試し版の住所が書かれていなければ止める
-      ・公開後に試すこと＝本番でしか確かめられないもの（端末の間の共有など）。Merge は止めない。
-        結果が入るまで、毎朝の点検（kokaigo）が知らせ続ける
-      ・古い書き方の「実機で試すこと」は、公開前に試すことと同じ扱い"""
+    """申請の本文を読んで、止める理由（ng）と確認待ち（waiting）を返す。
+    2026-11-02 改め（宏史さんの判断「試し版は本当に必要なの？」）：Merge前に人が実機で試す欄（公開前に試すこと・実機で試すこと）と試し版はやめた。
+    画面を動かして確かめるのは機械の点検（動かす試験と画面の写し）が受け持つ。
+    「公開後に試すこと」は Merge を止めず、結果が入るまで毎朝（kokaigo）知らせるだけ"""
     ng, waiting = [], []
     body_nc = re.sub(r'<!--.*?-->', '', body, flags=re.S)
     if re.search(r'^\s*- \[ \]', body_nc, re.M):
@@ -203,16 +198,6 @@ def judge_body(body, screens):
     t = section(body_nc, '画面の写し')
     if t and t.strip() and 'sekisho-shots/' not in t and not t.strip().startswith('無し'):
         ng.append('「画面の写し」に、動かして撮った写し（sekisho-shots の画像）がありません。画面を変えない申請なら「無し」とその理由を書いてください')
-    pre = section(body_nc, '公開前に試すこと')
-    if pre is None:
-        pre = section(body_nc, '実機で試すこと')
-    if pre is None or not pre.strip():
-        ng.append('なぎさの欄「公開前に試すこと」が空です')
-    else:
-        if screens and PREVIEW_HOST not in pre and not pre.strip().startswith('無し'):
-            ng.append('画面を変えていますが、「公開前に試すこと」に試し版の住所（%s…）がありません。なぎさが試し版を出してから申請してください' % PREVIEW_HOST)
-        for w in empty_results(pre):
-            waiting.append('公開前に試すことの結果が、まだ入っていません：' + w)
     return ng, waiting
 
 def approval():

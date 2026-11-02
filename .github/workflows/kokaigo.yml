@@ -1,0 +1,21 @@
+# トライサイト 公開後の点検（2026-11-02 宏史さんの了承）
+# 毎朝1回、公開（Merge）済みの申請のうち「公開後に試すこと」の結果が空のものに、申請へ書き込んで知らせる
+# （宏史さんのGmailに届く）。同じ申請には1日1回まで。結果がすべて入れば知らせは止まる。
+name: kokaigo
+on:
+  schedule:
+    - cron: '41 22 * * *'   # 日本時間 毎朝 7:41
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+jobs:
+  kokaigo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: python3 .github/scripts/sekisho_check.py kokaigo

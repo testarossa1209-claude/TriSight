@@ -274,7 +274,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-02-02</span></div>
+<div class="verline">版 <span id="verLabel">2026-11-02-03</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -6042,9 +6042,25 @@ window.ttScopeRefresh = function(){ nrRender(); tcRender(); var pv = document.qu
 fdRestore();
 syncNow();
 
+/* 2026-11-02：開いたままでも最新の版に切り替えられるボタン（宏史さんの指示「開いていても更新出来るように更新ボタンをつけてください」）。
+   iPadのホーム画面のアプリは、閉じずに裏へ回して戻ると開き直したことにならず、古い版のまま残ることがあるため。
+   押すと、入力途中の内容が消えることを確かめてから、控え（キャッシュ）を使わずに取り直して開き直す */
+function ttReload(){
+  if(!confirm('最新の版に更新します。入力途中で保存していない内容は消えます。よろしいですか。')) return;
+  var go = function(){ location.replace(location.pathname + '?v=' + Date.now()); };
+  try{
+    if(navigator.serviceWorker && navigator.serviceWorker.getRegistrations){
+      navigator.serviceWorker.getRegistrations().then(function(rs){ return Promise.all(rs.map(function(r){ return r.update().catch(function(){}); })); }).then(go, go);
+      return;
+    }
+  }catch(e){}
+  go();
+}
+$('verReload').addEventListener('click', ttReload);
 fetch('version.json', { cache:'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
   if(j && j.tritime && j.tritime !== $('verLabel').textContent){
-    $('verNotice').innerHTML = '<div class="note">新しい版が公開されています（' + esc(j.tritime) + '）。画面を開き直すと切り替わります。</div>';
+    $('verNotice').innerHTML = '<div class="note">新しい版が公開されています（' + esc(j.tritime) + '）。<button type="button" class="btn" id="verNoticeGo" style="margin-left:8px">最新の版に更新</button></div>';
+    $('verNoticeGo').addEventListener('click', ttReload);
   }
 }).catch(function(){});
 

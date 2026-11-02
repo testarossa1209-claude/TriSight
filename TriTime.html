@@ -274,7 +274,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-02-03</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-02-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -6057,12 +6057,23 @@ function ttReload(){
   go();
 }
 $('verReload').addEventListener('click', ttReload);
-fetch('version.json', { cache:'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
-  if(j && j.tritime && j.tritime !== $('verLabel').textContent){
-    $('verNotice').innerHTML = '<div class="note">新しい版が公開されています（' + esc(j.tritime) + '）。<button type="button" class="btn" id="verNoticeGo" style="margin-left:8px">最新の版に更新</button></div>';
-    $('verNoticeGo').addEventListener('click', ttReload);
-  }
-}).catch(function(){});
+/* 2026-11-02：新しい版の確かめは、開いたときの1回だけでは足りない。
+   iPadのホーム画面のアプリは開き直さずに使い続けられるため、2026-10-31-09 のまま新しい版が出ても知らせが一度も出なかった
+   （開いたときにしか確かめに行かない作りだったため）。画面に戻ったとき・5分ごとにも確かめ、新しい版があれば帯を出す */
+var verShown = '';
+function verCheck(){
+  fetch('version.json?t=' + Date.now(), { cache:'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
+    if(j && j.tritime && j.tritime !== $('verLabel').textContent && j.tritime !== verShown){
+      verShown = j.tritime;
+      $('verNotice').innerHTML = '<div class="note">新しい版が公開されています（' + esc(j.tritime) + '）。<button type="button" class="btn" id="verNoticeGo" style="margin-left:8px">最新の版に更新</button></div>';
+      $('verNoticeGo').addEventListener('click', ttReload);
+    }
+  }).catch(function(){});
+}
+verCheck();
+setInterval(function(){ if(document.visibilityState === 'visible') verCheck(); }, 300000);
+document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') verCheck(); });
+window.addEventListener('pageshow', function(e){ if(e.persisted) verCheck(); });
 
 })();
 </script>

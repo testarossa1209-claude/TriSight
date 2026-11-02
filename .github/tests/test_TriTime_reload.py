@@ -38,5 +38,20 @@ async def test(p):
         assert '新しい版が公開されています' in txt and await pg.query_selector('#verNoticeGo'), '新しい版の知らせの帯に更新ボタンが出ません：' + txt
     finally:
         await s.close()
+    # 開いたあとに新しい版が出ても、画面に戻ったときに知らせが出る（2026-11-02：iPadが開き直さず古い版のまま残った件）
+    s = Screen()
+    pg = await s.open(p, 'TriTime.html', ua=IPAD)
+    try:
+        if await pg.query_selector('#ogGo'):
+            await pg.click('#ogGo'); await pg.wait_for_timeout(1500)
+        assert '新しい版が公開されています' not in await pg.inner_text('#verNotice'), '同じ版なのに知らせが出ています'
+        await pg.route('**/version.json*', newer)
+        await pg.evaluate("document.dispatchEvent(new Event('visibilitychange'))"); await pg.wait_for_timeout(1500)
+        txt = await pg.inner_text('#verNotice')
+        assert '2099-01-01-01' in txt and await pg.query_selector('#verNoticeGo'), '開いたあとに出た新しい版を、画面に戻ったときに知らせていません：' + txt
+        await s.shot('#verNotice', 'TriTime_vercheck_notice.png')
+        assert not s.errs, '画面の中で誤りが出ました：' + s.errs[0]
+    finally:
+        await s.close()
 
 sys.exit(run(test))

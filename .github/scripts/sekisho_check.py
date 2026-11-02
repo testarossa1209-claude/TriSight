@@ -6,14 +6,14 @@
   6 試験の無い画面の変更は止める：この申請で変えた画面（*.html）に、test_画面名_*.py が1つも無ければ止める
 三の関所＝宏史さんの確認：申請の本文の印3つ（一行はやめた）
   2026-11-02 足した：「画面の写し」（なぎさが動かして撮った写し）の欄。写しが無い申請は、印がそろっても通さない。
-  同日、Merge前に人が実機で試す欄はやめた（宏史さんの判断）。「公開後に試すこと」は Merge を止めず、毎朝知らせるだけ
+  同日、人が実機で試す欄（公開前・公開後とも）と毎朝の知らせはやめた（宏史さんの判断）
 止まった理由は、申請の画面の点検一覧に「関所の理由（…）」として出す。
 2026-10-19 改め（宏史さんの指示）：知らせ（申請への書き込み＝宏史さんのGmailに届く）を逆にした。
   ・通ったときは知らせない（点検一覧の「関所の理由（…）：すべて通りました」で分かる）
   ・止まったとき・点検できなかったときだけ知らせる
   ・ただし「三」の印がまだ付いていないだけ（宏史さんの確認待ち）は、止まったのではなく待っている状態なので知らせない
   ・同じ申請の同じ版・同じ理由では、一度だけ知らせる
-使い方：python3 sekisho_check.py machine   /   python3 sekisho_check.py approval   /   python3 sekisho_check.py kokaigo（毎朝・公開後の点検）
+使い方：python3 sekisho_check.py machine   /   python3 sekisho_check.py approval
 """
 import glob, hashlib, json, os, re, subprocess, sys, tempfile, urllib.request
 
@@ -171,19 +171,10 @@ def section(body_nc, name):
     mm = re.search(r'##[^\n]*' + name + r'[^\n]*\n(.*?)(?=\n##|\Z)', body_nc, re.S)
     return mm.group(1) if mm else None
 
-def empty_results(text):
-    """「結果：」が空（または「未」「まだ」）の行の、試す内容を返す"""
-    out = []
-    for line in (text or '').splitlines():
-        if '結果：' in line and re.match(r'^\s*(未|まだ|)\s*$', line.split('結果：', 1)[1]):
-            out.append(line.split('結果：')[0].strip(' ・-'))
-    return out
-
 def judge_body(body, screens):
     """申請の本文を読んで、止める理由（ng）と確認待ち（waiting）を返す。
     2026-11-02 改め（宏史さんの判断「試し版は本当に必要なの？」）：Merge前に人が実機で試す欄（公開前に試すこと・実機で試すこと）と試し版はやめた。
-    画面を動かして確かめるのは機械の点検（動かす試験と画面の写し）が受け持つ。
-    「公開後に試すこと」は Merge を止めず、結果が入るまで毎朝（kokaigo）知らせるだけ"""
+    画面を動かして確かめるのは機械の点検（動かす試験と画面の写し）が受け持つ。公開後の欄と毎朝の知らせもやめた"""
     ng, waiting = [], []
     body_nc = re.sub(r'<!--.*?-->', '', body, flags=re.S)
     if re.search(r'^\s*- \[ \]', body_nc, re.M):
@@ -215,34 +206,10 @@ def approval():
     show_reason('宏史さんの確認', [])
     print('OK：宏史さんの確認がそろいました')
 
-KOKAIGO_MARK = '<!-- sekisho-kokaigo -->'
-
-def kokaigo():
-    """毎朝1回：公開（Merge）済みの申請で「公開後に試すこと」の結果が空のものに、申請へ書き込んで知らせる（宏史さんのGmailに届く）。
-    同じ申請には1日1回まで。結果がすべて入れば知らせは止まる。見るのは直近60日に閉じた申請"""
-    import datetime
-    today = (datetime.datetime.utcnow() + datetime.timedelta(hours=9)).strftime('%Y-%m-%d')
-    since = (datetime.datetime.utcnow() - datetime.timedelta(days=60)).strftime('%Y-%m-%dT%H:%M:%SZ')
-    told = 0
-    for pr in (gh('GET', '/pulls?state=closed&sort=updated&direction=desc&per_page=100') or []):
-        if not pr.get('merged_at') or pr['merged_at'] < since:
-            continue
-        body_nc = re.sub(r'<!--.*?-->', '', pr.get('body') or '', flags=re.S)
-        left = empty_results(section(body_nc, '公開後に試すこと'))
-        if not left:
-            continue
-        mark = KOKAIGO_MARK + '<!-- %s -->' % today
-        if any(mark in (c.get('body') or '') for c in (gh('GET', '/issues/%s/comments?per_page=100' % pr['number']) or [])):
-            continue
-        gh('POST', '/issues/%s/comments' % pr['number'], {'body': mark + '\n公開後に試すことの結果が、まだ入っていません（%s）。申請の本文の「結果：」の後ろに書き込むと、この知らせは止まります。\n\n' % today + '\n'.join('・' + w for w in left)})
-        told += 1
-        print('知らせた：#%s（%d件）' % (pr['number'], len(left)))
-    print('OK：公開後の点検（知らせた申請 %d件）' % told)
-
 if __name__ == '__main__':
-    label = {'machine': '機械の点検', 'approval': '宏史さんの確認', 'kokaigo': '公開後の点検'}.get(sys.argv[1], sys.argv[1])
+    label = {'machine': '機械の点検', 'approval': '宏史さんの確認'}.get(sys.argv[1], sys.argv[1])
     try:
-        {'machine': machine, 'approval': approval, 'kokaigo': kokaigo}[sys.argv[1]]()
+        {'machine': machine, 'approval': approval}[sys.argv[1]]()
     except SystemExit:
         raise
     except Exception as e:

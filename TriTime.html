@@ -274,7 +274,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-02-05</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-02-06</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -1322,10 +1322,11 @@ function staffSub(s){ return Array.isArray(s.sub) ? s.sub.filter(function(x){ re
 function staffOut(s, date){ return !!(s && s.out && s.out < (date || ymd(new Date()))); }
 function staffLive(){ return staff().filter(function(s){ return !staffOut(s); }); }
 /* 2026-11-02：部署の職員の並び（宏史さんの決まり「常勤と非常勤、事務局の人間は下の方に」）。
-   常勤 → 非常勤 → 事務局（所属が経営企画事務職、または職種が事務局）の順。同じ組の中は名簿の順のまま。
+   その部署の職種（訪問看護部なら看護師）の常勤 → 同じ職種の非常勤 → ほかの職種の人（兼務で入る介護部の職員など。常勤でもここ）→ 事務局（所属が経営企画事務職、または職種が事務局）の順。
+   同じ組の中は名簿の順のまま（2026-11-02 宏史さんの指摘「伊藤孝明は常勤ですが、看護師ではないので、位置は事務局の前」）。
    これまでは名簿に入った順のままで、端末ごとに名簿が届いた順で並びが変わっていた */
-function staffRank(s){ if((s.dept && /経営企画事務/.test(s.dept)) || jobOf(s) === '事務局') return 2; return s.emp === '非常勤' ? 1 : 0; }
-function deptStaff(d, at){ d = d || D(); var a = staff().filter(function(s){ return !staffOut(s, at); }).filter(function(s){ if(staffSub(s).indexOf(d.name) >= 0) return true; if(s.dept) return deptByName(s.dept) === d; return d.jobs.indexOf(jobOf(s)) >= 0; }); return a.map(function(s, i){ return { s:s, i:i, r:staffRank(s) }; }).sort(function(x, y){ return (x.r - y.r) || (x.i - y.i); }).map(function(x){ return x.s; }); }
+function staffRank(s, d){ if((s.dept && /経営企画事務/.test(s.dept)) || jobOf(s) === '事務局') return 3; if(d && d.kind !== 'office' && d.jobs.indexOf(jobOf(s)) < 0) return 2; return s.emp === '非常勤' ? 1 : 0; }
+function deptStaff(d, at){ d = d || D(); var a = staff().filter(function(s){ return !staffOut(s, at); }).filter(function(s){ if(staffSub(s).indexOf(d.name) >= 0) return true; if(s.dept) return deptByName(s.dept) === d; return d.jobs.indexOf(jobOf(s)) >= 0; }); return a.map(function(s, i){ return { s:s, i:i, r:staffRank(s, d) }; }).sort(function(x, y){ return (x.r - y.r) || (x.i - y.i); }).map(function(x){ return x.s; }); }
 
 /* ---- 共通：選択肢 ---- */
 function fillSelect(sel, items, blank){

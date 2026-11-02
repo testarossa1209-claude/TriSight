@@ -70,6 +70,7 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   header h1{font-family:"Shippori Mincho",serif;font-weight:800;font-size:24px;letter-spacing:.02em;line-height:1.3}
   header h1 small{display:block;font-family:"Noto Sans JP",sans-serif;font-weight:500;font-size:13px;color:var(--muted);letter-spacing:0}
   .verline{font-size:12px;color:var(--muted);margin:6px 0 0;text-align:right}
+  .lamp{display:inline-block;width:9px;height:9px;border-radius:50%;background:#22a447;box-shadow:0 0 0 2px rgba(34,164,71,.22);margin:0 5px 1px 2px;vertical-align:middle}
   .note{background:#fbf3e8;border:1px solid var(--amber-soft);border-radius:10px;padding:10px 14px;font-size:13.5px;margin:14px 0}
   nav.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0 18px}
   nav.tabs button{font:inherit;font-size:14px;font-weight:700;border:1px solid var(--line);background:var(--white);color:var(--ink);padding:8px 14px;border-radius:999px;cursor:pointer}
@@ -81,7 +82,7 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   .card .lead{font-size:13.5px;color:var(--muted);margin-bottom:12px}
   .card h3{font-size:15px;font-weight:700;margin:14px 0 6px}
   label.f{display:block;font-size:13px;font-weight:700;color:var(--ink-soft);margin:10px 0 4px}
-  input[type=text],input[type=number],input[type=date],input[type=time],input[type=month],input[type=datetime-local],select,textarea{
+  input[type=text],input[type=tel],input[type=number],input[type=date],input[type=time],input[type=month],input[type=datetime-local],select,textarea{
     font:inherit;font-size:15px;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fffdf9;color:var(--ink)}
   textarea{min-height:70px;resize:vertical}
   .ai-filled{background:#fff3df !important;border-color:var(--amber) !important}
@@ -273,7 +274,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-10-31-08</span></div>
+<div class="verline">版 <span id="verLabel">2026-11-02-05</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -287,7 +288,7 @@ function tsPortalAsk(){
   <div class="ssHead"><h2>番号と氏名の対照表<small>番号・氏名・ふりがな・地区のどれかの一部を打つと、その人に絞れます</small></h2><button type="button" class="ssClose" id="kpClose" title="閉じる" aria-label="閉じる">×</button></div>
   <div class="ssNav"><input type="search" class="kpFind" id="kpFind" placeholder="例：0061、山田、やまだ、本町"></div>
   <div class="ssBody" id="kpBody"></div>
-  <div class="ssFoot">いま選んでいる部署の患者さん（契約終了の人も含む）を、契約書番号の順に並べています。紙に出すときは <button type="button" class="btn sub small" id="kpPrint">対照表を印刷する</button> <span id="kpMsg"></span></div>
+  <div class="ssFoot">いま選んでいる部署の患者さん（契約終了の人も含む）を、ふりがなのあいうえお順に並べています（ふりがなが未入力の人は末尾）。紙に出すときは <button type="button" class="btn sub small" id="kpPrint">対照表を印刷する</button> <span id="kpMsg"></span></div>
 </aside>
 <!-- 2026-10-29：使い方（右に立ち上がるサブ画面） -->
 <aside class="ssPanel" id="mnPanel" aria-label="使い方">
@@ -304,9 +305,24 @@ function tsPortalAsk(){
 </aside>
 
 <div id="verNotice"></div>
+<!-- 2026-11-01：いつもの入口（タスクバー・ホーム画面のアイコン）以外で開いたときの知らせ（10/31の決め「すべてのPCを固定のブラウザ・固定のアプリで使う」） -->
+<div id="iriguchiNote" style="display:none;margin:10px 0;padding:12px 14px;border:2px solid #b0402f;border-radius:10px;background:#fdecea;color:#7a1f14;line-height:1.7">
+  <b>ここは、いつもの入口ではありません。</b><br>
+  この画面を閉じて、<b>タスクバー（iPadはホーム画面）のトライタイムのアイコン</b>から開いてください。<br>
+  ここで入れた記録や合言葉は、いつもの入口とは別の場所に残り、ほかの端末とは共有されません。<br>
+  <small>この端末にまだアイコンが無いときだけ、この画面からアプリとして入れてください（Chromeの右上「︙」→「キャスト、保存、共有」→「ページをアプリとしてインストール」。iPadは共有ボタン→「ホーム画面に追加」）。</small>
+</div>
+<script>
+(function(){
+  var app = false;
+  try{ app = window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: window-controls-overlay)').matches || window.navigator.standalone === true; }catch(e){}
+  if(!app){ var n = document.getElementById('iriguchiNote'); if(n) n.style.display = ''; }
+})();
+</script>
 <div id="alertBox"></div>
 <div class="labBar" id="labBar" style="display:none">この端末はいま<b>実験機</b>です。ここで入れた記録は、この端末の中だけにあり、ほかの端末へは送られません。</div>
 <div class="note" id="shareNote"></div>
+<div class="note" id="presBar" style="display:none;background:#eef7f0;border-color:#9fd3ad"></div>
 <div class="note" id="roleNote" style="display:none"></div>
 
 <nav class="tabs" id="tabs">
@@ -392,6 +408,7 @@ function tsPortalAsk(){
       <label class="f" for="nb_title">件名</label><input type="text" id="nb_title">
       <label class="f" for="nb_body">本文</label><textarea id="nb_body"></textarea>
       <div class="btns"><button class="btn" id="nb_send">出す</button><span class="muted" id="nb_msg"></span></div>
+      <div id="nb_pn"></div>
     </details>
     <div class="btns" style="margin-top:6px"><label class="muted"><input type="checkbox" id="nb_mine"> 自分あてのものだけ表示</label></div>
     <div id="nbList"></div>
@@ -421,13 +438,47 @@ function tsPortalAsk(){
       <div><label class="f" for="pt_addr">住所（番地まで・地図と予定の振り分けに使う）</label><input type="text" id="pt_addr" placeholder="例：東村山市本町2-3-4"></div>
       <div><label class="f" for="pt_spot">訪問先の目印・駐車</label><input type="text" id="pt_spot" placeholder="例：青い屋根の2階・裏の駐車場"></div>
     </div>
+    <!-- 2026-11-01：電話番号と緊急連絡先（宏史さんの指示「利用者登録画面には電話番号や緊急連絡先も必要」。対照表の状態の欄にも電話を出す） -->
+    <details class="ptsec" id="ptsTel" open><summary>電話番号・緊急連絡先</summary>
+      <div class="row">
+        <div><label class="f" for="pt_telMobile">本人の携帯</label><input type="tel" id="pt_telMobile" placeholder="例：090-1234-5678"></div>
+        <div><label class="f" for="pt_telHome">本人の自宅</label><input type="tel" id="pt_telHome" placeholder="例：042-123-4567"></div>
+      </div>
+      <p class="f" style="margin:10px 0 2px;font-weight:700">緊急連絡先 1</p>
+      <div class="row">
+        <div><label class="f" for="pt_em1Name">氏名</label><input type="text" id="pt_em1Name"></div>
+        <div><label class="f" for="pt_em1Rel">続柄</label><input type="text" id="pt_em1Rel" placeholder="例：長女"></div>
+        <div><label class="f" for="pt_em1Tel">電話</label><input type="tel" id="pt_em1Tel" placeholder="例：090-1234-5678"></div>
+        <div><label class="f" for="pt_em1Live">同居・別居</label><select id="pt_em1Live"><option value="">選んでください</option><option>同居</option><option>別居</option></select></div>
+        <div><label class="f" for="pt_em1Main">主介護者</label><select id="pt_em1Main"><option value="">―</option><option>主介護者</option></select></div>
+      </div>
+      <div class="row"><div style="flex:1"><label class="f" for="pt_em1Addr">住所</label><input type="text" id="pt_em1Addr"></div></div>
+      <p class="f" style="margin:10px 0 2px;font-weight:700">緊急連絡先 2</p>
+      <div class="row">
+        <div><label class="f" for="pt_em2Name">氏名</label><input type="text" id="pt_em2Name"></div>
+        <div><label class="f" for="pt_em2Rel">続柄</label><input type="text" id="pt_em2Rel" placeholder="例：長女"></div>
+        <div><label class="f" for="pt_em2Tel">電話</label><input type="tel" id="pt_em2Tel" placeholder="例：090-1234-5678"></div>
+        <div><label class="f" for="pt_em2Live">同居・別居</label><select id="pt_em2Live"><option value="">選んでください</option><option>同居</option><option>別居</option></select></div>
+        <div><label class="f" for="pt_em2Main">主介護者</label><select id="pt_em2Main"><option value="">―</option><option>主介護者</option></select></div>
+      </div>
+      <div class="row"><div style="flex:1"><label class="f" for="pt_em2Addr">住所</label><input type="text" id="pt_em2Addr"></div></div>
+      <p class="f" style="margin:10px 0 2px;font-weight:700">緊急連絡先 3</p>
+      <div class="row">
+        <div><label class="f" for="pt_em3Name">氏名</label><input type="text" id="pt_em3Name"></div>
+        <div><label class="f" for="pt_em3Rel">続柄</label><input type="text" id="pt_em3Rel" placeholder="例：長女"></div>
+        <div><label class="f" for="pt_em3Tel">電話</label><input type="tel" id="pt_em3Tel" placeholder="例：090-1234-5678"></div>
+        <div><label class="f" for="pt_em3Live">同居・別居</label><select id="pt_em3Live"><option value="">選んでください</option><option>同居</option><option>別居</option></select></div>
+        <div><label class="f" for="pt_em3Main">主介護者</label><select id="pt_em3Main"><option value="">―</option><option>主介護者</option></select></div>
+      </div>
+      <div class="row"><div style="flex:1"><label class="f" for="pt_em3Addr">住所</label><input type="text" id="pt_em3Addr"></div></div>
+    </details>
     <details class="ptsec" id="ptsCare" open><summary>トライケアから読み込む（この端末のアセスメント）</summary>
       <p class="muted">この端末のトライケア（アセスメント）に入っている利用者さんの情報を、下の欄へ入れます。AIは使わず、通信もしません。氏名・ふりがな・生年月日・住所・電話番号・保険の番号・ご家族の氏名は入れません（トライタイムは契約書番号で扱うため）。すでに書いてある欄は書き換えず、空いている欄だけを埋めます。</p>
       <div class="row"><div><label class="f" for="tc_pick">トライケアの利用者さん</label><select id="tc_pick"></select></div></div>
       <div class="btns"><button class="btn sub" type="button" id="tc_go">欄に入れる</button><span class="muted" id="tc_msg"></span></div>
     </details>
     <details class="ptsec" id="ptsRead" open><summary>書類を読み込ませる（PDF・写真から欄を埋める）</summary>
-      <p class="muted">カイポケの書類や契約書のPDF、または書類の写真を選ぶと、AIが読んで欄に下書きを入れます。まず「利用者の基本情報（フェースシート）」を読ませると、氏名・ふりがな・性別・住所・地区・保険がまとめて入ります。ほかの書類からも、氏名・ふりがな・性別・住所は拾います。生年月日・電話番号・保険者番号などは入れません。入った内容を見て直し、「この内容で登録する」を押すと登録されます。読み込ませた書類そのものは、どこにも残しません（読み取りのため、AIの提供元へ送られます）。</p>
+      <p class="muted">カイポケの書類や契約書のPDF、または書類の写真を選ぶと、AIが読んで欄に下書きを入れます。まず「利用者の基本情報（フェースシート）」を読ませると、氏名・ふりがな・性別・住所・地区・保険がまとめて入ります。電話番号と緊急連絡先（氏名・続柄・電話・同居か別居か・主介護者か・住所）も拾います。ほかの書類からも、氏名・ふりがな・性別・住所・電話番号は拾います。生年月日・保険者番号などは入れません。入った内容を見て直し、「この内容で登録する」を押すと登録されます。読み込ませた書類そのものは、どこにも残しません（読み取りのため、AIの提供元へ送られます）。</p>
       <div class="row">
         <div><label class="f" for="rd_kind">書類の種類</label><select id="rd_kind"></select></div>
         <div><label class="f" for="rd_file">ファイル（PDF 1つ、または写真 5枚まで）</label><input type="file" id="rd_file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple></div>
@@ -527,7 +578,22 @@ function tsPortalAsk(){
         <div><label class="f" for="pt_by">写した人</label><select id="pt_by"></select></div>
       </div>
     </details>
+    <div id="pt_lockNote"></div>
     <div class="btns"><button class="btn" id="pt_add">この内容で登録する</button><button class="btn sub" type="button" id="pt_clear">欄を空にする</button><span class="muted" id="pt_msg"></span></div>
+    <!-- 2026-11-01：登録の後にいちいち上へスクロールしなくて済むように（宏史さんの指示） -->
+    <div class="btns"><button class="btn sub" type="button" id="pt_top">▲ 登録入力画面のトップに戻る</button></div>
+  </div>
+  <!-- 2026-11-02：カイポケの利用者一覧（CSV出力）からまとめて登録（渋谷さんの要望「カイポケに入れた一回だけで、トライタイムにも同じ情報を」・宏史さんの決定）
+       カイポケのID・パスワードは預からない。ファイルはこの端末の中だけで読み、AIにも中継にも送らない。 -->
+  <div class="card" id="cardKpi">
+    <h2>カイポケの一覧からまとめて登録</h2>
+    <p class="lead">カイポケの「利用者一覧」の画面で「CSV出力」を押して保存したファイルを選ぶと、まだここに登録されていない方だけが下に並びます。カイポケには契約書番号が無いため、並んだ方の「契約書番号」の欄に番号を入れてから「まとめて登録する」を押してください。番号を入れた方だけが登録されます。</p>
+    <p class="muted">入るのは、氏名・ふりがな・電話番号・住所・地区・保険・医療機関・主治医・指示書の期間です。生年月日と保険の番号は、同じ方かどうかの見分けに使うだけで、登録はしません。すでに登録されている方は書き換えません。ファイルはこの端末の中だけで読み、どこへも送りません。</p>
+    <div class="row"><div><label class="f" for="kpi_file">カイポケのCSVファイル</label><input type="file" id="kpi_file" accept=".csv,text/csv"></div></div>
+    <p class="muted" id="kpi_msg"></p>
+    <div class="tbl-scroll" id="kpi_list"></div>
+    <div class="btns" id="kpi_btns" style="display:none"><button class="btn" type="button" id="kpi_go">まとめて登録する</button><button class="btn sub" type="button" id="kpi_clear">やめる（一覧を消す）</button></div>
+    <div id="kpi_done"></div>
   </div>
   <div class="card" id="cardNr">
     <h2>看護記録（トライケア）の取り込み</h2>
@@ -941,6 +1007,8 @@ function tsPortalAsk(){
       <div><label class="f" for="st_sex">性別（「男性の看護師は嫌」などの要望を予定に生かすときだけ使います）</label><select id="st_sex"><option value="">入れない</option><option>男性</option><option>女性</option></select></div>
       <div><label class="f">&nbsp;</label><label><input type="checkbox" id="st_mgr"> 管理者</label></div>
       <div><label class="f" for="st_out">退職日（退職した人だけ）</label><input type="date" id="st_out"></div>
+      <div><label class="f" for="st_tel">携帯電話番号（キャンセル・予定変更の連絡先）</label><input type="tel" id="st_tel" inputmode="tel" placeholder="090-1234-5678" autocomplete="off"></div>
+      <div><label class="f" for="st_mail">メールアドレス（全職員への周知・連絡先）</label><input type="email" id="st_mail" inputmode="email" placeholder="name@example.jp" autocomplete="off"></div>
     </div>
     <div style="margin-top:8px"><label class="f">兼務する部署（所属部門のほかに横断して入る部署に印を付けます）</label><div id="st_sub" class="btns" style="margin-top:2px"></div></div>
     <div style="margin-top:8px"><label class="f">公休の曜日（毎週決まって休む曜日に印を付けます）</label><div id="st_off" class="btns" style="margin-top:2px"></div>
@@ -1009,11 +1077,12 @@ function tsPortalAsk(){
   <div class="card" id="cardDev">
     <h2>この端末と共有</h2>
     <p class="lead">事務局のパソコンと看護師さんの端末で、同じ記録を見るための設定です。この端末を主に使う人を選ぶと、その人が担当する訪問にキャンセルが入ったとき、画面の上に知らせが出ます。</p>
-    <p class="muted">共有している端末では、ここで選んだ人によって見える範囲が変わります。職員は自分の予定と稼働率、部署の管理者は自分の部署の売上・稼働率・評価シート、経営企画事務職の職員は全部署の予定、経営企画事務職の管理者は全部署の売上と予定が見えます（管理者として見るには、下の「管理者の合言葉」も入れます）。使う人を選ぶまでは、このタブだけが出ます。</p>
+    <p class="muted">使う人を選ぶまでは、このタブだけが出ます。</p>
     <div class="row">
       <div><label class="f" for="dv_me">この端末を主に使う人</label><select id="dv_me"></select></div>
       <div><label class="f">&nbsp;</label><label><input type="checkbox" id="dv_share"> 記録を共有する</label></div>
     </div>
+    <p class="muted" id="dv_hint" style="color:var(--red);display:none">この端末にはまだ職員名簿がありません。「この端末を主に使う人」は空のまま、「記録を共有する」に印を付けて「保存する」を押してください。ほかの端末から名簿が届いたら、名前を選んでもう一度「保存する」を押します。</p>
     <div class="btns"><button class="btn" id="dv_save">保存する</button><button class="btn sub" id="dv_now">今すぐ共有する</button></div>
     <p class="muted" id="dv_msg"></p>
   </div>
@@ -1104,12 +1173,15 @@ function yen(n){ return Number(n).toLocaleString('ja-JP') + '円'; }
    1件ずつ見分けるため。画面に出すときは消した印の付いた件を除く。 */
 var KEYF = { patients:'no', staff:'id', weekly:'id', events:'id', records:'id', mgmt:'id' };
 var SYNC_KEY = 'tritime_sync', DEV_KEY = 'tritime_device', ALERT_KEY = 'tritime_alerts';
+/* 2026-10-31：中継の時刻とのずれ・開いている人・利用者ごとの鍵（中身は下の「開いている人と利用者ごとの鍵」） */
+var SRV_OFF = 0, PRES = { list:[], locks:[], off:false, sig:'' }, PT_LOCK = null, PT_BASE = {}, PRES_TTL = 120000;
+function srvNow(){ return Date.now() + (+SRV_OFF || 0); }
 function raw(col){ var a = lj(K[col], []); return Array.isArray(a) ? a : []; }
 function live(col){ return raw(col).filter(function(x){ return x && !x.del; }); }
 function strip(o){ var c = {}; Object.keys(o || {}).forEach(function(k){ if(k !== 'upd' && k !== 'srv' && k !== 'del') c[k] = o[k]; }); return JSON.stringify(c); }
 function markDirty(col, id){ var s = lj(SYNC_KEY, {}); s.dirty = s.dirty || {}; (s.dirty[col] = s.dirty[col] || {})[id] = 1; sj(SYNC_KEY, s); }
 function saveCol(col, liveArr){
-  var kf = KEYF[col], now = Date.now(), old = raw(col), om = {}, seen = {}, out = [];
+  var kf = KEYF[col], now = srvNow(), old = raw(col), om = {}, seen = {}, out = [];   /* 2026-10-31：後先は中継の時刻に合わせて決める（時計のずれた端末が勝たないように） */
   old.forEach(function(o){ if(o && o[kf] != null) om[o[kf]] = o; });
   liveArr.forEach(function(it){
     var k = it[kf]; if(k == null || seen[k]) return; seen[k] = 1;
@@ -1133,7 +1205,7 @@ function settings(){
   var o = b ? Object.assign({}, s, b) : s;
   return { cut: (o.cut == null ? 17 : +o.cut), price: o.price || '', fee: o.fee || '', review: (o.review == null ? 90 : +o.review), hard: (o.hard == null ? 3 : Math.max(1, +o.hard || 3)), refRate: (o.refRate == null ? 30 : Math.max(1, Math.min(100, +o.refRate || 30))) };
 }
-function saveSettings(o){ o.upd = Date.now(); sj(K.settings, o); markDirty('settings', 'main'); scheduleSync(); fdSoon(); }
+function saveSettings(o){ o.upd = srvNow(); sj(K.settings, o); markDirty('settings', 'main'); scheduleSync(); fdSoon(); }
 /* ---- 部署（2026-10-19・宏史さんの指示）----
    部署ごとに予定と記録を分ける。訪問看護部は、これまでの画面と記録をそのまま使う。
    利用者（患者さん）の契約書番号に、部署の頭文字（kaigo: など）を付けて内部で持つ。
@@ -1172,8 +1244,9 @@ function staff(){
   a.forEach(function(x){ if(!x.sheetId) return; var c = pick[x.sheetId]; if(!c || (String(x.id).indexOf('sh-') === 0 && String(c.id).indexOf('sh-') !== 0)) pick[x.sheetId] = x; });
   var out = a.filter(function(x){ return !x.sheetId || pick[x.sheetId] === x; });
   /* 2026-10-27：基本情報シートの職員名簿の順に並べる。名簿にいない職員は後ろ（宏史さんの指摘「並びが変わってしまっている」） */
-  var ix = rosterIdx();
-  if(ix){ var big = 1e6; out = out.map(function(x, i){ return { x:x, k:(x.sheetId && ix[x.sheetId] != null) ? ix[x.sheetId] : big + i }; }).sort(function(p, q){ return p.k - q.k; }).map(function(p){ return p.x; }); }
+  /* 2026-11-02：基本情報シートの無い端末（iPad）では、共有で届いた名簿の順（ord）で並べる。これまでは届いた順のままで、端末ごとに並びがばらばらになった */
+  var ix = rosterIdx(), big = 1e6;
+  out = out.map(function(x, i){ return { x:x, k:(ix && x.sheetId && ix[x.sheetId] != null) ? ix[x.sheetId] : (typeof x.ord === 'number' ? x.ord : big + i) }; }).sort(function(p, q){ return p.k - q.k; }).map(function(p){ return p.x; });
   return out;
 }
 /* 基本情報シートの自社の職員名簿の、行の番号 → 並び順（名簿が無ければ null）。読むたびに解析し直さないよう、元の文字列で覚えておく */
@@ -1194,6 +1267,42 @@ function staffOrphan(s){ var ix = rosterIdx(); return !!(ix && s && s.sheetId &&
 function weekly(){ return live('weekly').filter(function(v){ return inDept(v.no); }); }
 function events(){ return live('events'); }
 function saveEvents(a){ saveCol('events', a); }
+/* 2026-11-02：連絡先の形をそろえる（全角→半角、携帯は 090-1234-5678 の形） */
+function telNorm(v){ var d = String(v || '').replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).replace(/[^0-9]/g, ''); if(!d) return ''; if(d.length === 11) return d.slice(0,3) + '-' + d.slice(3,7) + '-' + d.slice(7); if(d.length === 10) return d.slice(0,2) + '-' + d.slice(2,6) + '-' + d.slice(6); return d; }
+function telOk(v){ var d = String(v || '').replace(/-/g, ''); return /^0\d{9,10}$/.test(d); }
+function mailNorm(v){ return String(v || '').replace(/[！-～]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).replace(/\s+/g, ''); }
+function mailOk(v){ return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(v || '')); }
+/* ---- 携帯・メールで知らせる（2026-11-02・宏史さんの指示。まずは一押し方式＝案2）----
+   キャンセル・組み換え・連絡板の知らせを、職員名簿の携帯電話番号・メールアドレスへ届ける。
+   ボタンを押すと、この端末のメッセージ（SMS）やメールのアプリが、宛先と文面を入れた状態で開く。送信は人が押す。
+   外部の送信サービスとの契約は無い。WindowsのパソコンではSMSのアプリが開かないため、メールだけを出す。
+   キャンセル・組み換えの文面には、患者さんの氏名と理由を入れない（職員の個人の携帯・メールを通るため）。日時と契約書番号だけを入れ、中身はトライタイムで見てもらう。 */
+function pnIOS(){ var u = navigator.userAgent || ''; return /iPhone|iPad|iPod/.test(u) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+function pnWin(){ return /Windows/.test(navigator.userAgent || ''); }
+function pnSms(tels, text){ var n = tels.map(function(t){ return t.replace(/[^0-9]/g, ''); }), b = encodeURIComponent(text);
+  if(pnIOS()) return n.length === 1 ? 'sms:' + n[0] + '&body=' + b : 'sms:/open?addresses=' + n.join(',') + '&body=' + b;
+  return 'sms:' + n.join(',') + '?body=' + b; }
+function pnMail(mails, subj, text){ var q = 'subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent(text);
+  return mails.length === 1 ? 'mailto:' + mails[0] + '?' + q : 'mailto:?bcc=' + mails.join(',') + '&' + q; }
+/* items：[{ to:[職員の番号], subj:件名, text:本文, label:誰あてか }] */
+function pnHTML(items){
+  var all = staff(), h = '';
+  items.forEach(function(it){
+    var ps = (it.to || []).filter(function(x, i, a){ return x && a.indexOf(x) === i; }).map(function(id){ return all.filter(function(s){ return s.id === id; })[0]; }).filter(Boolean);
+    if(!ps.length) return;
+    var tels = ps.filter(function(x){ return x.tel; }).map(function(x){ return x.tel; }), mails = ps.filter(function(x){ return x.mail; }).map(function(x){ return x.mail; });
+    var noTel = ps.filter(function(x){ return !x.tel; }).map(function(x){ return x.name; }), noMail = ps.filter(function(x){ return !x.mail; }).map(function(x){ return x.name; });
+    h += '<div style="margin:6px 0;padding:8px 10px;border:1px solid var(--line,#ccc);border-radius:8px"><div class="sm"><b>' + esc(it.label || ps.map(function(x){ return x.name; }).join('・')) + '</b>（' + ps.length + '人）</div><div class="btns" style="margin-top:4px">' +
+      (pnWin() ? '' : (tels.length ? '<a class="btn small" style="text-decoration:none" href="' + esc(pnSms(tels, it.text)) + '">携帯へSMSを送る（' + tels.length + '人）</a>' : '')) +
+      (mails.length ? '<a class="btn small sub" style="text-decoration:none" href="' + esc(pnMail(mails, it.subj, it.text)) + '">メールで送る（' + mails.length + '人）</a>' : '') + '</div>' +
+      (pnWin() && tels.length ? '<div class="muted sm">このパソコンからはSMSを送れません。SMSはiPad・iPhoneのトライタイムから送ってください。</div>' : '') +
+      ((pnWin() ? [] : noTel).length ? '<div class="muted sm">携帯電話番号が名簿に無い人：' + esc(noTel.join('・')) + '</div>' : '') +
+      (noMail.length ? '<div class="muted sm">メールアドレスが名簿に無い人：' + esc(noMail.join('・')) + '</div>' : '') +
+      (!tels.length && !mails.length ? '<div class="muted sm">連絡先が名簿に入っていないため、携帯へは送れません。「名簿・設定」タブの「職員」の「直す」から入れてください。</div>' : '') + '</div>';
+  });
+  return h ? '<div style="margin-top:8px"><b>携帯・メールでも知らせる</b><div class="muted sm">押すと、この端末のメッセージやメールのアプリが、宛先と文面を入れた状態で開きます。送信を押すと届きます。</div>' + h + '</div>' : '';
+}
+function pnVisitText(date, time, no, what){ return '【トライタイム】' + jpDate(date) + ' ' + time + '　契約書番号 ' + dn(no) + ' の訪問が' + what + '。予定が変わっています。トライタイムで確かめて、事務所へ連絡をお願いします。'; }
 function staffName(id){ var s = raw('staff').filter(function(x){ return x.id === id; })[0]; return s ? s.name : ''; }
 function patient(no){ return patients().filter(function(p){ return p.no === no; })[0] || null; }
 /* 職員は「職種」「雇用形態」「管理者かどうか」を持つ（2026-10-12）。
@@ -1212,7 +1321,11 @@ function staffSub(s){ return Array.isArray(s.sub) ? s.sub.filter(function(x){ re
    退職日の翌日から、担当・選ぶ欄・自動の振り分けから外れる。過去の記録・名前は、そのまま残る。 */
 function staffOut(s, date){ return !!(s && s.out && s.out < (date || ymd(new Date()))); }
 function staffLive(){ return staff().filter(function(s){ return !staffOut(s); }); }
-function deptStaff(d, at){ d = d || D(); return staff().filter(function(s){ return !staffOut(s, at); }).filter(function(s){ if(staffSub(s).indexOf(d.name) >= 0) return true; if(s.dept) return deptByName(s.dept) === d; return d.jobs.indexOf(jobOf(s)) >= 0; }); }
+/* 2026-11-02：部署の職員の並び（宏史さんの決まり「常勤と非常勤、事務局の人間は下の方に」）。
+   常勤 → 非常勤 → 事務局（所属が経営企画事務職、または職種が事務局）の順。同じ組の中は名簿の順のまま。
+   これまでは名簿に入った順のままで、端末ごとに名簿が届いた順で並びが変わっていた */
+function staffRank(s){ if((s.dept && /経営企画事務/.test(s.dept)) || jobOf(s) === '事務局') return 2; return s.emp === '非常勤' ? 1 : 0; }
+function deptStaff(d, at){ d = d || D(); var a = staff().filter(function(s){ return !staffOut(s, at); }).filter(function(s){ if(staffSub(s).indexOf(d.name) >= 0) return true; if(s.dept) return deptByName(s.dept) === d; return d.jobs.indexOf(jobOf(s)) >= 0; }); return a.map(function(s, i){ return { s:s, i:i, r:staffRank(s) }; }).sort(function(x, y){ return (x.r - y.r) || (x.i - y.i); }).map(function(x){ return x.s; }); }
 
 /* ---- 共通：選択肢 ---- */
 function fillSelect(sel, items, blank){
@@ -1309,6 +1422,41 @@ function visitsOn(date){
     return { date:date, time:t, min:v.min, no:v.no, area:p.area || '', staffId:sid, withId:v.withId || '', cx:cancelOf(v.no, date, t), moved:m ? { id:m.id, from:v.time, fromStaff:v.staffId } : null };
   }).sort(function(a,b){ return a.time < b.time ? -1 : 1; });
 }
+/* 2026-11-01：予定が変わった訪問の「事務所へ連絡」（宏史さんの指示）。
+   キャンセルや組み換えで今日以降の予定が変わったら、予定表の契約書番号を赤くし、担当の職員の端末に小窓を出す。
+   小窓の「事務所へ連絡しました」で、その職員の連絡済み（type "ack"）を残す。担当の全員が連絡済みになるまで、どの端末でも赤のまま。
+   変更をした本人は、自分で変えたので連絡の対象から外す。組み換えで了承がまだのもの（consent:false）には「要連絡（了承前）」の札を付ける。 */
+function chgOf(v){
+  if(!v || v.date < ymd(new Date())) return null;
+  if(v.cx) return { key:'cx:' + v.cx.id, staff:[v.staffId, v.withId].filter(function(x, i, a){ return x && x !== v.cx.by && a.indexOf(x) === i; }), what:'キャンセル' };
+  if(v.moved){
+    var m = events().filter(function(e){ return e.id === v.moved.id; })[0] || {};
+    return { key:'mv:' + v.moved.id, staff:[v.staffId, v.moved.fromStaff, v.withId].filter(function(x, i, a){ return x && x !== m.by && a.indexOf(x) === i; }), what:'組み換え（元 ' + v.moved.from + '）', consent:m.consent !== false, moveId:v.moved.id };
+  }
+  return null;
+}
+function chgAcked(key, sid){ return events().some(function(e){ return e.type === 'ack' && e.key === key && e.staffId === sid; }); }
+function chgPending(c){ return c ? c.staff.filter(function(sid){ return !chgAcked(c.key, sid); }) : []; }
+function chgMine(){
+  var me = dev().me, out = []; if(!me) return out;
+  for(var i = 0; i < 14; i++){
+    visitsOn(ymd(addDays(new Date(), i))).forEach(function(v){ var c = chgOf(v); if(c && chgPending(c).indexOf(me) >= 0) out.push({ v:v, c:c }); });
+  }
+  return out;
+}
+function chgPopup(){
+  var box = $('chgPop'), list = chgMine();
+  if(!list.length){ if(box) box.remove(); return; }
+  if(!box){ box = document.createElement('div'); box.id = 'chgPop'; box.setAttribute('style', 'position:fixed;inset:0;z-index:9000;background:rgba(10,20,40,.45);display:flex;align-items:center;justify-content:center;padding:16px'); document.body.appendChild(box); }
+  box.innerHTML = '<div class="card" style="max-width:460px;width:100%;margin:0"><h2 style="color:var(--red)">スケジュールが変わりました</h2><p>事務所へ連絡をお願いします。</p><ul>' +
+    list.map(function(x){ return '<li>' + esc(jpDate(x.v.date)) + ' ' + esc(x.v.time) + '　<b style="color:var(--red)">' + esc(dnn(x.v.no)) + '</b>　' + esc(x.c.what) + '</li>'; }).join('') +
+    '</ul><div class="btns"><button class="btn" type="button" id="chgDone">事務所へ連絡しました</button></div></div>';
+  $('chgDone').onclick = function(){
+    var me = dev().me, ev = events(), at = nowLocal();
+    list.forEach(function(x){ ev.push({ id:uid(), type:'ack', key:x.c.key, staffId:me, at:at, date:ymd(new Date()) }); });
+    saveEvents(ev); box.remove(); renderPlan();
+  };
+}
 /* 信用度（2026-10-27 宏史さんの指示「キャンセルの多い患者は信用度が下がる」）：直近90日のキャンセルから出す。
    100から、体調・病状以外（明確な理由のないもの）1回につき10、前日の締め切りを過ぎていればさらに5、体調・病状のものは1回につき3を引く。 */
 /* キャンセル料をいただかない扱いを決められるのは、事務局（経営企画事務職）と全体の管理者だけ（2026-10-27 宏史さんの指示：看護師がキャンセル料の案内を避けて事務局に伝えないことを防ぐ） */
@@ -1349,15 +1497,23 @@ function renderPlan(){
       if(trustOf(v.no).lv === '低') tags += trustTag(v.no);
       var offw = v.cx ? '' : offWhy(v.staffId, v.date); if(offw) tags += '<span class="tag red">' + (offw === '退職' ? '要調整：担当が退職' : '要調整：担当が休み（' + esc(offw) + '）') + '</span>';
       var pp = patient(v.no) || {}, pw = pp.wish; if(pp.preCall && !v.cx) tags += '<span class="tag amber">訪問前に連絡：' + esc(pp.preCall.replace(/^要/, '')) + '</span>'; if(pw && !v.cx && Math.abs(toMin(pw) - toMin(v.time)) > 30) tags += '<span class="tag amber">本人の希望は ' + esc(pw) + '</span>';
+      var chg = chgOf(v), chgP = chgPending(chg), red = chgP.length || (chg && chg.consent === false);
+      if(chgP.length) tags += '<span class="tag red">事務所へ要連絡（' + esc(chgP.map(staffName).join('・')) + '）</span>';
+      if(chg && chg.consent === false) tags += '<span class="tag red">要連絡（了承前）</span> <button class="btn small sub" data-consent="' + esc(chg.moveId) + '">了承を得た</button>';
       var key = v.date + '|' + v.time + '|' + v.no;
       html += '<div class="visit' + (v.cx ? ' cx' : '') + '"><div class="t">' + esc(v.time) + '</div>' +
-        '<div class="who">' + esc(dnn(v.no)) + ' <small>' + esc(v.area) + '・' + esc(staffName(v.staffId)) + '</small><br>' + tags + '</div>' +
+        '<div class="who">' + (red ? '<b style="color:var(--red)">' + esc(dnn(v.no)) + '</b>' : esc(dnn(v.no))) + ' <small>' + esc(v.area) + '・' + lampFor(v.staffId) + esc(staffName(v.staffId)) + '</small><br>' + tags + '</div>' +
         '<div class="act">' + (v.cx ? '<button class="btn small amber" data-gap="' + esc(key) + '">空いた時間の案</button>' : '') + '</div></div>' +
         (v.cx ? '<div class="gap" id="gap-' + esc(key.replace(/[^0-9A-Za-z]/g,'_')) + '" style="display:none"></div>' : '');
     });
     html += '</div>';
   }
   $('planBody').innerHTML = html || '<p class="empty">この週に表示する訪問はありません。</p>';
+  $('planBody').querySelectorAll('[data-consent]').forEach(function(b){ b.addEventListener('click', function(){
+    if(!confirm('組み換えの了承を、' + D().client + 'から得ましたか。')) return;
+    var ev = events(), m = ev.filter(function(e){ return e.id === b.getAttribute('data-consent'); })[0]; if(!m) return;
+    m.consent = true; m.consentAt = nowLocal(); m.upd = Date.now(); saveEvents(ev); renderPlan();
+  }); });
   renderBoard();
   $('planBody').querySelectorAll('[data-gap]').forEach(function(b){
     b.addEventListener('click', function(){ toggleGap(b.getAttribute('data-gap')); });
@@ -1433,11 +1589,11 @@ function toggleGap(key){
       var ev = events(), src = weekly().filter(function(w){ return w.no === v.no && +w.dow === parseYmd(date).getDay() && (w.time === v.time || (v.moved && w.time === v.moved.from)); })[0];
       var fromT = v.moved ? v.moved.from : v.time;
       ev = ev.filter(function(e){ return !(e.type === 'move' && e.date === date && e.patientNo === v.no && e.fromTime === fromT); });
-      ev.push({ id:uid(), type:'move', patientNo:v.no, date:date, fromTime:fromT, toTime:time, toStaff:me, by:dev().me || '', created:nowLocal() });
+      ev.push({ id:uid(), type:'move', patientNo:v.no, date:date, fromTime:fromT, toTime:time, toStaff:me, by:dev().me || '', consent:true, created:nowLocal() });
       var to = [me, v.staffId].filter(function(x, i, a){ return x && a.indexOf(x) === i; });
       ev.push({ id:uid(), type:'note', kind:'予定の組み換え', from:dev().me || me, to:to, title:'【予定の組み換え】' + jpDate(date) + '　' + dnn(v.no) + ' を ' + v.time + ' → ' + time + '（' + staffName(me) + '）', body:'キャンセルで空いた ' + time + ' に、' + dn(v.no) + '（' + (v.area || '地区未登録') + '）の ' + v.time + ' の訪問を前倒ししました。' + (v.staffId !== me ? '担当は ' + staffName(v.staffId) + ' さんから ' + staffName(me) + ' さんに替わります。' : ''), mDate:'', mTime:'', created:nowLocal(), date:ymd(new Date()) });
       saveEvents(ev); renderPlan(); renderToday();
-      var nb = $('gap-' + key.replace(/[^0-9A-Za-z]/g,'_')); if(nb){ nb.style.display = ''; nb.innerHTML = '<div class="judge free">' + esc(dnn(v.no)) + 'の訪問を ' + esc(time) + ' に前倒ししました。担当の看護師に連絡板で知らせました。</div>'; }
+      var nb = $('gap-' + key.replace(/[^0-9A-Za-z]/g,'_')); if(nb){ nb.style.display = ''; nb.innerHTML = '<div class="judge free">' + esc(dnn(v.no)) + 'の訪問を ' + esc(time) + ' に前倒ししました。担当の看護師に連絡板で知らせました。' + pnHTML([{ to:to.filter(function(x){ return x !== dev().me; }), label:'この組み換えに関わる職員', subj:'【トライタイム】予定の変更（組み換え）', text:pnVisitText(date, v.time, v.no, time + ' に前倒し（担当 ' + staffName(me) + '）になりました') }]) + '</div>'; }
     });
   });
   box.querySelectorAll('[data-decline]').forEach(function(b){
@@ -1522,10 +1678,13 @@ function nbSend(){
   if(toSel === 'pick'){ to = []; document.querySelectorAll('#nb_pickWrap input:checked').forEach(function(c){ to.push(c.value); }); if(!to.length){ alert('宛先の人を選んでください。'); return; } }
   if(kind === '会議の案内' && !$('nb_mdate').value){ alert('会議の日を入れてください。'); return; }
   var a = events();
-  a.push({ id:uid(), type:'note', kind:kind, from:from, to:to, title:title, body:$('nb_body').value.trim(), mDate: kind === '会議の案内' ? $('nb_mdate').value : '', mTime: kind === '会議の案内' ? $('nb_mtime').value : '', created:nowLocal(), date:ymd(new Date()) });
+  var nt = { id:uid(), type:'note', kind:kind, from:from, to:to, title:title, body:$('nb_body').value.trim(), mDate: kind === '会議の案内' ? $('nb_mdate').value : '', mTime: kind === '会議の案内' ? $('nb_mtime').value : '', created:nowLocal(), date:ymd(new Date()) };
+  a.push(nt);
   saveEvents(a);
   ['nb_title','nb_body','nb_mdate','nb_mtime'].forEach(function(id){ $(id).value = ''; });
   $('nb_msg').textContent = '出しました。';
+  /* 2026-11-02：連絡板に出した知らせを、宛先の職員の携帯・メールへも届けられるようにする（全職員への周知など） */
+  var pw = $('nb_pn'); if(pw) pw.innerHTML = pnHTML([{ to:noteRecipients(nt).filter(function(x){ return x !== from; }), label:toLabel(nt), subj:'【トライタイム】' + title, text:'【トライタイム・' + kind + '】' + title + (nt.mDate ? '\n日時：' + jpDate(nt.mDate) + (nt.mTime ? ' ' + nt.mTime : '') : '') + (nt.body ? '\n' + nt.body : '') + '\n（' + staffName(from) + 'より）' }]);
   renderBoard(); renderPlan();
 }
 
@@ -1633,7 +1792,7 @@ function afterOpen(c){
     if(v){
       var fromT = v.moved ? v.moved.from : v.time;
       ev = ev.filter(function(e){ return !(e.type === 'move' && e.date === c.date && e.patientNo === v.no && e.fromTime === fromT); });
-      ev.push({ id:uid(), type:'move', patientNo:v.no, date:c.date, fromTime:fromT, toTime:c.time, toStaff:c.staffId, by:me, created:now });
+      ev.push({ id:uid(), type:'move', patientNo:v.no, date:c.date, fromTime:fromT, toTime:c.time, toStaff:c.staffId, by:me, consent:true, created:now });
       done.push('組み換え：' + dnn(v.no) + ' を ' + v.time + ' → ' + c.time + '（' + staffName(c.staffId) + '）');
     }
     saveEvents(ev); ev = events();
@@ -1655,7 +1814,10 @@ function afterOpen(c){
       done.push('事務局へ報告');
     }
     saveEvents(ev); renderPlan(); renderToday(); renderBoard();
-    box.innerHTML = '<div class="judge free" style="margin:8px 0"><b>事後処理を終えました。</b><ul style="margin:4px 0 0;padding-left:18px">' + done.map(function(t){ return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>';
+    var pn = [];
+    if($('af_toNurse').checked) pn.push({ to:[c.staffId], label:'担当の職員（' + staffName(c.staffId) + '）', subj:'【トライタイム】予定の変更（キャンセル）', text:pnVisitText(c.date, c.time, c.no, 'キャンセルになりました') + (v ? '空いた時間に別の訪問が入りました。' : '') });
+    if(v && $('af_toMoved').checked && v.staffId !== c.staffId) pn.push({ to:[v.staffId], label:'前倒しした訪問の元の担当（' + staffName(v.staffId) + '）', subj:'【トライタイム】予定の変更（組み換え）', text:pnVisitText(c.date, v.time, v.no, '組み換えになりました（別の職員が ' + c.time + ' に行きます）') });
+    box.innerHTML = '<div class="judge free" style="margin:8px 0"><b>事後処理を終えました。</b><ul style="margin:4px 0 0;padding-left:18px">' + done.map(function(t){ return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' + pnHTML(pn) + '</div>';
   };
 }
 function intakeSave(){
@@ -1980,7 +2142,7 @@ function renderAdmin(){
    何人かで手分けして写すため、書類ごとに「写した日・写した人」を残し、一覧で進み具合を出す。
    特定の職員を嫌がる申し出は、ここに書かせず「経過」の拒否の申し出（本人の言葉・見直し期限つき）へ回す。
    ============================================================ */
-var PT_F = [['pt_name','name'],['pt_kana','kana'],['pt_sex','sex'],['pt_status','status'],['pt_ins','ins'],['pt_area','area'],['pt_addr','addr'],['pt_spot','spot'],['pt_wish','wish'],['pt_wBand','wBand'],['pt_vmin','vmin'],['pt_team','team'],['pt_preCall','preCall'],['pt_ngNote','ngNote'],['pt_wOther','wOther'],
+var PT_F = [['pt_name','name'],['pt_kana','kana'],['pt_sex','sex'],['pt_telMobile','telMobile'],['pt_telHome','telHome'],['pt_em1Name','em1Name'],['pt_em1Rel','em1Rel'],['pt_em1Tel','em1Tel'],['pt_em1Live','em1Live'],['pt_em1Main','em1Main'],['pt_em1Addr','em1Addr'],['pt_em2Name','em2Name'],['pt_em2Rel','em2Rel'],['pt_em2Tel','em2Tel'],['pt_em2Live','em2Live'],['pt_em2Main','em2Main'],['pt_em2Addr','em2Addr'],['pt_em3Name','em3Name'],['pt_em3Rel','em3Rel'],['pt_em3Tel','em3Tel'],['pt_em3Live','em3Live'],['pt_em3Main','em3Main'],['pt_em3Addr','em3Addr'],['pt_status','status'],['pt_ins','ins'],['pt_area','area'],['pt_addr','addr'],['pt_spot','spot'],['pt_wish','wish'],['pt_wBand','wBand'],['pt_vmin','vmin'],['pt_team','team'],['pt_preCall','preCall'],['pt_ngNote','ngNote'],['pt_wOther','wOther'],
   ['pt_hosp','hosp'],['pt_doc','doc'],['pt_inst','instDate'],['pt_instEnd','instEnd'],['pt_instPoint','instPoint'],['pt_special','special'],['pt_specialEnd','specialEnd'],
   ['pt_asmDate','asmDate'],['pt_asmState','asmState'],['pt_asmLife','asmLife'],['pt_asmFamily','asmFamily'],['pt_asmRisk','asmRisk'],
   ['pt_goal','goal'],['pt_planMade','planMade'],['pt_freq','freq'],
@@ -2041,6 +2203,7 @@ function rdApply(kind, j){
     if(el.type === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
     if(el.type === 'month' && !/^\d{4}-\d{2}$/.test(v)) return;
     var lab = document.querySelector('label[for="pt_' + n + '"]'), name = lab ? lab.textContent.replace(/（.*$/, '') : n;
+    var em = /^em([1-3])/.exec(n); if(em) name = '緊急連絡先' + em[1] + 'の' + name;
     var cur = String(el.value || '').trim(), empty = !cur || (el.tagName === 'SELECT' && el.selectedIndex === 0 && !el.options[0].value);
     if(empty){ el.value = v; filled.push(name); var dt = el.closest('details'); if(dt) dt.open = true; }
     else if(cur !== v) diff.push(name + '（書類では「' + v.slice(0, 40) + (v.length > 40 ? '…' : '') + '」）');
@@ -2116,12 +2279,15 @@ function rdGo(){
     var r = rdApply(kind, j);
     $('rd_msg').innerHTML = (r.filled.length ? '欄を埋めました：' + esc(r.filled.join('・')) + '。中身を確かめてから登録してください。' : 'この書類から埋められる欄は見つかりませんでした。書類の種類が合っているか確かめてください。') +
       (r.diff.length ? '<br><b>すでに入っている欄は変えていません。書類と違うもの：</b>' + esc(r.diff.join('　')) : '') +
-      (j.cut ? '<br>書類が長く、途中までしか読めていない可能性があります。' : '');
+      (j.cut ? '<br>書類が長く、途中までしか読めていない可能性があります。' : '') +
+      /* 2026-11-01：氏名・住所で判読しにくい字や、ふりがなの読みと合わない字があったとき（嬉内→嶋内の読み違いを受けて） */
+      (Array.isArray(j.warn) && j.warn.length ? '<div class="judge fee" style="margin:8px 0"><b>書類と見比べてください：</b><br>' + j.warn.map(esc).join('<br>') + '</div>' : '');
     $('rd_file').value = '';
   }).catch(function(e){ $('rd_msg').textContent = '読み込ませられませんでした：' + (e.message || e); })
   .then(function(){ $('rd_go').disabled = false; });
 }
-function ptClear(){
+function ptClear(keepLock){
+  if(!keepLock) ptRelease();
   $('pt_no').value = '';
   PT_F.forEach(function(f){ var el = $(f[0]); if(el) el.value = (el.tagName === 'SELECT') ? el.options[0].value : ''; });
   ['pt_plan','pt_start','pt_pdue'].forEach(function(id){ $(id).value = ''; });
@@ -2132,7 +2298,7 @@ function ptLoad(no){
   if(!no){ $('pt_no').focus(); return; }
   var p = patient(no);
   if(!p){ $('pt_msg').textContent = 'この番号はまだ登録されていません。欄を埋めて「この内容で登録する」を押すと登録されます。'; return; }
-  ptClear(); $('pt_no').value = dn(no);
+  ptClear(true); $('pt_no').value = dn(no);
   PT_F.forEach(function(f){ var el = $(f[0]); if(el && p[f[1]] != null) el.value = p[f[1]]; });
   if(D().kind === 'monitor'){ $('pt_cyc').value = p.cyc || 1; $('pt_staff').value = p.staffId || ''; $('pt_plan').value = p.planDue || ''; $('pt_start').value = p.start || ''; }
   else $('pt_pdue').value = p.planDue || '';
@@ -2141,6 +2307,7 @@ function ptLoad(no){
   var cp = p.copied || {}; document.querySelectorAll('#pt_copied input').forEach(function(c){ c.checked = !!cp[c.value]; });
   $('pt_copiedNote').textContent = ptDocs().filter(function(x){ return cp[x[0]]; }).map(function(x){ return x[1] + '：' + jpDate(cp[x[0]].d) + (cp[x[0]].by ? '・' + staffName(cp[x[0]].by) : ''); }).join('　');
   $('pt_msg').textContent = '呼び出しました。直したら「この内容で登録する」を押してください。';
+  PT_BASE[no] = p.upd || 0; ptClaim(no);
   prRender();
   var t = document.querySelector('#tabs button[data-tab=pt]'); if(t && !t.classList.contains('on')) t.click();
   if($('cardPt').scrollIntoView) $('cardPt').scrollIntoView({ behavior:'smooth', block:'start' });
@@ -2516,7 +2683,7 @@ function sheetPush(opt){
     var r = st.sheetId ? ro.filter(function(x){ return x.id === st.sheetId; })[0] : null;
     if(st.sheetId && !r) return;   /* 名簿の側に無い行には書かない */
     if(!r){ r = { id:'R' + Date.now().toString(36) + Math.random().toString(36).slice(2,6), name:'', job:'', emp:'', mgr:false }; ro.push(r); st.sheetId = r.id; linked = true; }
-    r.name = st.name; if(jobOf(st)) r.job = jobOf(st); r.emp = empToSheet(r.emp, st.emp); r.mgr = isMgr(st); r.dept = st.dept || r.dept || ''; r.sub = staffSub(st); r.off = staffOff(st); r.holOff = !!st.holOff; r.out = st.out || '';
+    r.name = st.name; if(jobOf(st)) r.job = jobOf(st); r.emp = empToSheet(r.emp, st.emp); r.mgr = isMgr(st); r.dept = st.dept || r.dept || ''; r.sub = staffSub(st); r.off = staffOff(st); r.holOff = !!st.holOff; r.out = st.out || ''; r.tel = st.tel || ''; r.mail = st.mail || '';
   });
   o.sheet.val['職員名簿'] = ro;
   sheetRecount(o, ro);
@@ -2536,13 +2703,14 @@ function sheetPull(opt){
   if(!o){ msg.textContent = 'この端末のトライシートに、自社がまだ登録されていません。「トライシートの職員名簿を開く」から会社を入れてください。看護師さんの端末では、共有を設定すると事務局の端末から名簿が届きます。'; return; }
   if(!ro.length){ msg.textContent = 'トライシートの「' + sheetName(o) + '」に、職員名簿がまだありません。「トライシートの職員名簿を開く」から一人ずつ入れてから、もう一度押してください。'; return; }
   var tt = staff(), add = 0, upd = 0;
-  ro.forEach(function(r){
+  ro.forEach(function(r, ri){
     /* 2026-10-27：名簿にもう無い行（まとめて消した会社の行など）につながっている職員は、同じ名前なら付け替える（二重にしない） */
     var ids = {}; ro.forEach(function(y){ ids[y.id] = 1; });
     var st = tt.filter(function(x){ return x.sheetId === r.id; })[0] || tt.filter(function(x){ return (!x.sheetId || !ids[x.sheetId]) && normName(x.name) === normName(r.name); })[0];
     if(!st){ st = { id:'sh-' + r.id }; tt.push(st); add++; }
     else upd++;
     st.sheetId = r.id; st.name = String(r.name).trim();
+    if(st.ord !== ri) st.ord = ri;   /* 2026-11-02：名簿の順を職員に持たせて共有する（基本情報シートの無いiPadでも名簿の順に並べるため） */
     if(r.job){ st.job = r.job; delete st.role; }
     var e = empToTT(r.emp); if(e) st.emp = e; else if(st.emp == null) st.emp = '';
     st.mgr = !!r.mgr;
@@ -2552,6 +2720,9 @@ function sheetPull(opt){
     if(Array.isArray(r.off)) st.off = r.off.map(String);
     if(r.holOff != null) st.holOff = !!r.holOff; else if(st.holOff == null) st.holOff = (st.emp === '常勤');
     st.out = r.out || '';   /* 2026-10-29：退職日 */
+    /* 2026-11-02：携帯電話番号・メールアドレス（宏史さんの指示。キャンセル・予定変更を担当者へ、周知を全職員へ届ける連絡先）。
+       欄の無い古い名簿の行では、トライタイムに入っている値を消さない */
+    if(r.tel != null) st.tel = String(r.tel || ''); if(r.mail != null) st.mail = String(r.mail || '');
   });
   /* 2026-10-27：自動の読み込み（開いたとき・名簿が届いたとき）では、職員を外さず、基本情報シートへの書き戻しもしない。
      古い名簿を持った端末でトライタイムを開いただけで、その古い名簿が「新しく保存した版」として共有され、
@@ -2572,9 +2743,9 @@ function sheetPull(opt){
 /* ---- 名簿・設定 ---- */
 function renderSetup(){
   var st = staff();
-  $('stList').innerHTML = st.length ? '<table><tr><th>呼び名</th><th>職種</th><th>所属部門</th><th>兼務する部署</th><th>公休</th><th>雇用形態</th><th>管理者</th><th></th></tr>' + st.map(function(s){
+  $('stList').innerHTML = st.length ? '<table><tr><th>呼び名</th><th>職種</th><th>所属部門</th><th>兼務する部署</th><th>公休</th><th>雇用形態</th><th>管理者</th><th>連絡先</th><th></th></tr>' + st.map(function(s){
     var sd = staffDept(s);
-    return '<tr' + (staffOrphan(s) ? ' style="background:#fdecea"' : staffOut(s) ? ' style="opacity:.55"' : '') + '><td>' + esc(s.name) + (s.post ? ' <small class="muted">（' + esc(s.post) + '）</small>' : '') + (staffOrphan(s) ? ' <span class="tag red">名簿にいません</span>' : '') + (s.out ? ' <span class="tag gray">' + (staffOut(s) ? '退職' : '退職予定') + ' ' + esc(jpDate(s.out)) + '</span>' : '') + '</td><td>' + esc(jobOf(s) || '未設定') + '</td><td>' + esc(s.dept || (sd ? sd.name + '（職種から）' : '未設定')) + '</td><td>' + esc(staffSub(s).join('・')) + '</td><td>' + esc([1,2,3,4,5,6,0].filter(function(w){ return staffOff(s).indexOf(String(w)) >= 0; }).map(function(w){ return DOW[w]; }).join('・') + (s.holOff ? (staffOff(s).length ? '・' : '') + '祝日' : '')) + '</td><td>' + esc(s.emp || '未設定') + '</td><td>' + (isMgr(s) ? '管理者' : '') + '</td><td><button class="btn small sub" data-stedit="' + esc(s.id) + '">直す</button> <button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
+    return '<tr' + (staffOrphan(s) ? ' style="background:#fdecea"' : staffOut(s) ? ' style="opacity:.55"' : '') + '><td>' + esc(s.name) + (s.post ? ' <small class="muted">（' + esc(s.post) + '）</small>' : '') + (staffOrphan(s) ? ' <span class="tag red">名簿にいません</span>' : '') + (s.out ? ' <span class="tag gray">' + (staffOut(s) ? '退職' : '退職予定') + ' ' + esc(jpDate(s.out)) + '</span>' : '') + '</td><td>' + esc(jobOf(s) || '未設定') + '</td><td>' + esc(s.dept || (sd ? sd.name + '（職種から）' : '未設定')) + '</td><td>' + esc(staffSub(s).join('・')) + '</td><td>' + esc([1,2,3,4,5,6,0].filter(function(w){ return staffOff(s).indexOf(String(w)) >= 0; }).map(function(w){ return DOW[w]; }).join('・') + (s.holOff ? (staffOff(s).length ? '・' : '') + '祝日' : '')) + '</td><td>' + esc(s.emp || '未設定') + '</td><td>' + (isMgr(s) ? '管理者' : '') + '</td><td class="sm">' + (s.tel ? '<a href="tel:' + esc(s.tel.replace(/-/g, '')) + '">' + esc(s.tel) + '</a>' : '<span class="muted">携帯 なし</span>') + '<br>' + (s.mail ? esc(s.mail) : '<span class="muted">メール なし</span>') + '</td><td><button class="btn small sub" data-stedit="' + esc(s.id) + '">直す</button> <button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
   }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var wk = weekly().slice().sort(function(a,b){ var da = (+a.dow + 6) % 7, db = (+b.dow + 6) % 7; return da - db || (a.time < b.time ? -1 : 1); });
   $('wkList').innerHTML = wk.length ? '<table><tr><th>曜日</th><th>時刻</th><th>契約書番号</th><th>担当</th><th></th></tr>' + wk.map(function(v){
@@ -2587,7 +2758,7 @@ function renderSetup(){
   $('stList').querySelectorAll('[data-stedit]').forEach(function(b){ b.addEventListener('click', function(){
     var s = staff().filter(function(x){ return x.id === b.getAttribute('data-stedit'); })[0]; if(!s) return;
     $('st_id').value = s.id; $('st_name').value = s.name; (function(){ var sj = $('st_job'), jv = jobOf(s) || 'その他'; [].slice.call(sj.querySelectorAll('option[data-old]')).forEach(function(o){ o.remove(); }); if(![].some.call(sj.options, function(o){ return o.value === jv; })){ var op = document.createElement('option'); op.textContent = jv; op.dataset.old = '1'; sj.appendChild(op); } sj.value = jv; })(); $('st_dept').value = s.dept || ''; stSubDraw(staffSub(s)); stOffDraw(staffOff(s)); $('st_hol').checked = !!s.holOff; $('st_emp').value = s.emp || '常勤'; $('st_mgr').checked = isMgr(s);
-    $('st_out').value = s.out || ''; $('st_sex').value = s.sex || ''; $('st_add').textContent = 'この内容で直す'; $('st_cancel').style.display = ''; $('st_name').focus();
+    $('st_out').value = s.out || ''; $('st_sex').value = s.sex || ''; $('st_tel').value = s.tel || ''; $('st_mail').value = s.mail || ''; $('st_add').textContent = 'この内容で直す'; $('st_cancel').style.display = ''; $('st_name').focus();
   }); });
   $('stList').querySelectorAll('[data-stdel]').forEach(function(b){ b.addEventListener('click', function(){
     if(!confirm('この職員を名簿から外しますか？（これまでの記録は残ります。この端末のトライシートの職員名簿からも外れます）\n\n退職した人は、外さずに「直す」から退職日を入れてください。名簿に残り、退職日の翌日から担当や選ぶ欄から外れます。')) return;
@@ -3252,6 +3423,7 @@ function syncNow(){
     return openItems(Array.isArray(j.items) ? j.items : [], key0, mk0).then(function(items){ return { j:j, items:items }; });
   }).then(function(r){
     var n = mergeIncoming(r.items); if(n) fdSoon();
+    if(r.j.now) SRV_OFF = (r.j.now + 2000) - Date.now();   /* 中継は2秒前の時刻を返している */
     var s = lj(SYNC_KEY, {}); s.since = r.j.now || s.since || 0; s.last = Date.now(); s.err = ''; s.mg = mgNote; sj(SYNC_KEY, s);
     if(n) refreshAll(); else { setShareNote(); keyStatus(); }
     renderAlerts();
@@ -3259,6 +3431,321 @@ function syncNow(){
     var s = lj(SYNC_KEY, {}); s.err = e.message; sj(SYNC_KEY, s); setShareNote();
   }).then(function(){ syncing = false; });
 }
+
+/* ---- 開いている人と利用者ごとの鍵（2026-10-31・宏史さんの指示）----
+   「同一の契約番号は同時に２つ以上のPCのアクセスができないように」
+   「誰が開いているかを告知して気が付かせる」「職員名の横にアクセス中ランプ」
+   「せっかく登録したものが他人に消去されてしまう問題は最初から回避しなければならない」
+   ・開いている人：共有している端末は20秒ごとに「開いています（誰が・どの画面か）」を中継へ出す。2分で自然に消える。
+     題名の下の緑の帯と、予定の表の職員名の横の緑のランプに出す。
+   ・利用者ごとの鍵：利用者登録で契約書番号を入れた（呼び出した）端末が、その番号の鍵を取る。
+     ほかの端末が持っている間は「○○さんが開いています」と出し、「この内容で登録する」を押せなくする。閉じれば自動で開ける。
+   ・登録の前の突き合わせ：押した時点で中継の最新を取り込み、
+     ①入れている間に同じ番号が新しく登録されていたら止める（上書きしない）
+     ②呼び出した後にほかの人が直していたら止めて、違う欄を並べる
+   ・中身（誰が・どの番号か）は記録の鍵をかけてから中継へ出す。鍵の印も番号から作った指紋で、番号そのものは出さない。 */
+function presOn(){ return dev().share && !window.TT_LAB && !PRES.off; }
+function presErr(e){ if(/操作が正しく/.test((e && e.message) || '')){ PRES.off = true; PRES.list = []; PRES.locks = []; presRender(); ptLockShow(); } }
+function hhmm(ms){ var d = new Date(ms || 0); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+function lockId(no){
+  return crypto.subtle.digest('SHA-256', TE.encode('lk|' + (settings().kchk || '') + '|' + no)).then(function(b){
+    return 'p' + Array.prototype.map.call(new Uint8Array(b), function(x){ return ('0' + x.toString(16)).slice(-2); }).join('').slice(0, 40);
+  });
+}
+function presAct(){
+  var on = document.querySelector('#tabs button.on'), t = on ? on.textContent.trim() : '';
+  var no = (on && on.getAttribute('data-tab') === 'pt') ? keyNo($('pt_no').value) : '';
+  return { me:dev().me, act:t, no:no };
+}
+function presTick(){
+  if(!presOn() || !window.crypto || !crypto.subtle) return Promise.resolve();
+  return loadKey().then(function(key){
+    if(!key) return;
+    return encStr(key, JSON.stringify(presAct())).then(function(d){ return relayCall('here', { dev:zMyId(), data:d, ttl:PRES_TTL }); })
+      .then(function(){ return ptLockTry(); })
+      .then(function(){ return relayCall('presence', {}); })
+      .then(function(j){
+        var me = zMyId(), list = [], locks = [];
+        return Promise.all((j.pres || []).map(function(x){ return decStr(key, x.data).then(function(t){ var o = JSON.parse(t); o.dev = x.dev; o.at = x.at; o.self = x.dev === me; list.push(o); }, function(){}); }))
+          .then(function(){ return Promise.all((j.locks || []).map(function(x){ return decStr(key, x.data).then(function(t){ var o = JSON.parse(t); o.dev = x.dev; o.at = x.at; o.id = x.id; locks.push(o); }, function(){}); })); })
+          .then(function(){
+            list.sort(function(a, b){ return (b.self ? 1 : 0) - (a.self ? 1 : 0) || (a.at || 0) - (b.at || 0); });
+            PRES.list = list; PRES.locks = locks; presRender();
+          });
+      });
+  }).catch(presErr);
+}
+function lampFor(staffId){ return staffId && PRES.list.some(function(x){ return x.me === staffId; }) ? '<span class="lamp" title="いまトライタイムを開いています"></span>' : ''; }
+function presText(x){ return x.no ? '利用者登録で ' + dnn(x.no) + ' を開いています' : (x.act ? x.act + 'を見ています' : '開いています'); }
+function presRender(){
+  var bar = $('presBar'); if(!bar) return;
+  var list = presOn() ? PRES.list : [];
+  if(!list.length){ bar.style.display = 'none'; bar.innerHTML = ''; }
+  else {
+    bar.style.display = '';
+    bar.innerHTML = '<b>いまトライタイムを開いている人</b>　' + list.map(function(x){
+      return '<span style="white-space:nowrap"><span class="lamp"></span>' + esc(staffName(x.me) || '使う人が未設定の端末') + (x.self ? '（この端末）' : '') + ' <small class="muted">' + esc(presText(x)) + '・' + hhmm(x.at) + '</small></span>';
+    }).join('　');
+  }
+  var sig = list.map(function(x){ return x.me; }).sort().join(',');
+  if(sig !== PRES.sig){ PRES.sig = sig; try{ if($('tab-plan') && $('tab-plan').classList.contains('on')) renderPlan(); }catch(e){} }
+}
+function ptClaim(no){
+  if(!no){ ptRelease(); return; }
+  if(PT_LOCK && PT_LOCK.no === no) return;
+  ptRelease();
+  PT_LOCK = { no:no, got:null };
+  ptLockShow(); ptLockTry();
+}
+function ptRelease(){
+  var L = PT_LOCK; PT_LOCK = null;
+  if(L && L.got && L.id) relayCall('unlock', { id:L.id, dev:zMyId() }).catch(function(){});
+  ptLockShow();
+}
+function ptLockTry(){
+  var L = PT_LOCK;
+  if(!L || !presOn()) return Promise.resolve();
+  return loadKey().then(function(key){
+    if(!key) return;
+    return Promise.all([lockId(L.no), encStr(key, JSON.stringify({ me:dev().me, no:L.no }))]).then(function(r){
+      return relayCall('lock', { id:r[0], dev:zMyId(), data:r[1], ttl:PRES_TTL }).then(function(j){
+        if(PT_LOCK !== L){ if(j.got) relayCall('unlock', { id:r[0], dev:zMyId() }).catch(function(){}); return; }
+        var was = L.got; L.id = r[0]; L.got = !!j.got;
+        if(!L.got){ L.by = j.by ? j.by : null; if(L.by && L.by.data) return decStr(key, L.by.data).then(function(t){ L.byMe = JSON.parse(t).me; }, function(){}); return; }
+        if(was === false){
+          /* 待っていた端末：相手が閉じた。相手の保存を取り込んでから呼び出し直す */
+          L.freed = true;
+          return syncFresh().then(function(){ if(patient(L.no)) ptLoad(L.no); else PT_BASE[L.no] = null; });
+        }
+      });
+    });
+  }).then(ptLockShow, function(e){ presErr(e); ptLockShow(); });
+}
+function ptLockShow(){
+  var box = $('pt_lockNote'), btn = $('pt_add'); if(!box || !btn) return;
+  var L = PT_LOCK, h = '';
+  if(L && L.got === false){
+    h = '<div class="judge fee" style="margin:8px 0">この利用者（' + esc(dnn(L.no)) + '）は、いま <b>' + esc(staffName(L.byMe) || 'ほかの端末の人') + '</b> さんが' + (L.by && L.by.at ? ' ' + hhmm(L.by.at) + ' から' : '') +
+      '開いています。<br>その人が閉じるまで、この端末では登録・修正できません（閉じれば自動で開けるようになり、最新の内容を呼び出します）。</div>';
+  } else if(L && L.got && L.freed){
+    h = '<div class="judge" style="margin:8px 0;background:#eef7f0;border-color:#9fd3ad">ほかの人が閉じたので、開けるようになりました。その人が保存した最新の内容を呼び出しています。</div>';
+  } else if(dev().share && PRES.off){
+    h = '<p class="muted" style="margin:6px 0">同じ利用者をほかの人が開いていないかの確かめは、中継の更新が済むと働きます。</p>';
+  }
+  box.innerHTML = h;
+  btn.disabled = !!(L && L.got === false);
+}
+function syncFresh(){
+  /* 共有の途中なら終わるのを待ってから、もう一度取りにいく */
+  var n = 0;
+  return new Promise(function(res){ (function w(){ if(!syncing || n++ > 50) res(); else setTimeout(w, 200); })(); }).then(function(){ return syncNow(); });
+}
+function ptDiff(p){
+  var out = [];
+  PT_F.forEach(function(f){
+    var el = $(f[0]); if(!el) return;
+    var a = String(el.value || '').trim(), b = String(p[f[1]] == null ? '' : p[f[1]]).trim();
+    if(a !== b){ var lb = document.querySelector('label[for="' + f[0] + '"]'); out.push({ k:(lb ? lb.textContent : f[1]).replace(/（.*$/, ''), mine:a, theirs:b }); }
+  });
+  return out;
+}
+function ptConflict(no, p, isNewClash){
+  var d = ptDiff(p), who = staffName(p.editedBy) || 'ほかの端末の人', when = String(p.edited || '').replace('T', ' ');
+  var h = '<div class="judge fee" style="margin:8px 0"><b>' + (isNewClash ? 'この番号は、入れている間にほかの人が登録しました。上書きはしません。' : '呼び出した後に、ほかの人がこの利用者を直しました。') + '</b><br>' +
+    esc(dnn(no)) + '：' + esc(who) + ' さん（' + esc(when) + '）。違う欄は次のとおりです。' +
+    (d.length ? '<table style="margin-top:6px"><tr><th>欄</th><th>この端末で入れた内容</th><th>' + esc(who) + ' さんの内容</th></tr>' + d.map(function(x){ return '<tr><td>' + esc(x.k) + '</td><td>' + esc(x.mine || '（空）') + '</td><td>' + esc(x.theirs || '（空）') + '</td></tr>'; }).join('') + '</table>' : '<br>（欄の違いはありません）') +
+    '<div class="btns"><button type="button" class="btn" id="pc_load">' + esc(who) + ' さんの内容を呼び出す（この端末で入れた内容は消えます）</button>' +
+    (isNewClash ? '' : '<button type="button" class="btn sub" id="pc_mine">この端末の内容で直す（' + esc(who) + ' さんの内容に上書き）</button>') + '</div></div>';
+  $('pt_lockNote').innerHTML = h;
+  $('pt_msg').textContent = '';
+  $('pc_load').onclick = function(){ ptLoad(no); ptLockShow(); };
+  var m = $('pc_mine'); if(m) m.onclick = function(){ PT_BASE[no] = p.upd || 0; ptLockShow(); ptSaveSafe(); };
+}
+function ptSaveSafe(){
+  var no = keyNo($('pt_no').value);
+  if(!no || !dev().share){ ptSave(); prRender(); return; }
+  if(PT_LOCK && PT_LOCK.no === no && PT_LOCK.got === false){ ptLockShow(); return; }
+  var btn = $('pt_add'); btn.disabled = true; $('pt_msg').textContent = 'ほかの端末の最新と突き合わせています…';
+  syncFresh().then(function(){
+    btn.disabled = false; $('pt_msg').textContent = '';
+    var p = patient(no), base = Object.prototype.hasOwnProperty.call(PT_BASE, no) ? PT_BASE[no] : (p ? (p.upd || 0) : null);
+    if(lj(SYNC_KEY, {}).err){ $('pt_msg').textContent = 'ほかの端末の最新を確かめられませんでした（共有の知らせを見てください）。通信が戻ってから、もう一度押してください。'; return; }
+    if(base === null && p){ ptConflict(no, p, true); return; }
+    if(base !== null && p && (p.upd || 0) !== base){ ptConflict(no, p, false); return; }
+    ptSave(); prRender(); delete PT_BASE[no];
+  }, function(){ btn.disabled = false; $('pt_msg').textContent = 'ほかの端末の最新を確かめられませんでした。通信が戻ってから、もう一度押してください。'; });
+}
+setInterval(function(){ if(document.visibilityState === 'visible') presTick(); }, 20000);
+document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') presTick(); });
+document.addEventListener('click', function(e){ if(e.target && e.target.closest && e.target.closest('#tabs button')) setTimeout(presTick, 300); });
+window.addEventListener('pagehide', function(){
+  var L = PT_LOCK; if(!(L && L.got && L.id)) return;
+  try{ var code = tsCode(); if(!code) return;
+    fetch(GATE_URL, { method:'POST', keepalive:true, headers:{ 'Content-Type':'application/json', 'x-trisight-code':code }, body:JSON.stringify({ task:'tritime', payload:{ op:'unlock', id:L.id, dev:zMyId() } }) });
+  }catch(e){}
+});
+setTimeout(presTick, 1500);
+
+/* ---- カイポケの一覧からまとめて登録（2026-11-02・渋谷さんの要望／宏史さんの決定）----
+   カイポケの「利用者一覧」→「CSV出力」のファイル（Shift-JIS）を、この端末の中だけで読む（AIにも中継にも送らない）。
+   ・まだ登録されていない方だけを並べる。氏名またはふりがなが同じ方は登録済みとして書き換えない。
+   ・カイポケに契約書番号は無いので、番号は人が入れる。番号を入れた方だけを登録する。
+   ・生年月日と保険の番号は見分けにだけ使い、登録しない（書類の読み取りと同じ決まり）。
+   ・保険の種類は「指示区分」と「介護度」からの見立てなので、一覧で選び直せるようにする。 */
+var KPI = { rows:[], done:[] };
+var KPI_ERA = { '明治':1868, '大正':1912, '昭和':1926, '平成':1989, '令和':2019 };
+function kpiVal(v){ v = String(v == null ? '' : v).trim(); return (v === '-' || v === '－' || v === 'ー') ? '' : v; }
+function kpiHan(s){ return String(s || '').replace(/[０-９Ａ-Ｚａ-ｚ]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).replace(/[－−‐]/g, '-'); }
+function kpiSp(s){ return String(s || '').replace(/[\s　]+/g, ' ').trim(); }
+function kpiHira(s){ return String(s || '').replace(/[ァ-ヶ]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0x60); }); }
+function kpiKey(s){ return kpiHira(String(s || '')).replace(/[\s　]+/g, ''); }
+function kpiWa(s){
+  var m = /(明治|大正|昭和|平成|令和)\s*(元|\d+)\s*年\s*(\d+)\s*月\s*(\d+)\s*日/.exec(kpiHan(s)); if(!m) return '';
+  var y = KPI_ERA[m[1]] + (m[2] === '元' ? 1 : +m[2]) - 1;
+  return y + '-' + ('0' + m[3]).slice(-2) + '-' + ('0' + m[4]).slice(-2);
+}
+function kpiTel(v){
+  v = kpiHan(kpiVal(v)).replace(/\s/g, ''); var d = v.replace(/\D/g, ''); if(!d) return '';
+  if(/-/.test(v)) return v;
+  if(d.length === 11) return d.slice(0,3) + '-' + d.slice(3,7) + '-' + d.slice(7);
+  return d;   /* 10桁の固定電話は市外局番の長さが分からないので、そのまま */
+}
+function kpiKan(n){
+  var k = '〇一二三四五六七八九'; n = +n; if(!(n > 0 && n < 100)) return String(n);
+  var t = Math.floor(n / 10), u = n % 10;
+  return (t ? (t > 1 ? k[t] : '') + '十' : '') + (u ? k[u] : '');
+}
+function kpiArea(addr){
+  var a = kpiHan(addr).replace(/^(東京都|北海道|京都府|大阪府|.{2,3}県)/, '');
+  if(/[市区]/.test(a)) a = a.replace(/^.*?[市区]/, '');
+  var t = /^[^0-9一二三四五六七八九十]+/.exec(a); if(!t) return '';
+  var town = t[0].trim(), rest = a.slice(t[0].length);
+  var kc = /^([一二三四五六七八九十]+)丁目/.exec(rest); if(kc) return town + kc[1] + '丁目';
+  var c = /^(\d+)丁目/.exec(rest) || /^(\d+)-\d+-\d+/.exec(rest);
+  return c ? town + kpiKan(c[1]) + '丁目' : town;
+}
+function kpiYmd(s){ var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); return m ? m[1] + '年' + (+m[2]) + '月' + (+m[3]) + '日' : (s || ''); }
+function kpiIns(cat, care){ if(/精神/.test(cat)) return '精神科訪問看護（医療）'; return care ? '介護保険' : '医療保険'; }
+function kpiCsv(text){
+  var rows = [], row = [], f = '', q = false, i, c;
+  for(i = 0; i < text.length; i++){
+    c = text[i];
+    if(q){ if(c === '"'){ if(text[i + 1] === '"'){ f += '"'; i++; } else q = false; } else f += c; continue; }
+    if(c === '"') q = true;
+    else if(c === ','){ row.push(f); f = ''; }
+    else if(c === '\n' || c === '\r'){ if(c === '\r' && text[i + 1] === '\n') i++; row.push(f); f = ''; if(row.some(function(x){ return x !== ''; })) rows.push(row); row = []; }
+    else f += c;
+  }
+  row.push(f); if(row.some(function(x){ return x !== ''; })) rows.push(row);
+  return rows;
+}
+function kpiDecode(buf){
+  var u8 = new Uint8Array(buf);
+  try{ return new TextDecoder('utf-8', { fatal:true }).decode(u8).replace(/^﻿/, ''); }catch(e){}
+  try{ return new TextDecoder('shift_jis').decode(u8); }catch(e){ return null; }
+}
+function kpiParse(text){
+  var t = kpiCsv(text); if(!t.length) return null;
+  var h = t[0].map(function(x){ return String(x).replace(/[（(]/g, '(').replace(/[）)]/g, ')').replace(/[\s　]/g, ''); });
+  function col(name){ var i = h.indexOf(name); if(i < 0) h.forEach(function(x, j){ if(i < 0 && x.indexOf(name) === 0) i = j; }); return i; }
+  var C = { name:col('利用者名'), kana:col('利用者カナ'), birth:col('生年月日'), tel:col('電話番号'), addr:col('住所'), care:col('介護度'),
+            cat:col('指示区分'), iFrom:col('指示書期間(自)'), iTo:col('指示書期間(至)'), hosp:col('医療機関名'), doc:col('主治医名') };
+  if(C.name < 0 || C.addr < 0) return null;
+  return t.slice(1).map(function(r){
+    function g(k){ return C[k] < 0 ? '' : kpiVal(r[C[k]]); }
+    var addr = kpiSp(kpiHan(g('addr')));
+    return { name:kpiSp(g('name')), kana:kpiSp(kpiHira(g('kana'))), birth:kpiWa(g('birth')), tel:kpiTel(g('tel')), addr:addr, area:kpiArea(addr),
+             ins:kpiIns(g('cat'), g('care')), hosp:kpiSp(g('hosp')), doc:kpiSp(g('doc')), instDate:kpiWa(g('iFrom')), instEnd:kpiWa(g('iTo')) };
+  }).filter(function(x){ return x.name; });
+}
+function kpiRender(){
+  var box = $('kpi_list'), done = $('kpi_done'), cl = D().client;
+  $('kpi_btns').style.display = KPI.rows.length ? '' : 'none';
+  box.innerHTML = KPI.rows.length ? '<table><thead><tr><th>契約書番号</th><th>氏名（ふりがな）</th><th>地区（町名）</th><th>保険</th><th>住所</th><th>電話</th><th>指示書の期間</th><th>医療機関・主治医</th></tr></thead><tbody>' +
+    KPI.rows.map(function(r, i){
+      var insOpt = Array.prototype.map.call($('pt_ins').options, function(o){ return o.value ? '<option' + (o.value === r.ins ? ' selected' : '') + '>' + esc(o.value) + '</option>' : ''; }).join('');
+      return '<tr><td><input type="text" data-no-voice id="kpi_no' + i + '" value="' + esc(r.no || '') + '" placeholder="例：2026-11-看-0101" style="width:100%;min-width:9em"></td>' +
+        '<td>' + esc(r.name) + (r.kana ? '<br><span class="muted">' + esc(r.kana) + '</span>' : '') + '</td>' +
+        '<td><input type="text" data-no-voice id="kpi_area' + i + '" value="' + esc(r.area) + '" style="width:100%;min-width:7em"></td>' +
+        '<td><select id="kpi_ins' + i + '" style="min-width:13em">' + insOpt + '</select></td>' +
+        '<td>' + esc(r.addr) + '</td><td>' + esc(r.tel) + '</td>' +
+        '<td>' + (r.instDate ? esc(kpiYmd(r.instDate)) + '〜' + (r.instEnd ? esc(kpiYmd(r.instEnd)) : '') : '') + '</td>' +
+        '<td>' + esc(r.hosp) + (r.doc ? '<br><span class="muted">' + esc(r.doc) + '</span>' : '') + '</td></tr>';
+    }).join('') + '</tbody></table>' : '';
+  done.innerHTML = KPI.done.length ? '<details><summary>すでに登録されている' + esc(cl) + '（' + KPI.done.length + '人・書き換えていません）</summary><ul>' +
+    KPI.done.map(function(d){ return '<li>' + esc(d.name) + '　→　契約書番号 ' + esc(d.no) + '</li>'; }).join('') + '</ul></details>' : '';
+}
+function kpiLoad(file){
+  KPI.rows = []; KPI.done = []; kpiRender();
+  if(!file){ $('kpi_msg').textContent = ''; return; }
+  var fr = new FileReader();
+  fr.onload = function(){
+    var text = kpiDecode(fr.result), list = text == null ? null : kpiParse(text);
+    if(!list){ $('kpi_msg').textContent = 'このファイルは、カイポケの「利用者一覧」のCSVとして読めませんでした。カイポケの利用者一覧の画面で「CSV出力」を押して保存したファイルを選んでください。'; return; }
+    var byName = {}, byKana = {};
+    patients().forEach(function(p){ if(p.name) byName[kpiKey(p.name)] = p; if(p.kana) byKana[kpiKey(p.kana)] = p; });
+    list.forEach(function(r){
+      var p = byName[kpiKey(r.name)] || (r.kana ? byKana[kpiKey(r.kana)] : null);
+      if(p) KPI.done.push({ name:r.name, no:dn(p.no) }); else KPI.rows.push(r);
+    });
+    $('kpi_msg').textContent = 'カイポケの一覧 ' + list.length + '人のうち、まだ登録されていない方 ' + KPI.rows.length + '人を下に並べました。' +
+      (KPI.rows.length ? '契約書番号を入れた方だけが登録されます。地区と保険は住所・指示区分からの見立てなので、違っていれば直してください。' : '');
+    kpiRender();
+  };
+  fr.onerror = function(){ $('kpi_msg').textContent = 'ファイルを読めませんでした。もう一度選んでください。'; };
+  fr.readAsArrayBuffer(file);
+}
+function kpiGo(){
+  var pick = [], errs = [], seen = {};
+  KPI.rows.forEach(function(r, i){
+    r.no = $('kpi_no' + i).value.trim(); r.area = $('kpi_area' + i).value.trim(); r.ins = $('kpi_ins' + i).value;
+    if(!r.no) return;
+    var key = keyNo(r.no);
+    if(seen[key]) errs.push('契約書番号 ' + r.no + ' が二人に入っています（' + seen[key] + '・' + r.name + '）。');
+    else if(patient(key)) errs.push('契約書番号 ' + r.no + ' は、すでに別の方（' + (patient(key).name || '氏名なし') + '）で使われています。');
+    if(!r.area) errs.push(r.name + 'さんの地区（町名）が空です。予定を地区ごとにまとめるのに使います。');
+    seen[key] = r.name; pick.push({ r:r, key:key });
+  });
+  if(!pick.length){ $('kpi_msg').textContent = '契約書番号が入っている方がいません。登録したい方の「契約書番号」の欄に番号を入れてから押してください。'; return; }
+  if(errs.length){ $('kpi_msg').textContent = '登録していません。次を直してから、もう一度押してください：' + errs.join('　'); return; }
+  function doSave(){
+    var clash = pick.filter(function(x){ return patient(x.key); });
+    if(clash.length){ $('kpi_msg').textContent = '登録していません。ほかの端末で、同じ契約書番号がたった今登録されました：' + clash.map(function(x){ return x.r.no; }).join('・') + '。番号を確かめてください。'; return; }
+    var a = allPatients(), now = nowLocal(), by = dev().me || '', added = [];
+    pick.forEach(function(x){
+      var r = x.r, p = { no:x.key, created:now };
+      PT_F.forEach(function(f){ p[f[1]] = ''; });
+      p.name = r.name; p.kana = r.kana; p.addr = r.addr; p.area = r.area; p.ins = r.ins; p.status = '利用中';
+      if(/^0[789]0/.test(r.tel.replace(/\D/g, ''))) p.telMobile = r.tel; else p.telHome = r.tel;
+      p.hosp = r.hosp; p.doc = r.doc; p.instDate = r.instDate; p.instEnd = r.instEnd;
+      if(D().kind === 'monitor'){ p.cyc = 1; p.staffId = ''; p.planDue = ''; p.start = ''; } else p.planDue = '';
+      p.hardCats = []; p.wDays = []; p.ngDays = []; p.copied = {};
+      p.editedBy = by; p.edited = now;
+      a.push(p); added.push(x.key);
+    });
+    saveCol('patients', a);
+    KPI.rows = KPI.rows.filter(function(r){ return !r.no; });
+    pick.forEach(function(x){ KPI.done.push({ name:x.r.name, no:x.r.no }); });
+    kpiRender(); refreshAll();
+    var msg = '登録しました：' + added.length + '人（' + added.map(function(k){ return dnn(k); }).join('・') + '）。' + (KPI.rows.length ? '番号の入っていない方 ' + KPI.rows.length + '人は、まだ登録していません。' : '');
+    $('kpi_msg').textContent = msg + '　住所から地図の位置を取っています…';
+    var miss = [];
+    added.reduce(function(pr, k){ return pr.then(function(){ return geoFill(k).then(function(r){ if(r === 'miss') miss.push(dnn(k)); }, function(){ miss.push(dnn(k)); }); }); }, Promise.resolve()).then(function(){
+      $('kpi_msg').textContent = msg + (miss.length ? '　住所から地図の位置が取れなかった方：' + miss.join('・') + '（利用者登録で住所を「東村山市本町2-3-4」の形に直してください）' : '');
+      renderToday();
+    });
+  }
+  if(!dev().share){ doSave(); return; }
+  var btn = $('kpi_go'); btn.disabled = true; $('kpi_msg').textContent = 'ほかの端末の最新と突き合わせています…';
+  syncFresh().then(function(){
+    btn.disabled = false;
+    if(lj(SYNC_KEY, {}).err){ $('kpi_msg').textContent = 'ほかの端末の最新を確かめられませんでした（共有の知らせを見てください）。通信が戻ってから、もう一度押してください。'; return; }
+    doSave();
+  }, function(){ btn.disabled = false; $('kpi_msg').textContent = 'ほかの端末の最新を確かめられませんでした。通信が戻ってから、もう一度押してください。'; });
+}
+$('kpi_file').addEventListener('change', function(){ kpiLoad(this.files && this.files[0]); });
+$('kpi_go').addEventListener('click', kpiGo);
+$('kpi_clear').addEventListener('click', function(){ KPI.rows = []; KPI.done = []; $('kpi_file').value = ''; $('kpi_msg').textContent = ''; kpiRender(); });
 
 /* ---- 表から取り込む ---- */
 var IM_FIELDS = [ ['dow','曜日',true,/曜/], ['time','開始時刻',true,/時刻|開始|時間帯|時間$/], ['no','契約書番号',true,/契約|番号|利用者/], ['staff','担当',true,/担当|看護|職員/], ['min','時間（分）',false,/分|所要/], ['area','地区',false,/地区|町|地域|エリア/] ];
@@ -3452,6 +3939,8 @@ function applyDept(){
   var ssHide = (R.lv === 'staff' || R.lv === 'none'); show('ssTab', !ssHide); if(ssHide && document.body.classList.contains('ssOpen')) ssOpen(false);
   show('kpTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('kpOpen')) sideOpen('kp', false);
   if(document.body.classList.contains('kpOpen')) kpRender(); if(document.body.classList.contains('mnOpen')) mnRender();
+  /* 2026-11-01：管理者の合言葉の枠は、管理者の印が付いた人の端末と、管理者の画面が出ている端末だけに出す（職員の端末には出さない） */
+  show('cardMgrKey', !((R.lv === 'staff' || R.lv === 'office') && !R.noKey));
   roleNote(R);
 }
 
@@ -3489,13 +3978,12 @@ function roleFix(){
 }
 function roleNote(R){
   var el = $('roleNote'); if(!el) return;
-  var t = '', key = '「名簿・設定」タブの「管理者の合言葉」を入れると、管理者の画面が出ます。';
+  var t = '';
   if(R.lv === 'none' && R.unshared) t = '<b>この端末は「記録を共有する」の印が外れています。</b>合言葉の入っていた端末なので、印を外したままでは中身を出しません。「名簿・設定」タブの「この端末と共有」で印を付けて「保存する」を押してください。';
   else if(R.lv === 'none') t = '<b>この端末を使う人が、まだ選ばれていません。</b>「名簿・設定」タブの「この端末と共有」で、この端末を使う人を選んで「保存する」を押してください。選ぶまでは、このタブだけを出します。';
-  else if(R.lv === 'staff') t = '見える範囲：' + esc(R.s.name) + 'さんの予定と稼働率（' + esc(R.depts.map(function(x){ return x.name; }).join('・')) + '）。' + (R.noKey ? key : '');
-  else if(R.lv === 'dept') t = '見える範囲：' + esc(R.depts.map(function(x){ return x.name; }).join('・')) + 'の管理者（予定・売上・稼働率・評価シート・施策と目標）。';
-  else if(R.lv === 'office') t = '見える範囲：全部署の予定（売上は出しません）。' + (R.noKey ? key : '');
-  else if(!R.solo) t = R.zeus ? '見える範囲：野木画面（全部署の売上と予定のすべて）。' : '見える範囲：経営企画事務職の管理者（全部署の売上と予定）。';
+  /* 2026-11-01（宏史さんの指摘「この画面を見ている職員には、見ている画面以外に別の画面があるんだと思いますよね」）：
+     「見える範囲」の帯は出さない。管理者の印が付いた人の端末で、管理者の合言葉がまだ入っていないときだけ、入れ方を出す */
+  /* 2026-11-01（宏史さんの指摘「管理者の合言葉をいれると管理者の画面がでますは残すのですか？」）：合言葉の入れ方の帯も出さない。入れ方は「名簿・設定」の枠「管理者の合言葉」だけに置く */
   el.innerHTML = t; el.style.display = t ? '' : 'none';
 }
 function withDept(k, fn){
@@ -4084,11 +4572,13 @@ function renderAuto(){
 }
 function refreshAll(){
   mgMigrate(); applyDept();
-  setShareNote(); renderAlerts();
+  setShareNote(); renderAlerts(); setTimeout(chgPopup, 0);
   refreshSelects(); nbRefreshForm();
   fillSelect('dv_me', staff().filter(function(s){ return (!staffOrphan(s) && !staffOut(s)) || s.id === dev().me; }).map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
   if(!$('dv_me').value && dev().me) $('dv_me').value = dev().me;
   $('dv_share').checked = dev().share;
+  /* 2026-11-01：新しい端末では名簿が届く前に「主に使う人」を選べないため、先に共有を始める順番を案内する */
+  if($('dv_hint')) $('dv_hint').style.display = ($('dv_me').options.length <= 1) ? '' : 'none';
   renderSetup(); renderPlan(); renderToday(); renderAuto(); renderIntakeList(); renderCourse(); renderReport(); renderAdmin();
   renderMonitor(); renderSummary();
   ptForm(); rdKinds(); renderPtList(); nrRender(); renderReq(); keyStatus(); mkStatus(); if(!hasOwnKey()) purgeOwn(); zRender(); renderMine();
@@ -4174,7 +4664,8 @@ $('rp_copy').addEventListener('click', function(){
     .catch(function(){ $('rp_msg').textContent = '写せませんでした。上の枠の文字を選んで写してください。'; });
 });
 
-$('pt_add').addEventListener('click', function(){ ptSave(); prRender(); });
+$('pt_add').addEventListener('click', ptSaveSafe);
+$('pt_top').addEventListener('click', function(){ var c = $('pt_no'); var card = c && c.closest('.card'); (card || c).scrollIntoView({ behavior:'smooth', block:'start' }); setTimeout(function(){ try{ c.focus({ preventScroll:true }); }catch(e){} }, 400); });
 $('pr_save').addEventListener('click', prSave);
 $('pt_no').addEventListener('change', prRender);
 if(!$('pr_date').value) $('pr_date').value = ymd(new Date());
@@ -4185,7 +4676,7 @@ $('au_make').addEventListener('click', auMake);
 $('au_apply').addEventListener('click', auApply);
 $('au_undo').addEventListener('click', auUndo);
 $('pt_load').addEventListener('click', function(){ ptLoad(keyNo($('pt_no').value)); });
-$('pt_no').addEventListener('change', function(){ var no = keyNo($('pt_no').value); if(no && patient(no)) ptLoad(no); });
+$('pt_no').addEventListener('change', function(){ var no = keyNo($('pt_no').value); if(no && patient(no)) ptLoad(no); else { if(no) PT_BASE[no] = null; ptClaim(no); } });
 $('pt_clear').addEventListener('click', function(){ ptClear(); $('pt_msg').textContent = ''; });
 $('ptFilter').addEventListener('change', renderPtList);
 /* 2026-10-28：週間予定の手入力で利用者を選んだとき、開始時刻が空なら本人の希望の時刻を入れる */
@@ -4193,13 +4684,13 @@ $('wk_no').addEventListener('change', function(){ var p = patient(selNo('wk_no')
 /* ---- 番号と氏名の対照表（2026-10-28・宏史さんの指示「契約番号氏名対照表は必須」）----
    いま選んでいる部署の、契約終了も含めた全員を番号の順に並べて印刷する */
 function ptRosterPrint(){
-  var list = patients().slice().sort(function(a, b){ return dn(a.no) < dn(b.no) ? -1 : dn(a.no) > dn(b.no) ? 1 : 0; });
+  var list = patients().slice().sort(kpOrder);
   if(!list.length){ $('pt_rosterMsg').textContent = '登録されている' + D().client + 'がいません。'; return; }
   var noName = list.filter(function(p){ return !p.name; }).length;
   var css = '@page{size:A4;margin:12mm}body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;font-size:10.5pt;color:#10243b}' +
     '.hd{display:flex;align-items:center;gap:10px;border-bottom:1.5px solid #10243b;padding-bottom:6px;margin-bottom:8px}.hd img{width:30px;height:30px}.hd h1{font-size:14pt;margin:0}.hd p{margin:0;font-size:9.5pt;color:#5d6b7a}' +
     'table{width:100%;border-collapse:collapse}th,td{border:1px solid #cfc6b4;padding:3px 6px;text-align:left}th{background:#f4f1ea}tr{page-break-inside:avoid}.sm{font-size:9pt;color:#5d6b7a}.red{color:#b0402f}';
-  var rows = list.map(function(p, i){ return '<tr><td>' + (i + 1) + '</td><td>' + esc(dn(p.no)) + '</td><td>' + (p.name ? esc(p.name) : '<span class="red">未入力</span>') + '</td><td>' + esc(p.kana || '') + '</td><td>' + esc(p.sex || '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + '</td></tr>'; }).join('');
+  var rows = list.map(function(p, i){ return '<tr><td>' + (i + 1) + '</td><td>' + esc(dn(p.no)) + '</td><td>' + (p.name ? esc(p.name) : '<span class="red">未入力</span>') + '</td><td>' + esc(p.kana || '') + '</td><td>' + esc(p.sex || '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + kpTel(p) + '</td></tr>'; }).join('');
   var body = '<div class="hd"><img src="' + esc(new URL('TriSight_icon_512.png', location.href).href) + '" alt="TriSight®"><div><h1>契約書番号と氏名の対照表</h1><p>' + esc(D().name) + '　' + list.length + '名　作成日 ' + esc(jpDate(ymd(new Date()))) + '</p></div></div>' +
     '<table><tr><th>No.</th><th>契約書番号</th><th>氏名</th><th>ふりがな</th><th>性別</th><th>地区</th><th>状態</th></tr>' + rows + '</table>' +
     '<p class="sm">個人情報を含む書類です。事業所の外へ持ち出さず、使い終えたら決められた場所に保管してください。</p>';
@@ -4225,12 +4716,15 @@ function stSubDraw(cur){
 function stSubVal(){ var main = $('st_dept').value; return [].slice.call($('st_sub').querySelectorAll('[data-stsub]:checked')).map(function(c){ return c.getAttribute('data-stsub'); }).filter(function(x){ return x !== main; }); }
 $('st_dept').addEventListener('change', function(){ stSubDraw(stSubVal()); });
 stSubDraw([]);
-function stFormReset(){ $('st_id').value = ''; $('st_name').value = ''; $('st_sex').value = ''; $('st_mgr').checked = false; $('st_out').value = ''; stSubDraw([]); if($('st_off')) stOffDraw([]); if($('st_hol')) $('st_hol').checked = $('st_emp').value === '常勤'; $('st_add').textContent = '追加する'; $('st_cancel').style.display = 'none'; }
+function stFormReset(){ $('st_id').value = ''; $('st_name').value = ''; $('st_sex').value = ''; $('st_mgr').checked = false; $('st_out').value = ''; $('st_tel').value = ''; $('st_mail').value = ''; stSubDraw([]); if($('st_off')) stOffDraw([]); if($('st_hol')) $('st_hol').checked = $('st_emp').value === '常勤'; $('st_add').textContent = '追加する'; $('st_cancel').style.display = 'none'; }
 $('st_cancel').addEventListener('click', stFormReset);
 $('st_add').addEventListener('click', function(){
   var n = $('st_name').value.trim(); if(!n){ $('st_name').focus(); return; }
+  var tel = telNorm($('st_tel').value), mail = mailNorm($('st_mail').value);
+  if(tel && !telOk(tel)){ alert('携帯電話番号の桁が合いません。090-1234-5678 のように、10桁か11桁の番号を入れてください。'); $('st_tel').focus(); return; }
+  if(mail && !mailOk(mail)){ alert('メールアドレスの形が合いません。name@example.jp のように、＠の入った形で入れてください。'); $('st_mail').focus(); return; }
   var a = staff(), id = $('st_id').value;
-  var rec = { name:n, job:$('st_job').value, dept:$('st_dept').value, sub:stSubVal(), off:stOffVal(), holOff:$('st_hol').checked, emp:$('st_emp').value, mgr:$('st_mgr').checked, out:$('st_out').value || '', sex:$('st_sex').value };
+  var rec = { name:n, job:$('st_job').value, dept:$('st_dept').value, sub:stSubVal(), off:stOffVal(), holOff:$('st_hol').checked, emp:$('st_emp').value, mgr:$('st_mgr').checked, out:$('st_out').value || '', sex:$('st_sex').value, tel:tel, mail:mail };
   var cur = id ? a.filter(function(x){ return x.id === id; })[0] : null;
   var sid = cur ? cur.id : uid();
   if(cur){ delete cur.role; Object.assign(cur, rec); } else { a.push(Object.assign({ id:sid }, rec)); }
@@ -5305,14 +5799,28 @@ function sideOpen(k, on){
   document.body.classList.toggle(k + 'Open', !!on);
   if(on){ if(k === 'kp'){ kpRender(); try{ $('kpFind').focus(); }catch(e){} } else mnRender(); }
 }
+/* 2026-11-01：対照表は、ふりがなのあいうえお順（宏史さんの指示）。ふりがなが未入力の人は末尾に、契約書番号の順で並べる */
+function kpKana(p){ return String(p.kana || '').replace(/[\u30a1-\u30f6]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0x60); }).replace(/[\s　]/g, ''); }
+function kpOrder(a, b){
+  var x = kpKana(a), y = kpKana(b);
+  if(x && y && x !== y) return x.localeCompare(y, 'ja');
+  if(x && !y) return -1; if(!x && y) return 1;
+  return dn(a.no) < dn(b.no) ? -1 : dn(a.no) > dn(b.no) ? 1 : 0;
+}
+/* 2026-11-01：対照表の状態の欄に、本人の電話（携帯を先、無ければ自宅）を出す。画面では押せばその番号へかけられる */
+function kpTel(p){
+  var t = String(p.telMobile || p.telHome || '').trim(); if(!t) return '';
+  var d = t.replace(/[^0-9+]/g, '');
+  return '<br><small>☎ ' + (d ? '<a href="tel:' + esc(d) + '">' + esc(t) + '</a>' : esc(t)) + '</small>';
+}
 function kpRender(){
   var q = String($('kpFind').value || '').trim().toLowerCase();
-  var list = patients().slice().sort(function(a, b){ return dn(a.no) < dn(b.no) ? -1 : dn(a.no) > dn(b.no) ? 1 : 0; });
-  var hit = list.filter(function(p){ return !q || [dn(p.no), p.name, p.kana, p.area].some(function(x){ return String(x || '').toLowerCase().indexOf(q) >= 0; }); });
+  var list = patients().slice().sort(kpOrder);
+  var hit = list.filter(function(p){ return !q || [dn(p.no), p.name, p.kana, p.area, p.telMobile, p.telHome].some(function(x){ return String(x || '').toLowerCase().indexOf(q) >= 0; }); });
   if(!list.length){ $('kpBody').innerHTML = '<p class="empty">まだ' + esc(D().client) + 'が登録されていません。「利用者登録」で入れると、ここに並びます。</p>'; return; }
   if(!hit.length){ $('kpBody').innerHTML = '<p class="empty">「' + esc(q) + '」に当たる人はいません。</p>'; return; }
   $('kpBody').innerHTML = '<table class="kpT"><tr><th>契約書番号</th><th>氏名</th><th>地区</th><th>状態</th></tr>' + hit.map(function(p){
-    return '<tr><td>' + esc(dn(p.no)) + '</td><td>' + (p.name ? '<b>' + esc(p.name) + '</b>' : '<span style="color:var(--red)">氏名が未入力</span>') + (p.kana || p.sex ? '<br><small>' + esc([p.kana, p.sex].filter(Boolean).join('・')) + '</small>' : '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + '</td></tr>';
+    return '<tr><td>' + esc(dn(p.no)) + '</td><td>' + (p.name ? '<b>' + esc(p.name) + '</b>' : '<span style="color:var(--red)">氏名が未入力</span>') + (p.kana || p.sex ? '<br><small>' + esc([p.kana, p.sex].filter(Boolean).join('・')) + '</small>' : '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + kpTel(p) + '</td></tr>';
   }).join('') + '</table><p class="muted">' + hit.length + '人' + (q ? '（全 ' + list.length + '人のうち）' : '') + '</p>';
 }
 /* 印の意味（印が付く決まりを、画面の作りに合わせて書いたもの） */
@@ -5540,11 +6048,38 @@ window.ttScopeRefresh = function(){ nrRender(); tcRender(); var pv = document.qu
 fdRestore();
 syncNow();
 
-fetch('version.json', { cache:'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
-  if(j && j.tritime && j.tritime !== $('verLabel').textContent){
-    $('verNotice').innerHTML = '<div class="note">新しい版が公開されています（' + esc(j.tritime) + '）。画面を開き直すと切り替わります。</div>';
-  }
-}).catch(function(){});
+/* 2026-11-02：開いたままでも最新の版に切り替えられるボタン（宏史さんの指示「開いていても更新出来るように更新ボタンをつけてください」）。
+   iPadのホーム画面のアプリは、閉じずに裏へ回して戻ると開き直したことにならず、古い版のまま残ることがあるため。
+   押すと、入力途中の内容が消えることを確かめてから、控え（キャッシュ）を使わずに取り直して開き直す */
+function ttReload(){
+  if(!confirm('最新の版に更新します。入力途中で保存していない内容は消えます。よろしいですか。')) return;
+  var go = function(){ location.replace(location.pathname + '?v=' + Date.now()); };
+  try{
+    if(navigator.serviceWorker && navigator.serviceWorker.getRegistrations){
+      navigator.serviceWorker.getRegistrations().then(function(rs){ return Promise.all(rs.map(function(r){ return r.update().catch(function(){}); })); }).then(go, go);
+      return;
+    }
+  }catch(e){}
+  go();
+}
+$('verReload').addEventListener('click', ttReload);
+/* 2026-11-02：新しい版の確かめは、開いたときの1回だけでは足りない。
+   iPadのホーム画面のアプリは開き直さずに使い続けられるため、2026-10-31-09 のまま新しい版が出ても知らせが一度も出なかった
+   （開いたときにしか確かめに行かない作りだったため）。画面に戻ったとき・5分ごとにも確かめ、新しい版があれば帯を出す */
+var verShown = '';
+function verCheck(){
+  fetch('version.json?t=' + Date.now(), { cache:'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
+    if(j && j.tritime && j.tritime !== $('verLabel').textContent && j.tritime !== verShown){
+      verShown = j.tritime;
+      $('verNotice').innerHTML = '<div class="note">新しい版が公開されています（' + esc(j.tritime) + '）。<button type="button" class="btn" id="verNoticeGo" style="margin-left:8px">最新の版に更新</button></div>';
+      $('verNoticeGo').addEventListener('click', ttReload);
+    }
+  }).catch(function(){});
+}
+verCheck();
+setInterval(function(){ if(document.visibilityState === 'visible') verCheck(); }, 300000);
+document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') verCheck(); });
+window.addEventListener('pageshow', function(e){ if(e.persisted) verCheck(); });
 
 })();
 </script>

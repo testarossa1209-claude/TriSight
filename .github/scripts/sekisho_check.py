@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
 """トライサイト 関所の点検（2026-10-15 作成／同日 改め）
 二の関所＝機械の点検：版番号・戻るボタン・同じ中身のファイル・画面の書き込みの文法
+  2026-11-02 足した（宏史さんの指摘「結局、私の盲判の作業だけ」）：
+  5 動かす試験：.github/tests/test_*.py を全部、試し用のブラウザで実際に動かす。1つでも落ちたら止める
+  6 試験の無い画面の変更は止める：この申請で変えた画面（*.html）に、test_画面名_*.py が1つも無ければ止める
 三の関所＝宏史さんの確認：申請の本文の印3つ（一行はやめた）
+  2026-11-02 足した：「画面の写し」（なぎさが動かして撮った写し）の欄。写しが無い申請は、印がそろっても通さない。
+  同日、人が実機で試す欄（公開前・公開後とも）と毎朝の知らせはやめた（宏史さんの判断）
 止まった理由は、申請の画面の点検一覧に「関所の理由（…）」として出す。
 2026-10-19 改め（宏史さんの指示）：知らせ（申請への書き込み＝宏史さんのGmailに届く）を逆にした。
   ・通ったときは知らせない（点検一覧の「関所の理由（…）：すべて通りました」で分かる）
@@ -116,33 +121,87 @@ def machine_ng():
             ng.append('%s に文法の誤りがあります：%s' % (f, (r.stderr.strip().splitlines() or [''])[-1]))
     return ng
 
+TESTS = '.github/tests'
+
+def run_tests():
+    """5 動かす試験。落ちた試験の名前と理由を返す"""
+    ng = []
+    for f in sorted(glob.glob(os.path.join(TESTS, 'test_*.py'))):
+        try:
+            r = subprocess.run([sys.executable, f], capture_output=True, text=True, timeout=300)
+        except subprocess.TimeoutExpired:
+            ng.append('動かす試験 %s が時間内に終わりませんでした' % os.path.basename(f)); continue
+        out = (r.stdout.strip().splitlines() or [''])[-1]
+        if r.returncode:
+            why = out if out.startswith('NG') else ((r.stderr.strip().splitlines() or ['理由不明'])[-1])
+            ng.append('動かす試験 %s が落ちました：%s' % (os.path.basename(f), why.replace('NG：', '')))
+    return ng
+
+def changed_screens():
+    """この申請で変えた画面（*.html）の名前。申請の番号が分からないときは空"""
+    n = os.environ.get('PR_NUMBER')
+    if not n:
+        return []
+    out, page = [], 1
+    while True:
+        fs = gh('GET', '/pulls/%s/files?per_page=100&page=%d' % (n, page)) or []
+        out += [f['filename'] for f in fs if f.get('status') != 'removed' and re.match(r'^[^/]+\.html$', f.get('filename', ''))]
+        if len(fs) < 100: break
+        page += 1
+    return out
+
+def need_tests():
+    """6 試験の無い画面の変更は止める"""
+    ng = []
+    for f in changed_screens():
+        stem = f[:-5]
+        if not glob.glob(os.path.join(TESTS, 'test_%s_*.py' % stem)):
+            ng.append('%s を変えていますが、動かす試験（.github/tests/test_%s_*.py）がありません。なぎさが試験を書いてから申請してください' % (f, stem))
+    return ng
+
 def machine():
-    ng = machine_ng()
+    ng = machine_ng() + need_tests() + run_tests()
     if ng: fail(ng, '機械の点検')
     show_reason('機械の点検', [])
-    print('OK：機械の点検はすべて通りました（版番号・戻るボタン・同じ中身のファイル・文法）')
+    ts = [os.path.basename(f) for f in sorted(glob.glob(os.path.join(TESTS, 'test_*.py')))]
+    print('OK：機械の点検はすべて通りました（版番号・戻るボタン・同じ中身のファイル・文法・動かす試験 %d本：%s）' % (len(ts), '、'.join(ts) or 'なし'))
 
-def approval():
-    body = os.environ.get('PR_BODY', '') or ''
-    actor = os.environ.get('ACTOR', '')
-    owner = os.environ.get('OWNER', '')
-    ng = []
-    waiting = []   # 印がまだ付いていないだけ＝宏史さんの確認待ち。止まったのではないので知らせない
+def section(body_nc, name):
+    """申請の本文から、見出しに name を含む欄の中身を取り出す（無ければ None）"""
+    mm = re.search(r'##[^\n]*' + name + r'[^\n]*\n(.*?)(?=\n##|\Z)', body_nc, re.S)
+    return mm.group(1) if mm else None
+
+def judge_body(body, screens):
+    """申請の本文を読んで、止める理由（ng）と確認待ち（waiting）を返す。
+    2026-11-02 改め（宏史さんの判断「試し版は本当に必要なの？」）：Merge前に人が実機で試す欄（公開前に試すこと・実機で試すこと）と試し版はやめた。
+    画面を動かして確かめるのは機械の点検（動かす試験と画面の写し）が受け持つ。公開後の欄と毎朝の知らせもやめた"""
+    ng, waiting = [], []
     body_nc = re.sub(r'<!--.*?-->', '', body, flags=re.S)
     if re.search(r'^\s*- \[ \]', body_nc, re.M):
         waiting.append('宏史さんの確認の印に、まだ付いていないものがあります')
     if len(re.findall(r'^\s*- \[[xX]\]', body_nc, re.M)) < 3:
         waiting.append('宏史さんの確認の印が3つそろっていません')
-    for sec in ('何を直したか', 'どの画面のどこが変わるか', '何を確かめたか', '確かめていないこと'):
-        mm = re.search(r'##[^\n]*' + sec + r'[^\n]*\n(.*?)(?=\n##|\Z)', body_nc, re.S)
-        if not mm or not mm.group(1).strip():
+    for sec in ('何を直したか', 'どの画面のどこが変わるか', '何を確かめたか', '確かめていないこと', '画面の写し'):
+        t = section(body_nc, sec)
+        if t is None or not t.strip():
             ng.append('なぎさの欄「%s」が空です' % sec)
+    # 2026-11-02：画面の写しは、なぎさが実際に動かして撮ったもの（写し専用の枝 sekisho-shots に置いた画像）か、「無し」とその理由
+    t = section(body_nc, '画面の写し')
+    if t and t.strip() and 'sekisho-shots/' not in t and not t.strip().startswith('無し'):
+        ng.append('「画面の写し」に、動かして撮った写し（sekisho-shots の画像）がありません。画面を変えない申請なら「無し」とその理由を書いてください')
+    return ng, waiting
+
+def approval():
+    body = os.environ.get('PR_BODY', '') or ''
+    actor = os.environ.get('ACTOR', '')
+    owner = os.environ.get('OWNER', '')
+    ng, waiting = judge_body(body, changed_screens())   # waiting＝確認待ち。止まったのではないので知らせない
     if owner and actor and actor.lower() != owner.lower():
         ng.append('この点検を最後に動かしたのが宏史さん（%s）ではなく「%s」です。宏史さんが「三」の印を1つ外して付け直すと、もう一度点検されます' % (owner, actor))
     if ng: fail(ng + waiting, '宏史さんの確認')
     if waiting: fail(waiting, '宏史さんの確認', notify=False)
     # 三が通っても、二（機械の点検）が通っていなければ通さない（知らせは機械の点検の側で出るので、ここでは出さない）
-    mng = machine_ng()
+    mng = machine_ng() + need_tests()
     if mng: fail(['機械の点検が通っていません：' + mng[0]], '宏史さんの確認', notify=False)
     show_reason('宏史さんの確認', [])
     print('OK：宏史さんの確認がそろいました')

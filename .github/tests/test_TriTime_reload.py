@@ -49,6 +49,7 @@ async def test(p):
         await pg.evaluate("document.dispatchEvent(new Event('visibilitychange'))"); await pg.wait_for_timeout(1500)
         txt = await pg.inner_text('#verNotice')
         assert '2099-01-01-01' in txt and await pg.query_selector('#verNoticeGo'), '開いたあとに出た新しい版を、画面に戻ったときに知らせていません：' + txt
+        await s.shot('#verNotice', 'TriTime_vercheck_notice.png')
         assert not s.errs, '画面の中で誤りが出ました：' + s.errs[0]
     finally:
         await s.close()

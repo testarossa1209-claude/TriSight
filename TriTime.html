@@ -274,7 +274,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-02-01</span></div>
+<div class="verline">版 <span id="verLabel">2026-11-02-02</span></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -582,6 +582,18 @@ function tsPortalAsk(){
     <div class="btns"><button class="btn" id="pt_add">この内容で登録する</button><button class="btn sub" type="button" id="pt_clear">欄を空にする</button><span class="muted" id="pt_msg"></span></div>
     <!-- 2026-11-01：登録の後にいちいち上へスクロールしなくて済むように（宏史さんの指示） -->
     <div class="btns"><button class="btn sub" type="button" id="pt_top">▲ 登録入力画面のトップに戻る</button></div>
+  </div>
+  <!-- 2026-11-02：カイポケの利用者一覧（CSV出力）からまとめて登録（渋谷さんの要望「カイポケに入れた一回だけで、トライタイムにも同じ情報を」・宏史さんの決定）
+       カイポケのID・パスワードは預からない。ファイルはこの端末の中だけで読み、AIにも中継にも送らない。 -->
+  <div class="card" id="cardKpi">
+    <h2>カイポケの一覧からまとめて登録</h2>
+    <p class="lead">カイポケの「利用者一覧」の画面で「CSV出力」を押して保存したファイルを選ぶと、まだここに登録されていない方だけが下に並びます。カイポケには契約書番号が無いため、並んだ方の「契約書番号」の欄に番号を入れてから「まとめて登録する」を押してください。番号を入れた方だけが登録されます。</p>
+    <p class="muted">入るのは、氏名・ふりがな・電話番号・住所・地区・保険・医療機関・主治医・指示書の期間です。生年月日と保険の番号は、同じ方かどうかの見分けに使うだけで、登録はしません。すでに登録されている方は書き換えません。ファイルはこの端末の中だけで読み、どこへも送りません。</p>
+    <div class="row"><div><label class="f" for="kpi_file">カイポケのCSVファイル</label><input type="file" id="kpi_file" accept=".csv,text/csv"></div></div>
+    <p class="muted" id="kpi_msg"></p>
+    <div class="tbl-scroll" id="kpi_list"></div>
+    <div class="btns" id="kpi_btns" style="display:none"><button class="btn" type="button" id="kpi_go">まとめて登録する</button><button class="btn sub" type="button" id="kpi_clear">やめる（一覧を消す）</button></div>
+    <div id="kpi_done"></div>
   </div>
   <div class="card" id="cardNr">
     <h2>看護記録（トライケア）の取り込み</h2>
@@ -3567,6 +3579,167 @@ window.addEventListener('pagehide', function(){
   }catch(e){}
 });
 setTimeout(presTick, 1500);
+
+/* ---- カイポケの一覧からまとめて登録（2026-11-02・渋谷さんの要望／宏史さんの決定）----
+   カイポケの「利用者一覧」→「CSV出力」のファイル（Shift-JIS）を、この端末の中だけで読む（AIにも中継にも送らない）。
+   ・まだ登録されていない方だけを並べる。氏名またはふりがなが同じ方は登録済みとして書き換えない。
+   ・カイポケに契約書番号は無いので、番号は人が入れる。番号を入れた方だけを登録する。
+   ・生年月日と保険の番号は見分けにだけ使い、登録しない（書類の読み取りと同じ決まり）。
+   ・保険の種類は「指示区分」と「介護度」からの見立てなので、一覧で選び直せるようにする。 */
+var KPI = { rows:[], done:[] };
+var KPI_ERA = { '明治':1868, '大正':1912, '昭和':1926, '平成':1989, '令和':2019 };
+function kpiVal(v){ v = String(v == null ? '' : v).trim(); return (v === '-' || v === '－' || v === 'ー') ? '' : v; }
+function kpiHan(s){ return String(s || '').replace(/[０-９Ａ-Ｚａ-ｚ]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).replace(/[－−‐]/g, '-'); }
+function kpiSp(s){ return String(s || '').replace(/[\s　]+/g, ' ').trim(); }
+function kpiHira(s){ return String(s || '').replace(/[ァ-ヶ]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0x60); }); }
+function kpiKey(s){ return kpiHira(String(s || '')).replace(/[\s　]+/g, ''); }
+function kpiWa(s){
+  var m = /(明治|大正|昭和|平成|令和)\s*(元|\d+)\s*年\s*(\d+)\s*月\s*(\d+)\s*日/.exec(kpiHan(s)); if(!m) return '';
+  var y = KPI_ERA[m[1]] + (m[2] === '元' ? 1 : +m[2]) - 1;
+  return y + '-' + ('0' + m[3]).slice(-2) + '-' + ('0' + m[4]).slice(-2);
+}
+function kpiTel(v){
+  v = kpiHan(kpiVal(v)).replace(/\s/g, ''); var d = v.replace(/\D/g, ''); if(!d) return '';
+  if(/-/.test(v)) return v;
+  if(d.length === 11) return d.slice(0,3) + '-' + d.slice(3,7) + '-' + d.slice(7);
+  return d;   /* 10桁の固定電話は市外局番の長さが分からないので、そのまま */
+}
+function kpiKan(n){
+  var k = '〇一二三四五六七八九'; n = +n; if(!(n > 0 && n < 100)) return String(n);
+  var t = Math.floor(n / 10), u = n % 10;
+  return (t ? (t > 1 ? k[t] : '') + '十' : '') + (u ? k[u] : '');
+}
+function kpiArea(addr){
+  var a = kpiHan(addr).replace(/^(東京都|北海道|京都府|大阪府|.{2,3}県)/, '');
+  if(/[市区]/.test(a)) a = a.replace(/^.*?[市区]/, '');
+  var t = /^[^0-9一二三四五六七八九十]+/.exec(a); if(!t) return '';
+  var town = t[0].trim(), rest = a.slice(t[0].length);
+  var kc = /^([一二三四五六七八九十]+)丁目/.exec(rest); if(kc) return town + kc[1] + '丁目';
+  var c = /^(\d+)丁目/.exec(rest) || /^(\d+)-\d+-\d+/.exec(rest);
+  return c ? town + kpiKan(c[1]) + '丁目' : town;
+}
+function kpiYmd(s){ var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); return m ? m[1] + '年' + (+m[2]) + '月' + (+m[3]) + '日' : (s || ''); }
+function kpiIns(cat, care){ if(/精神/.test(cat)) return '精神科訪問看護（医療）'; return care ? '介護保険' : '医療保険'; }
+function kpiCsv(text){
+  var rows = [], row = [], f = '', q = false, i, c;
+  for(i = 0; i < text.length; i++){
+    c = text[i];
+    if(q){ if(c === '"'){ if(text[i + 1] === '"'){ f += '"'; i++; } else q = false; } else f += c; continue; }
+    if(c === '"') q = true;
+    else if(c === ','){ row.push(f); f = ''; }
+    else if(c === '\n' || c === '\r'){ if(c === '\r' && text[i + 1] === '\n') i++; row.push(f); f = ''; if(row.some(function(x){ return x !== ''; })) rows.push(row); row = []; }
+    else f += c;
+  }
+  row.push(f); if(row.some(function(x){ return x !== ''; })) rows.push(row);
+  return rows;
+}
+function kpiDecode(buf){
+  var u8 = new Uint8Array(buf);
+  try{ return new TextDecoder('utf-8', { fatal:true }).decode(u8).replace(/^﻿/, ''); }catch(e){}
+  try{ return new TextDecoder('shift_jis').decode(u8); }catch(e){ return null; }
+}
+function kpiParse(text){
+  var t = kpiCsv(text); if(!t.length) return null;
+  var h = t[0].map(function(x){ return String(x).replace(/[（(]/g, '(').replace(/[）)]/g, ')').replace(/[\s　]/g, ''); });
+  function col(name){ var i = h.indexOf(name); if(i < 0) h.forEach(function(x, j){ if(i < 0 && x.indexOf(name) === 0) i = j; }); return i; }
+  var C = { name:col('利用者名'), kana:col('利用者カナ'), birth:col('生年月日'), tel:col('電話番号'), addr:col('住所'), care:col('介護度'),
+            cat:col('指示区分'), iFrom:col('指示書期間(自)'), iTo:col('指示書期間(至)'), hosp:col('医療機関名'), doc:col('主治医名') };
+  if(C.name < 0 || C.addr < 0) return null;
+  return t.slice(1).map(function(r){
+    function g(k){ return C[k] < 0 ? '' : kpiVal(r[C[k]]); }
+    var addr = kpiSp(kpiHan(g('addr')));
+    return { name:kpiSp(g('name')), kana:kpiSp(kpiHira(g('kana'))), birth:kpiWa(g('birth')), tel:kpiTel(g('tel')), addr:addr, area:kpiArea(addr),
+             ins:kpiIns(g('cat'), g('care')), hosp:kpiSp(g('hosp')), doc:kpiSp(g('doc')), instDate:kpiWa(g('iFrom')), instEnd:kpiWa(g('iTo')) };
+  }).filter(function(x){ return x.name; });
+}
+function kpiRender(){
+  var box = $('kpi_list'), done = $('kpi_done'), cl = D().client;
+  $('kpi_btns').style.display = KPI.rows.length ? '' : 'none';
+  box.innerHTML = KPI.rows.length ? '<table><thead><tr><th>契約書番号</th><th>氏名（ふりがな）</th><th>地区（町名）</th><th>保険</th><th>住所</th><th>電話</th><th>指示書の期間</th><th>医療機関・主治医</th></tr></thead><tbody>' +
+    KPI.rows.map(function(r, i){
+      var insOpt = Array.prototype.map.call($('pt_ins').options, function(o){ return o.value ? '<option' + (o.value === r.ins ? ' selected' : '') + '>' + esc(o.value) + '</option>' : ''; }).join('');
+      return '<tr><td><input type="text" data-no-voice id="kpi_no' + i + '" value="' + esc(r.no || '') + '" placeholder="例：2026-11-看-0101" style="width:100%;min-width:9em"></td>' +
+        '<td>' + esc(r.name) + (r.kana ? '<br><span class="muted">' + esc(r.kana) + '</span>' : '') + '</td>' +
+        '<td><input type="text" data-no-voice id="kpi_area' + i + '" value="' + esc(r.area) + '" style="width:100%;min-width:7em"></td>' +
+        '<td><select id="kpi_ins' + i + '" style="min-width:13em">' + insOpt + '</select></td>' +
+        '<td>' + esc(r.addr) + '</td><td>' + esc(r.tel) + '</td>' +
+        '<td>' + (r.instDate ? esc(kpiYmd(r.instDate)) + '〜' + (r.instEnd ? esc(kpiYmd(r.instEnd)) : '') : '') + '</td>' +
+        '<td>' + esc(r.hosp) + (r.doc ? '<br><span class="muted">' + esc(r.doc) + '</span>' : '') + '</td></tr>';
+    }).join('') + '</tbody></table>' : '';
+  done.innerHTML = KPI.done.length ? '<details><summary>すでに登録されている' + esc(cl) + '（' + KPI.done.length + '人・書き換えていません）</summary><ul>' +
+    KPI.done.map(function(d){ return '<li>' + esc(d.name) + '　→　契約書番号 ' + esc(d.no) + '</li>'; }).join('') + '</ul></details>' : '';
+}
+function kpiLoad(file){
+  KPI.rows = []; KPI.done = []; kpiRender();
+  if(!file){ $('kpi_msg').textContent = ''; return; }
+  var fr = new FileReader();
+  fr.onload = function(){
+    var text = kpiDecode(fr.result), list = text == null ? null : kpiParse(text);
+    if(!list){ $('kpi_msg').textContent = 'このファイルは、カイポケの「利用者一覧」のCSVとして読めませんでした。カイポケの利用者一覧の画面で「CSV出力」を押して保存したファイルを選んでください。'; return; }
+    var byName = {}, byKana = {};
+    patients().forEach(function(p){ if(p.name) byName[kpiKey(p.name)] = p; if(p.kana) byKana[kpiKey(p.kana)] = p; });
+    list.forEach(function(r){
+      var p = byName[kpiKey(r.name)] || (r.kana ? byKana[kpiKey(r.kana)] : null);
+      if(p) KPI.done.push({ name:r.name, no:dn(p.no) }); else KPI.rows.push(r);
+    });
+    $('kpi_msg').textContent = 'カイポケの一覧 ' + list.length + '人のうち、まだ登録されていない方 ' + KPI.rows.length + '人を下に並べました。' +
+      (KPI.rows.length ? '契約書番号を入れた方だけが登録されます。地区と保険は住所・指示区分からの見立てなので、違っていれば直してください。' : '');
+    kpiRender();
+  };
+  fr.onerror = function(){ $('kpi_msg').textContent = 'ファイルを読めませんでした。もう一度選んでください。'; };
+  fr.readAsArrayBuffer(file);
+}
+function kpiGo(){
+  var pick = [], errs = [], seen = {};
+  KPI.rows.forEach(function(r, i){
+    r.no = $('kpi_no' + i).value.trim(); r.area = $('kpi_area' + i).value.trim(); r.ins = $('kpi_ins' + i).value;
+    if(!r.no) return;
+    var key = keyNo(r.no);
+    if(seen[key]) errs.push('契約書番号 ' + r.no + ' が二人に入っています（' + seen[key] + '・' + r.name + '）。');
+    else if(patient(key)) errs.push('契約書番号 ' + r.no + ' は、すでに別の方（' + (patient(key).name || '氏名なし') + '）で使われています。');
+    if(!r.area) errs.push(r.name + 'さんの地区（町名）が空です。予定を地区ごとにまとめるのに使います。');
+    seen[key] = r.name; pick.push({ r:r, key:key });
+  });
+  if(!pick.length){ $('kpi_msg').textContent = '契約書番号が入っている方がいません。登録したい方の「契約書番号」の欄に番号を入れてから押してください。'; return; }
+  if(errs.length){ $('kpi_msg').textContent = '登録していません。次を直してから、もう一度押してください：' + errs.join('　'); return; }
+  function doSave(){
+    var clash = pick.filter(function(x){ return patient(x.key); });
+    if(clash.length){ $('kpi_msg').textContent = '登録していません。ほかの端末で、同じ契約書番号がたった今登録されました：' + clash.map(function(x){ return x.r.no; }).join('・') + '。番号を確かめてください。'; return; }
+    var a = allPatients(), now = nowLocal(), by = dev().me || '', added = [];
+    pick.forEach(function(x){
+      var r = x.r, p = { no:x.key, created:now };
+      PT_F.forEach(function(f){ p[f[1]] = ''; });
+      p.name = r.name; p.kana = r.kana; p.addr = r.addr; p.area = r.area; p.ins = r.ins; p.status = '利用中';
+      if(/^0[789]0/.test(r.tel.replace(/\D/g, ''))) p.telMobile = r.tel; else p.telHome = r.tel;
+      p.hosp = r.hosp; p.doc = r.doc; p.instDate = r.instDate; p.instEnd = r.instEnd;
+      if(D().kind === 'monitor'){ p.cyc = 1; p.staffId = ''; p.planDue = ''; p.start = ''; } else p.planDue = '';
+      p.hardCats = []; p.wDays = []; p.ngDays = []; p.copied = {};
+      p.editedBy = by; p.edited = now;
+      a.push(p); added.push(x.key);
+    });
+    saveCol('patients', a);
+    KPI.rows = KPI.rows.filter(function(r){ return !r.no; });
+    pick.forEach(function(x){ KPI.done.push({ name:x.r.name, no:x.r.no }); });
+    kpiRender(); refreshAll();
+    var msg = '登録しました：' + added.length + '人（' + added.map(function(k){ return dnn(k); }).join('・') + '）。' + (KPI.rows.length ? '番号の入っていない方 ' + KPI.rows.length + '人は、まだ登録していません。' : '');
+    $('kpi_msg').textContent = msg + '　住所から地図の位置を取っています…';
+    var miss = [];
+    added.reduce(function(pr, k){ return pr.then(function(){ return geoFill(k).then(function(r){ if(r === 'miss') miss.push(dnn(k)); }, function(){ miss.push(dnn(k)); }); }); }, Promise.resolve()).then(function(){
+      $('kpi_msg').textContent = msg + (miss.length ? '　住所から地図の位置が取れなかった方：' + miss.join('・') + '（利用者登録で住所を「東村山市本町2-3-4」の形に直してください）' : '');
+      renderToday();
+    });
+  }
+  if(!dev().share){ doSave(); return; }
+  var btn = $('kpi_go'); btn.disabled = true; $('kpi_msg').textContent = 'ほかの端末の最新と突き合わせています…';
+  syncFresh().then(function(){
+    btn.disabled = false;
+    if(lj(SYNC_KEY, {}).err){ $('kpi_msg').textContent = 'ほかの端末の最新を確かめられませんでした（共有の知らせを見てください）。通信が戻ってから、もう一度押してください。'; return; }
+    doSave();
+  }, function(){ btn.disabled = false; $('kpi_msg').textContent = 'ほかの端末の最新を確かめられませんでした。通信が戻ってから、もう一度押してください。'; });
+}
+$('kpi_file').addEventListener('change', function(){ kpiLoad(this.files && this.files[0]); });
+$('kpi_go').addEventListener('click', kpiGo);
+$('kpi_clear').addEventListener('click', function(){ KPI.rows = []; KPI.done = []; $('kpi_file').value = ''; $('kpi_msg').textContent = ''; kpiRender(); });
 
 /* ---- 表から取り込む ---- */
 var IM_FIELDS = [ ['dow','曜日',true,/曜/], ['time','開始時刻',true,/時刻|開始|時間帯|時間$/], ['no','契約書番号',true,/契約|番号|利用者/], ['staff','担当',true,/担当|看護|職員/], ['min','時間（分）',false,/分|所要/], ['area','地区',false,/地区|町|地域|エリア/] ];

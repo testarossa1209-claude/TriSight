@@ -274,7 +274,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-02-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-02-05</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -1244,8 +1244,9 @@ function staff(){
   a.forEach(function(x){ if(!x.sheetId) return; var c = pick[x.sheetId]; if(!c || (String(x.id).indexOf('sh-') === 0 && String(c.id).indexOf('sh-') !== 0)) pick[x.sheetId] = x; });
   var out = a.filter(function(x){ return !x.sheetId || pick[x.sheetId] === x; });
   /* 2026-10-27：基本情報シートの職員名簿の順に並べる。名簿にいない職員は後ろ（宏史さんの指摘「並びが変わってしまっている」） */
-  var ix = rosterIdx();
-  if(ix){ var big = 1e6; out = out.map(function(x, i){ return { x:x, k:(x.sheetId && ix[x.sheetId] != null) ? ix[x.sheetId] : big + i }; }).sort(function(p, q){ return p.k - q.k; }).map(function(p){ return p.x; }); }
+  /* 2026-11-02：基本情報シートの無い端末（iPad）では、共有で届いた名簿の順（ord）で並べる。これまでは届いた順のままで、端末ごとに並びがばらばらになった */
+  var ix = rosterIdx(), big = 1e6;
+  out = out.map(function(x, i){ return { x:x, k:(ix && x.sheetId && ix[x.sheetId] != null) ? ix[x.sheetId] : (typeof x.ord === 'number' ? x.ord : big + i) }; }).sort(function(p, q){ return p.k - q.k; }).map(function(p){ return p.x; });
   return out;
 }
 /* 基本情報シートの自社の職員名簿の、行の番号 → 並び順（名簿が無ければ null）。読むたびに解析し直さないよう、元の文字列で覚えておく */
@@ -1320,7 +1321,11 @@ function staffSub(s){ return Array.isArray(s.sub) ? s.sub.filter(function(x){ re
    退職日の翌日から、担当・選ぶ欄・自動の振り分けから外れる。過去の記録・名前は、そのまま残る。 */
 function staffOut(s, date){ return !!(s && s.out && s.out < (date || ymd(new Date()))); }
 function staffLive(){ return staff().filter(function(s){ return !staffOut(s); }); }
-function deptStaff(d, at){ d = d || D(); return staff().filter(function(s){ return !staffOut(s, at); }).filter(function(s){ if(staffSub(s).indexOf(d.name) >= 0) return true; if(s.dept) return deptByName(s.dept) === d; return d.jobs.indexOf(jobOf(s)) >= 0; }); }
+/* 2026-11-02：部署の職員の並び（宏史さんの決まり「常勤と非常勤、事務局の人間は下の方に」）。
+   常勤 → 非常勤 → 事務局（所属が経営企画事務職、または職種が事務局）の順。同じ組の中は名簿の順のまま。
+   これまでは名簿に入った順のままで、端末ごとに名簿が届いた順で並びが変わっていた */
+function staffRank(s){ if((s.dept && /経営企画事務/.test(s.dept)) || jobOf(s) === '事務局') return 2; return s.emp === '非常勤' ? 1 : 0; }
+function deptStaff(d, at){ d = d || D(); var a = staff().filter(function(s){ return !staffOut(s, at); }).filter(function(s){ if(staffSub(s).indexOf(d.name) >= 0) return true; if(s.dept) return deptByName(s.dept) === d; return d.jobs.indexOf(jobOf(s)) >= 0; }); return a.map(function(s, i){ return { s:s, i:i, r:staffRank(s) }; }).sort(function(x, y){ return (x.r - y.r) || (x.i - y.i); }).map(function(x){ return x.s; }); }
 
 /* ---- 共通：選択肢 ---- */
 function fillSelect(sel, items, blank){
@@ -2698,13 +2703,14 @@ function sheetPull(opt){
   if(!o){ msg.textContent = 'この端末のトライシートに、自社がまだ登録されていません。「トライシートの職員名簿を開く」から会社を入れてください。看護師さんの端末では、共有を設定すると事務局の端末から名簿が届きます。'; return; }
   if(!ro.length){ msg.textContent = 'トライシートの「' + sheetName(o) + '」に、職員名簿がまだありません。「トライシートの職員名簿を開く」から一人ずつ入れてから、もう一度押してください。'; return; }
   var tt = staff(), add = 0, upd = 0;
-  ro.forEach(function(r){
+  ro.forEach(function(r, ri){
     /* 2026-10-27：名簿にもう無い行（まとめて消した会社の行など）につながっている職員は、同じ名前なら付け替える（二重にしない） */
     var ids = {}; ro.forEach(function(y){ ids[y.id] = 1; });
     var st = tt.filter(function(x){ return x.sheetId === r.id; })[0] || tt.filter(function(x){ return (!x.sheetId || !ids[x.sheetId]) && normName(x.name) === normName(r.name); })[0];
     if(!st){ st = { id:'sh-' + r.id }; tt.push(st); add++; }
     else upd++;
     st.sheetId = r.id; st.name = String(r.name).trim();
+    if(st.ord !== ri) st.ord = ri;   /* 2026-11-02：名簿の順を職員に持たせて共有する（基本情報シートの無いiPadでも名簿の順に並べるため） */
     if(r.job){ st.job = r.job; delete st.role; }
     var e = empToTT(r.emp); if(e) st.emp = e; else if(st.emp == null) st.emp = '';
     st.mgr = !!r.mgr;

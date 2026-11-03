@@ -286,7 +286,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-24</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-25</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -1131,6 +1131,23 @@ function tsPortalAsk(){
     <div class="btns"><button class="btn" id="wr_save">保存する</button><span class="muted" id="wr_msg"></span></div>
     <p class="muted" id="wr_calc"></p>
   </div>
+  <div class="card" id="cardPartner">
+    <h2>事業所と取引先（キャンセルで空いた時間の行き先）</h2>
+    <p class="lead">キャンセルで予定に中抜けができたとき、「事務所に戻る」か「近くの取引先へご挨拶に行く」を案として出すために使います。取引先は、町名（地区）が空いた時間の前後の訪問先と同じものを出します。</p>
+    <div class="row">
+      <div><label class="f" for="pa_offArea">事業所の地区（町名）</label><input type="text" id="pa_offArea" placeholder="例：恩多町"></div>
+      <div><label class="f" for="pa_offAddr">事業所の住所</label><input type="text" id="pa_offAddr"></div>
+    </div>
+    <div class="btns"><button class="btn sub" id="pa_offSave">事業所の地区を保存する</button><span class="muted" id="pa_offMsg"></span></div>
+    <div class="row" style="margin-top:8px">
+      <div><label class="f" for="pa_name">取引先の名前</label><input type="text" id="pa_name" placeholder="例：東村山市役所 障害支援課"></div>
+      <div><label class="f" for="pa_kind">種別</label><select id="pa_kind"><option>役所</option><option>病院・診療所</option><option>地域包括支援センター</option><option>居宅介護支援事業所</option><option>相談支援事業所</option><option>その他</option></select></div>
+      <div><label class="f" for="pa_area">地区（町名）</label><input type="text" id="pa_area" placeholder="例：本町"></div>
+      <div><label class="f" for="pa_addr">住所・電話</label><input type="text" id="pa_addr"></div>
+    </div>
+    <div class="btns"><button class="btn" id="pa_add">取引先を足す</button></div>
+    <div class="tbl-scroll" id="paList"></div>
+  </div>
   <div class="card" id="cardWk">
     <h2>週間予定</h2>
     <p class="lead">毎週決まっている訪問を1件ずつ入れます。</p>
@@ -1414,6 +1431,36 @@ function mvGapHTML(g, wr){
   if(g < wr.mvMin) return '<span class="ssGap short">移動 ' + Math.max(0, g) + '分（短い）</span>';
   if(g <= wr.mvMax) return '<span class="ssGap">移動 ' + g + '分</span>';
   return '<span class="ssGap">移動 ' + wr.mvStd + '分・空き ' + minLabel(g - wr.mvStd) + '</span>';
+}
+/* 2026-11-03（宏史さんの指示「キャンセルで中抜けが生じた場合は、元のスケジュールはなるべく動かさず（利用者に連絡した時間を守る）、
+   事務所に戻れるなら戻る、近くに取引先（役所・病院・包括・居宅等）があればご挨拶に行く営業時間を入れる」）：事業所の地区と取引先は設定（settings）に持つ */
+function partnersCfg(){ var s0 = lj(K.settings, {}) || {}; return { office:s0.office || {}, list:Array.isArray(s0.partners) ? s0.partners : [] }; }
+function paRender(){
+  if(!$('paList')) return; var c = partnersCfg();
+  $('pa_offArea').value = c.office.area || ''; $('pa_offAddr').value = c.office.addr || '';
+  $('paList').innerHTML = c.list.length ? '<table><tr><th>取引先</th><th>種別</th><th>地区</th><th>住所・電話</th><th></th></tr>' + c.list.map(function(x, i){
+    return '<tr><td>' + esc(x.name) + '</td><td>' + esc(x.kind || '') + '</td><td>' + esc(x.area || '') + '</td><td><small>' + esc(x.addr || '') + '</small></td><td><button class="btn small danger" data-padel="' + i + '">外す</button></td></tr>'; }).join('') + '</table>'
+    : '<p class="empty">取引先はまだありません。</p>';
+  $('paList').querySelectorAll('[data-padel]').forEach(function(b){ b.onclick = function(){ var cur = lj(K.settings, {}) || {}, a = (cur.partners || []).slice(); a.splice(+b.getAttribute('data-padel'), 1); saveSettings(Object.assign({}, cur, { partners:a })); paRender(); }; });
+}
+/* 空いた時間の使い方：その職員のその日の、空いた訪問の前後（キャンセルでない訪問）から空きの長さを出し、
+   事務所に戻る（往復の移動 ＋ 15分以上いられるとき）と、前後の訪問先と同じ町名の取引先へのご挨拶を案として出す。ほかの訪問は動かさない */
+function gapUseHTML(date, slot){
+  if(!slot) return '';
+  var wr = workRule(), sid = slot.staffId, c = partnersCfg();
+  var day = visitsOn(date).filter(function(v){ return !v.cx && (v.staffId === sid || v.withId === sid) && v !== slot; }).sort(function(a, b){ return a.time < b.time ? -1 : 1; });
+  var prev = day.filter(function(v){ return v.time < slot.time; }).pop(), next = day.filter(function(v){ return v.time > slot.time; })[0];
+  var st = prev ? toMin(prev.time) + (+prev.min || wr.visit) : toMin(wr.start), en = next ? toMin(next.time) : toMin(wr.end) - (wr.inner || 0), len = Math.max(0, en - st);
+  var areas = [slot.area, prev && prev.area, next && next.area].filter(function(a, i, a2){ return a && a2.indexOf(a) === i; });
+  var near = c.list.filter(function(x){ return x.area && areas.indexOf(x.area) >= 0; });
+  var back = len >= wr.mvStd * 2 + 15;
+  var h = '<div class="judge free" style="margin:6px 0"><b>空いた時間の使い方：' + hm(st) + '〜' + hm(en) + '（' + minLabel(len) + '）</b>' +
+    '<div class="sm">ほかの利用者さんの予定は動かしません（連絡済みの時刻を守るため。組み換えると、ほかの利用者さんへの連絡や、別のキャンセルを招くことがあります）。</div><ul style="margin:4px 0 0 18px">';
+  h += back ? '<li><b>事務所に戻る</b>：往復の移動 約' + (wr.mvStd * 2) + '分、事務所で約' + minLabel(len - wr.mvStd * 2) + '（記録・内勤）' + (c.office.area ? '　事業所：' + esc(c.office.area) : '') + '</li>'
+            : '<li>事務所に戻るには短い時間です（往復の移動 約' + (wr.mvStd * 2) + '分）。近くで記録を書いて、次の訪問先へ向かいます。</li>';
+  h += near.length ? near.map(function(x){ return '<li><b>ご挨拶（営業）</b>：' + esc(x.name) + '（' + esc(x.kind || '') + '・' + esc(x.area) + '）' + (x.addr ? '<small class="muted">　' + esc(x.addr) + '</small>' : '') + '</li>'; }).join('')
+                   : '<li class="muted">前後の訪問先と同じ町名（' + esc(areas.join('・') || '地区未登録') + '）の取引先は、まだ登録されていません。「名簿・設定」の「事業所と取引先」で足せます。</li>';
+  return h + '</ul></div>';
 }
 function withLabel(v){
   if(v.withId) return isTbd(v.withId) ? '2名・同行' + staffName(v.withId) : '2名・同行 ' + (staffName(v.withId) || '名簿にいない職員');
@@ -1705,7 +1752,8 @@ function toggleGap(key){
   var docs = D().doctor ? Object.keys(myPts).filter(function(n){ return !doctorStatus(n).ok; }) : [];
 
   var h = '<h4>空いた時間：' + esc(jpDate(date)) + ' ' + esc(time) + '（' + esc(staffName(me)) + '）</h4>';
-  h += '<h4>前倒しの候補（' + D().client + 'の了承が要ります）</h4>';
+  h += gapUseHTML(date, slot);
+  h += '<h4>前倒しの候補（' + D().client + 'の了承が要ります。ほかの利用者さんの時刻が変わるので、なるべく使いません）</h4>';
   if(cands.length){
     h += '<ul>' + cands.map(function(v, idx){
       return '<li>' + esc(v.time) + '　' + esc(dnn(v.no)) + '（' + esc(v.area || '地区未登録') + (v.area && v.area === area ? '・同じ地区' : '') + '・現在の担当 ' + esc(staffName(v.staffId)) + '）' +
@@ -1921,8 +1969,9 @@ function afterOpen(c){
   var cs = gapCands(c.date, c.time, c.no, c.staffId);
   var office = DEPTS.filter(function(d){ return d.kind === 'office'; })[0], offIds = office ? deptStaff(office).map(function(s){ return s.id; }) : [];
   box.innerHTML = '<div class="card" style="margin:10px 0;border:2px solid var(--amber)"><h3 style="margin:0 0 6px">事後処理をまとめて行う：' + esc(jpDate(c.date)) + ' ' + esc(c.time) + '（' + esc(staffName(c.staffId)) + '）が空きました</h3>' +
-    '<label class="f" for="af_move">① 空いた時間の組み換え</label><select id="af_move"><option value="">組み換えない（空いたままにする）</option>' +
-    cs.map(function(v, i){ return '<option value="' + i + '"' + (i === 0 ? ' selected' : '') + '>' + esc(v.time) + '　' + esc(dnn(v.no)) + '（' + esc(v.area || '地区未登録') + '・担当 ' + esc(staffName(v.staffId)) + '）を ' + esc(c.time) + ' に前倒しする</option>'; }).join('') + '</select>' +
+    gapUseHTML(c.date, visitsOn(c.date).filter(function(v){ return v.time === c.time && v.no === c.no; })[0]) +
+    '<label class="f" for="af_move">① 空いた時間の組み換え（ほかの利用者さんの時刻を守るため、ふだんは「組み換えない」）</label><select id="af_move"><option value="" selected>組み換えない（事務所に戻る・ご挨拶などに使う）</option>' +
+    cs.map(function(v, i){ return '<option value="' + i + '">' + esc(v.time) + '　' + esc(dnn(v.no)) + '（' + esc(v.area || '地区未登録') + '・担当 ' + esc(staffName(v.staffId)) + '）を ' + esc(c.time) + ' に前倒しする</option>'; }).join('') + '</select>' +
     (cs.length ? '<label style="display:block;margin:6px 0"><input type="checkbox" id="af_ok"> 前倒しする患者さんの了承を得た</label>' : '<p class="muted">この日の後の時間帯に、前倒しできる訪問はありません。</p>') +
     '<label class="f">② 知らせる相手（連絡板とタブレットに出ます）</label>' +
     '<label style="margin-right:12px"><input type="checkbox" id="af_toNurse" checked> 担当の看護師（' + esc(staffName(c.staffId)) + '）</label>' +
@@ -5392,6 +5441,12 @@ $('wr_save').addEventListener('click', function(){
   if(w.mvMin > w.mvMax){ $('wr_msg').textContent = '移動の目安は、最短を最長より小さくしてください。'; return; }
   saveSettings(Object.assign({}, cur, { work:w })); $('wr_msg').textContent = '保存しました。'; refreshAll();
 });
+$('pa_offSave').addEventListener('click', function(){ var cur = lj(K.settings, {}) || {}; saveSettings(Object.assign({}, cur, { office:{ area:$('pa_offArea').value.trim(), addr:$('pa_offAddr').value.trim() } })); $('pa_offMsg').textContent = '保存しました。'; });
+$('pa_add').addEventListener('click', function(){
+  var n = $('pa_name').value.trim(); if(!n){ alert('取引先の名前を入れてください。'); return; }
+  var cur = lj(K.settings, {}) || {}, a = (cur.partners || []).slice(); a.push({ name:n, kind:$('pa_kind').value, area:$('pa_area').value.trim(), addr:$('pa_addr').value.trim() });
+  saveSettings(Object.assign({}, cur, { partners:a })); ['pa_name','pa_area','pa_addr'].forEach(function(id){ $(id).value = ''; }); paRender();
+});
 /* 出勤と実績（月）：管理者の窓 */
 function normName(t){ return String(t || '').replace(/[\s　]/g, ''); }
 function recStaff(rec, list){
@@ -6175,7 +6230,7 @@ function ssBulkHTML(days){
   var dayOpt = days.map(function(x){ return { v:x, t:jpDate(x) + (holidayName(x) ? '（' + holidayName(x) + '）' : '') }; });
   var done = events().filter(function(e){ return e.type === 'work' && days.indexOf(e.date) >= 0; });
   return '<details style="margin-top:12px"' + (SS_BULK_OPEN ? ' open' : '') + ' id="ssBulk"><summary><b>この日の訪問を、まとめて担当・同行に付け替える（祝日に出た日など）</b></summary>' +
-    '<p class="muted sm">選んだ日の訪問を全部、選んだ担当と同行に付け替えます。担当と同行の人は、その日を「出勤」にして、公休・祝日の「要調整」を消します。今日・過ぎた日の付け替えは、実際に回った記録として残し、連絡は出しません。</p>' +
+    '<p class="muted sm">選んだ日の訪問を全部、選んだ担当と同行に付け替え、町名ごとに寄せて時刻を組み直します（移動は ふだんの目安）。担当と同行の人は、その日を「出勤」にして、公休・祝日の「要調整」を消します。今日・過ぎた日の付け替えは、実際に回った記録として残し、連絡は出しません。</p>' +
     '<div class="row"><div><label class="f" for="sb_date">日</label><select id="sb_date">' + opt(dayOpt, days.indexOf(today) >= 0 ? today : days[0]) + '</select></div>' +
     '<div><label class="f" for="sb_staff">担当</label><select id="sb_staff"><option value="">選んでください</option>' + opt(ns.map(function(x){ return { v:x.id, t:x.name }; }), '') + '</select></div>' +
     '<div><label class="f" for="sb_with">同行</label><select id="sb_with"><option value="">なし（1名）</option>' + opt(WITH_L, '') + '</select></div></div>' +
@@ -6198,7 +6253,19 @@ function ssWireBulk(){
     /* キャンセルの入った訪問も、担当はそのままで記録に残す（その日の表から消えないように） */
     all0.filter(function(v){ return v.cx; }).forEach(function(v){ var r = { id:uid(), type:'move', patientNo:v.no, date:v.od, fromTime:v.ot, toTime:v.time, toStaff:v.staffId, toWith:v.withId || '', by:me, consent:true, created:now, bulk:bid, min:v.min || 30, fromStaff:v.staffId, wid:v.wid || '' };
       if(v.od !== date) r.toDate = date; if(rec) r.rec = true; ev.push(r); });
-    vs.forEach(function(v){ var r = { id:uid(), type:'move', patientNo:v.no, date:v.od, fromTime:v.ot, toTime:v.time, toStaff:sid, toWith:wid, by:me, consent:true, created:now, bulk:bid, min:v.min || 30, fromStaff:v.moved ? v.moved.fromStaff : v.staffId, wid:v.wid || '' };
+    /* 2026-11-03（宏史さん「付け替えたときには基本的には町名で寄せてください」）：まとめた訪問は、町名ごとに寄せて並べ直し、
+       移動はふだんの目安（15分）で詰めて時刻を組み直す。町の順は、いちばん早い訪問の時刻の順。同じ町の中は、位置があれば近い順 */
+    var order = [], areaFirst = {};
+    vs.forEach(function(v){ var a = v.area || '（地区なし）'; if(areaFirst[a] == null || v.time < areaFirst[a]) areaFirst[a] = v.time; });
+    Object.keys(areaFirst).sort(function(a, b){ return areaFirst[a] < areaFirst[b] ? -1 : 1; }).forEach(function(a){
+      var g = vs.filter(function(v){ return (v.area || '（地区なし）') === a; }).sort(function(x, y){ return x.time < y.time ? -1 : 1; });
+      var withPos = g.filter(function(v){ return (patient(v.no) || {}).lat; }), noPos = g.filter(function(v){ return !(patient(v.no) || {}).lat; });
+      if(withPos.length > 1){ var ord = [withPos.shift()]; while(withPos.length){ var lp = patient(ord[ord.length - 1].no), bi = 0, bd = 1e9; withPos.forEach(function(v, i){ var q = patient(v.no), dd = Math.pow(q.lat - lp.lat, 2) + Math.pow(q.lng - lp.lng, 2); if(dd < bd){ bd = dd; bi = i; } }); ord.push(withPos.splice(bi, 1)[0]); } withPos = ord; }
+      order = order.concat(withPos, noPos);
+    });
+    var slots = mhDay(order.length).filter(function(x){ return x.k === 'v'; }), wr0 = workRule(), newT = {};
+    order.forEach(function(v, i){ var t = slots[i] ? slots[i].a : (i ? newT[order[i - 1].no + '|' + order[i - 1].ot] + wr0.visit + wr0.mvStd : toMin(wr0.start) + wr0.mvStd); newT[v.no + '|' + v.ot] = t; });
+    vs.forEach(function(v){ var r = { id:uid(), type:'move', patientNo:v.no, date:v.od, fromTime:v.ot, toTime:hm(newT[v.no + '|' + v.ot]), toStaff:sid, toWith:wid, by:me, consent:true, created:now, bulk:bid, min:v.min || 30, fromStaff:v.moved ? v.moved.fromStaff : v.staffId, wid:v.wid || '' };
       if(v.od !== date) r.toDate = date; if(rec) r.rec = true; ev.push(r); });
     [sid, wid].filter(function(x){ return x && !isTbd(x); }).forEach(function(x){ if(!ev.some(function(e){ return e.type === 'work' && e.staffId === x && e.date === date; })) ev.push({ id:uid(), type:'work', staffId:x, date:date, by:me, at:now, bulk:bid }); });
     saveEvents(ev);
@@ -6548,7 +6615,7 @@ $('av_save').addEventListener('click', function(){
   saveEvents(ev); $('av_msg').textContent = staffName(sid) + 'さんの ' + ym.replace('-', '年').replace(/年0?/, '年') + '月の申告を保存しました（' + days.length + '日）。';
   refreshAll();
 });
-refreshAll = function(){ refreshAll0(); renderLeave(); renderWorkRule(); renderAttend(); avRender(); ssRender(); };
+refreshAll = function(){ refreshAll0(); renderLeave(); renderWorkRule(); renderAttend(); avRender(); ssRender(); paRender(); };
 (function(){ var on = false; try{ on = localStorage.getItem(SS_KEY) === '1'; }catch(e){} if(on) ssOpen(true); })();
 
 nrScanLocal();

@@ -4602,26 +4602,34 @@ function todayFill(){
   if(!$('td_date').value) $('td_date').value = ymd(new Date());
   var R = role(), me = dev().me, list = deptStaff().filter(function(s){ return !staffOrphan(s) && jobOf(s) !== '事務局'; });
   if(R.lv === 'staff' && R.s) list = list.filter(function(s){ return s.id === R.s.id; });
-  var cur = $('td_staff').value || me || '';
-  fillSelect('td_staff', list.map(function(s){ return { v:s.id, t:staffLabel(s) }; }), list.length > 1 ? '選んでください' : null);
-  if(cur && list.some(function(s){ return s.id === cur; })) $('td_staff').value = cur;
+  /* 2026-11-03（宏史さん「看護師でないと出ないの？管理者はすべての画面を見れるようにするはず」）：職員の欄に「全員」を足し、
+     この端末を使う人が決まっていない端末（事務所のPCなど）では、最初から「全員」の予定と地図を出す。職員（自分の分だけの人）には出さない */
+  var mgr = R.lv !== 'staff' && list.length > 1;
+  var meIn = me && list.some(function(s){ return s.id === me; }), cur = $('td_staff').value || (meIn ? me : (mgr ? '*' : ''));   /* この端末を使う人が看護師でない（事務局・野木さん等）ときも「全員」 */
+  fillSelect('td_staff', (mgr ? [{ v:'*', t:'全員' }] : []).concat(list.map(function(s){ return { v:s.id, t:staffLabel(s) }; })), list.length > 1 ? '選んでください' : null);
+  if(cur === '*' && mgr) $('td_staff').value = '*';
+  else if(cur && list.some(function(s){ return s.id === cur; })) $('td_staff').value = cur;
   else if(list.length === 1) $('td_staff').value = list[0].id;
 }
 function renderToday(){
   if(!$('cardToday')) return;
   todayFill();
   var date = $('td_date').value, sid = $('td_staff').value;
-  if(!sid){ $('td_list').innerHTML = '<p class="empty">職員を選ぶと、その人のこの日の予定と地図が出ます。</p>'; $('td_map').style.display = 'none'; return; }
-  var vs = visitsOn(date).filter(function(v){ return v.staffId === sid || v.withId === sid; });
-  var live = vs.filter(function(v){ return !v.cx; });
+  if(!sid){ $('td_list').innerHTML = '<p class="empty">職員を選ぶと、その人のこの日の予定と地図が出ます（「全員」を選ぶと全員の分）。</p>'; $('td_map').style.display = 'none'; return; }
+  var ALL = sid === '*', COL = ['#1f4e79', '#c0392b', '#2e7d32', '#8e44ad', '#d35400', '#00838f', '#6d4c41', '#c2185b', '#455a64', '#7cb342'];
+  var vs = visitsOn(date).filter(function(v){ return ALL || v.staffId === sid || v.withId === sid; });
+  if(ALL) vs.sort(function(a, b){ return (staffName(a.staffId) < staffName(b.staffId) ? -1 : staffName(a.staffId) > staffName(b.staffId) ? 1 : 0) || (a.time < b.time ? -1 : 1); });
+  var live = vs.filter(function(v){ return !v.cx; }), who = [], nOf = {};
+  live.forEach(function(v){ if(who.indexOf(v.staffId) < 0) who.push(v.staffId); nOf[v.staffId] = (nOf[v.staffId] || 0) + 1; v._n = nOf[v.staffId]; });
+  var colOf = function(id){ return ALL ? COL[Math.max(0, who.indexOf(id)) % COL.length] : COL[0]; };
   var rows = vs.map(function(v){
-    var p = patient(v.no) || {}, n = live.indexOf(v) + 1;
-    return '<tr' + (v.cx ? ' style="opacity:.55"' : '') + '><td class="num"><b>' + (v.cx ? '—' : n) + '</b></td><td>' + esc(v.time) + '<br><small class="muted">' + esc(v.min || 30) + '分</small></td><td><b>' + esc(dnn(v.no)) + '</b>' + (v.withId === sid ? ' <span class="tag amber">同行（担当 ' + esc(staffName(v.staffId)) + 'さん）</span>' : (withLabel(v) ? ' <span class="tag amber">' + esc(withLabel(v)) + '</span>' : '')) + (v.cx ? ' <span class="tag red">キャンセル</span>' : '') + (v.moved ? ' <span class="tag green">組み換え（元 ' + esc(v.moved.from) + '）</span>' : '') + (trustOf(v.no).lv === '低' ? ' ' + trustTag(v.no) : '') +
+    var p = patient(v.no) || {}, n = ALL ? v._n : live.indexOf(v) + 1;
+    return '<tr' + (v.cx ? ' style="opacity:.55"' : '') + '>' + (ALL ? '<td><b style="color:' + colOf(v.staffId) + '">' + esc(staffName(v.staffId)) + '</b></td>' : '') + '<td class="num"><b>' + (v.cx ? '—' : n) + '</b></td><td>' + esc(v.time) + '<br><small class="muted">' + esc(v.min || 30) + '分</small></td><td><b>' + esc(dnn(v.no)) + '</b>' + (v.withId === sid ? ' <span class="tag amber">同行（担当 ' + esc(staffName(v.staffId)) + 'さん）</span>' : (withLabel(v) ? ' <span class="tag amber">' + esc(withLabel(v)) + '</span>' : '')) + (v.cx ? ' <span class="tag red">キャンセル</span>' : '') + (v.moved ? ' <span class="tag green">組み換え（元 ' + esc(v.moved.from) + '）</span>' : '') + (trustOf(v.no).lv === '低' ? ' ' + trustTag(v.no) : '') +
       '<br><small>' + esc(p.addr || v.area || '住所未登録') + (p.spot ? '・' + esc(p.spot) : '') + '</small>' + (p.addr && !p.lat ? ' <span class="tag gray">地図の位置が未取得</span>' : '') + '</td><td><small>' + esc(p.asmRisk || '') + '</small></td></tr>';
   }).join('');
-  $('td_list').innerHTML = vs.length ? '<table><tr><th class="num">順</th><th>時刻</th><th>訪問先</th><th>気を付けること</th></tr>' + rows + '</table><p class="muted">' + esc(jpDate(date)) + '：訪問 ' + live.length + '件' + (vs.length > live.length ? '（キャンセル ' + (vs.length - live.length) + '件）' : '') + '。地図の番号は、この表の「順」と同じです。</p>'
+  $('td_list').innerHTML = vs.length ? '<table><tr>' + (ALL ? '<th>担当</th>' : '') + '<th class="num">順</th><th>時刻</th><th>訪問先</th><th>気を付けること</th></tr>' + rows + '</table><p class="muted">' + esc(jpDate(date)) + '：訪問 ' + live.length + '件' + (vs.length > live.length ? '（キャンセル ' + (vs.length - live.length) + '件）' : '') + '。地図の番号は、この表の「順」と同じです。</p>'
     : '<p class="empty">' + esc(jpDate(date)) + 'の訪問はありません。</p>';
-  var pts = live.map(function(v, i){ var p = patient(v.no) || {}; return p.lat ? { n:i + 1, lat:+p.lat, lng:+p.lng, t:v.time + ' ' + dnn(v.no) } : null; }).filter(Boolean);
+  var pts = live.map(function(v, i){ var p = patient(v.no) || {}; return p.lat ? { n:ALL ? v._n : i + 1, sid:v.staffId, lat:+p.lat, lng:+p.lng, t:(ALL ? staffName(v.staffId) + ' ' : '') + v.time + ' ' + dnn(v.no) } : null; }).filter(Boolean);
   if(!pts.length){ $('td_map').style.display = 'none'; if(live.length) $('td_list').insertAdjacentHTML('afterbegin', '<p class="muted">地図に出せる訪問先がありません。利用者登録で住所（番地まで）を入れ、「住所から位置を取る」を押してください。</p>'); return; }
   $('td_map').style.display = '';
   leafletLoad().then(function(){
@@ -4632,9 +4640,10 @@ function renderToday(){
     if(tdLayer) tdLayer.remove();
     tdLayer = L.layerGroup().addTo(tdMap);
     var ll = pts.map(function(x){ return [x.lat, x.lng]; });
-    if(ll.length > 1) L.polyline(ll, { color:'#1f4e79', weight:3, opacity:.7, dashArray:'6 6' }).addTo(tdLayer);
+    /* 全員のときは、職員ごとに色を分けて、回る順の線と番号を出す */
+    who.forEach(function(id){ var l2 = pts.filter(function(x){ return x.sid === id; }).map(function(x){ return [x.lat, x.lng]; }); if(l2.length > 1) L.polyline(l2, { color:colOf(id), weight:3, opacity:.7, dashArray:'6 6' }).addTo(tdLayer); });
     pts.forEach(function(x){
-      L.marker([x.lat, x.lng], { icon:L.divIcon({ className:'tdPin', html:'<span>' + x.n + '</span>', iconSize:[28, 28], iconAnchor:[14, 14] }) }).bindTooltip(esc(x.t)).addTo(tdLayer);
+      L.marker([x.lat, x.lng], { icon:L.divIcon({ className:'tdPin', html:'<span' + (ALL ? ' style="background:' + colOf(x.sid) + ';border-radius:50%"' : '') + '>' + x.n + '</span>', iconSize:[28, 28], iconAnchor:[14, 14] }) }).bindTooltip(esc(x.t)).addTo(tdLayer);
     });
     setTimeout(function(){ tdMap.invalidateSize(); if(ll.length > 1) tdMap.fitBounds(ll, { padding:[30, 30] }); else tdMap.setView(ll[0], 16); }, 50);
   }).catch(function(e){ $('td_map').innerHTML = '<p class="muted" style="padding:10px">' + esc(e.message) + '。通信を確かめて、もう一度開いてください。</p>'; });

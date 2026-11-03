@@ -286,7 +286,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-05</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-06</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -5270,11 +5270,15 @@ function mgMigrate(){
 }
 function mdPeople(){ return deptStaff().filter(function(s){ return jobOf(s) !== '事務局' && !isStandby(s); }); }   /* 2026-11-03：待機の人はモデルコースに入れない */
 function mdWeekOf(sid){ return weekly().filter(function(v){ return v.staffId === sid || v.withId === sid; }); }   /* 同行（2名体制）も、その職員の時間を使う訪問として数える */
-/* 初めの値：常勤＝勤務の決まりの目標件数・公休以外の曜日。非常勤＝いまの週間予定（いちばん多い日の件数・予定のある曜日） */
+/* 初めの値：常勤＝勤務の決まりの目標件数・公休以外の曜日。
+   非常勤＝名簿に公休の曜日が入っていれば公休以外の曜日（2026-11-03・宏史さんの指示「職員の出勤体制を入れたので、これを反映したモデルコースを」）。
+   公休が入っていない非常勤は、これまでどおりいまの週間予定の曜日。件数は週間予定のいちばん多い日の件数（予定が無ければ見本と同じ1日3件） */
 function mdDef(s){
   if(s.emp === '常勤'){ var off = staffOff(s); return { n:workRule().target, days:MD_DOW.filter(function(d){ return off.indexOf(d) < 0; }) }; }
   var per = {}; mdWeekOf(s.id).forEach(function(v){ per[String(v.dow)] = (per[String(v.dow)] || 0) + 1; });
   var mx = 0; Object.keys(per).forEach(function(k){ if(per[k] > mx) mx = per[k]; });
+  var off2 = staffOff(s);
+  if(off2.length) return { n:mx || 3, days:MD_DOW.filter(function(d){ return off2.indexOf(d) < 0; }) };
   return { n:mx, days:Object.keys(per) };
 }
 function mdOf(s){ var c = mdCfg().staff[s.id]; return c ? { n:Math.max(0, +c.n || 0), days:(c.days || []).map(String), set:true } : Object.assign(mdDef(s), { set:false }); }

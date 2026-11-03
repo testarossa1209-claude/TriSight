@@ -209,10 +209,23 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   /* 2026-10-29：情報の引き出し（右端のつまみを縦に並べる：仮スケジュール表・対照表・使い方） */
   .sideTabs{position:fixed;right:0;top:30%;z-index:60;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
   .sideTabs .ssTab{position:static}
-  body.ssOpen .sideTabs .ssTab, body.kpOpen .sideTabs .ssTab, body.mnOpen .sideTabs .ssTab, body.nmOpen .sideTabs .ssTab, body.osOpen .sideTabs .ssTab{display:none}
-  body.kpOpen #kpPanel, body.mnOpen #mnPanel, body.nmOpen #nmPanel, body.osOpen #osPanel{transform:none}
-  @media (min-width:1240px){ body.kpOpen, body.mnOpen, body.nmOpen, body.osOpen{padding-right:600px} }
+  body.ssOpen .sideTabs .ssTab, body.kpOpen .sideTabs .ssTab, body.mnOpen .sideTabs .ssTab, body.nmOpen .sideTabs .ssTab, body.osOpen .sideTabs .ssTab, body.rqOpen .sideTabs .ssTab{display:none}
+  body.kpOpen #kpPanel, body.mnOpen #mnPanel, body.nmOpen #nmPanel, body.osOpen #osPanel, body.rqOpen #rqPanel{transform:none}
+  @media (min-width:1240px){ body.kpOpen, body.nmOpen, body.osOpen{padding-right:600px} body.mnOpen, body.rqOpen{padding-left:600px} }
+  /* 2026-11-03：左の引き出し（使い方・ご要望）。つまみは小さめにし、画面の上の方から並べる（ラップトップで下が切れないように） */
+  .sideTabs{top:84px}
+  .sideTabs .ssTab{font-size:13px;padding:9px 7px;line-height:1.2}
+  .sideTabs.lft{right:auto;left:0;align-items:flex-start}
+  .sideTabs.lft .ssTab{border-radius:0 10px 10px 0}
+  .ssPanel.lft{right:auto;left:0;border-left:0;border-right:1px solid var(--line);box-shadow:8px 0 28px rgba(16,36,59,.14);transform:translateX(-105%)}
+  @media (max-height:820px){ .sideTabs{gap:5px;top:70px} .sideTabs .ssTab{font-size:12px;padding:6px 6px;line-height:1.12} }
+  #rqBody section.tab{display:block}
   .osCnt{display:block;margin-top:4px;background:var(--red);color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:2px 3px;line-height:1.2}
+  .mnToc{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
+  .mnCh{border:1px solid var(--line);border-radius:10px;margin:6px 0;background:#fff}
+  .mnCh>summary{cursor:pointer;font-weight:700;padding:9px 12px;font-size:14.5px}
+  .mnCh[open]>summary{border-bottom:1px solid var(--paper-deep)}
+  .mnCh .mnCard{margin:8px 10px}
   .kpFind{width:100%;font:inherit;font-size:15px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:#fffdf9}
   .kpT{border-collapse:collapse;width:100%;font-size:13.5px}
   .kpT th,.kpT td{border:1px solid var(--paper-deep);padding:5px 6px;text-align:left;vertical-align:top}
@@ -287,7 +300,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-26</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-27</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -296,7 +309,12 @@ function tsPortalAsk(){
 <button type="button" class="ssTab" id="kpTab" title="番号と氏名の対照表を右に開きます" aria-label="対照表"><span>対</span><span>照</span><span>表</span></button>
 <button type="button" class="ssTab" id="nmTab" title="2名体制の利用者の一覧を右に開きます" aria-label="2名体制"><span>２</span><span>名</span><span>体</span><span>制</span></button>
 <button type="button" class="ssTab" id="osTab" title="今日の訪問を、利用者さんへ携帯のメッセージで知らせます" aria-label="お知らせ"><span>お</span><span>知</span><span>ら</span><span>せ</span></button>
-<button type="button" class="ssTab" id="mnTab" title="この画面の使い方と、印の意味を右に開きます" aria-label="使い方"><span>使</span><span>い</span><span>方</span></button>
+</div>
+<!-- 2026-11-03（宏史さん「ラップトップだと横の引き出しの使い方が見えなくなる。左にも引き出しを作っていい。ご要望は職員のトライタイムへの要望が主なので引き出しへ」）：
+     左端に「使い方」「ご要望」のつまみを置き、左から開く -->
+<div class="sideTabs lft">
+<button type="button" class="ssTab" id="mnTab" title="この画面の使い方と、印の意味を左に開きます" aria-label="使い方"><span>使</span><span>い</span><span>方</span></button>
+<button type="button" class="ssTab" id="rqTab" title="トライタイムへのご要望を残す画面を左に開きます" aria-label="ご要望"><span>ご</span><span>要</span><span>望</span></button>
 </div>
 <!-- 2026-10-29：対照表（右に立ち上がるサブ画面） -->
 <aside class="ssPanel" id="kpPanel" aria-label="対照表">
@@ -322,11 +340,15 @@ function tsPortalAsk(){
   <div class="ssFoot">「送る」を押すと、携帯のメッセージが宛先と文面の入った状態で開きます。送信を押すと届きます（ほかの利用者さんに番号が見えないよう、1人ずつ送ります）。送ったら「送った」に印が付きます。キャンセルの入った訪問は出しません。</div>
 </aside>
 <!-- 2026-10-29：使い方（右に立ち上がるサブ画面） -->
-<aside class="ssPanel" id="mnPanel" aria-label="使い方">
+<aside class="ssPanel lft" id="rqPanel" aria-label="ご要望">
+  <div class="ssHead"><h2>ご要望<small>トライタイムへの「こうしてほしい」「ここが使いにくい」</small></h2><button type="button" class="ssClose" id="rqClose" title="閉じる" aria-label="閉じる">×</button></div>
+  <div class="ssBody" id="rqBody"></div>
+</aside>
+<aside class="ssPanel lft" id="mnPanel" aria-label="使い方">
   <div class="ssHead"><h2>使い方<small id="mnSub"></small></h2><button type="button" class="ssClose" id="mnClose" title="閉じる" aria-label="閉じる">×</button></div>
   <div class="ssNav"><input type="search" class="kpFind" id="mnFind" placeholder="分からない言葉を打つ（例：信用度、要調整、困難患者）"></div>
   <div class="ssBody" id="mnBody"></div>
-  <div class="ssFoot">「いま開いている画面」は、画面に書いてある説明をそのまま集めたものです。「画面に出る印の意味」は、印が付く決まりを書いています。</div>
+  <div class="ssFoot">上の目次の章を押すと、その章が開きます。1〜9は仕事の順番、「いま開いている画面の説明」は画面に書いてある説明、「10. 画面に出る印の意味」は印が付く決まりです。言葉を打つと、当たる所だけを全部の章から出します。</div>
 </aside>
 <aside class="ssPanel" id="ssPanel" aria-label="仮スケジュール表">
   <div class="ssHead"><h2 id="ssTitle">仮スケジュール表</h2><button type="button" class="ssClose" id="ssClose" title="閉じる" aria-label="閉じる">×</button></div>
@@ -4153,7 +4175,7 @@ function applyDept(){
     d.kind === 'monitor' ? 'モニタリングの予定・面談の記録・' + d.client + 'の経過を、時間の流れで持つ（' + d.name + '）' :
     '各部署の予定のようすと、事務局からの連絡（' + d.name + '）';
   var show = function(id, on){ var el = $(id); if(el) el.style.display = on ? '' : 'none'; };
-  var tabOn = { plan:true, pt: d.kind !== 'office', intake: d.kind === 'visit', course: d.kind !== 'office', report: !!d.report, admin: d.kind === 'visit', model: d.kind === 'visit', mihon: d.kind === 'visit', req:true, setup:true, nogi: !!R.zeus };
+  var tabOn = { plan:true, pt: d.kind !== 'office', intake: d.kind === 'visit', course: d.kind !== 'office', report: !!d.report, admin: d.kind === 'visit', model: d.kind === 'visit', mihon: d.kind === 'visit', req:false, setup:true, nogi: !!R.zeus };   /* 2026-11-03：ご要望は左の引き出しへ移した */
   /* 見る範囲（2026-10-27）：職員には管理者の窓とモデルコースを出さない。モデルコース（売上・評価）は管理者の端末だけ */
   if(R.lv === 'none') Object.keys(tabOn).forEach(function(k){ tabOn[k] = (k === 'setup'); });
   if(R.lv === 'staff') tabOn.admin = false;
@@ -4176,6 +4198,7 @@ function applyDept(){
   if(stf){ ['cardWk','cardIm','cardRules'].forEach(function(id){ show(id, false); }); }
   var ssHide = (R.lv === 'staff' || R.lv === 'none'); show('ssTab', !ssHide); if(ssHide && document.body.classList.contains('ssOpen')) ssOpen(false);
   show('kpTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('kpOpen')) sideOpen('kp', false);
+  show('rqTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('rqOpen')) sideOpen('rq', false);
   show('osTab', R.lv !== 'none' && R.lv !== 'staff'); osBadge(); if((R.lv === 'none' || R.lv === 'staff') && document.body.classList.contains('osOpen')) sideOpen('os', false);   /* 利用者さんへのお知らせは、事務局・管理者が送る */
   show('nmTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('nmOpen')) sideOpen('nm', false);
   if(document.body.classList.contains('kpOpen')) kpRender(); if(document.body.classList.contains('mnOpen')) mnRender(); if(document.body.classList.contains('nmOpen')) nmRender(); if(document.body.classList.contains('osOpen') && document.activeElement && document.activeElement.id !== 'osTpl') osRender();
@@ -6174,7 +6197,7 @@ $('sr_out').addEventListener('click', function(){
 var SS_KEY = 'tritime_ss_open';
 var ssStart = null;
 function ssOpen(on){
-  if(on){ document.body.classList.remove('kpOpen', 'mnOpen', 'nmOpen', 'osOpen'); }
+  if(on){ document.body.classList.remove('kpOpen', 'mnOpen', 'nmOpen', 'osOpen', 'rqOpen'); }
   document.body.classList.toggle('ssOpen', !!on);
   try{ localStorage.setItem(SS_KEY, on ? '1' : '0'); }catch(e){}
   if(on){ if(!ssStart) ssStart = parseYmd($('planWeek').value) || mondayOf(new Date()); ssRender(); }
@@ -6424,9 +6447,9 @@ function ssMoveDo(v, sid, date, weeklyToo){
 /* ---- 情報の引き出し（2026-10-29・宏史さんの発案「画面を変えたり、情報を探したりする必要がなくなる」）----
    右端のつまみから、対照表と使い方を、いまの画面のまま横に開く。 */
 function sideOpen(k, on){
-  if(on){ document.body.classList.remove('ssOpen', 'kpOpen', 'mnOpen', 'nmOpen', 'osOpen'); }
+  if(on){ document.body.classList.remove('ssOpen', 'kpOpen', 'mnOpen', 'nmOpen', 'osOpen', 'rqOpen'); }
   document.body.classList.toggle(k + 'Open', !!on);
-  if(on){ if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else if(k === 'nm') nmRender(); else if(k === 'os') osRender(); else mnRender(); }
+  if(on){ if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else if(k === 'nm') nmRender(); else if(k === 'os') osRender(); else if(k === 'rq') rqOpenPanel(); else mnRender(); }
 }
 /* 2026-11-03：利用者さんへのお知らせ。選んだ日の訪問（キャンセルを除く）を利用者さんごとに1行にまとめ、その日のいちばん早い時刻で定型文を作る。
    定型文は設定（settings.osText）に持ち、{時刻} をその人の時刻に置き換える。送ったら type "notify" を残す */
@@ -6460,6 +6483,8 @@ function osRender(){
     setTimeout(function(){ osRender(); osBadge(); }, 300);
   }); });
 }
+/* 2026-11-03：ご要望は左の引き出しで開く。上のタブの「ご要望」の画面（tab-req）をそのまま引き出しの中へ移して使う */
+function rqOpenPanel(){ var sec = $('tab-req'); if(sec && sec.parentNode !== $('rqBody')) $('rqBody').appendChild(sec); if(typeof renderReq === 'function') renderReq(); }
 /* 2026-11-03：2名体制名簿。2名体制として扱う利用中の人と、いまの週間予定の曜日ごとの担当・同行を並べる */
 function nmRender(){
   var q = String(($('nmFind') || {}).value || '').trim(), wk = weekly();
@@ -6538,6 +6563,73 @@ var MN_MARKS = [
     ['点線の「空き ○件」', 'モデルコースの枠のうち、まだ患者さんが入っていない枠です。']
   ]]
 ];
+/* 2026-11-03（宏史さん「使い方はもっと体系的に分類をして、なるべく知りたいことを捜索しなくて済むように」「トライタイムの使い方や登録方法が一番最初がいい」）：
+   使い方を、仕事の順番に沿った章に分ける。いちばん上に目次（章のボタン）を置き、押すとその章が開く。
+   各項目は［見出し, どの画面のどこで, 何をするか］。画面の名前・ボタンの名前は画面の文字のまま */
+var MN_GUIDE = [
+  ['1. はじめに（使い始めの順番）', [
+    ['登録の順番', '①「名簿・設定」で職員を入れる →②「名簿・設定」の「勤務の決まり」を確かめる →③「利用者登録」で利用者さんを入れる →④「予定」タブの「組み方を出す」で週間予定を組む →⑤毎日は「予定」タブと右端の「仮スケジュール表」で見る。'],
+    ['画面の行き来', '上に並ぶタブ（予定・利用者登録・キャンセル受付 …）で画面を切り替えます。右端と左端の縦長のつまみ（仮スケジュール表・対照表・２名体制・お知らせ／使い方・ご要望）は、いまの画面のまま横に開く引き出しです。'],
+    ['使う部署', 'いちばん上の「使う部署」のボタンで、訪問看護部・訪問介護部などを切り替えます。部署ごとに利用者さん・予定・記録が分かれます。'],
+    ['新しい版にする', '画面の上の「版 ◯◯」の右にある「最新の版に更新」を押します。新しい版が出ると、上に「新しい版が公開されています」と出ます。']
+  ]],
+  ['2. 職員の登録（名簿・設定）', [
+    ['職員を入れる', '「名簿・設定」タブの「職員」の枠で、名前・所属・職種・常勤／非常勤を入れて「追加する」。直すときは一覧の「直す」。'],
+    ['看護補助者', '職種を「看護補助者」にした人は単独では訪問せず、2名体制の同行としてだけ入ります（週1回まで）。事務局の人は同行には付きません。'],
+    ['非常勤の兼業・不定期・待機', '常勤／非常勤で「非常勤」を選ぶと、兼業先・出られる目安・「不定期」「待機」の印が出ます。待機の人は自動の振り分けに入らず、仮スケジュール表の下の待機者リストに出ます。'],
+    ['公休・祝日休み', '職員の「公休の曜日」の印と「祝日は休み」の印で、休みの日が決まります。休みの日に訪問があると「要調整」と出ます。'],
+    ['休みの届け', '「名簿・設定」の「休みの届け」で、その日だけの休みを入れます（「休みを入れる」）。'],
+    ['翌月の予定の申告（非常勤）', '「名簿・設定」の「翌月の予定の申告（非常勤）」で、出られる日に印を付けて「この内容で申告する」。申告した月は、申告の日だけが出勤日になります。'],
+    ['勤務の決まり', '1日の目標件数・移動の目安（最短10分・最長20分）・出勤と退勤の時刻・休憩を決めます。予定は移動15分（最短と最長の真ん中）で組みます。']
+  ]],
+  ['3. 利用者さんの登録（利用者登録）', [
+    ['利用者さんを入れる', '「利用者登録」タブで契約書番号・氏名・地区（町名）・住所・本人の携帯などを入れて「この内容で登録する」。地区は町名で入れると、予定が町名で寄ります。'],
+    ['まとめて登録', '「利用者登録」の「カイポケの一覧からまとめて登録」で、カイポケの一覧のCSVを読み込みます。'],
+    ['週の回数', '「予定の希望（予定を組むときの条件）」の「① 希望の曜日」に印を付けると、その曜日の数が週の回数になります（月水金なら週3回）。「訪問の回数・時間帯の取り決め」に「週2回」と書いてあれば、そちらが先です。'],
+    ['2名体制', '「予定の希望」の「⑤ 体制」を「2名」にするか、「指示書から」の「指示の内容」に「複数名訪問の必要性　あり」とあれば2名体制になります。'],
+    ['地図の位置', '住所（番地まで）を入れておき、「予定」タブの「1日の予定と地図」で「住所から位置を取る」を押すと、地図に出せるようになります。']
+  ]],
+  ['4. 週間予定を組む（予定タブの2つ目の枠）', [
+    ['組み方を出す', '「予定」タブの「週間予定を地区で寄せて組む（自動の振り分け）」で「組み方を出す」。町名ごとに寄せ、午前から移動15分で詰めて組みます。今の担当と曜日のまま組めるものは動かしません。'],
+    ['週間予定に入れる', '出た表を見て、よければオレンジの「この組み方を週間予定に入れる」。入れる前の予定は控えに残り、「元に戻す」で戻せます。'],
+    ['変わる訪問を見る', '組み方を出すと「いまの週間予定から変わる訪問」が、入れた後は「元に戻す」の下に「入れ替える前から変わった訪問」が出ます。'],
+    ['1日の件数の上限', '常勤8件・非常勤5件が最初の値です（同じ枠の上の欄で変えられます）。'],
+    ['同行（2名体制）', '同行が決まっていない2名体制の訪問には、週の1回目に看護補助者、2回目以降に担当とは別の看護師が自動で付きます。2名体制の人の一覧は右端の「２名体制」。'],
+    ['手で直す', '「名簿・設定」の「週間予定」の一覧で、行ごとに同行を選んだり「外す」ことができます。新しい行は上の欄で入れて「追加する」。']
+  ]],
+  ['5. 毎日の予定を見る', [
+    ['1日の予定と地図', '「予定」タブのいちばん上。職員を選ぶとその人の1日の予定と地図、「全員」を選ぶと全員の分が職員ごとの色で出ます。'],
+    ['今週の訪問予定', '「予定」タブの「今週の訪問予定」で、週の訪問を日ごとに並べます。担当の横に同行が出ます。'],
+    ['仮スケジュール表', '右端の「仮スケジュール表」。職員×日付の表で、訪問と訪問の間に「移動 15分」などが出ます。今日以降の札は引っぱって、別の人・別の日へ動かせます。'],
+    ['祝日に出た日の付け替え', '仮スケジュール表の下の「この日の訪問を、まとめて担当・同行に付け替える（祝日に出た日など）」で、日・担当・同行を選んで「この日の訪問を付け替える」。町名で寄せて時刻を組み直し、二人とも出勤の扱いになります。']
+  ]],
+  ['6. キャンセルのとき', [
+    ['キャンセルを受ける', '「キャンセル受付」タブで、利用者さん・日時・理由を入れて「この内容で記録する」。'],
+    ['空いた時間の使い方', 'ほかの利用者さんの予定は動かしません。「今週の訪問予定」のキャンセルの「空いた時間の案」の上に、「事務所に戻る」か「近くの取引先へご挨拶」の案が出ます。'],
+    ['取引先の登録', '「名簿・設定」の「事業所と取引先」で、事業所の町名と、役所・病院・包括・居宅などの取引先を町名つきで入れます。']
+  ]],
+  ['7. 利用者さんへのお知らせ', [
+    ['今日の訪問を知らせる', '右端の「お知らせ」。今日まだ知らせていない人数がつまみに「残◯」と出ます。「送る」を押すと携帯のメッセージが宛先と文面入りで開くので、送信を押します。'],
+    ['送る文を変える', 'お知らせの中の「送る文」を直して「この文で保存する」。{時刻} がその人の時刻に変わります。']
+  ]],
+  ['8. 売上とモデルコース（管理者）', [
+    ['モデルコースの見本', '「モデルコースの見本」タブで目標のコースを選び「この条件で表を作る」。2名体制は2件と数えます。'],
+    ['届くまでの道のり', '同じタブの「選んだコースに届くまでの道のり」で、いまの合計と、毎月の段取りが出ます。2名体制の加算と月の初回の管理療養費も入っています。'],
+    ['モデルコース', '「モデルコース」タブは、管理者の合言葉を入れた端末だけに出ます。']
+  ]],
+  ['9. ご要望を残す', [
+    ['ご要望', '左端の「ご要望」。看護部の皆さんから聞いた「こうしてほしい」を、言われた言葉のまま残します。']
+  ]]
+];
+function mnGuideHTML(q, hl, has){
+  var open = !!q, toc = '<div class="mnToc">' + MN_GUIDE.map(function(g, i){ return '<button type="button" class="btn small sub" data-mnch="' + i + '">' + esc(g[0]) + '</button>'; }).join('') + '</div>';
+  var body = MN_GUIDE.map(function(g, i){
+    var it = g[1].filter(function(m){ return has([g[0]].concat(m)); }); if(!it.length) return '';
+    return '<details class="mnCh" id="mnch' + i + '"' + (open || MN_OPEN === i ? ' open' : '') + '><summary>' + hl(g[0]) + '</summary>' + it.map(function(m){ return '<div class="mnCard"><b>' + hl(m[0]) + '</b><p>' + hl(m[1]) + '</p></div>'; }).join('') + '</details>';
+  }).join('');
+  return (q ? '' : toc) + body;
+}
+var MN_OPEN = 0;
 function mnRender(){
   var q = String($('mnFind').value || '').trim();
   var tb = document.querySelector('#tabs button.on'), sec = tb ? $('tab-' + tb.getAttribute('data-tab')) : null;
@@ -6550,17 +6642,24 @@ function mnRender(){
     var t = c.querySelector('h2'), ps = [].map.call(c.querySelectorAll('p.lead'), function(p){ return p.textContent.trim(); }).filter(Boolean);
     if(t && ps.length && has([t.textContent].concat(ps))) cards.push('<div class="mnCard"><b>' + hl(t.textContent.trim()) + '</b>' + ps.map(function(p){ return '<p>' + hl(p) + '</p>'; }).join('') + '</div>');
   });
-  if(cards.length) h += '<h3 class="mnSec">いま開いている画面</h3>' + cards.join('');
+  h = mnGuideHTML(q, hl, has) + (cards.length ? '<details class="mnCh"' + (q ? ' open' : '') + '><summary>いま開いている画面の説明</summary>' + cards.join('') + '</details>' : '');
+  var mk = '';
   MN_MARKS.forEach(function(g){
     var it = g[1].filter(function(m){ return has(m); });
-    if(it.length) h += '<h3 class="mnSec">' + esc(g[0]) + '</h3>' + it.map(function(m){ return '<div class="mnCard"><b>' + hl(m[0]) + '</b><p>' + hl(m[1]) + '</p></div>'; }).join('');
+    if(it.length) mk += '<h4 class="mnSec">' + esc(g[0]) + '</h4>' + it.map(function(m){ return '<div class="mnCard"><b>' + hl(m[0]) + '</b><p>' + hl(m[1]) + '</p></div>'; }).join('');
   });
+  if(mk) h += '<details class="mnCh"' + (q ? ' open' : '') + '><summary>10. 画面に出る印の意味</summary>' + mk + '</details>';
   $('mnBody').innerHTML = h || '<p class="empty">「' + esc(q) + '」に当たる説明はありません。</p>';
+  /* 目次のボタン：その章だけを開いて、そこへ動く */
+  $('mnBody').querySelectorAll('[data-mnch]').forEach(function(b){ b.onclick = function(){ var i = +b.getAttribute('data-mnch'); MN_OPEN = i;
+    $('mnBody').querySelectorAll('details.mnCh').forEach(function(d){ d.open = d.id === 'mnch' + i; }); var d = $('mnch' + i); if(d && d.scrollIntoView) d.scrollIntoView({ block:'start' }); }; });
 }
 $('kpTab').addEventListener('click', function(){ sideOpen('kp', true); });
 $('kpClose').addEventListener('click', function(){ sideOpen('kp', false); });
 $('kpFind').addEventListener('input', kpRender);
 $('kpPrint').addEventListener('click', function(){ ptRosterPrint(); $('kpMsg').textContent = $('pt_rosterMsg').textContent; });
+$('rqTab').addEventListener('click', function(){ sideOpen('rq', true); });
+$('rqClose').addEventListener('click', function(){ sideOpen('rq', false); });
 $('osTab').addEventListener('click', function(){ sideOpen('os', true); });
 $('osClose').addEventListener('click', function(){ sideOpen('os', false); });
 $('osDate').addEventListener('change', osRender);

@@ -209,9 +209,9 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   /* 2026-10-29：情報の引き出し（右端のつまみを縦に並べる：仮スケジュール表・対照表・使い方） */
   .sideTabs{position:fixed;right:0;top:30%;z-index:60;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
   .sideTabs .ssTab{position:static}
-  body.ssOpen .sideTabs .ssTab, body.kpOpen .sideTabs .ssTab, body.mnOpen .sideTabs .ssTab{display:none}
-  body.kpOpen #kpPanel, body.mnOpen #mnPanel{transform:none}
-  @media (min-width:1240px){ body.kpOpen, body.mnOpen{padding-right:600px} }
+  body.ssOpen .sideTabs .ssTab, body.kpOpen .sideTabs .ssTab, body.mnOpen .sideTabs .ssTab, body.nmOpen .sideTabs .ssTab{display:none}
+  body.kpOpen #kpPanel, body.mnOpen #mnPanel, body.nmOpen #nmPanel{transform:none}
+  @media (min-width:1240px){ body.kpOpen, body.mnOpen, body.nmOpen{padding-right:600px} }
   .kpFind{width:100%;font:inherit;font-size:15px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:#fffdf9}
   .kpT{border-collapse:collapse;width:100%;font-size:13.5px}
   .kpT th,.kpT td{border:1px solid var(--paper-deep);padding:5px 6px;text-align:left;vertical-align:top}
@@ -286,13 +286,14 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-23</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-24</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
 <div class="sideTabs">
 <button type="button" class="ssTab" id="ssTab" title="仮スケジュール表を右に開きます" aria-label="仮スケジュール表"><span>仮</span><span>ス</span><span>ケ</span><span>ジ</span><span>ュ</span><span class="bar">ー</span><span>ル</span><span>表</span></button>
 <button type="button" class="ssTab" id="kpTab" title="番号と氏名の対照表を右に開きます" aria-label="対照表"><span>対</span><span>照</span><span>表</span></button>
+<button type="button" class="ssTab" id="nmTab" title="2名体制の利用者の一覧を右に開きます" aria-label="2名体制"><span>２</span><span>名</span><span>体</span><span>制</span></button>
 <button type="button" class="ssTab" id="mnTab" title="この画面の使い方と、印の意味を右に開きます" aria-label="使い方"><span>使</span><span>い</span><span>方</span></button>
 </div>
 <!-- 2026-10-29：対照表（右に立ち上がるサブ画面） -->
@@ -302,6 +303,13 @@ function tsPortalAsk(){
   <div class="ssNav" id="kpDepts" style="padding-top:0"></div>
   <div class="ssBody" id="kpBody"></div>
   <div class="ssFoot">いま使っている部署の利用者（契約終了の人も含む）を、ふりがなのあいうえお順に並べています（ふりがなが未入力の人は末尾）。ほかの部署の利用者は、上の「○○の一覧」のボタンを押したときだけ出ます。いま使っている部署の分を紙に出すときは <button type="button" class="btn sub small" id="kpPrint">対照表を印刷する</button> <span id="kpMsg"></span></div>
+</aside>
+<!-- 2026-11-03：2名体制名簿（右に立ち上がるサブ画面。宏史さんの指示「対照表の下に2名体制名簿として、引き出しに分けて」） -->
+<aside class="ssPanel" id="nmPanel" aria-label="2名体制名簿">
+  <div class="ssHead"><h2>2名体制名簿<small id="nmSub"></small></h2><button type="button" class="ssClose" id="nmClose" title="閉じる" aria-label="閉じる">×</button></div>
+  <div class="ssNav"><input type="search" class="kpFind" id="nmFind" placeholder="番号・氏名・職員名の一部で絞る"></div>
+  <div class="ssBody" id="nmBody"></div>
+  <div class="ssFoot">利用者登録の「⑤ 体制」が「2名」の人、「指示書から」の「指示の内容」に複数名訪問が「あり」と書かれている人、週間予定に同行が入っている人です。曜日ごとの担当と同行は、いまの週間予定です。</div>
 </aside>
 <!-- 2026-10-29：使い方（右に立ち上がるサブ画面） -->
 <aside class="ssPanel" id="mnPanel" aria-label="使い方">
@@ -4109,7 +4117,8 @@ function applyDept(){
   if(stf){ ['cardWk','cardIm','cardRules'].forEach(function(id){ show(id, false); }); }
   var ssHide = (R.lv === 'staff' || R.lv === 'none'); show('ssTab', !ssHide); if(ssHide && document.body.classList.contains('ssOpen')) ssOpen(false);
   show('kpTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('kpOpen')) sideOpen('kp', false);
-  if(document.body.classList.contains('kpOpen')) kpRender(); if(document.body.classList.contains('mnOpen')) mnRender();
+  show('nmTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('nmOpen')) sideOpen('nm', false);
+  if(document.body.classList.contains('kpOpen')) kpRender(); if(document.body.classList.contains('mnOpen')) mnRender(); if(document.body.classList.contains('nmOpen')) nmRender();
   /* 2026-11-01：管理者の合言葉の枠は、管理者の印が付いた人の端末と、管理者の画面が出ている端末だけに出す（職員の端末には出さない） */
   show('cardMgrKey', !((R.lv === 'staff' || R.lv === 'office') && !R.noKey));
   roleNote(R);
@@ -4826,12 +4835,10 @@ function auMake(course){
     (function(){ var nos = {}; out.forEach(function(o){ nos[o.p.no] = 1; }); return '<div id="au_pdiff">' + auDiffHTML(auDiff(wk, rows, nos), 'いまの週間予定から変わる訪問', 'いまの週間予定から、曜日と担当の変わる訪問はありません。') + '</div>'; })() +
     (function(){ /* 2026-11-03：週の回数をどこから取ったかを、患者さんごとに出す。取り決めの欄が読めなかった人は先に知らせる */
       /* 2026-11-03 改め（宏史さん「出来ない理由ばかり並んでいる」）：取り決めの欄には計画書の文がそのまま入っている人が多いので、読めなかった人の枠は出さない */
-      return         (function(){ /* 2026-11-03（宏史さん「2名体制はこんなに少なくない。ちゃんと見直しなさい」）：トライタイムが2名体制として扱っている人を、全部並べる */
+      return         (function(){ /* 2026-11-03 改め（宏史さん「トライタイムが縦長になりすぎた。2名体制は毎回見る必要がないので、横の引き出しの対照表の下に2名体制名簿として分けて」）：
+          組み方の上には人数の1行だけを出し、一覧は右の引き出し「2名体制」に出す */
           var two = P.filter(function(p){ return isTwoP(patient(p.no)) || rows.some(function(r){ return r.no === p.no && r.withId; }); });
-          return '<div class="judge free" style="margin:8px 0"><b>2名体制として組んだ人：' + two.length + '人</b>' + (two.length ? '<ul style="margin:4px 0 0 18px">' + two.map(function(p){
-            var rs = rows.filter(function(r){ return r.no === p.no; }).sort(function(a, b){ return ((+a.dow + 6) % 7) - ((+b.dow + 6) % 7); });
-            return '<li>' + esc(dnn(p.no)) + (twoWhy(patient(p.no)) ? '<small class="muted">（' + esc(twoWhy(patient(p.no))) + '）</small>' : '<small class="muted">（週間予定の同行）</small>') + '：' + rs.map(function(r){ return DOW[+r.dow] + ' ' + esc(staffName(r.staffId)) + '・' + esc(r.withId ? '同行 ' + staffName(r.withId) : '同行未定'); }).join('／') + '</li>'; }).join('') + '</ul>' : '') +
-            '<small class="muted">利用者登録の「⑤ 体制」が「2名」の人、「指示書から」の「指示の内容」に複数名訪問が「あり」と書かれている人、週間予定に同行が入っている人です。</small></div>'; })() +
+          return '<p class="sm" style="margin:6px 0">2名体制として組んだ人：<b>' + two.length + '人</b>（一覧は右端の引き出し「2名体制」）</p>'; })() +
         '<details style="margin:8px 0"><summary>患者さんごとの週の回数（どこから取ったか）を見る</summary><ul style="margin:4px 0 0 18px">' + P.slice().sort(function(a, b){ return b.f - a.f || (a.no < b.no ? -1 : 1); }).map(function(p){ return '<li>' + esc(dnn(p.no)) + '：週' + p.f + '回（' + esc(p.fi.src) + '）</li>'; }).join('') + '</ul></details>'; })() +
     '<p class="muted sm" style="margin:6px 0 2px">日付は今週（' + esc(jpDate(dateOf('1'))) + '〜' + esc(jpDate(dateOf('0'))) + '）に当てはめています。祝日などその日だけ休みの人の訪問は「要調整」と出ます。週間予定には毎週の予定として入るので、その日だけの付け替えは仮スケジュール表で行います（付け替えた日は見出しに「付け替え済み」と出ます）。</p>' +
     '<div class="tbl-scroll"><table class="mhT">' + head + body + '</table></div>' +
@@ -6101,7 +6108,7 @@ $('sr_out').addEventListener('click', function(){
 var SS_KEY = 'tritime_ss_open';
 var ssStart = null;
 function ssOpen(on){
-  if(on){ document.body.classList.remove('kpOpen', 'mnOpen'); }
+  if(on){ document.body.classList.remove('kpOpen', 'mnOpen', 'nmOpen'); }
   document.body.classList.toggle('ssOpen', !!on);
   try{ localStorage.setItem(SS_KEY, on ? '1' : '0'); }catch(e){}
   if(on){ if(!ssStart) ssStart = parseYmd($('planWeek').value) || mondayOf(new Date()); ssRender(); }
@@ -6339,9 +6346,22 @@ function ssMoveDo(v, sid, date, weeklyToo){
 /* ---- 情報の引き出し（2026-10-29・宏史さんの発案「画面を変えたり、情報を探したりする必要がなくなる」）----
    右端のつまみから、対照表と使い方を、いまの画面のまま横に開く。 */
 function sideOpen(k, on){
-  if(on){ document.body.classList.remove('ssOpen', 'kpOpen', 'mnOpen'); }
+  if(on){ document.body.classList.remove('ssOpen', 'kpOpen', 'mnOpen', 'nmOpen'); }
   document.body.classList.toggle(k + 'Open', !!on);
-  if(on){ if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else mnRender(); }
+  if(on){ if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else if(k === 'nm') nmRender(); else mnRender(); }
+}
+/* 2026-11-03：2名体制名簿。2名体制として扱う利用中の人と、いまの週間予定の曜日ごとの担当・同行を並べる */
+function nmRender(){
+  var q = String(($('nmFind') || {}).value || '').trim(), wk = weekly();
+  var ps = patients().filter(function(p){ return (!p.status || p.status === '利用中') && (isTwoP(p) || wk.some(function(v){ return v.no === p.no && v.withId; })); });
+  var line = function(p){ return wk.filter(function(v){ return v.no === p.no; }).sort(function(a, b){ return ((+a.dow + 6) % 7) - ((+b.dow + 6) % 7) || (a.time < b.time ? -1 : 1); }); };
+  if(q) ps = ps.filter(function(p){ return (p.no + ' ' + (p.name || '') + ' ' + (p.kana || '') + ' ' + line(p).map(function(v){ return staffName(v.staffId) + ' ' + staffName(v.withId); }).join(' ')).indexOf(q) >= 0; });
+  ps.sort(kpOrder);
+  $('nmSub').textContent = ps.length + '人';
+  $('nmBody').innerHTML = ps.length ? '<table class="kpT"><tr><th>契約書番号・氏名</th><th>曜日ごとの担当・同行</th></tr>' + ps.map(function(p){
+    var ls = line(p);
+    return '<tr><td><b>' + esc(dnn(p.no)) + '</b><br><small class="muted">' + esc(twoWhy(p) || '週間予定の同行') + '</small></td><td>' + (ls.length ? ls.map(function(v){ return esc(DOW[+v.dow] + ' ' + v.time + '　' + staffName(v.staffId) + '・' + (v.withId ? '同行 ' + staffName(v.withId) : '同行未定')); }).join('<br>') : '<span class="muted">週間予定に入っていません</span>') + '</td></tr>'; }).join('') + '</table>'
+    : '<p class="empty">' + (q ? '当てはまる人がいません。' : '2名体制の利用者はいません。') + '</p>';
 }
 /* 2026-11-01：対照表は、ふりがなのあいうえお順（宏史さんの指示）。ふりがなが未入力の人は末尾に、契約書番号の順で並べる */
 function kpKana(p){ return String(p.kana || '').replace(/[\u30a1-\u30f6]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0x60); }).replace(/[\s　]/g, ''); }
@@ -6431,6 +6451,9 @@ $('kpTab').addEventListener('click', function(){ sideOpen('kp', true); });
 $('kpClose').addEventListener('click', function(){ sideOpen('kp', false); });
 $('kpFind').addEventListener('input', kpRender);
 $('kpPrint').addEventListener('click', function(){ ptRosterPrint(); $('kpMsg').textContent = $('pt_rosterMsg').textContent; });
+$('nmTab').addEventListener('click', function(){ sideOpen('nm', true); });
+$('nmClose').addEventListener('click', function(){ sideOpen('nm', false); });
+$('nmFind').addEventListener('input', nmRender);
 $('mnTab').addEventListener('click', function(){ sideOpen('mn', true); });
 $('mnClose').addEventListener('click', function(){ sideOpen('mn', false); });
 $('mnFind').addEventListener('input', mnRender);

@@ -67,6 +67,20 @@ async def test(p):
         bd2 = await pg.evaluate("(document.querySelector('#osTab .osCnt') || {}).textContent || ''")
         assert bd2 == '2', '送った後に、つまみの残りの人数が減りません：' + bd2
         await s.shot('#osPanel', 'TriTime_oshirase.png')
+        # 2026-11-03（宏史さん「お知らせは一括送信ボタンを作ってください」）：まとめて送る＝1人目が開き、画面へ戻るたびに次の人が開く
+        bt = await pg.inner_text('#osBulk')
+        assert 'まだの 2人' in bt, '「まとめて送る」のボタンに、まだの人数が出ません：' + bt
+        await pg.evaluate("document.addEventListener('click', function(e){ var a = e.target && e.target.closest && e.target.closest('a[href^=\"sms:\"]'); if(a){ e.preventDefault(); window.__sms = (window.__sms || []).concat([a.getAttribute('href')]); } }, true)")
+        await pg.click('#osBulk'); await pg.wait_for_timeout(500)
+        ob4 = await pg.inner_text('#osBody')
+        assert '残り 1人' in ob4, '「まとめて送る」を押しても、1人目を送って残りの人数が出ません：' + ob4[:300]
+        await s.shot('#osPanel', 'TriTime_oshirase_matome.png')
+        await pg.evaluate("window.dispatchEvent(new Event('focus'))"); await pg.wait_for_timeout(1400)
+        await pg.evaluate("window.dispatchEvent(new Event('focus'))"); await pg.wait_for_timeout(1400)
+        ob5 = await pg.inner_text('#osBody')
+        sms = await pg.evaluate("window.__sms || []")
+        assert len(sms) == 2 and sms[0].startswith('sms:08055556666') and sms[1].startswith('sms:07077778888'), 'まとめて送るで開くメッセージの宛先が正しくありません：' + str(sms)
+        assert ob5.count('送った') >= 3 and 'まとめて送る' not in ob5 and '残り' not in ob5, '画面へ戻っても、次の人へ進みません：' + ob5[:400]
         # 2026-11-03（宏史さん「看護部だけが携帯番号を持っていて、その他の部門はすべて携帯番号なし。各部統一が必須」）：どの部署で開いても同じ中身
         for dk in ['office', 'kaigo', 'soudan']:
             await pg.click('#osClose'); await pg.wait_for_timeout(200)
@@ -77,7 +91,7 @@ async def test(p):
             assert '試験 携帯' in ob3 and '試験 家族' in ob3 and n3 == 3, dk + ' の部署で開くと、お知らせの中身が看護部と違います：' + str(n3) + ' ' + ob3[:200]
             if dk == 'office': await s.shot('#osPanel', 'TriTime_oshirase_bumon.png')
             bd3 = await pg.evaluate("(document.querySelector('#osTab .osCnt') || {}).textContent || ''")
-            assert bd3 == '2', dk + ' の部署で、つまみの残りの人数が看護部と違います：' + bd3
+            assert bd3 == '', dk + ' の部署で、つまみの残りの人数が看護部と違います：' + bd3
         await pg.click('#osClose'); await pg.wait_for_timeout(200)
         await pg.click('#deptBar [data-dept=office]'); await pg.wait_for_timeout(500)
         await pg.click('#ssTab'); await pg.wait_for_timeout(500)

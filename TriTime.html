@@ -209,9 +209,10 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   /* 2026-10-29：情報の引き出し（右端のつまみを縦に並べる：仮スケジュール表・対照表・使い方） */
   .sideTabs{position:fixed;right:0;top:30%;z-index:60;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
   .sideTabs .ssTab{position:static}
-  body.ssOpen .sideTabs .ssTab, body.kpOpen .sideTabs .ssTab, body.mnOpen .sideTabs .ssTab, body.nmOpen .sideTabs .ssTab{display:none}
-  body.kpOpen #kpPanel, body.mnOpen #mnPanel, body.nmOpen #nmPanel{transform:none}
-  @media (min-width:1240px){ body.kpOpen, body.mnOpen, body.nmOpen{padding-right:600px} }
+  body.ssOpen .sideTabs .ssTab, body.kpOpen .sideTabs .ssTab, body.mnOpen .sideTabs .ssTab, body.nmOpen .sideTabs .ssTab, body.osOpen .sideTabs .ssTab{display:none}
+  body.kpOpen #kpPanel, body.mnOpen #mnPanel, body.nmOpen #nmPanel, body.osOpen #osPanel{transform:none}
+  @media (min-width:1240px){ body.kpOpen, body.mnOpen, body.nmOpen, body.osOpen{padding-right:600px} }
+  .osCnt{display:block;margin-top:4px;background:var(--red);color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:2px 3px;line-height:1.2}
   .kpFind{width:100%;font:inherit;font-size:15px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:#fffdf9}
   .kpT{border-collapse:collapse;width:100%;font-size:13.5px}
   .kpT th,.kpT td{border:1px solid var(--paper-deep);padding:5px 6px;text-align:left;vertical-align:top}
@@ -286,7 +287,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-25</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-26</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -294,6 +295,7 @@ function tsPortalAsk(){
 <button type="button" class="ssTab" id="ssTab" title="仮スケジュール表を右に開きます" aria-label="仮スケジュール表"><span>仮</span><span>ス</span><span>ケ</span><span>ジ</span><span>ュ</span><span class="bar">ー</span><span>ル</span><span>表</span></button>
 <button type="button" class="ssTab" id="kpTab" title="番号と氏名の対照表を右に開きます" aria-label="対照表"><span>対</span><span>照</span><span>表</span></button>
 <button type="button" class="ssTab" id="nmTab" title="2名体制の利用者の一覧を右に開きます" aria-label="2名体制"><span>２</span><span>名</span><span>体</span><span>制</span></button>
+<button type="button" class="ssTab" id="osTab" title="今日の訪問を、利用者さんへ携帯のメッセージで知らせます" aria-label="お知らせ"><span>お</span><span>知</span><span>ら</span><span>せ</span></button>
 <button type="button" class="ssTab" id="mnTab" title="この画面の使い方と、印の意味を右に開きます" aria-label="使い方"><span>使</span><span>い</span><span>方</span></button>
 </div>
 <!-- 2026-10-29：対照表（右に立ち上がるサブ画面） -->
@@ -310,6 +312,14 @@ function tsPortalAsk(){
   <div class="ssNav"><input type="search" class="kpFind" id="nmFind" placeholder="番号・氏名・職員名の一部で絞る"></div>
   <div class="ssBody" id="nmBody"></div>
   <div class="ssFoot">利用者登録の「⑤ 体制」が「2名」の人、「指示書から」の「指示の内容」に複数名訪問が「あり」と書かれている人、週間予定に同行が入っている人です。曜日ごとの担当と同行は、いまの週間予定です。</div>
+</aside>
+<!-- 2026-11-03：利用者さんへのお知らせ（宏史さんの指示「サービス当日に、本日は訪問看護のお伺い予定日です、と定型文を送る」。
+     将来は外部のSMS送信サービスで完全自動。とりあえずは一押し：「送る」で携帯のメッセージが宛先と文面入りで開き、送信を押すだけ） -->
+<aside class="ssPanel" id="osPanel" aria-label="利用者さんへのお知らせ">
+  <div class="ssHead"><h2>利用者さんへのお知らせ<small id="osSub"></small></h2><button type="button" class="ssClose" id="osClose" title="閉じる" aria-label="閉じる">×</button></div>
+  <div class="ssNav"><input type="date" id="osDate" style="font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px"><button type="button" class="btn sub small" id="osToday">今日</button><button type="button" class="btn sub small" id="osTomorrow">明日</button></div>
+  <div class="ssBody" id="osBody"></div>
+  <div class="ssFoot">「送る」を押すと、携帯のメッセージが宛先と文面の入った状態で開きます。送信を押すと届きます（ほかの利用者さんに番号が見えないよう、1人ずつ送ります）。送ったら「送った」に印が付きます。キャンセルの入った訪問は出しません。</div>
 </aside>
 <!-- 2026-10-29：使い方（右に立ち上がるサブ画面） -->
 <aside class="ssPanel" id="mnPanel" aria-label="使い方">
@@ -4166,8 +4176,9 @@ function applyDept(){
   if(stf){ ['cardWk','cardIm','cardRules'].forEach(function(id){ show(id, false); }); }
   var ssHide = (R.lv === 'staff' || R.lv === 'none'); show('ssTab', !ssHide); if(ssHide && document.body.classList.contains('ssOpen')) ssOpen(false);
   show('kpTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('kpOpen')) sideOpen('kp', false);
+  show('osTab', R.lv !== 'none' && R.lv !== 'staff'); osBadge(); if((R.lv === 'none' || R.lv === 'staff') && document.body.classList.contains('osOpen')) sideOpen('os', false);   /* 利用者さんへのお知らせは、事務局・管理者が送る */
   show('nmTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('nmOpen')) sideOpen('nm', false);
-  if(document.body.classList.contains('kpOpen')) kpRender(); if(document.body.classList.contains('mnOpen')) mnRender(); if(document.body.classList.contains('nmOpen')) nmRender();
+  if(document.body.classList.contains('kpOpen')) kpRender(); if(document.body.classList.contains('mnOpen')) mnRender(); if(document.body.classList.contains('nmOpen')) nmRender(); if(document.body.classList.contains('osOpen') && document.activeElement && document.activeElement.id !== 'osTpl') osRender();
   /* 2026-11-01：管理者の合言葉の枠は、管理者の印が付いた人の端末と、管理者の画面が出ている端末だけに出す（職員の端末には出さない） */
   show('cardMgrKey', !((R.lv === 'staff' || R.lv === 'office') && !R.noKey));
   roleNote(R);
@@ -6163,7 +6174,7 @@ $('sr_out').addEventListener('click', function(){
 var SS_KEY = 'tritime_ss_open';
 var ssStart = null;
 function ssOpen(on){
-  if(on){ document.body.classList.remove('kpOpen', 'mnOpen', 'nmOpen'); }
+  if(on){ document.body.classList.remove('kpOpen', 'mnOpen', 'nmOpen', 'osOpen'); }
   document.body.classList.toggle('ssOpen', !!on);
   try{ localStorage.setItem(SS_KEY, on ? '1' : '0'); }catch(e){}
   if(on){ if(!ssStart) ssStart = parseYmd($('planWeek').value) || mondayOf(new Date()); ssRender(); }
@@ -6413,9 +6424,41 @@ function ssMoveDo(v, sid, date, weeklyToo){
 /* ---- 情報の引き出し（2026-10-29・宏史さんの発案「画面を変えたり、情報を探したりする必要がなくなる」）----
    右端のつまみから、対照表と使い方を、いまの画面のまま横に開く。 */
 function sideOpen(k, on){
-  if(on){ document.body.classList.remove('ssOpen', 'kpOpen', 'mnOpen', 'nmOpen'); }
+  if(on){ document.body.classList.remove('ssOpen', 'kpOpen', 'mnOpen', 'nmOpen', 'osOpen'); }
   document.body.classList.toggle(k + 'Open', !!on);
-  if(on){ if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else if(k === 'nm') nmRender(); else mnRender(); }
+  if(on){ if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else if(k === 'nm') nmRender(); else if(k === 'os') osRender(); else mnRender(); }
+}
+/* 2026-11-03：利用者さんへのお知らせ。選んだ日の訪問（キャンセルを除く）を利用者さんごとに1行にまとめ、その日のいちばん早い時刻で定型文を作る。
+   定型文は設定（settings.osText）に持ち、{時刻} をその人の時刻に置き換える。送ったら type "notify" を残す */
+var OS_DEF = '【ノア訪問看護】本日{時刻}ごろ、訪問看護にお伺いする予定です。ご都合が悪くなった場合は、事業所までお電話ください。';
+/* 2026-11-03（宏史さん「横の引き出しに一押し情報もつけてもらえれば忘れずに一押しできる」）：つまみに、今日まだ送っていない人数を赤い丸で出す */
+function osLeft(){ var date = ymd(new Date()), by = {}, ev = events();
+  visitsOn(date).filter(function(v){ return !v.cx; }).forEach(function(v){ by[v.no] = 1; });
+  return Object.keys(by).filter(function(no){ var p = patient(no) || {}; return String(p.telMobile || '').trim() && !ev.some(function(e){ return e.type === 'notify' && e.patientNo === no && e.date === date; }); }).length; }
+function osBadge(){ var t = $('osTab'); if(!t) return; var n = osLeft(), b = t.querySelector('.osCnt');
+  if(!b){ b = document.createElement('span'); b.className = 'osCnt'; t.appendChild(b); }
+  b.textContent = n ? '残' + n : ''; b.style.display = n ? '' : 'none'; t.title = n ? '今日まだ知らせていない利用者さんが ' + n + '人います。押すと一覧が開きます' : '今日の訪問を、利用者さんへ携帯のメッセージで知らせます'; }
+function osText(){ var s0 = lj(K.settings, {}) || {}; return s0.osText || OS_DEF; }
+function osRender(){
+  if(!$('osDate').value) $('osDate').value = ymd(new Date());
+  var date = $('osDate').value, by = {}, ev = events();
+  visitsOn(date).filter(function(v){ return !v.cx; }).forEach(function(v){ if(!by[v.no] || v.time < by[v.no].time) by[v.no] = v; });
+  var nos = Object.keys(by).sort(function(a, b){ return by[a].time < by[b].time ? -1 : 1; }), sent = 0;
+  var rows = nos.map(function(no){ var v = by[no], p = patient(no) || {}, tel = String(p.telMobile || '').trim(), done = ev.some(function(e){ return e.type === 'notify' && e.patientNo === no && e.date === date; });
+    if(done) sent++;
+    var body = osText().replace(/\{時刻\}/g, v.time).replace(/本日/g, date === ymd(new Date()) ? '本日' : date === ymd(addDays(new Date(), 1)) ? '明日' : jpDate(date).replace(/（.）$/, ''));
+    return '<tr><td><b>' + esc(v.time) + '</b></td><td>' + esc(dnn(no)) + '<br><small class="muted">担当 ' + esc(staffName(v.staffId)) + '</small></td><td>' +
+      (tel ? '<a class="btn small amber" data-ossend="' + esc(no) + '" href="' + esc(pnSms([tel], body)) + '">送る</a> ' + (done ? '<span class="tag green">送った</span>' : '') : '<span class="muted">携帯番号なし</span>') + '</td></tr>'; }).join('');
+  $('osSub').textContent = jpDate(date) + '・' + nos.length + '人（送った ' + sent + '人）';
+  $('osBody').innerHTML = '<label class="f" for="osTpl">送る文（{時刻} が、その人の訪問の時刻に変わります）</label><textarea id="osTpl" style="min-height:64px">' + esc(osText()) + '</textarea>' +
+    '<div class="btns"><button type="button" class="btn sub small" id="osTplSave">この文で保存する</button></div>' +
+    (nos.length ? '<table class="kpT"><tr><th>時刻</th><th>利用者さん</th><th></th></tr>' + rows + '</table>' : '<p class="empty">この日の訪問はありません。</p>');
+  $('osTplSave').onclick = function(){ var cur = lj(K.settings, {}) || {}; saveSettings(Object.assign({}, cur, { osText:$('osTpl').value.trim() || OS_DEF })); osRender(); };
+  $('osBody').querySelectorAll('[data-ossend]').forEach(function(a){ a.addEventListener('click', function(){
+    var no = a.getAttribute('data-ossend'), e2 = events();
+    if(!e2.some(function(e){ return e.type === 'notify' && e.patientNo === no && e.date === date; })){ e2.push({ id:uid(), type:'notify', patientNo:no, date:date, by:dev().me || '', at:nowLocal() }); saveEvents(e2); }
+    setTimeout(function(){ osRender(); osBadge(); }, 300);
+  }); });
 }
 /* 2026-11-03：2名体制名簿。2名体制として扱う利用中の人と、いまの週間予定の曜日ごとの担当・同行を並べる */
 function nmRender(){
@@ -6518,13 +6561,19 @@ $('kpTab').addEventListener('click', function(){ sideOpen('kp', true); });
 $('kpClose').addEventListener('click', function(){ sideOpen('kp', false); });
 $('kpFind').addEventListener('input', kpRender);
 $('kpPrint').addEventListener('click', function(){ ptRosterPrint(); $('kpMsg').textContent = $('pt_rosterMsg').textContent; });
+$('osTab').addEventListener('click', function(){ sideOpen('os', true); });
+$('osClose').addEventListener('click', function(){ sideOpen('os', false); });
+$('osDate').addEventListener('change', osRender);
+$('osToday').addEventListener('click', function(){ $('osDate').value = ymd(new Date()); osRender(); });
+$('osTomorrow').addEventListener('click', function(){ $('osDate').value = ymd(addDays(new Date(), 1)); osRender(); });
 $('nmTab').addEventListener('click', function(){ sideOpen('nm', true); });
 $('nmClose').addEventListener('click', function(){ sideOpen('nm', false); });
 $('nmFind').addEventListener('input', nmRender);
 $('mnTab').addEventListener('click', function(){ sideOpen('mn', true); });
 $('mnClose').addEventListener('click', function(){ sideOpen('mn', false); });
 $('mnFind').addEventListener('input', mnRender);
-document.querySelectorAll('#tabs button').forEach(function(b){ b.addEventListener('click', function(){ if(document.body.classList.contains('mnOpen')) setTimeout(mnRender, 0); }); });
+document.querySelectorAll('#tabs button').forEach(function(b){ b.addEventListener('click', function(){ if(document.body.classList.contains('mnOpen')) setTimeout(mnRender, 0); setTimeout(osBadge, 0); }); });
+setInterval(osBadge, 60000);   /* 日付が変わったり、ほかの端末で送ったりしても、残りの人数を1分ごとに出し直す */
 $('ssClose').addEventListener('click', function(){ ssOpen(false); });
 $('ssPrev').addEventListener('click', function(){ ssStart = addDays(ssStart || mondayOf(new Date()), -7); ssRender(); });
 $('ssNext').addEventListener('click', function(){ ssStart = addDays(ssStart || mondayOf(new Date()), 7); ssRender(); });
@@ -6615,7 +6664,7 @@ $('av_save').addEventListener('click', function(){
   saveEvents(ev); $('av_msg').textContent = staffName(sid) + 'さんの ' + ym.replace('-', '年').replace(/年0?/, '年') + '月の申告を保存しました（' + days.length + '日）。';
   refreshAll();
 });
-refreshAll = function(){ refreshAll0(); renderLeave(); renderWorkRule(); renderAttend(); avRender(); ssRender(); paRender(); };
+refreshAll = function(){ refreshAll0(); renderLeave(); renderWorkRule(); renderAttend(); avRender(); ssRender(); paRender(); osBadge(); };
 (function(){ var on = false; try{ on = localStorage.getItem(SS_KEY) === '1'; }catch(e){} if(on) ssOpen(true); })();
 
 nrScanLocal();

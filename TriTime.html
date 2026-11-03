@@ -286,7 +286,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-18</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-19</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -4703,6 +4703,28 @@ function auMake(course){
   /* 2026-11-03：同行（いまの週間予定から引き継ぐ分）を、表に出す前に行へ付けておく。入れ替えでも同じものを使う */
   var wUsed0 = {}; rows.forEach(function(v){ var inf = info[v.no] || {}; v.withId = '';
     if(inf.withId && inf.withId !== v.staffId && (wUsed0[v.no] || 0) < (inf.withN || 0)){ v.withId = inf.withId; wUsed0[v.no] = (wUsed0[v.no] || 0) + 1; } });
+  /* 2026-11-03（宏史さん「加藤かんじは2名だろ、同行者は誰なんだよ」「複数名利用者は変更しましたよ」）：
+     利用者登録の体制が「2名」で、今の週間予定から引き継ぐ同行が無い訪問には、同行者を自動で付ける。
+     決まり（宏史さんの指示 11/3）：同行の指定が無い2名体制は、週1回を看護補助者、残りは看護師で入る。
+     ・その患者さんの週の1回目：看護補助者（その曜日に出ていて、同じ時刻に別の同行が無い人）。いなければ看護師
+     ・2回目以降：看護師（担当とは別の人。その曜日に出ていて、同じ時刻に自分の訪問・同行が無く、その日の件数＋同行が上限に届いていない人のうち、その日がいちばん空いている人）
+     ・見つからなければ空のまま（札に「2名・同行未定」と出る） */
+  (function(){
+    var aides = deptStaff().filter(function(s){ return !canSolo(s) && !isStandby(s) && !staffOrphan(s) && !staffOut(s); });
+    var dayOK = function(s, d){ var off = staffOff(s); return off.length ? off.indexOf(d) < 0 : ['1','2','3','4','5'].indexOf(d) >= 0; };
+    var busy = function(sid, d, t, mn){ var a = toMin(t), b = a + (+mn || 30);
+      return rows.some(function(r){ if(r.dow !== d || (r.staffId !== sid && r.withId !== sid)) return false; var x = toMin(r.time), y = x + (+r.min || 30); return x < b && a < y; }); };
+    var loadOf = function(sid, d){ return rows.filter(function(r){ return r.dow === d && (r.staffId === sid || r.withId === sid); }).length; };
+    var firstSeen = {};
+    rows.slice().sort(function(a, b){ var da = (+a.dow + 6) % 7, db = (+b.dow + 6) % 7; return da - db || (a.time < b.time ? -1 : 1); }).forEach(function(v){
+      var p = patient(v.no) || {}; if(p.team !== '2名' || v.withId) return;
+      var first = !firstSeen[v.no], mn = v.min || p.vmin || 30; firstSeen[v.no] = 1;
+      if(first){ var ai = aides.filter(function(s){ return dayOK(s, v.dow) && !busy(s.id, v.dow, v.time, mn); })[0]; if(ai){ v.withId = ai.id; v.autoWith = true; return; } }
+      var cand = ST.filter(function(x){ return x.s.id !== v.staffId && x.days.indexOf(v.dow) >= 0 && !busy(x.s.id, v.dow, v.time, mn) && loadOf(x.s.id, v.dow) < capOf(x, v.dow); })
+        .sort(function(a, b){ return loadOf(a.s.id, v.dow) - loadOf(b.s.id, v.dow) || (a.full === b.full ? 0 : a.full ? -1 : 1); });
+      if(cand.length){ v.withId = cand[0].s.id; v.autoWith = true; }
+    });
+  })();
   auPlan = { rows:rows, miss:miss, nos:out.map(function(o){ return o.p.no; }), info:info };
   var tot = rows.length, need = P.reduce(function(t, p){ return t + p.f; }, 0);
   var head = '<tr><th class="who">職員</th>' + MD_DOW.map(function(d){ return '<th' + (d === '0' || d === '6' ? ' class="we"' : '') + '>' + DOW[+d] + '</th>'; }).join('') + '</tr>';
@@ -4731,7 +4753,7 @@ function auMake(course){
       /* 2026-11-03 改め（宏史さん「出来ない理由ばかり並んでいる」）：取り決めの欄には計画書の文がそのまま入っている人が多いので、読めなかった人の枠は出さない */
       return         '<details style="margin:8px 0"><summary>患者さんごとの週の回数（どこから取ったか）を見る</summary><ul style="margin:4px 0 0 18px">' + P.slice().sort(function(a, b){ return b.f - a.f || (a.no < b.no ? -1 : 1); }).map(function(p){ return '<li>' + esc(dnn(p.no)) + '：週' + p.f + '回（' + esc(p.fi.src) + '）</li>'; }).join('') + '</ul></details>'; })() +
     '<div class="tbl-scroll"><table class="mhT">' + head + body + '</table></div>' +
-    '<p class="muted">同じ地区の患者さんを、同じ職員・同じ曜日に寄せています。いまの担当がいる患者さんは、なるべく同じ職員のままにしています。週の回数は、利用者登録の「訪問の回数・時間帯の取り決め」の週◯回です（無ければ「予定の希望」の希望の曜日の数、それも無ければいまの週間予定の回数、それも無ければ週1回）。1日の中は、地区ごと・位置が分かるものは近い順に並べ、時刻は「勤務の決まり」の1日の流れに当てています。2名体制の同行者は、いまの週間予定の回数の分だけ引き継ぎます。</p>';
+    '<p class="muted">同じ地区の患者さんを、同じ職員・同じ曜日に寄せています。いまの担当がいる患者さんは、なるべく同じ職員のままにしています。週の回数は、利用者登録の「訪問の回数・時間帯の取り決め」の週◯回です（無ければ「予定の希望」の希望の曜日の数、それも無ければいまの週間予定の回数、それも無ければ週1回）。1日の中は、地区ごと・位置が分かるものは近い順に並べ、時刻は「勤務の決まり」の1日の流れに当てています。2名体制の同行者は、いまの週間予定に入っている分を引き継ぎ、足りない分は自動で付けます（その患者さんの週の1回目は看護補助者、2回目以降は担当とは別の、その日に空いている看護師）。</p>';
   $('au_apply').style.display = rows.length ? '' : 'none';
 }
 /* 2026-11-03：週間予定の違い（前→後）。患者さんごとに、曜日と担当が変わった訪問と、職員ごとの曜日別の件数の増減を出す。時刻だけの違いは出さない */

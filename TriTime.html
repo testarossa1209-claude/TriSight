@@ -286,7 +286,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-11</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-12</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -1378,7 +1378,11 @@ function pnHTML(items){
   return h ? '<div style="margin-top:8px"><b>携帯・メールでも知らせる</b><div class="muted sm">押すと、この端末のメッセージやメールのアプリが、宛先と文面を入れた状態で開きます。送信を押すと届きます。</div>' + h + '</div>' : '';
 }
 function pnVisitText(date, time, no, what){ return '【トライタイム】' + jpDate(date) + ' ' + time + '　契約書番号 ' + dn(no) + ' の訪問が' + what + '。予定が変わっています。トライタイムで確かめて、事務所へ連絡をお願いします。'; }
-function staffName(id){ var s = raw('staff').filter(function(x){ return x.id === id; })[0]; return s ? s.name : ''; }
+/* 2026-11-03：2名体制の同行者が決まっていないときの印（宏史さん「2名（看護師）とか2名（准看護師）とか2名（看護助手）とかの選択肢も付けてほしい」）。
+   同行者の欄に職員の代わりに入れる。売上はその職種の同行の料金で数え、職員の稼働・連絡には数えない */
+var TBD = { 'tbd:n':'看護師', 'tbd:j':'准看護師', 'tbd:h':'看護補助者' };
+function isTbd(id){ return !!TBD[id]; }
+function staffName(id){ if(TBD[id]) return '未定（' + TBD[id] + '）'; var s = raw('staff').filter(function(x){ return x.id === id; })[0]; return s ? s.name : ''; }
 function patient(no){ return patients().filter(function(p){ return p.no === no; })[0] || null; }
 /* 職員は「職種」「雇用形態」「管理者かどうか」を持つ（2026-10-12）。
    以前の形（role：看護師／事務局／管理者）で入っている職員も、読み替えて扱う。 */
@@ -1408,6 +1412,7 @@ function staffRank(s, d){ if((s.dept && /経営企画事務/.test(s.dept)) || jo
 function deptStaff(d, at){ d = d || D(); var a = staff().filter(function(s){ return !staffOut(s, at); }).filter(function(s){ if(staffSub(s).indexOf(d.name) >= 0) return true; if(s.dept) return deptByName(s.dept) === d; var j = jobOf(s); return d.jobs.indexOf(j) >= 0 || (AIDE_JOBS.indexOf(j) >= 0 && d === DEPTS[0]); });   /* 2026-11-03：所属部門が空の看護補助者は、訪問看護部の職員として見る */ return a.map(function(s, i){ return { s:s, i:i, r:staffRank(s, d) }; }).sort(function(x, y){ return (x.r - y.r) || (x.i - y.i); }).map(function(x){ return x.s; }); }
 
 /* ---- 共通：選択肢 ---- */
+var WITH_L = [];   /* 週間予定の同行の選択肢（未定の3つ＋職員）。一覧の各行の同行の欄でも使う */
 function fillSelect(sel, items, blank){
   var el = $(sel); if(!el) return;
   var cur = el.value;
@@ -1427,7 +1432,8 @@ function refreshSelects(){
   /* 同行（2名体制）には、部署の職員に加えて、看護助手の依頼で同行するほかの訪問の部署（介護部など）の職員も選べる */
   var withL = ns.slice(), seen = {}; ns.forEach(function(x){ seen[x.v] = 1; });
   DEPTS.filter(function(x){ return x.kind === 'visit' && x !== D(); }).forEach(function(x){ deptStaff(x).forEach(function(s){ if(!seen[s.id] && jobOf(s) !== '事務局'){ seen[s.id] = 1; withL.push({ v:s.id, t:s.name + '（' + x.name + '）' }); } }); });
-  fillSelect('wk_with', withL, 'なし（1名）');
+  WITH_L = [{ v:'tbd:n', t:'2名（看護師・未定）' }, { v:'tbd:j', t:'2名（准看護師・未定）' }, { v:'tbd:h', t:'2名（看護補助者・未定）' }].concat(withL);
+  fillSelect('wk_with', WITH_L, 'なし（1名）');
   fillSelect('c_fwdTo', ns, '回していない');
   ['c_by','r_by','pt_by','rq_by','pr_by'].forEach(function(id){ fillSelect(id, all, '選んでください'); });
   fillSelect('pr_staff', ns, '選んでください');
@@ -1523,10 +1529,10 @@ function visitsOn(date){
    変更をした本人は、自分で変えたので連絡の対象から外す。組み換えで了承がまだのもの（consent:false）には「要連絡（了承前）」の札を付ける。 */
 function chgOf(v){
   if(!v || v.date < ymd(new Date())) return null;
-  if(v.cx) return { key:'cx:' + v.cx.id, staff:[v.staffId, v.withId].filter(function(x, i, a){ return x && x !== v.cx.by && a.indexOf(x) === i; }), what:'キャンセル' };
+  if(v.cx) return { key:'cx:' + v.cx.id, staff:[v.staffId, v.withId].filter(function(x, i, a){ return x && !isTbd(x) && x !== v.cx.by && a.indexOf(x) === i; }), what:'キャンセル' };
   if(v.moved){
     var m = events().filter(function(e){ return e.id === v.moved.id; })[0] || {};
-    return { key:'mv:' + v.moved.id, staff:[v.staffId, v.moved.fromStaff, v.withId].filter(function(x, i, a){ return x && x !== m.by && a.indexOf(x) === i; }), what:'組み換え（元 ' + v.moved.from + '）', consent:m.consent !== false, moveId:v.moved.id };
+    return { key:'mv:' + v.moved.id, staff:[v.staffId, v.moved.fromStaff, v.withId].filter(function(x, i, a){ return x && !isTbd(x) && x !== m.by && a.indexOf(x) === i; }), what:'組み換え（元 ' + v.moved.from + '）', consent:m.consent !== false, moveId:v.moved.id };
   }
   return null;
 }
@@ -2867,8 +2873,13 @@ function renderSetup(){
     return '<tr' + (staffOrphan(s) ? ' style="background:#fdecea"' : staffOut(s) ? ' style="opacity:.55"' : '') + '><td>' + esc(s.name) + (s.post ? ' <small class="muted">（' + esc(s.post) + '）</small>' : '') + (staffOrphan(s) ? ' <span class="tag red">名簿にいません</span>' : '') + (s.out ? ' <span class="tag gray">' + (staffOut(s) ? '退職' : '退職予定') + ' ' + esc(jpDate(s.out)) + '</span>' : '') + '</td><td>' + esc(jobOf(s) || '未設定') + '</td><td>' + esc(s.dept || (sd ? sd.name + '（職種から）' : '未設定')) + '</td><td>' + esc(staffSub(s).join('・')) + '</td><td>' + esc([1,2,3,4,5,6,0].filter(function(w){ return staffOff(s).indexOf(String(w)) >= 0; }).map(function(w){ return DOW[w]; }).join('・') + (s.holOff ? (staffOff(s).length ? '・' : '') + '祝日' : '')) + '</td><td>' + esc(s.emp || '未設定') + (isIrreg(s) ? '<br><span class="tag gray">不定期</span>' : '') + (isStandby(s) ? '<br><span class="tag gray">待機</span>' : '') + (s.emp === '非常勤' && s.kengyo ? '<br><small class="muted">兼業：' + esc(s.kengyo) + '</small>' : '') + '</td><td>' + (isMgr(s) ? '管理者' : '') + '</td><td class="sm">' + (s.tel ? '<a href="tel:' + esc(s.tel.replace(/-/g, '')) + '">' + esc(s.tel) + '</a>' : '<span class="muted">携帯 なし</span>') + '<br>' + (s.mail ? esc(s.mail) : '<span class="muted">メール なし</span>') + '</td><td><button class="btn small sub" data-stedit="' + esc(s.id) + '">直す</button> <button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
   }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var wk = weekly().slice().sort(function(a,b){ var da = (+a.dow + 6) % 7, db = (+b.dow + 6) % 7; return da - db || (a.time < b.time ? -1 : 1); });
-  $('wkList').innerHTML = wk.length ? '<table><tr><th>曜日</th><th>時刻</th><th>契約書番号</th><th>担当</th><th></th></tr>' + wk.map(function(v){
-    return '<tr><td>' + DOW[+v.dow] + '</td><td>' + esc(v.time) + '（' + esc(v.min) + '分）</td><td>' + esc(dnn(v.no)) + '</td><td>' + esc(staffName(v.staffId)) + (v.withId ? '<br><small class="muted">同行：' + esc(staffName(v.withId)) + '</small>' : '') + '</td><td><button class="btn small danger" data-wkdel="' + esc(v.id) + '">外す</button></td></tr>';
+  $('wkList').innerHTML = wk.length ? '<table><tr><th>曜日</th><th>時刻</th><th>契約書番号</th><th>担当</th><th>同行（2名体制のとき）</th><th></th></tr>' + wk.map(function(v){
+    /* 2026-11-03：登録した後でも、行ごとに同行を付ける・変える・外せる（選ぶとすぐ残る） */
+    var ops = WITH_L.filter(function(x){ return x.v !== v.staffId; }), has = !v.withId || ops.some(function(x){ return x.v === v.withId; });
+    var sel = '<select data-wkwith="' + esc(v.id) + '"><option value="">なし（1名）</option>' + (has ? '' : '<option value="' + esc(v.withId) + '">' + esc(staffName(v.withId) || '名簿にいない職員') + '</option>') +
+      ops.map(function(x){ return '<option value="' + esc(x.v) + '"' + (x.v === v.withId ? ' selected' : '') + '>' + esc(x.t) + '</option>'; }).join('') + '</select>';
+    if(!has) sel = sel.replace('<option value="' + esc(v.withId) + '">', '<option value="' + esc(v.withId) + '" selected>');
+    return '<tr><td>' + DOW[+v.dow] + '</td><td>' + esc(v.time) + '（' + esc(v.min) + '分）</td><td>' + esc(dnn(v.no)) + '</td><td>' + esc(staffName(v.staffId)) + '</td><td>' + sel + '</td><td><button class="btn small danger" data-wkdel="' + esc(v.id) + '">外す</button></td></tr>';
   }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var s = settings();
   $('s_cut').value = s.cut; $('s_price').value = s.price; $('s_fee').value = s.fee; $('s_review').value = s.review; $('s_hard').value = s.hard; $('s_refRate').value = s.refRate;
@@ -2883,6 +2894,10 @@ function renderSetup(){
     if(!confirm('この職員を名簿から外しますか？（これまでの記録は残ります。この端末のトライシートの職員名簿からも外れます）\n\n退職した人は、外さずに「直す」から退職日を入れてください。名簿に残り、退職日の翌日から担当や選ぶ欄から外れます。')) return;
     var gs = staff().filter(function(x){ return x.id === b.getAttribute('data-stdel'); })[0];
     saveCol('staff', staff().filter(function(x){ return x.id !== b.getAttribute('data-stdel'); })); if(gs && gs.sheetId) sheetPush({ gone:[gs.sheetId] }); refreshAll();
+  }); });
+  $('wkList').querySelectorAll('[data-wkwith]').forEach(function(el){ el.addEventListener('change', function(){
+    var a = live('weekly'), w = a.filter(function(x){ return x.id === el.getAttribute('data-wkwith'); })[0]; if(!w) return;
+    w.withId = el.value; saveCol('weekly', a); refreshAll();
   }); });
   $('wkList').querySelectorAll('[data-wkdel]').forEach(function(b){ b.addEventListener('click', function(){
     saveCol('weekly', live('weekly').filter(function(x){ return x.id !== b.getAttribute('data-wkdel'); })); refreshAll();
@@ -4666,7 +4681,7 @@ function auMake(course){
     (miss.length ? '<br><b>入りきらなかった患者さん：' + miss.map(function(p){ return esc(dnn(p.no)) + '（' + esc(p.area) + '・週' + p.f + '回）'; }).join('、') + '</b>。1日の件数の上限を上げるか、手で入れてください。' : '') + '</div>' +
     (function(){ var w = P.filter(function(p){ return p.why.length; }), t2 = P.filter(function(p){ return p.team === '2名' && !(info[p.no] && info[p.no].withId); });
       return (w.length ? '<div class="judge fee" style="margin:8px 0"><b>希望どおりに組めなかった人</b><ul style="margin:4px 0 0 18px">' + w.map(function(p){ return '<li>' + esc(dnn(p.no)) + '：' + esc(p.why.join('／')) + '</li>'; }).join('') + '</ul>希望に合わせるには、担当や曜日を週間予定で手直ししてください。</div>' : '') +
-        (t2.length ? '<div class="judge fee" style="margin:8px 0"><b>2名体制の希望で、同行者が決まっていない人</b>：' + t2.map(function(p){ return esc(dnn(p.no)); }).join('、') + '。週間予定の「同行」で入れてください。</div>' : ''); })() +
+        (t2.length ? '<div class="judge fee" style="margin:8px 0"><b>2名体制の希望で、同行の欄が空の人</b>：' + t2.map(function(p){ return esc(dnn(p.no)); }).join('、') + '。売上は2名で数えています（週の1回目を看護補助者、2回目以降を看護師の加算）。同行する人か、職種だけ決まっていれば「2名（看護師・未定）」などを、「名簿・設定」の「週間予定」の一覧の同行の欄で選んでください。</div>' : ''); })() +
     '<div class="tbl-scroll"><table class="mhT">' + head + body + '</table></div>' +
     '<p class="muted">同じ地区の患者さんを、同じ職員・同じ曜日に寄せています。いまの担当がいる患者さんは、なるべく同じ職員のままにしています。週の回数は、利用者登録の「訪問の回数・時間帯の取り決め」の週◯回です（無ければ「予定の希望」の希望の曜日の数、それも無ければいまの週間予定の回数、それも無ければ週1回）。1日の中は、地区ごと・位置が分かるものは近い順に並べ、時刻は「勤務の決まり」の1日の流れに当てています。2名体制の同行者は、いまの週間予定の回数の分だけ引き継ぎます。</p>';
   $('au_apply').style.display = rows.length ? '' : 'none';
@@ -5324,7 +5339,7 @@ var FEE = {
 };
 var KANRI_LBL = { other:'その他（機能強化型でない）', k1:'機能強化型1', k2:'機能強化型2', k3:'機能強化型3', k4:'機能強化型4' };
 var MD_MANUAL = ['障害福祉', '自費'];
-function feeJob(sid){ var s = staff().filter(function(x){ return x.id === sid; })[0]; var j = s ? jobOf(s) : ''; return j === '准看護師' ? 'j' : (j === '看護師（正看）' ? 'n' : 'h'); }
+function feeJob(sid){ if(TBD[sid]) return sid.slice(4); var s = staff().filter(function(x){ return x.id === sid; })[0]; var j = s ? jobOf(s) : ''; return j === '准看護師' ? 'j' : (j === '看護師（正看）' ? 'n' : 'h'); }
 function feeSpecial(p, date){ return p && p.special === 'あり' && (!p.specialEnd || date <= p.specialEnd); }
 /* その月の訪問1件ごとの売上。週の日数は月曜始まりで数える（月をまたぐ週は前月の分から数える） */
 function mdFees(m){
@@ -6152,7 +6167,7 @@ var MN_MARKS = [
   ['自動の振り分け（「予定」の2つ目の枠）の見方', [
     ['希望 ○○（赤字）', '組まれた時刻・時間帯が、本人の希望とずれています。'],
     ['希望どおりに組めなかった人', '希望の曜日・時刻・時間帯を守れなかった人と、その理由です。週間予定で手直ししてください。'],
-    ['同行者が決まっていない人', '2名体制の希望があるのに、同行者が決まっていない人です。週間予定の「同行」で入れてください。'],
+    ['同行の欄が空の人', '2名体制の希望があるのに、週間予定の同行の欄が空の人です。売上は2名で数えています（週の1回目を看護補助者、2回目以降を看護師の加算）。同行する人か、「2名（看護師・未定）」「2名（准看護師・未定）」「2名（看護補助者・未定）」を、「名簿・設定」の「週間予定」の一覧の同行の欄で選んでください。選ぶとすぐ残ります。'],
     ['点線の「空き ○件」', 'モデルコースの枠のうち、まだ患者さんが入っていない枠です。']
   ]]
 ];

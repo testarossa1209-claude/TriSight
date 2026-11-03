@@ -305,7 +305,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-30</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-31</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -377,7 +377,7 @@ function tsPortalAsk(){
   if(!app){ var n = document.getElementById('iriguchiNote'); if(n) n.style.display = ''; }
 })();
 </script>
-<div id="alertBox"></div><div id="avAlert"></div>
+<div id="alertBox"></div><div id="avAlert"></div><div id="shWarn"></div>
 <div class="labBar" id="labBar" style="display:none">この端末はいま<b>実験機</b>です。ここで入れた記録は、この端末の中だけにあり、ほかの端末へは送られません。</div>
 <div class="note" id="shareNote"></div>
 <div class="note" id="presBar" style="display:none;background:#eef7f0;border-color:#9fd3ad"></div>
@@ -3210,6 +3210,29 @@ function openItems(items, key, mk){
     return out;
   });
 }
+/* 2026-11-03（宏史さん「ラップトップのお知らせ画面は携帯番号がすべてなし。何もない。共有の問題ですかね」）：
+   利用者さんの登録と経過は合言葉の鍵をかけて共有するため、合言葉の入っていない端末には、ほかの端末で入れた中身（携帯番号など）が届かず、
+   その端末で前に入れた古い中身のまま画面に出ていた。画面の上にそのことを出し、合言葉を入れる場所へ一押しで行けるようにする。
+   共有していない端末は、お知らせの引き出しの中だけに出す（1台だけで使う端末の邪魔をしないため） */
+function shareWarnHTML(all){
+  if(window.TT_LAB) return '';
+  var has = false; try{ has = !!localStorage.getItem(EKEY); }catch(e){}
+  var n = lj(LOCK_KEY, []).length, s = lj(SYNC_KEY, {});
+  var go = function(id, t){ return ' <button type="button" class="btn small amber" data-shgo="' + id + '">' + t + '</button>'; };
+  if(!dev().share) return all ? '' : '<div class="alert"><b>この端末は、ほかの端末と記録を共有していません。</b>ほかの端末で入れた利用者さんの携帯番号などは、この端末には届きません。「名簿・設定」タブの「この端末と共有」で「記録を共有する」に印を付けて保存してください。' + go('cardDev', '共有の設定を開く') + '</div>';
+  if(!has) return '<div class="alert"><b>この端末には「記録の鍵」の合言葉が入っていません。</b>ほかの端末で入れた利用者さんの登録（携帯番号・住所など）と経過は、この端末では読めず、この端末で前に入れた古い中身のまま出ています' + (n ? '（読めないまま届いている記録 ' + n + '件）' : '') + '。「名簿・設定」タブの「記録の鍵（合言葉）」に、事務局で保管している合言葉を入れてください。' + go('cardKey', '合言葉を入れる画面を開く') + '</div>';
+  if(s.err) return '<div class="alert"><b>ほかの端末との共有がうまくいっていません。</b>' + esc(s.err) + go('cardDev', '共有の設定を開く') + '</div>';
+  return '';
+}
+function shareWarnWire(box){
+  if(!box) return;
+  box.querySelectorAll('[data-shgo]').forEach(function(b){ b.onclick = function(){
+    var id = b.getAttribute('data-shgo'); sideOpen('os', false);
+    document.querySelector('#tabs button[data-tab=setup]').click();
+    setTimeout(function(){ var c = $(id); if(c && c.scrollIntoView) c.scrollIntoView({ behavior:'smooth', block:'start' }); }, 80);
+  }; });
+}
+function renderShareWarn(){ var b = $('shWarn'); if(!b) return; b.innerHTML = shareWarnHTML(true); shareWarnWire(b); }
 function keyStatus(){
   var n = lj(LOCK_KEY, []).length, has = false; try{ has = !!localStorage.getItem(EKEY); }catch(e){}
   var el = $('ky_msg'); if(!el) return;
@@ -5002,7 +5025,7 @@ function renderAuto(){
 }
 function refreshAll(){
   mgMigrate(); applyDept();
-  setShareNote(); renderAlerts(); setTimeout(chgPopup, 0);
+  setShareNote(); renderAlerts(); renderShareWarn(); setTimeout(chgPopup, 0);
   refreshSelects(); nbRefreshForm();
   fillSelect('dv_me', staff().filter(function(s){ return (!staffOrphan(s) && !staffOut(s)) || s.id === dev().me; }).map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
   if(!$('dv_me').value && dev().me) $('dv_me').value = dev().me;
@@ -6511,10 +6534,11 @@ function osRender(){
     return '<tr><td><b>' + esc(v.time) + '</b></td><td>' + esc(dnn(no)) + '<br><small class="muted">担当 ' + esc(staffName(v.staffId)) + '</small></td><td>' +
       (tel ? '<a class="btn small amber" data-ossend="' + esc(no) + '" href="' + esc(pnSms([tel], body)) + '">送る</a> ' + (done ? '<span class="tag green">送った</span>' : '') + '<br><small class="muted">' + esc(ds.who) + '</small>' : '<span class="muted">携帯番号なし</span>' + (osOther(p) ? '<br><small class="muted">（登録の電話 ' + esc(osOther(p)) + '）</small>' : '')) + '</td></tr>'; }).join('');
   $('osSub').textContent = jpDate(date) + '・' + nos.length + '人（送った ' + sent + '人）';
-  $('osBody').innerHTML = '<label class="f" for="osTpl">送る文（{時刻} が、その人の訪問の時刻に変わります）</label><textarea id="osTpl" style="min-height:64px">' + esc(osText()) + '</textarea>' +
+  $('osBody').innerHTML = shareWarnHTML(false) + '<label class="f" for="osTpl">送る文（{時刻} が、その人の訪問の時刻に変わります）</label><textarea id="osTpl" style="min-height:64px">' + esc(osText()) + '</textarea>' +
     '<div class="btns"><button type="button" class="btn sub small" id="osTplSave">この文で保存する</button></div>' +
     (nos.length ? '<table class="kpT"><tr><th>時刻</th><th>利用者さん</th><th></th></tr>' + rows + '</table>' : '<p class="empty">この日の訪問はありません。</p>');
   $('osTplSave').onclick = function(){ var cur = lj(K.settings, {}) || {}; saveSettings(Object.assign({}, cur, { osText:$('osTpl').value.trim() || OS_DEF })); osRender(); };
+  shareWarnWire($('osBody'));
   $('osBody').querySelectorAll('[data-ossend]').forEach(function(a){ a.addEventListener('click', function(){
     var no = a.getAttribute('data-ossend'), e2 = events();
     if(!e2.some(function(e){ return e.type === 'notify' && e.patientNo === no && e.date === date; })){ e2.push({ id:uid(), type:'notify', patientNo:no, date:date, by:dev().me || '', at:nowLocal() }); saveEvents(e2); }

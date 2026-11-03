@@ -15,8 +15,9 @@ async def test(p):
         ob = await pg.inner_text('#osBody')
         assert 'ほかの端末と記録を共有していません' in ob, 'お知らせの中に「共有していません」が出ません'
         await pg.click('#osClose'); await pg.wait_for_timeout(300)
-        await pg.evaluate("""(function(){ var d = JSON.parse(localStorage.getItem('tritime_device') || '{}'); d.share = true; localStorage.setItem('tritime_device', JSON.stringify(d));
-          localStorage.removeItem('tritime_key'); localStorage.setItem('tritime_locked', JSON.stringify([{ col:'patients', id:'x1', enc:'aaa' }])); })()""")
+        await pg.add_init_script("""(function(){ try{ var d = JSON.parse(localStorage.getItem('tritime_device') || '{}'); d.share = true; localStorage.setItem('tritime_device', JSON.stringify(d));
+          localStorage.removeItem('tritime_key'); localStorage.setItem('tritime_locked', JSON.stringify([{ col:'patients', id:'x1', enc:'aaa' }])); }catch(e){} })()""")
+
         await pg.reload(); await pg.wait_for_timeout(1500)
         if await pg.query_selector('#ogGo'):
             await pg.click('#ogGo'); await pg.wait_for_timeout(2500)

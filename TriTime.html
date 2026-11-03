@@ -305,7 +305,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-29</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-30</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -6477,9 +6477,25 @@ function sideOpen(k, on){
    定型文は設定（settings.osText）に持ち、{時刻} をその人の時刻に置き換える。送ったら type "notify" を残す */
 var OS_DEF = '【ノア訪問看護】本日{時刻}ごろ、訪問看護にお伺いする予定です。ご都合が悪くなった場合は、事業所までお電話ください。';
 /* 2026-11-03（宏史さん「横の引き出しに一押し情報もつけてもらえれば忘れずに一押しできる」）：つまみに、今日まだ送っていない人数を赤い丸で出す */
+/* 2026-11-03（宏史さん「ラップトップのお知らせ画面は、利用者の携帯番号がすべて『なし』になっている」）：
+   お知らせの送り先を、本人の携帯の欄だけで決めていたため、携帯の番号が「本人の自宅」の欄や、ご家族の連絡先の電話の欄に入っている方が「なし」になっていた。
+   送り先は、①本人の携帯 ②本人の自宅の欄に入っている携帯の番号 ③ご家族などの連絡先（1〜3）の携帯の番号（主介護者を先に。「緊急時のみ」「関わりを拒んでいる」は除く）の順で選ぶ。
+   全角の数字も読む。携帯の番号が一つも無いときは、入っている電話（自宅など）を添えて「携帯番号なし」と出す */
+function osDigits(t){ return String(t || '').replace(/[０-９]/g, function(c){ return String('０１２３４５６７８９'.indexOf(c)); }).replace(/[^0-9]/g, ''); }
+function osIsMob(t){ return /^0[6789]0\d{8}$/.test(osDigits(t)); }
+function osDest(p){
+  p = p || {};
+  if(String(p.telMobile || '').trim()) return { tel:osDigits(p.telMobile) || String(p.telMobile).trim(), who:'本人の携帯' };
+  if(osIsMob(p.telHome)) return { tel:osDigits(p.telHome), who:'本人の携帯（自宅の欄）' };
+  var em = [1, 2, 3].map(function(i){ return { tel:p['em' + i + 'Tel'], name:p['em' + i + 'Name'], rel:p['em' + i + 'Rel'], main:p['em' + i + 'Main'] === '主介護者', ok:!/緊急時のみ|拒/.test(p['em' + i + 'Contact'] || '') }; })
+    .filter(function(e){ return e.ok && osIsMob(e.tel); }).sort(function(a, b){ return (b.main ? 1 : 0) - (a.main ? 1 : 0); })[0];
+  if(em) return { tel:osDigits(em.tel), who:[em.rel, em.name ? em.name + 'さん' : ''].filter(Boolean).join(' ') || 'ご家族' };
+  return null;
+}
+function osOther(p){ p = p || {}; var t = String(p.telHome || '').trim() || [1, 2, 3].map(function(i){ return String(p['em' + i + 'Tel'] || '').trim(); }).filter(Boolean)[0] || ''; return t; }
 function osLeft(){ var date = ymd(new Date()), by = {}, ev = events();
   visitsOn(date).filter(function(v){ return !v.cx; }).forEach(function(v){ by[v.no] = 1; });
-  return Object.keys(by).filter(function(no){ var p = patient(no) || {}; return String(p.telMobile || '').trim() && !ev.some(function(e){ return e.type === 'notify' && e.patientNo === no && e.date === date; }); }).length; }
+  return Object.keys(by).filter(function(no){ var p = patient(no) || {}; return osDest(p) && !ev.some(function(e){ return e.type === 'notify' && e.patientNo === no && e.date === date; }); }).length; }
 function osBadge(){ var t = $('osTab'); if(!t) return; var n = osLeft(), b = t.querySelector('.osCnt');
   if(!b){ b = document.createElement('span'); b.className = 'osCnt'; t.appendChild(b); }
   b.textContent = n ? String(n) : ''; b.style.display = n ? '' : 'none'; t.title = n ? '今日まだ知らせていない利用者さんが ' + n + '人います。押すと一覧が開きます' : '今日の訪問を、利用者さんへ携帯のメッセージで知らせます'; }
@@ -6489,11 +6505,11 @@ function osRender(){
   var date = $('osDate').value, by = {}, ev = events();
   visitsOn(date).filter(function(v){ return !v.cx; }).forEach(function(v){ if(!by[v.no] || v.time < by[v.no].time) by[v.no] = v; });
   var nos = Object.keys(by).sort(function(a, b){ return by[a].time < by[b].time ? -1 : 1; }), sent = 0;
-  var rows = nos.map(function(no){ var v = by[no], p = patient(no) || {}, tel = String(p.telMobile || '').trim(), done = ev.some(function(e){ return e.type === 'notify' && e.patientNo === no && e.date === date; });
+  var rows = nos.map(function(no){ var v = by[no], p = patient(no) || {}, ds = osDest(p), tel = ds ? ds.tel : '', done = ev.some(function(e){ return e.type === 'notify' && e.patientNo === no && e.date === date; });
     if(done) sent++;
     var body = osText().replace(/\{時刻\}/g, v.time).replace(/本日/g, date === ymd(new Date()) ? '本日' : date === ymd(addDays(new Date(), 1)) ? '明日' : jpDate(date).replace(/（.）$/, ''));
     return '<tr><td><b>' + esc(v.time) + '</b></td><td>' + esc(dnn(no)) + '<br><small class="muted">担当 ' + esc(staffName(v.staffId)) + '</small></td><td>' +
-      (tel ? '<a class="btn small amber" data-ossend="' + esc(no) + '" href="' + esc(pnSms([tel], body)) + '">送る</a> ' + (done ? '<span class="tag green">送った</span>' : '') : '<span class="muted">携帯番号なし</span>') + '</td></tr>'; }).join('');
+      (tel ? '<a class="btn small amber" data-ossend="' + esc(no) + '" href="' + esc(pnSms([tel], body)) + '">送る</a> ' + (done ? '<span class="tag green">送った</span>' : '') + '<br><small class="muted">' + esc(ds.who) + '</small>' : '<span class="muted">携帯番号なし</span>' + (osOther(p) ? '<br><small class="muted">（登録の電話 ' + esc(osOther(p)) + '）</small>' : '')) + '</td></tr>'; }).join('');
   $('osSub').textContent = jpDate(date) + '・' + nos.length + '人（送った ' + sent + '人）';
   $('osBody').innerHTML = '<label class="f" for="osTpl">送る文（{時刻} が、その人の訪問の時刻に変わります）</label><textarea id="osTpl" style="min-height:64px">' + esc(osText()) + '</textarea>' +
     '<div class="btns"><button type="button" class="btn sub small" id="osTplSave">この文で保存する</button></div>' +
@@ -6631,7 +6647,7 @@ var MN_GUIDE = [
     ['取引先の登録', '「名簿・設定」の「事業所と取引先」で、事業所の町名と、役所・病院・包括・居宅などの取引先を町名つきで入れます。']
   ]],
   ['7. 利用者さんへのお知らせ', [
-    ['今日の訪問を知らせる', '左端の「お知らせ」。今日まだ知らせていない人数が、つまみの角に赤い丸の数字で出ます。「送る」を押すと携帯のメッセージが宛先と文面入りで開くので、送信を押します。'],
+    ['今日の訪問を知らせる', '左端の「お知らせ」。今日まだ知らせていない人数が、つまみの角に赤い丸の数字で出ます。「送る」を押すと携帯のメッセージが宛先と文面入りで開くので、送信を押します。送り先は、本人の携帯、無ければ自宅の欄の携帯の番号、それも無ければご家族などの連絡先の携帯（主介護者を先に。「緊急時のみ」の方には送りません）で、「送る」の下に誰あてかが出ます。'],
     ['送る文を変える', 'お知らせの中の「送る文」を直して「この文で保存する」。{時刻} がその人の時刻に変わります。']
   ]],
   ['8. 売上とモデルコース（管理者）', [

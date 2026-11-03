@@ -36,6 +36,14 @@ async def test(p):
                   {'name':'不定 二子', 'dept':'訪問看護部', 'job':'看護師（正看）', 'emp':'非常勤', 'kengyo':'○○病院', 'irreg':True},
                   {'name':'待機 三子', 'dept':'訪問看護部', 'job':'看護師（正看）', 'emp':'非常勤', 'kengyo':'△△病院', 'standby':True}]:
             await pg.evaluate(ADD, x)
+        # 「直す」で開いた非常勤の人に、非常勤の勤め方の枠が出て、入れた印が入っている（2026-11-03・宏史さんの指摘「出ていませんよ」）
+        await pg.click('#stList tr:has-text("不定 二子") [data-stedit]'); await pg.wait_for_timeout(300)
+        assert await pg.is_visible('#st_hjBox'), '「直す」で非常勤の人を開いても、非常勤の勤め方の枠が出ません'
+        assert await pg.is_checked('#st_irreg') and await pg.input_value('#st_kengyo') == '○○病院', '「直す」で開いたとき、不定期の印・兼業先が入っていません'
+        await s.shot('#cardStaff', 'TriTime_hj_edit.png')
+        await pg.click('#stList tr:has-text("常勤 一子") [data-stedit]'); await pg.wait_for_timeout(300)
+        assert not await pg.is_visible('#st_hjBox'), '「直す」で常勤の人を開いても、非常勤の勤め方の枠が残っています'
+        await pg.click('#st_cancel'); await pg.wait_for_timeout(200)
         txt = await pg.inner_text('#stList')
         assert '不定期' in txt and '待機' in txt and '兼業：○○病院' in txt, '職員の表に 不定期・待機・兼業先 が出ません'
         await s.shot('#cardStaff', 'TriTime_hj_staff.png')

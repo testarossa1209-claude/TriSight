@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """トライタイムの引き出しの並びの試験（2026-11-03・宏史さん「ラップトップだと横の引き出しの使い方が見えなくなる。左にも引き出しを作っていい。ご要望は引き出しへ」）
 ・ラップトップの画面の高さ（1366×700）でも、右のつまみ（仮スケジュール表・対照表・2名体制・お知らせ）が全部画面の中に収まる
-・「使い方」「ご要望」のつまみは左端にあり、押すと左から開く
+・「使い方」「お知らせ」「ご要望」のつまみは左端にこの順で並び、押すと左から開く（お知らせは宏史さん「左がいい。左右のバランスが良くなる」）
 ・上のタブから「ご要望」が無くなり、左の引き出しの「ご要望」で残せる
 ・使い方は仕事の順番の章（1〜10）に分かれ、目次の章を押すとその章だけが開く"""
 import sys, os
@@ -12,10 +12,16 @@ async def test(p):
     s = Screen(); pg = await s.open(p, 'TriTime.html', w=1366, h=700)
     try:
         await pg.evaluate("document.querySelector('#tabs button[data-tab=plan]').click()"); await pg.wait_for_timeout(400)
-        bot = await pg.evaluate("Math.max.apply(null, ['ssTab','kpTab','nmTab','osTab'].map(function(id){ var e = document.getElementById(id); return e && e.offsetParent ? e.getBoundingClientRect().bottom : 0; }))")
+        bot = await pg.evaluate("Math.max.apply(null, ['ssTab','kpTab','nmTab','mnTab','osTab','rqTab'].map(function(id){ var e = document.getElementById(id); return e && e.offsetParent ? e.getBoundingClientRect().bottom : 0; }))")
         assert bot <= 700, '右のつまみが画面の下にはみ出します（いちばん下 %d）' % bot
-        lx = await pg.evaluate("[document.getElementById('mnTab').getBoundingClientRect().left, document.getElementById('rqTab').getBoundingClientRect().left]")
-        assert lx[0] < 5 and lx[1] < 5, '「使い方」「ご要望」のつまみが左端にありません：' + str(lx)
+        lx = await pg.evaluate("['mnTab','osTab','rqTab'].map(function(id){ var e = document.getElementById(id); return e.offsetParent ? e.getBoundingClientRect().left : -1; })")
+        assert all(0 <= x < 5 for x in lx), '「使い方」「お知らせ」「ご要望」のつまみが左端にありません：' + str(lx)
+        ty = await pg.evaluate("['mnTab','osTab','rqTab'].map(function(id){ return document.getElementById(id).getBoundingClientRect().top; })")
+        assert ty[0] < ty[1] < ty[2], '左のつまみが「使い方」「お知らせ」「ご要望」の順に並びません：' + str(ty)
+        await pg.click('#osTab'); await pg.wait_for_timeout(500)
+        ox = await pg.evaluate("document.getElementById('osPanel').getBoundingClientRect().left")
+        assert ox < 5, '「お知らせ」が左から開きません'
+        await pg.click('#osClose'); await pg.wait_for_timeout(300)
         rq = await pg.evaluate("getComputedStyle(document.querySelector('#tabs button[data-tab=req]')).display")
         assert rq == 'none', '上のタブに「ご要望」が残っています'
         await pg.click('#rqTab'); await pg.wait_for_timeout(500)

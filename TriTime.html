@@ -286,7 +286,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-03</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -299,8 +299,9 @@ function tsPortalAsk(){
 <aside class="ssPanel" id="kpPanel" aria-label="対照表">
   <div class="ssHead"><h2>番号と氏名の対照表<small>番号・氏名・ふりがな・地区のどれかの一部を打つと、その人に絞れます</small></h2><button type="button" class="ssClose" id="kpClose" title="閉じる" aria-label="閉じる">×</button></div>
   <div class="ssNav"><input type="search" class="kpFind" id="kpFind" placeholder="例：0061、山田、やまだ、本町"></div>
+  <div class="ssNav" id="kpDepts" style="padding-top:0"></div>
   <div class="ssBody" id="kpBody"></div>
-  <div class="ssFoot">いま選んでいる部署の患者さん（契約終了の人も含む）を、ふりがなのあいうえお順に並べています（ふりがなが未入力の人は末尾）。紙に出すときは <button type="button" class="btn sub small" id="kpPrint">対照表を印刷する</button> <span id="kpMsg"></span></div>
+  <div class="ssFoot">いま使っている部署の利用者（契約終了の人も含む）を、ふりがなのあいうえお順に並べています（ふりがなが未入力の人は末尾）。ほかの部署の利用者は、上の「○○の一覧」のボタンを押したときだけ出ます。いま使っている部署の分を紙に出すときは <button type="button" class="btn sub small" id="kpPrint">対照表を印刷する</button> <span id="kpMsg"></span></div>
 </aside>
 <!-- 2026-10-29：使い方（右に立ち上がるサブ画面） -->
 <aside class="ssPanel" id="mnPanel" aria-label="使い方">
@@ -1067,6 +1068,8 @@ function tsPortalAsk(){
       <label style="display:block;margin-top:4px"><input type="checkbox" id="st_standby"> 待機（モデルコース・自動の振り分けに入れない。調整が難しいときにお願いする人として、仮スケジュール表の待機者リストに出す）</label>
     </div>
     <input type="hidden" id="st_id"><div class="btns"><button class="btn" id="st_add">追加する</button><button class="btn sub" id="st_cancel" style="display:none">直すのをやめる</button></div>
+    <!-- 2026-11-03：職員の表は、いま使っている部署の職員（兼務を含む）だけを出す。全部署は押したときだけ（宏史さんの指示「スクロールの量が減る」） -->
+    <div class="btns" style="margin-top:10px;align-items:center"><span class="muted sm" id="st_scope"></span><button type="button" class="btn sub small" id="st_allBtn">全部署の職員を表示する</button></div>
     <div class="tbl-scroll" id="stList"></div>
   </div>
   <div class="card" id="cardLeave">
@@ -2838,8 +2841,17 @@ function sheetPull(opt){
 }
 
 /* ---- 名簿・設定 ---- */
+/* 2026-11-03：職員の一覧（職員の表・休みの届け）は、いま使っている部署の職員（兼務で入る人を含む）だけを出す。
+   ほかの部署との連携はイレギュラーなので、「全部署の職員を表示する」を押したときだけ全員を出す（押した状態はこの端末だけで覚える）。
+   経営企画事務職（事務局）を使っているときは、名簿の管理をする部署なので初めから全員を出す */
+var STALL_KEY = 'tritime_staff_all';
+function stAll(){ if(D().kind === 'office') return true; try{ return localStorage.getItem(STALL_KEY) === '1'; }catch(e){ return false; } }
+function stScope(list){ if(stAll()) return list; var ids = {}; deptStaff(D(), '0000-00-00').forEach(function(x){ ids[x.id] = 1; }); return list.filter(function(x){ return ids[x.id]; }); }
 function renderSetup(){
-  var st = staff();
+  var st = stScope(staff()), office = D().kind === 'office';
+  $('st_scope').textContent = stAll() ? '全部署の職員を出しています（' + st.length + '人）' : D().name + 'の職員（兼務で入る人を含む）を出しています（' + st.length + '人）';
+  $('st_allBtn').style.display = office ? 'none' : '';
+  $('st_allBtn').textContent = stAll() ? D().name + 'の職員だけにする' : '全部署の職員を表示する';
   $('stList').innerHTML = st.length ? '<table><tr><th>呼び名</th><th>職種</th><th>所属部門</th><th>兼務する部署</th><th>公休</th><th>雇用形態</th><th>管理者</th><th>連絡先</th><th></th></tr>' + st.map(function(s){
     var sd = staffDept(s);
     return '<tr' + (staffOrphan(s) ? ' style="background:#fdecea"' : staffOut(s) ? ' style="opacity:.55"' : '') + '><td>' + esc(s.name) + (s.post ? ' <small class="muted">（' + esc(s.post) + '）</small>' : '') + (staffOrphan(s) ? ' <span class="tag red">名簿にいません</span>' : '') + (s.out ? ' <span class="tag gray">' + (staffOut(s) ? '退職' : '退職予定') + ' ' + esc(jpDate(s.out)) + '</span>' : '') + '</td><td>' + esc(jobOf(s) || '未設定') + '</td><td>' + esc(s.dept || (sd ? sd.name + '（職種から）' : '未設定')) + '</td><td>' + esc(staffSub(s).join('・')) + '</td><td>' + esc([1,2,3,4,5,6,0].filter(function(w){ return staffOff(s).indexOf(String(w)) >= 0; }).map(function(w){ return DOW[w]; }).join('・') + (s.holOff ? (staffOff(s).length ? '・' : '') + '祝日' : '')) + '</td><td>' + esc(s.emp || '未設定') + (isIrreg(s) ? '<br><span class="tag gray">不定期</span>' : '') + (isStandby(s) ? '<br><span class="tag gray">待機</span>' : '') + (s.emp === '非常勤' && s.kengyo ? '<br><small class="muted">兼業：' + esc(s.kengyo) + '</small>' : '') + '</td><td>' + (isMgr(s) ? '管理者' : '') + '</td><td class="sm">' + (s.tel ? '<a href="tel:' + esc(s.tel.replace(/-/g, '')) + '">' + esc(s.tel) + '</a>' : '<span class="muted">携帯 なし</span>') + '<br>' + (s.mail ? esc(s.mail) : '<span class="muted">メール なし</span>') + '</td><td><button class="btn small sub" data-stedit="' + esc(s.id) + '">直す</button> <button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
@@ -4818,6 +4830,7 @@ $('st_dept').addEventListener('change', function(){ stSubDraw(stSubVal()); });
 stSubDraw([]);
 function stFormReset(){ $('st_id').value = ''; $('st_name').value = ''; $('st_sex').value = ''; $('st_mgr').checked = false; $('st_out').value = ''; $('st_tel').value = ''; $('st_mail').value = ''; $('st_kengyo').value = ''; $('st_meyasu').value = ''; $('st_irreg').checked = false; $('st_standby').checked = false; stSubDraw([]); if($('st_off')) stOffDraw([]); if($('st_hol')) $('st_hol').checked = $('st_emp').value === '常勤'; $('st_add').textContent = '追加する'; $('st_cancel').style.display = 'none'; }
 $('st_cancel').addEventListener('click', stFormReset);
+$('st_allBtn').addEventListener('click', function(){ try{ localStorage.setItem(STALL_KEY, stAll() ? '0' : '1'); }catch(e){} refreshAll(); });
 $('st_add').addEventListener('click', function(){
   var n = $('st_name').value.trim(); if(!n){ $('st_name').focus(); return; }
   var tel = telNorm($('st_tel').value), mail = mailNorm($('st_mail').value);
@@ -5108,10 +5121,11 @@ stHjShow();
 $('st_hol').checked = true;
 /* 休みの届け */
 function renderLeave(){
-  fillSelect('lv_staff', staffLive().map(function(x){ return { v:x.id, t:staffLabel(x) }; }), '選んでください');
+  fillSelect('lv_staff', stScope(staffLive()).map(function(x){ return { v:x.id, t:staffLabel(x) }; }), '選んでください');
   if(!$('lv_month').value) $('lv_month').value = ymd(new Date()).slice(0, 7);
   var m = $('lv_month').value;
-  var a = leaves().filter(function(e){ return ym(e.date) === m; }).sort(function(x, y){ return x.date < y.date ? -1 : 1; });
+  var lvIds = {}; stScope(staff()).forEach(function(x){ lvIds[x.id] = 1; });
+  var a = leaves().filter(function(e){ return ym(e.date) === m && lvIds[e.staffId]; }).sort(function(x, y){ return x.date < y.date ? -1 : 1; });
   $('lvList').innerHTML = a.length ? '<table><tr><th>休む日</th><th>職員</th><th>種類</th><th>メモ</th><th></th></tr>' + a.map(function(e){
     return '<tr><td>' + esc(jpDate(e.date)) + '</td><td>' + esc(staffName(e.staffId)) + '</td><td>' + esc(e.kind || '') + '</td><td>' + esc(e.memo || '') + '</td><td><button class="btn small danger" data-lvdel="' + esc(e.id) + '">外す</button></td></tr>';
   }).join('') + '</table>' : '<p class="empty">この月の休みの届けはありません。</p>';
@@ -6018,7 +6032,7 @@ function ssMoveDo(v, sid, date, weeklyToo){
 function sideOpen(k, on){
   if(on){ document.body.classList.remove('ssOpen', 'kpOpen', 'mnOpen'); }
   document.body.classList.toggle(k + 'Open', !!on);
-  if(on){ if(k === 'kp'){ kpRender(); try{ $('kpFind').focus(); }catch(e){} } else mnRender(); }
+  if(on){ if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else mnRender(); }
 }
 /* 2026-11-01：対照表は、ふりがなのあいうえお順（宏史さんの指示）。ふりがなが未入力の人は末尾に、契約書番号の順で並べる */
 function kpKana(p){ return String(p.kana || '').replace(/[\u30a1-\u30f6]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0x60); }).replace(/[\s　]/g, ''); }
@@ -6034,15 +6048,21 @@ function kpTel(p){
   var d = t.replace(/[^0-9+]/g, '');
   return '<br><small>☎ ' + (d ? '<a href="tel:' + esc(d) + '">' + esc(t) + '</a>' : esc(t)) + '</small>';
 }
+/* 2026-11-03：対照表は、いま使っている部署の利用者だけを出す（これまでどおり）。ほかの部署の利用者は、上の部署のボタンを押したときだけ出す。
+   開き直すと、いま使っている部署に戻る */
+var KP_D = null;
 function kpRender(){
-  var q = String($('kpFind').value || '').trim().toLowerCase();
-  var list = patients().slice().sort(kpOrder);
+  var q = String($('kpFind').value || '').trim().toLowerCase(), kd = KP_D || D();
+  var ds = DEPTS.filter(function(x){ return x.kind !== 'office' && (x === D() || allPatients().some(function(p){ return inDept(p.no, x); })); });
+  $('kpDepts').innerHTML = ds.length > 1 ? ds.map(function(x){ return '<button type="button" class="btn small ' + (x === kd ? '' : 'sub') + '" data-kpd="' + x.k + '">' + esc(x.name) + (x === D() ? '' : 'の一覧') + '</button>'; }).join('') : '';
+  $('kpDepts').querySelectorAll('[data-kpd]').forEach(function(b){ b.onclick = function(){ var x = DEPTS.filter(function(y){ return y.k === b.getAttribute('data-kpd'); })[0]; KP_D = x === D() ? null : x; kpRender(); }; });
+  var list = allPatients().filter(function(p){ return inDept(p.no, kd); }).sort(kpOrder);
   var hit = list.filter(function(p){ return !q || [dn(p.no), p.name, p.kana, p.area, p.telMobile, p.telHome].some(function(x){ return String(x || '').toLowerCase().indexOf(q) >= 0; }); });
-  if(!list.length){ $('kpBody').innerHTML = '<p class="empty">まだ' + esc(D().client) + 'が登録されていません。「利用者登録」で入れると、ここに並びます。</p>'; return; }
+  if(!list.length){ $('kpBody').innerHTML = '<p class="empty">まだ' + esc(kd.client) + 'が登録されていません。「利用者登録」で入れると、ここに並びます。</p>'; return; }
   if(!hit.length){ $('kpBody').innerHTML = '<p class="empty">「' + esc(q) + '」に当たる人はいません。</p>'; return; }
   $('kpBody').innerHTML = '<table class="kpT"><tr><th>契約書番号</th><th>氏名</th><th>地区</th><th>状態</th></tr>' + hit.map(function(p){
     return '<tr><td>' + esc(dn(p.no)) + '</td><td>' + (p.name ? '<b>' + esc(p.name) + '</b>' : '<span style="color:var(--red)">氏名が未入力</span>') + (p.kana || p.sex ? '<br><small>' + esc([p.kana, p.sex].filter(Boolean).join('・')) + '</small>' : '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + kpTel(p) + '</td></tr>';
-  }).join('') + '</table><p class="muted">' + hit.length + '人' + (q ? '（全 ' + list.length + '人のうち）' : '') + '</p>';
+  }).join('') + '</table><p class="muted">' + (kd === D() ? '' : esc(kd.name) + '・') + hit.length + '人' + (q ? '（全 ' + list.length + '人のうち）' : '') + '</p>';
 }
 /* 印の意味（印が付く決まりを、画面の作りに合わせて書いたもの） */
 var MN_MARKS = [

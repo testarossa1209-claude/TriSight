@@ -202,6 +202,9 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   .avCal button{font:inherit;font-size:13px;padding:8px 0;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer}
   .avCal button.on{background:var(--ok,#2f7d4f);color:#fff;border-color:transparent;font-weight:700}
   .avCal button.we{color:var(--red)}.avCal button.on.we{color:#fff}
+  .tdWeek{overflow:auto;padding:0;max-height:none}
+  .ssBody thead th.sel{background:#f6e3c4}
+  .ssNo{display:inline-block;min-width:17px;height:17px;line-height:17px;border-radius:50%;background:#1f4e79;color:#fff;font-size:10.5px;text-align:center;margin-right:3px}
   .ssGap{display:block;font-size:10.5px;line-height:1.3;margin:-1px 0 3px;color:var(--muted)}
   .ssGap.short{color:var(--red);font-weight:700}
   .ssCnt{display:block;font-size:10.5px;color:var(--muted);text-align:right}
@@ -220,7 +223,9 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   .ssPanel.lft{right:auto;left:0;border-left:0;border-right:1px solid var(--line);box-shadow:8px 0 28px rgba(16,36,59,.14);transform:translateX(-105%)}
   @media (max-height:820px){ .sideTabs{gap:5px;top:70px} .sideTabs .ssTab{font-size:12px;padding:6px 6px;line-height:1.12} }
   #rqBody section.tab{display:block}
-  .osCnt{display:block;margin-top:4px;background:var(--red);color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:2px 3px;line-height:1.2}
+  /* 2026-11-03 改め（宏史さん「お知らせだけファットで並びが悪い」）：残りの人数は、つまみの幅を変えないよう、右上の角に重ねた小さな赤い丸の数字で出す */
+  #osTab{position:relative;overflow:visible}
+  .osCnt{position:absolute;top:-7px;right:-9px;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;background:var(--red);color:#fff;border-radius:9px;font-size:11px;font-weight:700;line-height:18px;text-align:center;box-shadow:0 0 0 2px #fff}
   .mnToc{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
   .mnCh{border:1px solid var(--line);border-radius:10px;margin:6px 0;background:#fff}
   .mnCh>summary{cursor:pointer;font-weight:700;padding:9px 12px;font-size:14.5px}
@@ -300,7 +305,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-28</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-29</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -395,7 +400,7 @@ function tsPortalAsk(){
 <section class="tab on" id="tab-plan">
   <div class="card" id="cardToday">
     <h2>1日の予定と地図</h2>
-    <p class="lead">選んだ職員の、その日の訪問を回る順に並べ、訪問先を地図に番号で出します。タブレットでは、この端末を使う人の今日の予定が最初から出ます。</p>
+    <p class="lead">選んだ日の訪問先を地図に番号で出し、その下に、その日を含む1週間の本スケジュール表（職員 × 曜日）を出します。選んだ日の列は色付きで、札の丸い番号が地図の番号です。タブレットでは、この端末を使う人の予定が最初から出ます。</p>
     <div class="row">
       <div><label class="f" for="td_date">日付</label><input type="date" id="td_date"></div>
       <div><label class="f" for="td_staff">職員</label><select id="td_staff"></select></div>
@@ -403,7 +408,8 @@ function tsPortalAsk(){
     </div>
     <p class="muted" id="td_msg"></p>
     <div id="td_map" style="height:360px;border-radius:10px;border:1px solid var(--paper-deep);margin:6px 0 10px;display:none"></div>
-    <div class="tbl-scroll" id="td_list"></div>
+    <div id="td_week"></div>
+    <details id="td_dayBox"><summary>この日の回る順と気を付けること（地図の番号の一覧）</summary><div class="tbl-scroll" id="td_list"></div></details>
   </div>
   <div class="card" id="cardAuto" style="display:none">
     <h2>週間予定を地区で寄せて組む（自動の振り分け）</h2>
@@ -4707,7 +4713,7 @@ function renderToday(){
   if(!$('cardToday')) return;
   todayFill();
   var date = $('td_date').value, sid = $('td_staff').value;
-  if(!sid){ $('td_list').innerHTML = '<p class="empty">職員を選ぶと、その人のこの日の予定と地図が出ます（「全員」を選ぶと全員の分）。</p>'; $('td_map').style.display = 'none'; return; }
+  if(!sid){ $('td_list').innerHTML = ''; $('td_week').innerHTML = '<p class="empty">職員を選ぶと、その人の予定と地図が出ます（「全員」を選ぶと全員の分）。</p>'; $('td_map').style.display = 'none'; return; }
   var ALL = sid === '*', COL = ['#1f4e79', '#c0392b', '#2e7d32', '#8e44ad', '#d35400', '#00838f', '#6d4c41', '#c2185b', '#455a64', '#7cb342'];
   var vs = visitsOn(date).filter(function(v){ return ALL || v.staffId === sid || v.withId === sid; });
   if(ALL) vs.sort(function(a, b){ return (staffName(a.staffId) < staffName(b.staffId) ? -1 : staffName(a.staffId) > staffName(b.staffId) ? 1 : 0) || (a.time < b.time ? -1 : 1); });
@@ -4721,8 +4727,13 @@ function renderToday(){
   }).join('');
   $('td_list').innerHTML = vs.length ? '<table><tr>' + (ALL ? '<th>担当</th>' : '') + '<th class="num">順</th><th>時刻</th><th>訪問先</th><th>気を付けること</th></tr>' + rows + '</table><p class="muted">' + esc(jpDate(date)) + '：訪問 ' + live.length + '件' + (vs.length > live.length ? '（キャンセル ' + (vs.length - live.length) + '件）' : '') + '。地図の番号は、この表の「順」と同じです。</p>'
     : '<p class="empty">' + esc(jpDate(date)) + 'の訪問はありません。</p>';
+  /* 2026-11-03（宏史さん「地図の下に当日の分しか出ていない。本スケジュール表を出すのではなかったか」）：地図の下に、選んだ日を含む1週間の本スケジュール表を出す */
+  var num = {}; live.forEach(function(v, i){ num[date + '|' + v.no + '|' + v.time + '|' + v.staffId] = ALL ? v._n : i + 1; });
+  var mon = mondayOf(parseYmd(date)), wdays = []; for(var di = 0; di < 7; di++) wdays.push(ymd(addDays(mon, di)));
+  var wg = D().kind === 'office' ? { empty:'' } : ssGridHTML(wdays, { only:ALL ? null : sid, mark:date, num:num, col:colOf });
+  $('td_week').innerHTML = wg.empty != null ? wg.empty : '<h3 style="margin:6px 0 4px;font-size:15px">本スケジュール表 <small class="muted" style="font-weight:400">' + esc(jpDate(wdays[0])) + ' 〜 ' + esc(jpDate(wdays[6])) + '</small></h3><div class="ssBody tdWeek">' + wg.html + '</div><p class="muted sm" style="margin:4px 0 0">色の付いた列が選んだ日です。日付を変えると、その日の週の表に変わります。札の丸い番号は地図の番号と同じです。</p>';
   var pts = live.map(function(v, i){ var p = patient(v.no) || {}; return p.lat ? { n:ALL ? v._n : i + 1, sid:v.staffId, lat:+p.lat, lng:+p.lng, t:(ALL ? staffName(v.staffId) + ' ' : '') + v.time + ' ' + dnn(v.no) } : null; }).filter(Boolean);
-  if(!pts.length){ $('td_map').style.display = 'none'; if(live.length) $('td_list').insertAdjacentHTML('afterbegin', '<p class="muted">地図に出せる訪問先がありません。利用者登録で住所（番地まで）を入れ、「住所から位置を取る」を押してください。</p>'); return; }
+  if(!pts.length){ $('td_map').style.display = 'none'; if(live.length) $('td_week').insertAdjacentHTML('afterbegin', '<p class="muted">地図に出せる訪問先がありません。利用者登録で住所（番地まで）を入れ、「住所から位置を取る」を押してください。</p>'); return; }
   $('td_map').style.display = '';
   leafletLoad().then(function(){
     if(!tdMap){
@@ -6204,13 +6215,11 @@ function ssOpen(on){
 }
 /* 表の中では契約書番号の末尾（部門と利用者番号。例 看-0061）だけを出す。全部の番号は印の上に出る説明（title）に入れる */
 function ssShortNo(no){ var t = dn(no), m = t.match(/([^-]+-[^-]+)(-重)?$/); return m && t.split('-').length >= 4 ? m[1] : t; }
-function ssRender(){
-  if(!document.body.classList.contains('ssOpen')) return;
-  var d = D(); if(!ssStart) ssStart = mondayOf(new Date());
-  $('ssTitle').innerHTML = '仮スケジュール表<small>' + esc(d.name) + '・1週間の見渡し</small>';
-  var days = []; for(var i = 0; i < 7; i++) days.push(ymd(addDays(ssStart, i)));
-  $('ssWeek').textContent = jpDate(days[0]) + ' 〜 ' + jpDate(days[6]);
-  if(d.kind === 'office'){ $('ssBody').innerHTML = '<p class="empty">経営企画事務職には訪問の週間予定がありません。訪問のある部署を上の「使う部署」で選ぶと、その部署の表が出ます。</p>'; return; }
+/* 2026-11-03（宏史さん「予定の地図の下に当日の分しか出ていない。本スケジュール表を出すのではなかったか」）：
+   仮スケジュール表の「職員 × 曜日」の表を作るところを一つにまとめ、仮スケジュール表と「1日の予定と地図」の下（本スケジュール表）の両方で使う。
+   opt.drag：札を引っぱって動かせるようにする（仮スケジュール表だけ）。opt.only：その職員の行だけ。opt.mark：色を付ける日。opt.num：地図の番号 */
+function ssGridHTML(days, opt){
+  opt = opt || {}; var d = D();
   var people = deptStaff(), ids = {}, cnt = {}, today = ymd(new Date());
   people.forEach(function(p){ ids[p.id] = 1; cnt[p.id] = 0; });
   var cells = {}, extra = false;
@@ -6227,9 +6236,10 @@ function ssRender(){
   var rows = people.filter(function(p){ return !isStandby(p); }).map(function(p){ return { id:p.id, name:p.name, sub: p.dept && p.dept !== d.name ? '兼務' : '' }; })
     .concat(people.filter(isStandby).map(function(p){ return { id:p.id, name:p.name, sub:'待機', sb:true }; }));
   if(extra) rows.push({ id:'_none', name:'担当が名簿にない', sub:'' });
-  SS_V = {};
-  if(!rows.length){ $('ssBody').innerHTML = '<p class="empty">この部署の職員がまだいません。「名簿・設定」の「職員」で所属部門か兼務する部署を付けると、ここに行が並びます。</p>'; return; }
-  var h = '<table><thead><tr><th class="who">担当</th>' + days.map(function(x){ var w = parseYmd(x).getDay(); var hn = holidayName(x); return '<th class="' + (w === 0 || w === 6 || hn ? 'we' : '') + '">' + DOW[w] + '<br><small>' + (parseYmd(x).getMonth()+1) + '/' + parseYmd(x).getDate() + '</small>' + (hn ? '<small class="hol">' + esc(hn) + '</small>' : '') + '</th>'; }).join('') + '</tr></thead><tbody>';
+  if(opt.drag) SS_V = {};
+  if(opt.only) rows = rows.filter(function(r){ return r.id === opt.only; });
+  if(!rows.length) return { empty:'<p class="empty">この部署の職員がまだいません。「名簿・設定」の「職員」で所属部門か兼務する部署を付けると、ここに行が並びます。</p>' };
+  var h = '<table><thead><tr><th class="who">担当</th>' + days.map(function(x){ var w = parseYmd(x).getDay(); var hn = holidayName(x); return '<th class="' + (w === 0 || w === 6 || hn ? 'we' : '') + (opt.mark === x ? ' sel' : '') + '">' + DOW[w] + '<br><small>' + (parseYmd(x).getMonth()+1) + '/' + parseYmd(x).getDate() + '</small>' + (hn ? '<small class="hol">' + esc(hn) + '</small>' : '') + '</th>'; }).join('') + '</tr></thead><tbody>';
   rows.forEach(function(r){
     var wk = 0; days.forEach(function(date){ ((cells[r.id] || {})[date] || []).forEach(function(v){ if(!v.cx) wk += (+v.min || 30); }); });
     h += '<tr' + (r.sb ? ' class="sb"' : '') + '><th class="who">' + esc(r.name) + '<small>' + (r.sub ? r.sub + '・' : '') + '週 ' + (cnt[r.id] || 0) + '件・' + minLabel(wk) + '</small></th>';
@@ -6237,7 +6247,7 @@ function ssRender(){
       var vs = (cells[r.id] || {})[date] || [];
       var ms = r.id === '_none' ? [] : events().filter(function(e){ return e.type === 'note' && e.kind === '会議の案内' && e.mDate === date && isNoteFor(e, r.id); });
       var why = r.id === '_none' ? '' : offWhy(r.id, date), wr = workRule(), prev = null, live2 = vs.filter(function(v){ return !v.cx; }).length;
-      var cls = [date === today ? 'today' : '', why ? 'off' : ''].filter(Boolean).join(' ');
+      var cls = [date === (opt.mark || today) ? 'today' : '', why ? 'off' : ''].filter(Boolean).join(' ');
       h += '<td' + (cls ? ' class="' + cls + '"' : '') + (r.id === '_none' ? '' : ' data-sid="' + esc(r.id) + '" data-date="' + date + '"') + '>' + (why ? '<span class="ssOff">休（' + esc(why) + '）</span>' : '') +
         ms.map(function(m){ return '<span class="ssChip meet">' + esc(m.mTime || '') + ' 会議</span>'; }).join('') +
         vs.map(function(v){
@@ -6245,13 +6255,25 @@ function ssRender(){
           if(!v.cx && prev){ var g = toMin(v.time) - (toMin(prev.time) + (+prev.min || 30)); gap = mvGapHTML(g, wr); }
           if(!v.cx) prev = v;
           var warn = why && !v.cx;
-          var vk = ''; if(!v.cx && !v.asWith && date >= today){ vk = date + '|' + v.no + '|' + v.time; SS_V[vk] = v; }
-          return gap + '<span class="ssChip' + (v.cx ? ' cx' : '') + (warn ? ' warn' : '') + (vk ? ' dg' : '') + '"' + (vk ? ' data-vk="' + esc(vk) + '"' : '') + ' title="' + esc(v.time + ' ' + dnn(v.no) + '（' + v.min + '分）' + (v.area ? '・' + v.area : '') + (v.cx ? '・キャンセル' : '') + (warn ? '・休みの日の訪問' : '')) + '">' + esc(v.time) + '<br>' + (v.asWith ? '<b>同行</b><br>' : '') + esc(ssShortNo(v.no)) + (nameOf(v.no) ? '<br>' + esc(nameOf(v.no)) : '') + (v.asWith ? '<small style="display:block;white-space:normal">担当 ' + esc(staffName(v.staffId)) + '</small>' : (withLabel(v) ? '<small style="display:block;white-space:normal;color:var(--amber);font-weight:700">' + esc(withLabel(v)) + '</small>' : '')) + (warn ? '<br>要調整' : '') + '</span>';
+          var vk = '', mn = opt.num && !v.cx ? opt.num[date + '|' + v.no + '|' + v.time + '|' + v.staffId] : 0; if(opt.drag && !v.cx && !v.asWith && date >= today){ vk = date + '|' + v.no + '|' + v.time; SS_V[vk] = v; }
+          return gap + '<span class="ssChip' + (v.cx ? ' cx' : '') + (warn ? ' warn' : '') + (vk ? ' dg' : '') + '"' + (vk ? ' data-vk="' + esc(vk) + '"' : '') + ' title="' + esc(v.time + ' ' + dnn(v.no) + '（' + v.min + '分）' + (v.area ? '・' + v.area : '') + (v.cx ? '・キャンセル' : '') + (warn ? '・休みの日の訪問' : '')) + '">' + (mn ? '<b class="ssNo"' + (opt.col ? ' style="background:' + opt.col(v.staffId) + '"' : '') + '>' + mn + '</b>' : '') + esc(v.time) + '<br>' + (v.asWith ? '<b>同行</b><br>' : '') + esc(ssShortNo(v.no)) + (nameOf(v.no) ? '<br>' + esc(nameOf(v.no)) : '') + (v.asWith ? '<small style="display:block;white-space:normal">担当 ' + esc(staffName(v.staffId)) + '</small>' : (withLabel(v) ? '<small style="display:block;white-space:normal;color:var(--amber);font-weight:700">' + esc(withLabel(v)) + '</small>' : '')) + (warn ? '<br>要調整' : '') + '</span>';
         }).join('') + (live2 ? '<span class="ssCnt' + (live2 >= wr.target ? ' ok' : '') + '">' + live2 + '件</span>' : '') + '</td>';
     });
     h += '</tr>';
   });
-  $('ssBody').innerHTML = h + '</tbody></table>' + '<p class="muted sm" style="margin:6px 0 0">今日以降の訪問の札は、指で押さえたまま別の人の升・別の曜日の升へ引っぱると動かせます。</p>' + ssBulkHTML(days) + ssStandbyHTML(days);
+  return { html:h + '</tbody></table>' };
+}
+function ssRender(){
+  if(!document.body.classList.contains('ssOpen')) return;
+  var d = D(); if(!ssStart) ssStart = mondayOf(new Date());
+  $('ssTitle').innerHTML = '仮スケジュール表<small>' + esc(d.name) + '・1週間の見渡し</small>';
+  var days = []; for(var i = 0; i < 7; i++) days.push(ymd(addDays(ssStart, i)));
+  $('ssWeek').textContent = jpDate(days[0]) + ' 〜 ' + jpDate(days[6]);
+  if(d.kind === 'office'){ $('ssBody').innerHTML = '<p class="empty">経営企画事務職には訪問の週間予定がありません。訪問のある部署を上の「使う部署」で選ぶと、その部署の表が出ます。</p>'; return; }
+  var g = ssGridHTML(days, { drag:true });
+  if(g.empty){ $('ssBody').innerHTML = g.empty; return; }
+  var h = g.html;
+  $('ssBody').innerHTML = h + '<p class="muted sm" style="margin:6px 0 0">今日以降の訪問の札は、指で押さえたまま別の人の升・別の曜日の升へ引っぱると動かせます。</p>' + ssBulkHTML(days) + ssStandbyHTML(days);
   ssWireStandby(); ssWireBulk();
 }
 /* 2026-11-03：その日の訪問を、まとめて担当・同行に付け替える（宏史さん「本日（祭日）は全部の利用者を島さんと佐野（夫）さんが回った。全部複数名。要確認の直し方は」）。
@@ -6460,7 +6482,7 @@ function osLeft(){ var date = ymd(new Date()), by = {}, ev = events();
   return Object.keys(by).filter(function(no){ var p = patient(no) || {}; return String(p.telMobile || '').trim() && !ev.some(function(e){ return e.type === 'notify' && e.patientNo === no && e.date === date; }); }).length; }
 function osBadge(){ var t = $('osTab'); if(!t) return; var n = osLeft(), b = t.querySelector('.osCnt');
   if(!b){ b = document.createElement('span'); b.className = 'osCnt'; t.appendChild(b); }
-  b.textContent = n ? '残' + n : ''; b.style.display = n ? '' : 'none'; t.title = n ? '今日まだ知らせていない利用者さんが ' + n + '人います。押すと一覧が開きます' : '今日の訪問を、利用者さんへ携帯のメッセージで知らせます'; }
+  b.textContent = n ? String(n) : ''; b.style.display = n ? '' : 'none'; t.title = n ? '今日まだ知らせていない利用者さんが ' + n + '人います。押すと一覧が開きます' : '今日の訪問を、利用者さんへ携帯のメッセージで知らせます'; }
 function osText(){ var s0 = lj(K.settings, {}) || {}; return s0.osText || OS_DEF; }
 function osRender(){
   if(!$('osDate').value) $('osDate').value = ymd(new Date());
@@ -6598,7 +6620,7 @@ var MN_GUIDE = [
     ['手で直す', '「名簿・設定」の「週間予定」の一覧で、行ごとに同行を選んだり「外す」ことができます。新しい行は上の欄で入れて「追加する」。']
   ]],
   ['5. 毎日の予定を見る', [
-    ['1日の予定と地図', '「予定」タブのいちばん上。職員を選ぶとその人の1日の予定と地図、「全員」を選ぶと全員の分が職員ごとの色で出ます。'],
+    ['1日の予定と地図', '「予定」タブのいちばん上。職員を選ぶとその人の予定と地図、「全員」を選ぶと全員の分が職員ごとの色で出ます。地図の下には、選んだ日を含む1週間の本スケジュール表（職員 × 曜日）が出て、札の丸い番号が地図の番号です。'],
     ['今週の訪問予定', '「予定」タブの「今週の訪問予定」で、週の訪問を日ごとに並べます。担当の横に同行が出ます。'],
     ['仮スケジュール表', '右端の「仮スケジュール表」。職員×日付の表で、訪問と訪問の間に「移動 15分」などが出ます。今日以降の札は引っぱって、別の人・別の日へ動かせます。'],
     ['祝日に出た日の付け替え', '仮スケジュール表の下の「この日の訪問を、まとめて担当・同行に付け替える（祝日に出た日など）」で、日・担当・同行を選んで「この日の訪問を付け替える」。町名で寄せて時刻を組み直し、二人とも出勤の扱いになります。']
@@ -6609,7 +6631,7 @@ var MN_GUIDE = [
     ['取引先の登録', '「名簿・設定」の「事業所と取引先」で、事業所の町名と、役所・病院・包括・居宅などの取引先を町名つきで入れます。']
   ]],
   ['7. 利用者さんへのお知らせ', [
-    ['今日の訪問を知らせる', '左端の「お知らせ」。今日まだ知らせていない人数がつまみに「残◯」と出ます。「送る」を押すと携帯のメッセージが宛先と文面入りで開くので、送信を押します。'],
+    ['今日の訪問を知らせる', '左端の「お知らせ」。今日まだ知らせていない人数が、つまみの角に赤い丸の数字で出ます。「送る」を押すと携帯のメッセージが宛先と文面入りで開くので、送信を押します。'],
     ['送る文を変える', 'お知らせの中の「送る文」を直して「この文で保存する」。{時刻} がその人の時刻に変わります。']
   ]],
   ['8. 売上とモデルコース（管理者）', [

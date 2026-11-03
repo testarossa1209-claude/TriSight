@@ -205,6 +205,7 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   .tdWeek{overflow:auto;padding:0;max-height:none}
   .ssBody thead th.sel{background:#f6e3c4}
   .ssNo{display:inline-block;min-width:17px;height:17px;line-height:17px;border-radius:50%;background:#1f4e79;color:#fff;font-size:10.5px;text-align:center;margin-right:3px}
+  .ceRadar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;margin:8px 0}.ceRadar .sm{max-width:340px}
   .ssGap{display:block;font-size:10.5px;line-height:1.3;margin:-1px 0 3px;color:var(--muted)}
   .ssGap.short{color:var(--red);font-weight:700}
   .ssCnt{display:block;font-size:10.5px;color:var(--muted);text-align:right}
@@ -305,7 +306,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-32</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-33</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -983,6 +984,7 @@ function tsPortalAsk(){
       <div><label class="f" for="ce_month">参考の数字を見る月</label><input type="month" id="ce_month"></div>
     </div>
     <div id="ce_ref"></div>
+    <div id="ce_radar"></div>
     <div class="tbl-scroll" id="ce_form"></div>
     <label class="f" for="ce_note">所見（代表の言葉で）</label><textarea id="ce_note" maxlength="2000" style="min-height:64px"></textarea>
     <div class="row">
@@ -6540,6 +6542,32 @@ function osBadge(){ var t = $('osTab'); if(!t) return; var n = osLeft(), b = t.q
   if(!b){ b = document.createElement('span'); b.className = 'osCnt'; t.appendChild(b); }
   b.textContent = n ? String(n) : ''; b.style.display = n ? '' : 'none'; t.title = n ? '今日まだ知らせていない利用者さんが ' + n + '人います。押すと一覧が開きます' : '今日の訪問を、利用者さんへ携帯のメッセージで知らせます'; }
 function osText(){ var s0 = lj(K.settings, {}) || {}; return s0.osText || OS_DEF; }
+/* 2026-11-03（宏史さん「お知らせは一括送信ボタンを作ってください」）：「まとめて送る」。
+   携帯のメッセージは、1つの画面で複数の人へ同じ文を送ると、宛先どうしで番号が見え、返信も全員に回る（グループの会話になる）。そのため1人ずつ送るのは変えない。
+   1回押すと、まだ送っていない人の1人目のメッセージが宛先と文面入りで開く。送信してトライタイムの画面へ戻ると、次の人のメッセージが自動で開く。最後の人まで続く。
+   本当に1回で全員へ届けるのは、外部のSMS送信サービスの契約（利用者さんが100人を超えたら・宏史さんの決め）で行う */
+var OS_Q = null;
+function osBody1(v, date){ return osText().replace(/\{時刻\}/g, v.time).replace(/本日/g, date === ymd(new Date()) ? '本日' : date === ymd(addDays(new Date(), 1)) ? '明日' : jpDate(date).replace(/（.）$/, '')); }
+function osQueue(nos, by, date){ var ev = events(); return nos.filter(function(no){ return osDest(by[no]._p) && !ev.some(function(e){ return e.type === 'notify' && e.patientNo === no && e.date === date; }); }); }
+function osBulkHTML(nos, by, date){
+  var q = osQueue(nos, by, date);
+  if(OS_Q && OS_Q.list.length) return '<div class="judge" style="margin:8px 0"><b>まとめて送っています：残り ' + OS_Q.list.length + '人</b><br><small>メッセージで送信を押してから、この画面に戻ってください。次の人のメッセージが自動で開きます。</small><div class="btns"><button type="button" class="btn small sub" id="osBulkStop">まとめて送るのを止める</button></div></div>';
+  return q.length ? '<div class="btns" style="margin:8px 0"><button type="button" class="btn amber" id="osBulk">まとめて送る（まだの ' + q.length + '人）</button></div><p class="muted sm" style="margin-top:-4px">押すと1人目のメッセージが開きます。送信して、この画面に戻るたびに、次の人のメッセージが自動で開きます（番号がほかの方に見えないよう、1人ずつの送信です）。</p>' : '';
+}
+function osNext(){
+  if(!OS_Q) return;
+  var date = OS_Q.date, by = osCollect(date), ev = events();
+  OS_Q.list = OS_Q.list.filter(function(no){ return by[no] && osDest(by[no]._p) && !ev.some(function(e){ return e.type === 'notify' && e.patientNo === no && e.date === date; }); });
+  if(!OS_Q.list.length){ OS_Q = null; osRender(); osBadge(); return; }
+  var no = OS_Q.list.shift(), v = by[no], ds = osDest(v._p);
+  ev.push({ id:uid(), type:'notify', patientNo:no, date:date, by:dev().me || '', at:nowLocal(), bulk:1 }); saveEvents(ev);
+  OS_Q.wait = true;
+  var a = document.createElement('a'); a.href = pnSms([ds.tel], osBody1(v, date)); a.style.display = 'none'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ osRender(); osBadge(); }, 200);
+}
+function osBack(){ if(OS_Q && OS_Q.wait && document.visibilityState !== 'hidden'){ OS_Q.wait = false; setTimeout(osNext, 700); } }
+document.addEventListener('visibilitychange', osBack);
+window.addEventListener('focus', osBack);
 function osRender(){
   if(!$('osDate').value) $('osDate').value = ymd(new Date());
   var date = $('osDate').value, by = osCollect(date), ev = events();
@@ -6553,9 +6581,11 @@ function osRender(){
   $('osSub').textContent = jpDate(date) + '・' + nos.length + '人（送った ' + sent + '人）';
   $('osBody').innerHTML = shareWarnHTML(false) + '<label class="f" for="osTpl">送る文（{時刻} が、その人の訪問の時刻に変わります）</label><textarea id="osTpl" style="min-height:64px">' + esc(osText()) + '</textarea>' +
     '<div class="btns"><button type="button" class="btn sub small" id="osTplSave">この文で保存する</button></div>' +
-    (nos.length ? '<table class="kpT"><tr><th>時刻</th><th>利用者さん</th><th></th></tr>' + rows + '</table>' : '<p class="empty">この日の訪問はありません。</p>');
+    (nos.length ? osBulkHTML(nos, by, date) + '<table class="kpT"><tr><th>時刻</th><th>利用者さん</th><th></th></tr>' + rows + '</table>' : '<p class="empty">この日の訪問はありません。</p>');
   $('osTplSave').onclick = function(){ var cur = lj(K.settings, {}) || {}; saveSettings(Object.assign({}, cur, { osText:$('osTpl').value.trim() || OS_DEF })); osRender(); };
   shareWarnWire($('osBody'));
+  if($('osBulk')) $('osBulk').onclick = function(){ OS_Q = { date:date, list:osQueue(nos, by, date) }; osNext(); };
+  if($('osBulkStop')) $('osBulkStop').onclick = function(){ OS_Q = null; osRender(); };
   $('osBody').querySelectorAll('[data-ossend]').forEach(function(a){ a.addEventListener('click', function(){
     var no = a.getAttribute('data-ossend'), e2 = events();
     if(!e2.some(function(e){ return e.type === 'notify' && e.patientNo === no && e.date === date; })){ e2.push({ id:uid(), type:'notify', patientNo:no, date:date, by:dev().me || '', at:nowLocal() }); saveEvents(e2); }
@@ -6688,7 +6718,7 @@ var MN_GUIDE = [
     ['取引先の登録', '「名簿・設定」の「事業所と取引先」で、事業所の町名と、役所・病院・包括・居宅などの取引先を町名つきで入れます。']
   ]],
   ['7. 利用者さんへのお知らせ', [
-    ['今日の訪問を知らせる', '左端の「お知らせ」。今日まだ知らせていない人数が、つまみの角に赤い丸の数字で出ます。「送る」を押すと携帯のメッセージが宛先と文面入りで開くので、送信を押します。どの部署で開いても同じ一覧です（訪問のある全部署の分）。送り先は、本人の携帯、無ければ自宅の欄の携帯の番号、それも無ければご家族などの連絡先の携帯（主介護者を先に。「緊急時のみ」の方には送りません）で、「送る」の下に誰あてかが出ます。'],
+    ['今日の訪問を知らせる', '左端の「お知らせ」。今日まだ知らせていない人数が、つまみの角に赤い丸の数字で出ます。「送る」を押すと携帯のメッセージが宛先と文面入りで開くので、送信を押します。どの部署で開いても同じ一覧です（訪問のある全部署の分）。「まとめて送る」を押すと、まだ送っていない人のメッセージが1人目から開き、送信してトライタイムの画面へ戻るたびに次の人のメッセージが自動で開きます。送り先は、本人の携帯、無ければ自宅の欄の携帯の番号、それも無ければご家族などの連絡先の携帯（主介護者を先に。「緊急時のみ」の方には送りません）で、「送る」の下に誰あてかが出ます。'],
     ['送る文を変える', 'お知らせの中の「送る文」を直して「この文で保存する」。{時刻} がその人の時刻に変わります。']
   ]],
   ['8. 売上とモデルコース（管理者）', [
@@ -6923,7 +6953,35 @@ function ceFormDraw(rec){
   ceShowTotal();
 }
 function ceCur(){ var sc = {}; $('ce_form').querySelectorAll('[data-ce]').forEach(function(x){ if(x.value) sc[x.getAttribute('data-ce')] = +x.value; }); return { scores:sc, note:$('ce_note').value.trim(), cls:$('ce_cls').value }; }
-function ceShowTotal(){ var t = ceTotal(ceCur()); $('ce_total').textContent = t.pct == null ? 'まだ点がありません' : t.pct + '%・クラス ' + (t.auto || '—') + '（' + t.n + '／' + t.all + '項目）'; }
+/* 2026-11-03（宏史さん「野木画面の職員評価にはレーダーチャートなども入れてほしい」）：区分ごとの平均（重み付き・1〜5）を蜘蛛の巣の形で出す。
+   区分が3つ未満のときは項目ごとに出す。点線は、同じ期間に点のある職員（職員評価なら管理者以外、管理者評価なら管理者）の平均。灰色の線は「3 期待どおり」 */
+var CE_AVG = null;
+function ceAxes(rec){
+  var c = ceCfg(), sc = (rec && rec.scores) || {}, gs = [];
+  c.items.forEach(function(it){ if(gs.indexOf(it.g || '（区分なし）') < 0) gs.push(it.g || '（区分なし）'); });
+  var byItem = gs.length < 3;
+  var axes = byItem ? c.items.map(function(it){ return { k:it.id, t:it.t, its:[it] }; }) : gs.map(function(g){ return { k:g, t:g, its:c.items.filter(function(it){ return (it.g || '（区分なし）') === g; }) }; });
+  return axes.map(function(a){ var got = 0, w = 0; a.its.forEach(function(it){ var v = +(sc[it.id] || 0), ww = Math.max(0, +it.w || 0) || 1; if(v){ got += v * ww; w += ww; } }); return { k:a.k, t:a.t, v:w ? got / w : null }; });
+}
+function ceRadarSVG(rec, avg, size){
+  var ax = ceAxes(rec), n = ax.length; if(n < 3) return '';
+  size = size || 300; var W = size + 150, cx = W / 2, cy = size / 2 + 6, R = size / 2 - 40;   /* 左右の軸の名前が切れないよう、横に余白を取る */
+  var pt = function(i, v){ var a = -Math.PI / 2 + i * 2 * Math.PI / n, r = R * (v || 0) / 5; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; };
+  var poly = function(vals){ return vals.map(function(v, i){ return pt(i, v).map(function(x){ return x.toFixed(1); }).join(','); }).join(' '); };
+  var h = '<svg viewBox="0 0 ' + W + ' ' + (size + 12) + '" width="' + W + '" height="' + (size + 12) + '" role="img" aria-label="評価のレーダーチャート" style="max-width:100%;font-family:inherit">';
+  [1, 2, 3, 4, 5].forEach(function(l){ h += '<polygon points="' + poly(ax.map(function(){ return l; })) + '" fill="none" stroke="' + (l === 3 ? '#9aa6b2' : '#e3ddd1') + '" stroke-width="' + (l === 3 ? 1.4 : 1) + '"' + (l === 3 ? ' stroke-dasharray="2 3"' : '') + '/>'; });
+  ax.forEach(function(a, i){ var e = pt(i, 5), lp = pt(i, 6.15); h += '<line x1="' + cx + '" y1="' + cy + '" x2="' + e[0].toFixed(1) + '" y2="' + e[1].toFixed(1) + '" stroke="#e3ddd1"/>';
+    var anc = Math.abs(lp[0] - cx) < 8 ? 'middle' : (lp[0] > cx ? 'start' : 'end'), t = a.t.length > 12 ? a.t.slice(0, 11) + '…' : a.t;
+    h += '<text x="' + lp[0].toFixed(1) + '" y="' + (lp[1] + 4).toFixed(1) + '" text-anchor="' + anc + '" font-size="11.5" fill="#10243b">' + esc(t) + '<tspan x="' + lp[0].toFixed(1) + '" dy="13" font-size="10.5" fill="#5d6b7a">' + (a.v == null ? '—' : a.v.toFixed(1)) + '</tspan></text>'; });
+  if(avg){ var av = ax.map(function(a){ return avg[a.k] == null ? 0 : avg[a.k]; }); h += '<polygon points="' + poly(av) + '" fill="none" stroke="#c9772a" stroke-width="1.6" stroke-dasharray="5 4"/>'; }
+  if(ax.some(function(a){ return a.v != null; })) h += '<polygon points="' + poly(ax.map(function(a){ return a.v || 0; })) + '" fill="rgba(31,78,121,.22)" stroke="#1f4e79" stroke-width="2"/>' + ax.map(function(a, i){ if(a.v == null) return ''; var q = pt(i, a.v); return '<circle cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="3" fill="#1f4e79"/>'; }).join('');
+  return h + '</svg>';
+}
+function ceRadarHTML(rec){
+  var svg = ceRadarSVG(rec, CE_AVG && CE_AVG.v, 320); if(!svg) return '';
+  return '<div class="ceRadar"><div>' + svg + '</div><div class="muted sm"><b style="color:#1f4e79">━ この職員</b>' + (CE_AVG && CE_AVG.n ? '　<b style="color:#c9772a">┅ 平均（同じ期間に点のある ' + CE_AVG.n + '人）</b>' : '') + '　<span style="color:#9aa6b2;white-space:nowrap">┅ 3 期待どおり</span><br>数字は区分ごとの平均（重み付き・5点満点）です。</div></div>';
+}
+function ceShowTotal(){ var t = ceTotal(ceCur()); if($('ce_radar')) $('ce_radar').innerHTML = ceRadarHTML(ceCur()); $('ce_total').textContent = t.pct == null ? 'まだ点がありません' : t.pct + '%・クラス ' + (t.auto || '—') + '（' + t.n + '／' + t.all + '項目）'; }
 function ceLoad(){
   var sid = $('ce_staff').value, per = $('ce_period').value.trim(), s = staff().filter(function(x){ return x.id === sid; })[0];
   if(!s){ $('ce_form').innerHTML = ''; $('ce_ref').innerHTML = ''; return; }
@@ -6940,6 +6998,9 @@ function ceList(){
   var per = $('ce_period').value.trim(), all = ceAllStaff();
   Promise.all(all.map(function(x){ return evBoxGet(ceRecId(x.id, per)).then(function(r){ return { s:x, r:r }; }); })).then(function(rows){
     rows.sort(function(a, b){ return ((b.r && b.r.pct) || -1) - ((a.r && a.r.pct) || -1); });
+    var sum = {}, cnt0 = {}, nAvg = 0; rows.forEach(function(o){ if(!o.r || o.r.pct == null) return; nAvg++; ceAxes(o.r).forEach(function(a){ if(a.v != null){ sum[a.k] = (sum[a.k] || 0) + a.v; cnt0[a.k] = (cnt0[a.k] || 0) + 1; } }); });
+    var av = {}; Object.keys(sum).forEach(function(k){ av[k] = sum[k] / cnt0[k]; }); CE_AVG = { v:av, n:nAvg };
+    if($('ce_form') && $('ce_form').querySelector('[data-ce]')) ceShowTotal();
     var cnt = {}; rows.forEach(function(o){ var k = o.r ? (o.r.cls || o.r.auto || '—') : 'まだ'; cnt[k] = (cnt[k] || 0) + 1; });
     $('ce_list').innerHTML = '<p><b>' + esc(per) + '</b>　' + Object.keys(cnt).map(function(k){ return esc(k) + '：' + cnt[k] + '人'; }).join('　') + '</p>' +
       '<table><tr><th>職員</th><th>部署</th><th class="num">合計</th><th>クラス</th><th>つけた日</th></tr>' + rows.map(function(o){
@@ -6991,6 +7052,7 @@ $('ce_print').addEventListener('click', function(){
   var sid = $('ce_staff').value, s = staff().filter(function(x){ return x.id === sid; })[0]; if(!s) return;
   var cur = ceCur(), t = ceTotal(cur), c = ceCfg(), last = '';
   var html = '<table><tr><th>職員</th><td>' + esc(staffLabel(s)) + '</td><th>評価の期間</th><td>' + esc($('ce_period').value) + '</td></tr><tr><th>合計</th><td>' + (t.pct == null ? '—' : t.pct + '%') + '</td><th>クラス</th><td><b>' + esc(cur.cls || t.auto || '—') + '</b>' + (cur.cls && cur.cls !== t.auto ? '（自動は ' + esc(t.auto || '—') + '）' : '') + '</td></tr></table>' +
+    '<h2>評価の形</h2>' + ceRadarHTML(cur) +
     '<h2>評価の内訳</h2><table><tr><th>区分</th><th>項目</th><th class="num">重み</th><th>評価</th></tr>' + c.items.map(function(it){ var g = it.g !== last ? esc(it.g) : ''; last = it.g; var v = +(cur.scores[it.id] || 0); return '<tr><td>' + g + '</td><td>' + esc(it.t) + '</td><td class="num">' + esc(it.w) + '</td><td>' + (v ? esc(CE_SC[v]) : '—') + '</td></tr>'; }).join('') + '</table>' +
     '<h2>参考の数字</h2>' + ceRef(s, $('ce_month').value || ymd(new Date()).slice(0, 7)) +
     '<h2>所見</h2><div class="memo">' + esc(cur.note) + '</div>';

@@ -35,10 +35,13 @@ async def test(p):
             await pg.click('#mh_make'); await pg.wait_for_timeout(500)
             t = await pg.evaluate("document.getElementById('tab-mihon').innerText")
             line = [l for l in t.split('\n') if '2名体制の加算（いまの週間予定で' in l]
-            tot = [l for l in t.split('\n') if l.startswith('いまの合計')]
+            tot = [l for l in t.split('\n') if l.startswith('件です') or ('件です' in l and '円' in l)]
             return (line[0] if line else '') + ' ｜ ' + (tot[0] if tot else '')
         l1 = await setup(False)
         assert '週 2回' in l1 and '7,500' in l1, '同行者の決まっていない2名体制の週2回が、1回目は看護補助者3,000円・2回目は看護師4,500円（計7,500円）で数えられません：' + l1
+        mt = await pg.evaluate("document.getElementById('tab-mihon').innerText")
+        # 2026-11-03 宏史さんの決定「2名体制は2件分とカウント」：週2件とも2名体制なので、件数は週4件
+        assert '現在の訪問件数：週 4件' in mt and '2名体制の 2件を2件と数えて、週 4件' in mt, '2名体制の訪問が2件と数えられません（週2件とも2名体制で週4件のはず）'
         assert '103,180' in l1, '2名体制の加算（4週30,000円）と月の初回の管理療養費の高い分（4,700円）が、いまの合計（訪問2件×4週×8,560円＝68,480円）に足されません：' + l1
         # 月ごとの見込み：週2回の1人（81,740円）に、いまの2名体制の加算（週7,500円 × 30.4/7 ＝ 32,571円）を足して 114,311円
         await pg.evaluate("['gr_f1','gr_f2','gr_f3','gr_add'].forEach(function(id){ document.getElementById(id).value = ''; })")

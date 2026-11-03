@@ -286,7 +286,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-12</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-13</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -373,6 +373,7 @@ function tsPortalAsk(){
       <div><label class="f" for="au_part">非常勤の1日の件数の上限</label><input type="number" id="au_part" min="1" max="10"></div>
     </div>
     <div class="btns"><button class="btn" id="au_make">組み方を出す</button><button class="btn amber" id="au_apply" style="display:none">この組み方を週間予定に入れる</button><button class="btn sub" id="au_undo" style="display:none">元に戻す</button><span class="muted" id="au_msg"></span></div>
+    <div id="au_diff"></div>
     <div id="au_out"></div>
   </div>
   <div class="card" id="cardMine" style="display:none">
@@ -4603,6 +4604,8 @@ function auMake(course){
   }).filter(function(x){ return x.days.length; });
   if(!ST.length){ $('au_out').innerHTML = '<p class="empty">振り分けられる看護師が名簿にいません。</p>'; return; }
   var wk = weekly(), cnt = {}, main = {}, info = {};
+  var curD = {};   /* 2026-11-03：いまの週間予定で、その患者さんをその職員が何曜日に訪問しているか（押し直しても、組めるものは同じ曜日のまま残すため） */
+  wk.forEach(function(v){ ((curD[v.no] = curD[v.no] || {})[v.staffId] = curD[v.no][v.staffId] || []).push(String(v.dow)); });
   wk.forEach(function(v){ cnt[v.no] = (cnt[v.no] || 0) + 1; (main[v.no] = main[v.no] || {})[v.staffId] = (main[v.no][v.staffId] || 0) + 1; if(!info[v.no]) info[v.no] = { min:v.min || 30, withId:'', withN:0 }; if(v.withId){ info[v.no].withId = info[v.no].withId || v.withId; info[v.no].withN++; } });
   var P = patients().filter(function(p){ return !p.status || p.status === '利用中'; }).map(function(p){
     var m = main[p.no] || {}, ms = Object.keys(m).sort(function(a, b){ return m[b] - m[a]; })[0] || '';
@@ -4632,7 +4635,9 @@ function auMake(course){
           for(var k = 1; k < idx.length; k++) gap = Math.min(gap, idx[k] - idx[k - 1]);
           var same = c.reduce(function(t, d){ return t + (x.load[d] || []).filter(function(q){ return q.area === ar; }).length; }, 0);
           var lv = c.reduce(function(t, d){ return t + used(x, d); }, 0);
-          var sc = (idx.length > 1 ? Math.min(gap, 2) * 20 : 0) + same * 6 - lv * 3;
+          /* 2026-11-03（宏史さん「なんで島看護師の訪問が1回減ったのか」）：いまと同じ職員・同じ曜日で組めるなら、それを強く優先する。押し直すたびに曜日や担当がずれないように */
+          var keepD = ((curD[p.no] || {})[x.s.id] || []), kept = c.filter(function(d){ return keepD.indexOf(d) >= 0; }).length;
+          var sc = (idx.length > 1 ? Math.min(gap, 2) * 20 : 0) + same * 6 - lv * 3 + kept * 100;
           if(sc > bs){ bs = sc; best = c; }
         });
         if(best){ best.forEach(function(d){ (x.load[d] = x.load[d] || []).push(p); }); x.areas[ar] = (x.areas[ar] || 0) + 1; done = true; out.push({ p:p, x:x, days:best }); if(ps > 0) p.why.push('希望の曜日（' + p.wDays.map(function(d){ return DOW[+d]; }).join('・') + '）では空きが無く、別の曜日で組みました'); }
@@ -4682,9 +4687,38 @@ function auMake(course){
     (function(){ var w = P.filter(function(p){ return p.why.length; }), t2 = P.filter(function(p){ return p.team === '2名' && !(info[p.no] && info[p.no].withId); });
       return (w.length ? '<div class="judge fee" style="margin:8px 0"><b>希望どおりに組めなかった人</b><ul style="margin:4px 0 0 18px">' + w.map(function(p){ return '<li>' + esc(dnn(p.no)) + '：' + esc(p.why.join('／')) + '</li>'; }).join('') + '</ul>希望に合わせるには、担当や曜日を週間予定で手直ししてください。</div>' : '') +
         (t2.length ? '<div class="judge fee" style="margin:8px 0"><b>2名体制の希望で、同行の欄が空の人</b>：' + t2.map(function(p){ return esc(dnn(p.no)); }).join('、') + '。売上は2名で数えています（週の1回目を看護補助者、2回目以降を看護師の加算）。同行する人か、職種だけ決まっていれば「2名（看護師・未定）」などを、「名簿・設定」の「週間予定」の一覧の同行の欄で選んでください。</div>' : ''); })() +
+    (function(){ var nos = {}; out.forEach(function(o){ nos[o.p.no] = 1; }); return '<div id="au_pdiff">' + auDiffHTML(auDiff(wk, rows, nos), 'いまの週間予定から変わる訪問', 'いまの週間予定から、曜日と担当の変わる訪問はありません。') + '</div>'; })() +
     '<div class="tbl-scroll"><table class="mhT">' + head + body + '</table></div>' +
     '<p class="muted">同じ地区の患者さんを、同じ職員・同じ曜日に寄せています。いまの担当がいる患者さんは、なるべく同じ職員のままにしています。週の回数は、利用者登録の「訪問の回数・時間帯の取り決め」の週◯回です（無ければ「予定の希望」の希望の曜日の数、それも無ければいまの週間予定の回数、それも無ければ週1回）。1日の中は、地区ごと・位置が分かるものは近い順に並べ、時刻は「勤務の決まり」の1日の流れに当てています。2名体制の同行者は、いまの週間予定の回数の分だけ引き継ぎます。</p>';
   $('au_apply').style.display = rows.length ? '' : 'none';
+}
+/* 2026-11-03：週間予定の違い（前→後）。患者さんごとに、曜日と担当が変わった訪問と、職員ごとの曜日別の件数の増減を出す。時刻だけの違いは出さない */
+function auDiff(oldR, newR, nos){
+  var on = nos ? function(v){ return nos[v.no]; } : function(){ return true; };
+  var key = function(v){ return String(v.dow) + '|' + v.staffId; }, lab = function(k){ var a = k.split('|'); return (staffName(a[1]) || '担当なし') + ' ' + DOW[+a[0]]; };
+  var byP = {}, cnt = {};
+  oldR.filter(on).forEach(function(v){ (byP[v.no] = byP[v.no] || { o:[], n:[] }).o.push(key(v)); var c = (cnt[v.staffId] = cnt[v.staffId] || {}); c[v.dow] = c[v.dow] || [0, 0]; c[v.dow][0]++; });
+  newR.filter(on).forEach(function(v){ (byP[v.no] = byP[v.no] || { o:[], n:[] }).n.push(key(v)); var c = (cnt[v.staffId] = cnt[v.staffId] || {}); c[v.dow] = c[v.dow] || [0, 0]; c[v.dow][1]++; });
+  var moves = [];
+  Object.keys(byP).forEach(function(no){
+    var o = byP[no].o.slice(), n = byP[no].n.slice();
+    o.slice().forEach(function(k){ var i = n.indexOf(k); if(i >= 0){ n.splice(i, 1); o.splice(o.indexOf(k), 1); } });
+    for(var i = 0; i < Math.max(o.length, n.length); i++) moves.push({ no:no, from:o[i] ? lab(o[i]) : '（無し）', to:n[i] ? lab(n[i]) : '（無し）' });
+  });
+  var staffCh = [];
+  Object.keys(cnt).forEach(function(sid){
+    var c = cnt[sid], ds = MD_DOW.filter(function(d){ return c[d] && c[d][0] !== c[d][1]; }); if(!ds.length) return;
+    var to = MD_DOW.reduce(function(t, d){ return t + (c[d] ? c[d][0] : 0); }, 0), tn = MD_DOW.reduce(function(t, d){ return t + (c[d] ? c[d][1] : 0); }, 0);
+    staffCh.push((staffName(sid) || '担当なし') + '：週 ' + to + '件 → ' + tn + '件（' + ds.map(function(d){ return DOW[+d] + ' ' + c[d][0] + '→' + c[d][1]; }).join('、') + '）');
+  });
+  return { moves:moves, staff:staffCh };
+}
+function auDiffHTML(df, title, none){
+  if(!df.moves.length) return '<div class="judge free" style="margin:8px 0">' + esc(none) + '</div>';
+  return '<div class="judge fee" style="margin:8px 0"><b>' + esc(title) + '（' + df.moves.length + '件）</b>' +
+    (df.staff.length ? '<ul style="margin:4px 0 0 18px">' + df.staff.map(function(t){ return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' : '') +
+    '<details style="margin-top:4px"><summary>動いた訪問を1件ずつ見る</summary><ul style="margin:4px 0 0 18px">' + df.moves.map(function(m){ return '<li>' + esc(dnn(m.no)) + '：' + esc(m.from) + ' → ' + esc(m.to) + '</li>'; }).join('') + '</ul></details>' +
+    '<small class="muted">曜日か担当が変わった訪問だけを出しています（時刻だけの違いは出していません）。</small></div>';
 }
 function auApply(){
   if(!auPlan || !auPlan.rows.length) return;
@@ -4699,9 +4733,12 @@ function auApply(){
     keep.push({ id:uid(), dow:v.dow, time:v.time, min:v.min || inf.min || 30, no:v.no, staffId:v.staffId, withId:w }); });
   saveCol('weekly', keep);
   $('au_msg').textContent = '週間予定に入れました（' + auPlan.rows.length + '件）。入れ替える前の予定は控えに残しています。';
-  auPlan = null; $('au_apply').style.display = 'none'; refreshAll(); auUndoShow();
+  auPlan = null; $('au_apply').style.display = 'none'; var pd = $('au_pdiff'); if(pd) pd.remove(); refreshAll(); auUndoShow();   /* 入れた後は「いまの週間予定から変わる訪問」は古くなるので消す。違いは上の控えとの比べで出る */
 }
-function auUndoShow(){ var b = lj(AU_BAK, null); $('au_undo').style.display = b ? '' : 'none'; if(b) $('au_undo').textContent = '元に戻す（' + b.at + 'の週間予定）'; }
+function auUndoShow(){ var b = lj(AU_BAK, null); $('au_undo').style.display = b ? '' : 'none'; if(b) $('au_undo').textContent = '元に戻す（' + b.at + 'の週間予定）';
+  /* 2026-11-03：控え（入れ替える前）と今の週間予定の違いを、いつでも見られるようにする */
+  var el = $('au_diff'); if(!el) return;
+  el.innerHTML = b ? auDiffHTML(auDiff(b.rows || [], live('weekly')), String(b.at).replace('T', ' ') + 'に入れ替える前の週間予定から、今の週間予定で変わった訪問', String(b.at).replace('T', ' ') + 'に入れ替える前の週間予定と、今の週間予定で、曜日と担当の変わった訪問はありません。') : ''; }
 function auUndo(){
   var b = lj(AU_BAK, null); if(!b) return;
   if(!confirm(b.at + 'に入れ替える前の週間予定に戻します。戻しますか。')) return;

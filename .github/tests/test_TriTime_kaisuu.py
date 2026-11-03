@@ -35,6 +35,8 @@ async def test(p):
         if not await pg.is_visible('#au_apply'):
             info = await pg.evaluate("[document.getElementById('au_out').innerText.slice(0,200), localStorage.getItem('tritime_patients'), (localStorage.getItem('tritime_staff')||'').slice(0,300)]")
             assert False, '組み方が出ません：' + ' ｜ '.join(str(x) for x in info)
+        note = await pg.inner_text('#au_out')
+        assert '「訪問の回数・時間帯の取り決め」の週◯回です' in note, '組み方の下の説明が、回数の決め方の新しい順になっていません'
         await s.shot('#cardAuto', 'TriTime_kaisuu_kumikata.png')
         await pg.evaluate("window.confirm = function(){ return true; }")
         await pg.click('#au_apply', timeout=15000); await pg.wait_for_timeout(400)

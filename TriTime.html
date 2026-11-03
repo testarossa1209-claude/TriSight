@@ -4587,7 +4587,7 @@ function auMake(course){
       return (w.length ? '<div class="judge fee" style="margin:8px 0"><b>希望どおりに組めなかった人</b><ul style="margin:4px 0 0 18px">' + w.map(function(p){ return '<li>' + esc(dnn(p.no)) + '：' + esc(p.why.join('／')) + '</li>'; }).join('') + '</ul>希望に合わせるには、担当や曜日を週間予定で手直ししてください。</div>' : '') +
         (t2.length ? '<div class="judge fee" style="margin:8px 0"><b>2名体制の希望で、同行者が決まっていない人</b>：' + t2.map(function(p){ return esc(dnn(p.no)); }).join('、') + '。週間予定の「同行」で入れてください。</div>' : ''); })() +
     '<div class="tbl-scroll"><table class="mhT">' + head + body + '</table></div>' +
-    '<p class="muted">同じ地区の患者さんを、同じ職員・同じ曜日に寄せています。いまの担当がいる患者さんは、なるべく同じ職員のままにしています。週の回数は、いまの週間予定の回数（無ければ登録の「訪問の頻度」、それも無ければ週1回）です。1日の中は、地区ごと・位置が分かるものは近い順に並べ、時刻は「勤務の決まり」の1日の流れに当てています。2名体制の同行者は、いまの週間予定の回数の分だけ引き継ぎます。</p>';
+    '<p class="muted">同じ地区の患者さんを、同じ職員・同じ曜日に寄せています。いまの担当がいる患者さんは、なるべく同じ職員のままにしています。週の回数は、利用者登録の「訪問の回数・時間帯の取り決め」の週◯回です（無ければいまの週間予定の回数、それも無ければ週1回）。1日の中は、地区ごと・位置が分かるものは近い順に並べ、時刻は「勤務の決まり」の1日の流れに当てています。2名体制の同行者は、いまの週間予定の回数の分だけ引き継ぎます。</p>';
   $('au_apply').style.display = rows.length ? '' : 'none';
 }
 function auApply(){

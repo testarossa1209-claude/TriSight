@@ -43,7 +43,7 @@ async def test(p):
         await pg.click('[data-mh="3000000"]'); await pg.wait_for_timeout(200)
         await pg.click('#mh_make'); await pg.wait_for_timeout(500)
         t = await pg.evaluate("document.getElementById('tab-mihon').innerText")
-        line = ([l for l in t.split('\n') if '上振れ：2名体制の加算' in l] or [''])[0]
+        line = ([l for l in t.split('\n') if '2名体制の加算（いまの週間予定で' in l] or [''])[0]
         assert '週 2回' in line and '7,600' in line, '「2名（准看護師・未定）」の週2回が、准看護師の加算（3,800円×2回＝7,600円）で数えられません：' + line
         assert not s.errs, '画面の中で誤りが出ました：' + s.errs[0]
     finally:

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """トライタイムの2名体制の売上の数え方の試験（2026-11-03・宏史さんの指示「同行者が決まらない場合でも指示書では2名体制なので、売上は2名で計算。同行者に看護師を指定していれば看護師料金、指定がなければ看護助手で計算」）
 ・「モデルコースの見本」の「選んだコースに届くまでの道のり」の上振れの行で、体制が2名で同行者の決まっていない訪問は、週の1回目を看護補助者の加算（3,000円）、2回目以降を看護師の加算（4,500円）で数える（2026-11-03 宏史さんの指示「残りの回は看護師料金が加算されない」）
-・同行者に看護師を入れた訪問は、看護師どうしの加算（4,500円）で数える"""
+・同行者に看護師を入れた訪問は、看護師どうしの加算（4,500円）で数える
+・2名体制の加算と月の初回の管理療養費の高い分を「いまの合計」に入れる（2026-11-03 宏史さん「単価が変わっているのに総額は全然変わっていない」）"""
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 from tt_helper import Screen, run
@@ -33,10 +34,12 @@ async def test(p):
             await pg.click('[data-mh="3000000"]'); await pg.wait_for_timeout(200)
             await pg.click('#mh_make'); await pg.wait_for_timeout(500)
             t = await pg.evaluate("document.getElementById('tab-mihon').innerText")
-            line = [l for l in t.split('\n') if '上振れ：2名体制の加算' in l]
-            return line[0] if line else ''
+            line = [l for l in t.split('\n') if '2名体制の加算（いまの週間予定で' in l]
+            tot = [l for l in t.split('\n') if l.startswith('いまの合計')]
+            return (line[0] if line else '') + ' ｜ ' + (tot[0] if tot else '')
         l1 = await setup(False)
         assert '週 2回' in l1 and '7,500' in l1, '同行者の決まっていない2名体制の週2回が、1回目は看護補助者3,000円・2回目は看護師4,500円（計7,500円）で数えられません：' + l1
+        assert '103,180' in l1, '2名体制の加算（4週30,000円）と月の初回の管理療養費の高い分（4,700円）が、いまの合計（訪問2件×4週×8,560円＝68,480円）に足されません：' + l1
         await s.shot('#tab-mihon', 'TriTime_nimei_hojo.png')
         l2 = await setup(True)
         assert '週 2回' in l2 and '9,000' in l2, '看護師を同行者にした2名体制が、看護師の加算（4,500円×2回）で数えられません：' + l2

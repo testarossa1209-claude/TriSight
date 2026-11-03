@@ -286,7 +286,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-17</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-18</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -1521,12 +1521,12 @@ function visitsOn(date){
     var p = patient(v.no) || {}, m = mv.filter(function(e){ return e.patientNo === v.no && e.fromTime === v.time; })[0];
     if(m && m.toDate && m.toDate !== date) return null;
     var t = m ? m.toTime : v.time, sid = m ? (m.toStaff || v.staffId) : v.staffId;
-    return { date:date, time:t, min:v.min, no:v.no, area:p.area || '', staffId:sid, withId:v.withId || '', cx:cancelOf(v.no, date, t), moved:m ? { id:m.id, from:v.time, fromStaff:v.staffId } : null, od:date, ot:v.time, wid:v.id };
+    return { date:date, time:t, min:v.min, no:v.no, area:p.area || '', staffId:sid, withId:(m && m.toWith != null) ? m.toWith : (v.withId || ''), cx:cancelOf(v.no, date, t), moved:m ? { id:m.id, from:v.time, fromStaff:v.staffId } : null, od:date, ot:v.time, wid:v.id };
   }).filter(Boolean);
   events().filter(function(e){ return e.type === 'move' && e.toDate === date && e.date !== date; }).forEach(function(m){
     var ow = (parseYmd(m.date) || new Date(0)).getDay(), v = wk.filter(function(x){ return +x.dow === ow && x.no === m.patientNo && x.time === m.fromTime; })[0];
     if(!v) return; var p = patient(v.no) || {}, sid = m.toStaff || v.staffId;
-    out.push({ date:date, time:m.toTime, min:v.min, no:v.no, area:p.area || '', staffId:sid, withId:v.withId || '', cx:cancelOf(v.no, date, m.toTime), moved:{ id:m.id, from:jpDate(m.date) + ' ' + v.time, fromStaff:v.staffId }, od:m.date, ot:v.time, wid:v.id });
+    out.push({ date:date, time:m.toTime, min:v.min, no:v.no, area:p.area || '', staffId:sid, withId:m.toWith != null ? m.toWith : (v.withId || ''), cx:cancelOf(v.no, date, m.toTime), moved:{ id:m.id, from:jpDate(m.date) + ' ' + v.time, fromStaff:v.staffId }, od:m.date, ot:v.time, wid:v.id });
   });
   return out.sort(function(a,b){ return a.time < b.time ? -1 : 1; });
 }
@@ -1539,6 +1539,7 @@ function chgOf(v){
   if(v.cx) return { key:'cx:' + v.cx.id, staff:[v.staffId, v.withId].filter(function(x, i, a){ return x && !isTbd(x) && x !== v.cx.by && a.indexOf(x) === i; }), what:'キャンセル' };
   if(v.moved){
     var m = events().filter(function(e){ return e.id === v.moved.id; })[0] || {};
+    if(m.rec) return null;   /* 2026-11-03：実際に回った人へまとめて付け替えた記録（その日のうち・過ぎた日）は、連絡の対象にしない */
     return { key:'mv:' + v.moved.id, staff:[v.staffId, v.moved.fromStaff, v.withId].filter(function(x, i, a){ return x && !isTbd(x) && x !== m.by && a.indexOf(x) === i; }), what:'組み換え（元 ' + v.moved.from + '）', consent:m.consent !== false, moveId:v.moved.id };
   }
   return null;
@@ -5212,11 +5213,14 @@ function availRec(sid, ym){ var a = events().filter(function(e){ return e.type =
 function availOf(sid, ym){ var r = availRec(sid, ym); return r ? (r.days || []) : null; }
 function ymNext(){ var d = new Date(); return ymd(new Date(d.getFullYear(), d.getMonth() + 1, 1)).slice(0, 7); }
 function leaves(){ return events().filter(function(e){ return e.type === 'leave'; }); }
+function workOn(sid, date){ return events().some(function(e){ return e.type === 'work' && e.staffId === sid && e.date === date; }); }
 /* その日、その職員が休みか。休みなら理由（公休／祝日／届けの種類）を返す */
 function offWhy(staffId, date){
   var s = staff().filter(function(x){ return x.id === staffId; })[0]; if(!s) return '';
   if(staffOut(s, date)) return '退職';
   var lv = leaves().filter(function(e){ return e.staffId === staffId && e.date === date; })[0]; if(lv) return lv.kind || '休み';
+  /* 2026-11-03（宏史さん「祭日に島さんと佐野（夫）さんが全員を回った。要調整の直し方は」）：この日は出勤（type "work"）が付いた日は、公休・祝日・申告外でも休みにしない */
+  if(workOn(staffId, date)) return '';
   if(s.emp === '非常勤'){ var av = availOf(s.id, date.slice(0, 7)); if(av) return av.indexOf(date) >= 0 ? '' : '申告外'; }
   var d = parseYmd(date); if(d && staffOff(s).indexOf(String(d.getDay())) >= 0) return '公休';
   if(s.holOff && holidayName(date)) return '祝日';
@@ -6043,8 +6047,52 @@ function ssRender(){
     });
     h += '</tr>';
   });
-  $('ssBody').innerHTML = h + '</tbody></table>' + '<p class="muted sm" style="margin:6px 0 0">今日以降の訪問の札は、指で押さえたまま別の人の升・別の曜日の升へ引っぱると動かせます。</p>' + ssStandbyHTML(days);
-  ssWireStandby();
+  $('ssBody').innerHTML = h + '</tbody></table>' + '<p class="muted sm" style="margin:6px 0 0">今日以降の訪問の札は、指で押さえたまま別の人の升・別の曜日の升へ引っぱると動かせます。</p>' + ssBulkHTML(days) + ssStandbyHTML(days);
+  ssWireStandby(); ssWireBulk();
+}
+/* 2026-11-03：その日の訪問を、まとめて担当・同行に付け替える（宏史さん「本日（祭日）は全部の利用者を島さんと佐野（夫）さんが回った。全部複数名。要確認の直し方は」）。
+   その日の訪問（キャンセルを除く）ごとに組み換え（move）を残し、担当と同行を替える。担当と同行の人には、その日の「出勤」（type "work"）を付けて、公休・祝日の要調整を消す。
+   その日のうち・過ぎた日の付け替えは、実際に回った記録なので連絡の対象にしない（rec）。取り消しは、この枠で付けたもの（bulk）をその日の分だけまとめて外す */
+var SS_BULK_OPEN = false;
+function ssBulkHTML(days){
+  var today = ymd(new Date()), ns = deptStaff().filter(function(x){ return canSolo(x) && !staffOut(x); });
+  var opt = function(a, sel){ return a.map(function(x){ return '<option value="' + esc(x.v) + '"' + (x.v === sel ? ' selected' : '') + '>' + esc(x.t) + '</option>'; }).join(''); };
+  var dayOpt = days.map(function(x){ return { v:x, t:jpDate(x) + (holidayName(x) ? '（' + holidayName(x) + '）' : '') }; });
+  var done = events().filter(function(e){ return e.type === 'work' && days.indexOf(e.date) >= 0; });
+  return '<details style="margin-top:12px"' + (SS_BULK_OPEN ? ' open' : '') + ' id="ssBulk"><summary><b>この日の訪問を、まとめて担当・同行に付け替える（祝日に出た日など）</b></summary>' +
+    '<p class="muted sm">選んだ日の訪問を全部、選んだ担当と同行に付け替えます。担当と同行の人は、その日を「出勤」にして、公休・祝日の「要調整」を消します。今日・過ぎた日の付け替えは、実際に回った記録として残し、連絡は出しません。</p>' +
+    '<div class="row"><div><label class="f" for="sb_date">日</label><select id="sb_date">' + opt(dayOpt, days.indexOf(today) >= 0 ? today : days[0]) + '</select></div>' +
+    '<div><label class="f" for="sb_staff">担当</label><select id="sb_staff"><option value="">選んでください</option>' + opt(ns.map(function(x){ return { v:x.id, t:x.name }; }), '') + '</select></div>' +
+    '<div><label class="f" for="sb_with">同行</label><select id="sb_with"><option value="">なし（1名）</option>' + opt(WITH_L, '') + '</select></div></div>' +
+    '<div class="btns"><button type="button" class="btn amber" id="sb_go">この日の訪問を付け替える</button><span class="muted sm" id="sb_msg"></span></div>' +
+    (done.length ? '<p class="sm" style="margin-top:6px">この週の「出勤」：' + done.map(function(e){ return esc(jpDate(e.date) + ' ' + staffName(e.staffId)); }).join('、') + '　<button type="button" class="btn small sub" id="sb_undo">選んだ日の付け替えと出勤を取り消す</button></p>' : '') +
+    '</details>';
+}
+function ssWireBulk(){
+  var bx = $('ssBulk'); if(!bx) return;
+  bx.addEventListener('toggle', function(){ SS_BULK_OPEN = bx.open; });
+  $('sb_go').onclick = function(){
+    var date = $('sb_date').value, sid = $('sb_staff').value, wid = $('sb_with').value;
+    if(!sid){ $('sb_msg').textContent = '担当を選んでください。'; return; }
+    if(wid === sid){ $('sb_msg').textContent = '担当と同行が同じ人です。'; return; }
+    var vs = visitsOn(date).filter(function(v){ return !v.cx; });
+    if(!vs.length){ $('sb_msg').textContent = 'この日の訪問がありません。'; return; }
+    if(!confirm(jpDate(date) + 'の訪問 ' + vs.length + '件を、担当 ' + staffName(sid) + (wid ? '・同行 ' + staffName(wid) : '') + 'に付け替えます。よろしいですか。')) return;
+    var me = dev().me || '', now = nowLocal(), bid = uid(), rec = date <= ymd(new Date());
+    var ev = events().filter(function(e){ return !(e.type === 'move' && vs.some(function(v){ return v.od === e.date && v.no === e.patientNo && v.ot === e.fromTime; })); });
+    vs.forEach(function(v){ var r = { id:uid(), type:'move', patientNo:v.no, date:v.od, fromTime:v.ot, toTime:v.time, toStaff:sid, toWith:wid, by:me, consent:true, created:now, bulk:bid };
+      if(v.od !== date) r.toDate = date; if(rec) r.rec = true; ev.push(r); });
+    [sid, wid].filter(function(x){ return x && !isTbd(x); }).forEach(function(x){ if(!ev.some(function(e){ return e.type === 'work' && e.staffId === x && e.date === date; })) ev.push({ id:uid(), type:'work', staffId:x, date:date, by:me, at:now, bulk:bid }); });
+    saveEvents(ev);
+    SS_BULK_OPEN = true; refreshAll();
+    var m = $('sb_msg'); if(m) m.textContent = jpDate(date) + 'の訪問 ' + vs.length + '件を付け替えました。';
+  };
+  if($('sb_undo')) $('sb_undo').onclick = function(){
+    var date = $('sb_date').value;
+    if(!confirm(jpDate(date) + 'に、この枠で付け替えた訪問と「出勤」を取り消して、元の予定に戻します。よろしいですか。')) return;
+    saveEvents(events().filter(function(e){ return !(e.bulk && (e.type === 'work' ? e.date === date : (e.toDate || e.date) === date)); }));
+    SS_BULK_OPEN = true; refreshAll();
+  };
 }
 /* 2026-11-03：待機者リスト（宏史さんの指示「調整が難しいときにお願いする、本来の非常勤の使い方による待機者リスト」）。
    名前・兼業先・出られる目安・この週に申告のある日・連絡先を並べ、お願いの連絡を一押しで開く */

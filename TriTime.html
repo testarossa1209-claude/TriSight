@@ -286,7 +286,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-06</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-07</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -1045,7 +1045,7 @@ function tsPortalAsk(){
     <p class="muted" id="st_pullMsg" style="margin:6px 0 10px"></p>
     <div class="row">
       <div><label class="f" for="st_name">呼び名</label><input type="text" id="st_name"></div>
-      <div><label class="f" for="st_job">職種</label><select id="st_job"><option>看護師（正看）</option><option>准看護師</option><option>介護福祉士</option><option>介護職（実務者研修修了）</option><option>介護職（初任者研修修了）</option><option>介護職（資格なし）</option><option>相談員・ケアマネジャー</option><option>事務局</option><option>その他</option></select></div>
+      <div><label class="f" for="st_job">職種</label><select id="st_job"><option>看護師（正看）</option><option>准看護師</option><option>看護補助者</option><option>介護福祉士</option><option>介護職（実務者研修修了）</option><option>介護職（初任者研修修了）</option><option>介護職（資格なし）</option><option>相談員・ケアマネジャー</option><option>事務局</option><option>その他</option></select></div>
       <div><label class="f" for="st_dept">所属部門</label><select id="st_dept"><option value="">（職種から当てる）</option><option>訪問看護部</option><option>訪問介護部</option><option>特定障害相談部</option><option>居宅介護支援部</option><option>経営企画事務職</option><option>管理部門</option></select></div>
       <div><label class="f" for="st_emp">雇用形態</label><select id="st_emp"><option>常勤</option><option>非常勤</option></select></div>
       <div><label class="f" for="st_sex">性別（「男性の看護師は嫌」などの要望を予定に生かすときだけ使います）</label><select id="st_sex"><option value="">入れない</option><option>男性</option><option>女性</option></select></div>
@@ -1389,7 +1389,11 @@ var JOB_SHORT = { '看護師（正看）':'正看', '准看護師':'准看', '�
 function staffLabel(s){ var j = jobOf(s); var p = [s.post || '', JOB_SHORT[j] || j, s.emp || '', isMgr(s) ? '管理者' : ''].filter(Boolean); return s.name + (p.length ? '（' + p.join('・') + '）' : ''); }
 function nurses(){ return staff().filter(function(s){ return NURSE_JOBS.indexOf(jobOf(s)) >= 0; }); }
 /* 部署の職員：名簿の「所属部門」で分ける。所属部門が無い人は職種から当てる */
-function staffDept(s){ if(s.dept) return deptByName(s.dept); var j = jobOf(s); return DEPTS.filter(function(d){ return d.jobs.indexOf(j) >= 0; })[0] || null; }
+/* 2026-11-03：看護補助者（宏史さんの指示）。訪問看護部の職員だが、単独では訪問できず、2名体制の同行だけに入る。
+   担当（単独）にできるのは、その部署の職種（訪問看護部なら看護師・准看護師）の人だけ */
+var AIDE_JOBS = ['看護補助者'];
+function canSolo(s, d){ d = d || D(); if(!s) return false; var j = jobOf(s); if(!j) return true; if(AIDE_JOBS.indexOf(j) >= 0) return false; return d.kind !== 'visit' || d.jobs.indexOf(j) >= 0; }
+function staffDept(s){ if(s.dept) return deptByName(s.dept); var j = jobOf(s); if(AIDE_JOBS.indexOf(j) >= 0) return DEPTS[0]; return DEPTS.filter(function(d){ return d.jobs.indexOf(j) >= 0; })[0] || null; }
 function staffSub(s){ return Array.isArray(s.sub) ? s.sub.filter(function(x){ return x && x !== s.dept; }) : []; }
 /* 2026-10-26：兼務する部署に入っている職員も、その部署の職員として扱う（担当の選ぶ欄・連絡板の宛先など） */
 /* 2026-10-29：退職（宏史さんの指示）。退職した人は名簿から外さず、退職日を入れて残す。
@@ -1401,7 +1405,7 @@ function staffLive(){ return staff().filter(function(s){ return !staffOut(s); })
    同じ組の中は名簿の順のまま（2026-11-02 宏史さんの指摘「伊藤孝明は常勤ですが、看護師ではないので、位置は事務局の前」）。
    これまでは名簿に入った順のままで、端末ごとに名簿が届いた順で並びが変わっていた */
 function staffRank(s, d){ if((s.dept && /経営企画事務/.test(s.dept)) || jobOf(s) === '事務局') return 3; if(d && d.kind !== 'office' && d.jobs.indexOf(jobOf(s)) < 0) return 2; return s.emp === '非常勤' ? 1 : 0; }
-function deptStaff(d, at){ d = d || D(); var a = staff().filter(function(s){ return !staffOut(s, at); }).filter(function(s){ if(staffSub(s).indexOf(d.name) >= 0) return true; if(s.dept) return deptByName(s.dept) === d; return d.jobs.indexOf(jobOf(s)) >= 0; }); return a.map(function(s, i){ return { s:s, i:i, r:staffRank(s, d) }; }).sort(function(x, y){ return (x.r - y.r) || (x.i - y.i); }).map(function(x){ return x.s; }); }
+function deptStaff(d, at){ d = d || D(); var a = staff().filter(function(s){ return !staffOut(s, at); }).filter(function(s){ if(staffSub(s).indexOf(d.name) >= 0) return true; if(s.dept) return deptByName(s.dept) === d; var j = jobOf(s); return d.jobs.indexOf(j) >= 0 || (AIDE_JOBS.indexOf(j) >= 0 && d === DEPTS[0]); });   /* 2026-11-03：所属部門が空の看護補助者は、訪問看護部の職員として見る */ return a.map(function(s, i){ return { s:s, i:i, r:staffRank(s, d) }; }).sort(function(x, y){ return (x.r - y.r) || (x.i - y.i); }).map(function(x){ return x.s; }); }
 
 /* ---- 共通：選択肢 ---- */
 function fillSelect(sel, items, blank){
@@ -1416,8 +1420,14 @@ function refreshSelects(){
   ['c_no','k_no','rp_no','wk_no','pl_no'].forEach(function(id){ fillSelect(id, pts, '選んでください'); });
   var ns = deptStaff().map(function(s){ return { v:s.id, t:s.name }; });
   var all = staffLive().map(function(s){ return { v:s.id, t:staffLabel(s) }; });
-  ['c_staff','p_staff','d_staff','r_staff','wk_staff','pt_staff'].forEach(function(id){ fillSelect(id, ns, '選んでください'); });
-  fillSelect('wk_with', ns, 'なし（1名）');
+  ['c_staff','p_staff','d_staff','r_staff'].forEach(function(id){ fillSelect(id, ns, '選んでください'); });
+  /* 2026-11-03：週間予定と利用者の担当（単独で訪問する人）は、看護師・准看護師だけ。看護補助者は同行だけ */
+  var solo = deptStaff().filter(function(s){ return canSolo(s); }).map(function(s){ return { v:s.id, t:s.name }; });
+  ['wk_staff','pt_staff'].forEach(function(id){ fillSelect(id, solo, '選んでください'); });
+  /* 同行（2名体制）には、部署の職員に加えて、看護助手の依頼で同行するほかの訪問の部署（介護部など）の職員も選べる */
+  var withL = ns.slice(), seen = {}; ns.forEach(function(x){ seen[x.v] = 1; });
+  DEPTS.filter(function(x){ return x.kind === 'visit' && x !== D(); }).forEach(function(x){ deptStaff(x).forEach(function(s){ if(!seen[s.id] && jobOf(s) !== '事務局'){ seen[s.id] = 1; withL.push({ v:s.id, t:s.name + '（' + x.name + '）' }); } }); });
+  fillSelect('wk_with', withL, 'なし（1名）');
   fillSelect('c_fwdTo', ns, '回していない');
   ['c_by','r_by','pt_by','rq_by','pr_by'].forEach(function(id){ fillSelect(id, all, '選んでください'); });
   fillSelect('pr_staff', ns, '選んでください');
@@ -5268,7 +5278,7 @@ function mgMigrate(){
   Object.keys(mod).forEach(function(k){ var x = mod[k] || {}; nm[k] = { staff:x.staff, prices:x.prices, kanri:x.kanri, tanka:x.tanka, shogu:x.shogu }; });
   var n = Object.assign({}, cur, { model:nm }); delete n.modelSnap; saveSettings(n);
 }
-function mdPeople(){ return deptStaff().filter(function(s){ return jobOf(s) !== '事務局' && !isStandby(s); }); }   /* 2026-11-03：待機の人はモデルコースに入れない */
+function mdPeople(){ return deptStaff().filter(function(s){ return jobOf(s) !== '事務局' && !isStandby(s) && canSolo(s); }); }   /* 2026-11-03：看護補助者など単独で訪問しない人も、件数の目標（モデルコース）には入れない。売上は同行の加算で数える */   /* 2026-11-03：待機の人はモデルコースに入れない */
 function mdWeekOf(sid){ return weekly().filter(function(v){ return v.staffId === sid || v.withId === sid; }); }   /* 同行（2名体制）も、その職員の時間を使う訪問として数える */
 /* 初めの値：常勤＝勤務の決まりの目標件数・公休以外の曜日。
    非常勤＝名簿に公休の曜日が入っていれば公休以外の曜日（2026-11-03・宏史さんの指示「職員の出勤体制を入れたので、これを反映したモデルコースを」）。
@@ -5895,6 +5905,8 @@ function ssRender(){
       var k = ids[v.staffId] ? v.staffId : '_none'; if(k === '_none') extra = true;
       ((cells[k] = cells[k] || {})[date] = cells[k][date] || []).push(v);
       if(!v.cx) cnt[k] = (cnt[k] || 0) + 1;
+      /* 2026-11-03：同行する人の行にも、その訪問を「同行」の札で出す（看護補助者など、同行だけで入る人の予定が見えるように） */
+      if(v.withId && ids[v.withId] && v.withId !== k){ var cp = Object.assign({}, v, { asWith:true }); ((cells[v.withId] = cells[v.withId] || {})[date] = cells[v.withId][date] || []).push(cp); if(!v.cx) cnt[v.withId] = (cnt[v.withId] || 0) + 1; }
     });
   });
   /* 2026-11-03：待機の人（調整が難しいときにお願いする非常勤）は表のいちばん下にまとめる */
@@ -5919,8 +5931,8 @@ function ssRender(){
           if(!v.cx && prev){ var g = toMin(v.time) - (toMin(prev.time) + (+prev.min || 30)); if(g < wr.mvMin) gap = '<span class="ssGap short">間 ' + g + '分（短い）</span>'; else if(g > wr.mvMax) gap = '<span class="ssGap">空き ' + minLabel(g) + '</span>'; }
           if(!v.cx) prev = v;
           var warn = why && !v.cx;
-          var vk = ''; if(!v.cx && date >= today){ vk = date + '|' + v.no + '|' + v.time; SS_V[vk] = v; }
-          return gap + '<span class="ssChip' + (v.cx ? ' cx' : '') + (warn ? ' warn' : '') + (vk ? ' dg' : '') + '"' + (vk ? ' data-vk="' + esc(vk) + '"' : '') + ' title="' + esc(v.time + ' ' + dnn(v.no) + '（' + v.min + '分）' + (v.area ? '・' + v.area : '') + (v.cx ? '・キャンセル' : '') + (warn ? '・休みの日の訪問' : '')) + '">' + esc(v.time) + '<br>' + esc(ssShortNo(v.no)) + (nameOf(v.no) ? '<br>' + esc(nameOf(v.no)) : '') + (warn ? '<br>要調整' : '') + '</span>';
+          var vk = ''; if(!v.cx && !v.asWith && date >= today){ vk = date + '|' + v.no + '|' + v.time; SS_V[vk] = v; }
+          return gap + '<span class="ssChip' + (v.cx ? ' cx' : '') + (warn ? ' warn' : '') + (vk ? ' dg' : '') + '"' + (vk ? ' data-vk="' + esc(vk) + '"' : '') + ' title="' + esc(v.time + ' ' + dnn(v.no) + '（' + v.min + '分）' + (v.area ? '・' + v.area : '') + (v.cx ? '・キャンセル' : '') + (warn ? '・休みの日の訪問' : '')) + '">' + esc(v.time) + '<br>' + (v.asWith ? '<b>同行</b><br>' : '') + esc(ssShortNo(v.no)) + (nameOf(v.no) ? '<br>' + esc(nameOf(v.no)) : '') + (warn ? '<br>要調整' : '') + '</span>';
         }).join('') + (live2 ? '<span class="ssCnt' + (live2 >= wr.target ? ' ok' : '') + '">' + live2 + '件</span>' : '') + '</td>';
     });
     h += '</tr>';
@@ -5991,6 +6003,8 @@ function ssGapText(sid, date){
 }
 function ssMoveAsk(v, sid, date){
   var box = document.createElement('div'); box.className = 'ssMv'; box.id = 'ssMv';
+  var tg = staff().filter(function(x){ return x.id === sid; })[0];
+  if(tg && !canSolo(tg)){ ssWithAsk(box, v, tg, date); return; }
   var why = offWhy(sid, date);
   box.innerHTML = '<div class="card"><h2>訪問を動かす</h2><p><b>' + esc(dnn(v.no)) + '</b><br>' + esc(jpDate(v.date) + ' ' + v.time + '（' + staffName(v.staffId) + '）') + '<br>→ <b>' + esc(jpDate(date) + '（' + staffName(sid) + '）') + '</b></p>' +
     (why ? '<p style="color:var(--red)">' + esc(staffName(sid)) + 'さんはこの日「' + esc(why) + '」です。動かすと「要調整」の印が付きます。</p>' : '') +
@@ -6002,6 +6016,30 @@ function ssMoveAsk(v, sid, date){
   $('mv_no').onclick = function(){ box.remove(); };
   $('mv_once').onclick = function(){ ssMoveDo(v, sid, date, false); };
   $('mv_week').onclick = function(){ ssMoveDo(v, sid, date, true); };
+}
+/* 2026-11-03：看護補助者（単独で訪問できない人）の升へ札を離したときは、動かさずに「同行として付けるか」を聞く。
+   同行は週間予定の1件に付ける（同じ日の升へ離したときだけ）。付けた同行は、料金表の看護補助者の加算で数える */
+function ssWithAsk(box, v, tg, date){
+  var same = date === v.date, wk = live('weekly').filter(function(x){ return x.id === v.wid; })[0];
+  box.innerHTML = '<div class="card"><h2>単独では訪問できません</h2><p><b>' + esc(tg.name) + '</b>さんは' + esc(jobOf(tg) || '看護師以外') + 'のため、単独では訪問できません。2名体制の同行としてだけ入れます。</p>' +
+    (same && wk ? '<p>' + esc(jpDate(v.date) + ' ' + v.time + '　' + dnn(v.no) + '（担当 ' + staffName(v.staffId) + '）') + 'に、同行として付けますか。毎週の予定（' + esc(DOW[+wk.dow]) + '曜 ' + esc(wk.time) + '）に付きます。</p>' +
+      (wk.withId ? '<p class="muted sm">いまの同行：' + esc(staffName(wk.withId)) + '（付けると入れ替わります）</p>' : '') +
+      '<div class="btns"><button class="btn amber" type="button" id="mv_with">同行として付ける</button><button class="btn sub" type="button" id="mv_no">やめる</button></div>'
+      : '<p>同行として付けるときは、同じ日の升へ離してください。</p><div class="btns"><button class="btn sub" type="button" id="mv_no">閉じる</button></div>') + '<div id="mv_res"></div></div>';
+  document.body.appendChild(box);
+  $('mv_no').onclick = function(){ box.remove(); };
+  if($('mv_with')) $('mv_with').onclick = function(){
+    var a = live('weekly'), w = a.filter(function(x){ return x.id === v.wid; })[0]; if(!w) return;
+    w.withId = tg.id; saveCol('weekly', a);
+    var me = dev().me || '', now = nowLocal(), to = [v.staffId, tg.id], ev = events();
+    ev.push({ id:uid(), type:'note', kind:'予定の組み換え', from:me, to:to, title:'【同行の追加】' + dnn(v.no) + '　毎週 ' + DOW[+w.dow] + '曜 ' + w.time + '（担当 ' + staffName(v.staffId) + '）に ' + tg.name + 'さんが同行します', body:'2名体制の同行です。', mDate:'', mTime:'', created:now, date:ymd(new Date()) });
+    saveEvents(ev);
+    $('mv_res').innerHTML = '<div class="judge free" style="margin-top:8px"><b>同行として付けました。</b><br><small>連絡板に、' + esc(to.map(staffName).join('・')) + 'さんあての知らせを残しました。</small></div>' +
+      pnHTML([{ to:to, label:to.map(staffName).join('・') + 'さんへ', subj:'【ノア】同行の予定が入りました', text:'2名体制の同行の予定が入りました。\n' + dn(v.no) + '：毎週 ' + DOW[+w.dow] + '曜 ' + w.time + '\n担当：' + staffName(v.staffId) + '　同行：' + tg.name + '\nトライタイムで確認してください。' }]) +
+      '<div class="btns" style="margin-top:8px"><button class="btn sub" type="button" id="mv_close">閉じる</button></div>';
+    $('mv_with').disabled = true; $('mv_close').onclick = function(){ box.remove(); };
+    refreshAll();
+  };
 }
 function ssMoveDo(v, sid, date, weeklyToo){
   var t = $('mv_time').value || v.time, ok = $('mv_ok').checked, me = dev().me || '', now = nowLocal(), from = v.staffId;

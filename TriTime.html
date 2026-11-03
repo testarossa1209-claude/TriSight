@@ -274,7 +274,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-02-06</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -444,33 +444,64 @@ function tsPortalAsk(){
         <div><label class="f" for="pt_telMobile">本人の携帯</label><input type="tel" id="pt_telMobile" placeholder="例：090-1234-5678"></div>
         <div><label class="f" for="pt_telHome">本人の自宅</label><input type="tel" id="pt_telHome" placeholder="例：042-123-4567"></div>
       </div>
+      <!-- 2026-11-03：緊急連絡先は家族とは限らない（宏史さんの指示。精神の利用者さんでは生活保護のケースワーカー・相談員が多く、関わりを嫌う親族もいる）。種別・所属・関わり方を足し、同居/別居と主介護者は家族・親族のときだけ出す -->
+      <div class="emBox" id="pt_em1Box">
       <p class="f" style="margin:10px 0 2px;font-weight:700">緊急連絡先 1</p>
       <div class="row">
+        <div><label class="f" for="pt_em1Kind">種別</label><select id="pt_em1Kind" class="emKind"><option value="">選んでください</option><option>家族・親族</option><option>行政（生活保護・保健師など）</option><option>相談支援・地域包括</option><option>医療機関</option><option>その他</option></select></div>
+        <div class="emOrg"><label class="f" for="pt_em1Org">所属（機関名・課）</label><input type="text" id="pt_em1Org" placeholder="例：東村山市役所 生活福祉課"></div>
         <div><label class="f" for="pt_em1Name">氏名</label><input type="text" id="pt_em1Name"></div>
-        <div><label class="f" for="pt_em1Rel">続柄</label><input type="text" id="pt_em1Rel" placeholder="例：長女"></div>
+        <div><label class="f" for="pt_em1Rel">続柄・役割</label><input type="text" id="pt_em1Rel" placeholder="例：長女／ケースワーカー"></div>
+      </div>
+      <div class="row">
         <div><label class="f" for="pt_em1Tel">電話</label><input type="tel" id="pt_em1Tel" placeholder="例：090-1234-5678"></div>
+        <div><label class="f" for="pt_em1TelNote">電話の補足（代表・直通・内線・つながる時間）</label><input type="text" id="pt_em1TelNote" placeholder="例：代表番号・内線123・平日8時30分〜17時15分"></div>
+        <div><label class="f" for="pt_em1Contact">関わり方</label><select id="pt_em1Contact"><option value="">選んでください</option><option>連絡してよい</option><option>緊急時のみ</option><option>関わりを拒んでいる（連絡しない）</option></select></div>
+      </div>
+      <div class="row emFam">
         <div><label class="f" for="pt_em1Live">同居・別居</label><select id="pt_em1Live"><option value="">選んでください</option><option>同居</option><option>別居</option></select></div>
-        <div><label class="f" for="pt_em1Main">主介護者</label><select id="pt_em1Main"><option value="">―</option><option>主介護者</option></select></div>
+        <div><label class="f" for="pt_em1Main">主介護者</label><select id="pt_em1Main"><option value="">―</option><option>主介護者</option><option>主介護者ではない</option><option>不明</option></select></div>
       </div>
       <div class="row"><div style="flex:1"><label class="f" for="pt_em1Addr">住所</label><input type="text" id="pt_em1Addr"></div></div>
+      </div>
+      <div class="emBox" id="pt_em2Box">
       <p class="f" style="margin:10px 0 2px;font-weight:700">緊急連絡先 2</p>
       <div class="row">
+        <div><label class="f" for="pt_em2Kind">種別</label><select id="pt_em2Kind" class="emKind"><option value="">選んでください</option><option>家族・親族</option><option>行政（生活保護・保健師など）</option><option>相談支援・地域包括</option><option>医療機関</option><option>その他</option></select></div>
+        <div class="emOrg"><label class="f" for="pt_em2Org">所属（機関名・課）</label><input type="text" id="pt_em2Org" placeholder="例：東村山市役所 生活福祉課"></div>
         <div><label class="f" for="pt_em2Name">氏名</label><input type="text" id="pt_em2Name"></div>
-        <div><label class="f" for="pt_em2Rel">続柄</label><input type="text" id="pt_em2Rel" placeholder="例：長女"></div>
+        <div><label class="f" for="pt_em2Rel">続柄・役割</label><input type="text" id="pt_em2Rel" placeholder="例：長女／ケースワーカー"></div>
+      </div>
+      <div class="row">
         <div><label class="f" for="pt_em2Tel">電話</label><input type="tel" id="pt_em2Tel" placeholder="例：090-1234-5678"></div>
+        <div><label class="f" for="pt_em2TelNote">電話の補足（代表・直通・内線・つながる時間）</label><input type="text" id="pt_em2TelNote" placeholder="例：代表番号・内線123・平日8時30分〜17時15分"></div>
+        <div><label class="f" for="pt_em2Contact">関わり方</label><select id="pt_em2Contact"><option value="">選んでください</option><option>連絡してよい</option><option>緊急時のみ</option><option>関わりを拒んでいる（連絡しない）</option></select></div>
+      </div>
+      <div class="row emFam">
         <div><label class="f" for="pt_em2Live">同居・別居</label><select id="pt_em2Live"><option value="">選んでください</option><option>同居</option><option>別居</option></select></div>
-        <div><label class="f" for="pt_em2Main">主介護者</label><select id="pt_em2Main"><option value="">―</option><option>主介護者</option></select></div>
+        <div><label class="f" for="pt_em2Main">主介護者</label><select id="pt_em2Main"><option value="">―</option><option>主介護者</option><option>主介護者ではない</option><option>不明</option></select></div>
       </div>
       <div class="row"><div style="flex:1"><label class="f" for="pt_em2Addr">住所</label><input type="text" id="pt_em2Addr"></div></div>
+      </div>
+      <div class="emBox" id="pt_em3Box">
       <p class="f" style="margin:10px 0 2px;font-weight:700">緊急連絡先 3</p>
       <div class="row">
+        <div><label class="f" for="pt_em3Kind">種別</label><select id="pt_em3Kind" class="emKind"><option value="">選んでください</option><option>家族・親族</option><option>行政（生活保護・保健師など）</option><option>相談支援・地域包括</option><option>医療機関</option><option>その他</option></select></div>
+        <div class="emOrg"><label class="f" for="pt_em3Org">所属（機関名・課）</label><input type="text" id="pt_em3Org" placeholder="例：東村山市役所 生活福祉課"></div>
         <div><label class="f" for="pt_em3Name">氏名</label><input type="text" id="pt_em3Name"></div>
-        <div><label class="f" for="pt_em3Rel">続柄</label><input type="text" id="pt_em3Rel" placeholder="例：長女"></div>
+        <div><label class="f" for="pt_em3Rel">続柄・役割</label><input type="text" id="pt_em3Rel" placeholder="例：長女／ケースワーカー"></div>
+      </div>
+      <div class="row">
         <div><label class="f" for="pt_em3Tel">電話</label><input type="tel" id="pt_em3Tel" placeholder="例：090-1234-5678"></div>
+        <div><label class="f" for="pt_em3TelNote">電話の補足（代表・直通・内線・つながる時間）</label><input type="text" id="pt_em3TelNote" placeholder="例：代表番号・内線123・平日8時30分〜17時15分"></div>
+        <div><label class="f" for="pt_em3Contact">関わり方</label><select id="pt_em3Contact"><option value="">選んでください</option><option>連絡してよい</option><option>緊急時のみ</option><option>関わりを拒んでいる（連絡しない）</option></select></div>
+      </div>
+      <div class="row emFam">
         <div><label class="f" for="pt_em3Live">同居・別居</label><select id="pt_em3Live"><option value="">選んでください</option><option>同居</option><option>別居</option></select></div>
-        <div><label class="f" for="pt_em3Main">主介護者</label><select id="pt_em3Main"><option value="">―</option><option>主介護者</option></select></div>
+        <div><label class="f" for="pt_em3Main">主介護者</label><select id="pt_em3Main"><option value="">―</option><option>主介護者</option><option>主介護者ではない</option><option>不明</option></select></div>
       </div>
       <div class="row"><div style="flex:1"><label class="f" for="pt_em3Addr">住所</label><input type="text" id="pt_em3Addr"></div></div>
+      </div>
     </details>
     <details class="ptsec" id="ptsCare" open><summary>トライケアから読み込む（この端末のアセスメント）</summary>
       <p class="muted">この端末のトライケア（アセスメント）に入っている利用者さんの情報を、下の欄へ入れます。AIは使わず、通信もしません。氏名・ふりがな・生年月日・住所・電話番号・保険の番号・ご家族の氏名は入れません（トライタイムは契約書番号で扱うため）。すでに書いてある欄は書き換えず、空いている欄だけを埋めます。</p>
@@ -478,7 +509,7 @@ function tsPortalAsk(){
       <div class="btns"><button class="btn sub" type="button" id="tc_go">欄に入れる</button><span class="muted" id="tc_msg"></span></div>
     </details>
     <details class="ptsec" id="ptsRead" open><summary>書類を読み込ませる（PDF・写真から欄を埋める）</summary>
-      <p class="muted">カイポケの書類や契約書のPDF、または書類の写真を選ぶと、AIが読んで欄に下書きを入れます。まず「利用者の基本情報（フェースシート）」を読ませると、氏名・ふりがな・性別・住所・地区・保険がまとめて入ります。電話番号と緊急連絡先（氏名・続柄・電話・同居か別居か・主介護者か・住所）も拾います。ほかの書類からも、氏名・ふりがな・性別・住所・電話番号は拾います。生年月日・保険者番号などは入れません。入った内容を見て直し、「この内容で登録する」を押すと登録されます。読み込ませた書類そのものは、どこにも残しません（読み取りのため、AIの提供元へ送られます）。</p>
+      <p class="muted">カイポケの書類や契約書のPDF、または書類の写真を選ぶと、AIが読んで欄に下書きを入れます。まず「利用者の基本情報（フェースシート）」を読ませると、氏名・ふりがな・性別・住所・地区・保険がまとめて入ります。電話番号と緊急連絡先（種別・所属・氏名または担当者名・続柄や役割・電話・同居か別居か・主介護者か・住所）も拾います。関わり方は書類からは決められないため、手で選んでください。ほかの書類からも、氏名・ふりがな・性別・住所・電話番号は拾います。生年月日・保険者番号などは入れません。入った内容を見て直し、「この内容で登録する」を押すと登録されます。読み込ませた書類そのものは、どこにも残しません（読み取りのため、AIの提供元へ送られます）。</p>
       <div class="row">
         <div><label class="f" for="rd_kind">書類の種類</label><select id="rd_kind"></select></div>
         <div><label class="f" for="rd_file">ファイル（PDF 1つ、または写真 5枚まで）</label><input type="file" id="rd_file" accept="application/pdf,image/jpeg,image/png,image/webp" multiple></div>
@@ -2143,7 +2174,7 @@ function renderAdmin(){
    何人かで手分けして写すため、書類ごとに「写した日・写した人」を残し、一覧で進み具合を出す。
    特定の職員を嫌がる申し出は、ここに書かせず「経過」の拒否の申し出（本人の言葉・見直し期限つき）へ回す。
    ============================================================ */
-var PT_F = [['pt_name','name'],['pt_kana','kana'],['pt_sex','sex'],['pt_telMobile','telMobile'],['pt_telHome','telHome'],['pt_em1Name','em1Name'],['pt_em1Rel','em1Rel'],['pt_em1Tel','em1Tel'],['pt_em1Live','em1Live'],['pt_em1Main','em1Main'],['pt_em1Addr','em1Addr'],['pt_em2Name','em2Name'],['pt_em2Rel','em2Rel'],['pt_em2Tel','em2Tel'],['pt_em2Live','em2Live'],['pt_em2Main','em2Main'],['pt_em2Addr','em2Addr'],['pt_em3Name','em3Name'],['pt_em3Rel','em3Rel'],['pt_em3Tel','em3Tel'],['pt_em3Live','em3Live'],['pt_em3Main','em3Main'],['pt_em3Addr','em3Addr'],['pt_status','status'],['pt_ins','ins'],['pt_area','area'],['pt_addr','addr'],['pt_spot','spot'],['pt_wish','wish'],['pt_wBand','wBand'],['pt_vmin','vmin'],['pt_team','team'],['pt_preCall','preCall'],['pt_ngNote','ngNote'],['pt_wOther','wOther'],
+var PT_F = [['pt_name','name'],['pt_kana','kana'],['pt_sex','sex'],['pt_telMobile','telMobile'],['pt_telHome','telHome'],['pt_em1Name','em1Name'],['pt_em1Rel','em1Rel'],['pt_em1Tel','em1Tel'],['pt_em1Live','em1Live'],['pt_em1Main','em1Main'],['pt_em1Addr','em1Addr'],['pt_em1Kind','em1Kind'],['pt_em1Org','em1Org'],['pt_em1TelNote','em1TelNote'],['pt_em1Contact','em1Contact'],['pt_em2Name','em2Name'],['pt_em2Rel','em2Rel'],['pt_em2Tel','em2Tel'],['pt_em2Live','em2Live'],['pt_em2Main','em2Main'],['pt_em2Addr','em2Addr'],['pt_em2Kind','em2Kind'],['pt_em2Org','em2Org'],['pt_em2TelNote','em2TelNote'],['pt_em2Contact','em2Contact'],['pt_em3Name','em3Name'],['pt_em3Rel','em3Rel'],['pt_em3Tel','em3Tel'],['pt_em3Live','em3Live'],['pt_em3Main','em3Main'],['pt_em3Addr','em3Addr'],['pt_em3Kind','em3Kind'],['pt_em3Org','em3Org'],['pt_em3TelNote','em3TelNote'],['pt_em3Contact','em3Contact'],['pt_status','status'],['pt_ins','ins'],['pt_area','area'],['pt_addr','addr'],['pt_spot','spot'],['pt_wish','wish'],['pt_wBand','wBand'],['pt_vmin','vmin'],['pt_team','team'],['pt_preCall','preCall'],['pt_ngNote','ngNote'],['pt_wOther','wOther'],
   ['pt_hosp','hosp'],['pt_doc','doc'],['pt_inst','instDate'],['pt_instEnd','instEnd'],['pt_instPoint','instPoint'],['pt_special','special'],['pt_specialEnd','specialEnd'],
   ['pt_asmDate','asmDate'],['pt_asmState','asmState'],['pt_asmLife','asmLife'],['pt_asmFamily','asmFamily'],['pt_asmRisk','asmRisk'],
   ['pt_goal','goal'],['pt_planMade','planMade'],['pt_freq','freq'],
@@ -2212,6 +2243,7 @@ function rdApply(kind, j){
   if(j.contractNo && !$('pt_no').value.trim()) { $('pt_no').value = j.contractNo; filled.push('契約書番号'); }
   var cb = document.querySelector('#pt_copied input[value="' + kind + '"]');
   if(cb && filled.length) cb.checked = true;
+  emVis();
   return { filled:filled, diff:diff };
 }
 /* ---- トライケアから読み込む（2026-10-28・宏史さんの決定「トライケアが利用している患者情報の読み込みが可能になるシステムに」）----
@@ -2287,6 +2319,18 @@ function rdGo(){
   }).catch(function(e){ $('rd_msg').textContent = '読み込ませられませんでした：' + (e.message || e); })
   .then(function(){ $('rd_go').disabled = false; });
 }
+/* 2026-11-03：緊急連絡先の種別で欄の出し方を変える（宏史さんの指示）。
+   家族・親族（または種別が空＝これまでの登録）のときは 氏名・同居/別居・主介護者 を出し、所属は隠す。
+   行政・相談支援・医療機関・その他のときは 所属・担当者名 を出し、同居/別居・主介護者は隠す（入っている値は消さない）。 */
+function emVis(){
+  [1,2,3].forEach(function(n){
+    var k = $('pt_em' + n + 'Kind'); if(!k) return;
+    var fam = !k.value || k.value === '家族・親族', box = $('pt_em' + n + 'Box');
+    box.querySelector('.emFam').style.display = fam ? '' : 'none';
+    box.querySelector('.emOrg').style.display = (k.value && !fam) ? '' : 'none';
+    var lb = box.querySelector('label[for="pt_em' + n + 'Name"]'); if(lb) lb.textContent = fam ? '氏名' : '担当者名';
+  });
+}
 function ptClear(keepLock){
   if(!keepLock) ptRelease();
   $('pt_no').value = '';
@@ -2294,6 +2338,7 @@ function ptClear(keepLock){
   ['pt_plan','pt_start','pt_pdue'].forEach(function(id){ $(id).value = ''; });
   document.querySelectorAll('#pt_hardCats input, #pt_copied input, #pt_wDays input, #pt_ngDays input').forEach(function(c){ c.checked = false; });
   var n = $('pt_copiedNote'); if(n) n.textContent = '';
+  emVis();
 }
 function ptLoad(no){
   if(!no){ $('pt_no').focus(); return; }
@@ -2301,6 +2346,7 @@ function ptLoad(no){
   if(!p){ $('pt_msg').textContent = 'この番号はまだ登録されていません。欄を埋めて「この内容で登録する」を押すと登録されます。'; return; }
   ptClear(true); $('pt_no').value = dn(no);
   PT_F.forEach(function(f){ var el = $(f[0]); if(el && p[f[1]] != null) el.value = p[f[1]]; });
+  emVis();
   if(D().kind === 'monitor'){ $('pt_cyc').value = p.cyc || 1; $('pt_staff').value = p.staffId || ''; $('pt_plan').value = p.planDue || ''; $('pt_start').value = p.start || ''; }
   else $('pt_pdue').value = p.planDue || '';
   var hc = p.hardCats || []; document.querySelectorAll('#pt_hardCats input').forEach(function(c){ c.checked = hc.indexOf(c.value) >= 0; });
@@ -4666,6 +4712,7 @@ $('rp_copy').addEventListener('click', function(){
 });
 
 $('pt_add').addEventListener('click', ptSaveSafe);
+document.querySelectorAll('.emKind').forEach(function(k){ k.addEventListener('change', emVis); }); emVis();
 $('pt_top').addEventListener('click', function(){ var c = $('pt_no'); var card = c && c.closest('.card'); (card || c).scrollIntoView({ behavior:'smooth', block:'start' }); setTimeout(function(){ try{ c.focus({ preventScroll:true }); }catch(e){} }, 400); });
 $('pr_save').addEventListener('click', prSave);
 $('pt_no').addEventListener('change', prRender);

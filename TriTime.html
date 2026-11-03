@@ -286,7 +286,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-19</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-20</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -4639,7 +4639,7 @@ function auMake(course){
   var wk = weekly(), cnt = {}, main = {}, info = {};
   var curD = {};   /* 2026-11-03：いまの週間予定で、その患者さんをその職員が何曜日に訪問しているか（押し直しても、組めるものは同じ曜日のまま残すため） */
   wk.forEach(function(v){ ((curD[v.no] = curD[v.no] || {})[v.staffId] = curD[v.no][v.staffId] || []).push(String(v.dow)); });
-  wk.forEach(function(v){ cnt[v.no] = (cnt[v.no] || 0) + 1; (main[v.no] = main[v.no] || {})[v.staffId] = (main[v.no][v.staffId] || 0) + 1; if(!info[v.no]) info[v.no] = { min:v.min || 30, withId:'', withN:0 }; if(v.withId){ info[v.no].withId = info[v.no].withId || v.withId; info[v.no].withN++; } });
+  wk.forEach(function(v){ cnt[v.no] = (cnt[v.no] || 0) + 1; (main[v.no] = main[v.no] || {})[v.staffId] = (main[v.no][v.staffId] || 0) + 1; if(!info[v.no]) info[v.no] = { min:v.min || 30, withId:'', withN:0, ws:[] }; if(v.withId){ info[v.no].withId = info[v.no].withId || v.withId; info[v.no].withN++; info[v.no].ws.push({ dow:String(v.dow), w:v.withId }); } });
   var P = patients().filter(function(p){ return !p.status || p.status === '利用中'; }).map(function(p){
     var m = main[p.no] || {}, ms = Object.keys(m).sort(function(a, b){ return m[b] - m[a]; })[0] || '';
     return { no:p.no, area:p.area || '（地区なし）', f:auFreq(p, cnt[p.no] || 0), fi:auFreqInfo(p, cnt[p.no] || 0), freqT:p.freq || '', lat:p.lat, lng:p.lng, main:ms, wish:p.wish || '', band:p.wBand || '', wDays:p.wDays || [], ngDays:p.ngDays || [], vmin:+p.vmin || 0, team:p.team || '', why:[] };
@@ -4701,28 +4701,48 @@ function auMake(course){
     });
   });
   /* 2026-11-03：同行（いまの週間予定から引き継ぐ分）を、表に出す前に行へ付けておく。入れ替えでも同じものを使う */
-  var wUsed0 = {}; rows.forEach(function(v){ var inf = info[v.no] || {}; v.withId = '';
-    if(inf.withId && inf.withId !== v.staffId && (wUsed0[v.no] || 0) < (inf.withN || 0)){ v.withId = inf.withId; wUsed0[v.no] = (wUsed0[v.no] || 0) + 1; } });
+  /* 2026-11-03 改め：同じ曜日の同行を先に引き継ぎ、残りを順に当てる（看護補助者の日と看護師の日が混ざっている人で、全部が同じ人にならないように） */
+  var wsLeft = {}; Object.keys(info).forEach(function(no){ wsLeft[no] = (info[no].ws || []).slice(); });
+  rows.forEach(function(v){ v.withId = ''; var L = wsLeft[v.no] || [], k = -1;
+    L.some(function(x, i){ if(x.dow === v.dow && x.w !== v.staffId){ k = i; return true; } return false; });
+    if(k >= 0){ v.withId = L[k].w; L.splice(k, 1); } });
+  rows.forEach(function(v){ if(v.withId) return; var L = wsLeft[v.no] || [], k = -1;
+    L.some(function(x, i){ if(x.w !== v.staffId){ k = i; return true; } return false; });
+    if(k >= 0){ v.withId = L[k].w; L.splice(k, 1); } });
   /* 2026-11-03（宏史さん「加藤かんじは2名だろ、同行者は誰なんだよ」「複数名利用者は変更しましたよ」）：
      利用者登録の体制が「2名」で、今の週間予定から引き継ぐ同行が無い訪問には、同行者を自動で付ける。
      決まり（宏史さんの指示 11/3）：同行の指定が無い2名体制は、週1回を看護補助者、残りは看護師で入る。
      ・その患者さんの週の1回目：看護補助者（その曜日に出ていて、同じ時刻に別の同行が無い人）。いなければ看護師
      ・2回目以降：看護師（担当とは別の人。その曜日に出ていて、同じ時刻に自分の訪問・同行が無く、その日の件数＋同行が上限に届いていない人のうち、その日がいちばん空いている人）
      ・見つからなければ空のまま（札に「2名・同行未定」と出る） */
+  /* 2026-11-03 改め（宏史さん「渋谷は事務局員なので看護助手ではない」「2名体制で全部がちゃんと入っていない」）：
+     ・看護補助者は、名簿の職種が「看護補助者」の人だけ（事務局の人など、単独で訪問しない人を看護補助者と見なさない）
+     ・今の週間予定から引き継いだ同行が、事務局の人・名簿にいない人・退職した人なら外して付け直す
+     ・「2名（看護師・未定）」などの職種だけの同行は、その職種の人を付ける（看護師／准看護師／看護補助者）。付けられなければ未定のまま
+     ・利用者登録の体制が「2名」の人も、週間予定に同行が入っている人も、2名体制として扱う */
   (function(){
-    var aides = deptStaff().filter(function(s){ return !canSolo(s) && !isStandby(s) && !staffOrphan(s) && !staffOut(s); });
+    var aides = deptStaff().filter(function(s){ return AIDE_JOBS.indexOf(jobOf(s)) >= 0 && !isStandby(s) && !staffOrphan(s) && !staffOut(s); });
+    var okWith = function(id){ if(!id || isTbd(id)) return true; var s = staff().filter(function(x){ return x.id === id; })[0]; return !!s && !staffOut(s) && jobOf(s) !== '事務局'; };
     var dayOK = function(s, d){ var off = staffOff(s); return off.length ? off.indexOf(d) < 0 : ['1','2','3','4','5'].indexOf(d) >= 0; };
     var busy = function(sid, d, t, mn){ var a = toMin(t), b = a + (+mn || 30);
       return rows.some(function(r){ if(r.dow !== d || (r.staffId !== sid && r.withId !== sid)) return false; var x = toMin(r.time), y = x + (+r.min || 30); return x < b && a < y; }); };
     var loadOf = function(sid, d){ return rows.filter(function(r){ return r.dow === d && (r.staffId === sid || r.withId === sid); }).length; };
-    var firstSeen = {};
+    var nurse = function(v, mn, job){ var c = ST.filter(function(x){ return x.s.id !== v.staffId && (!job || jobOf(x.s) === job) && x.days.indexOf(v.dow) >= 0 && !busy(x.s.id, v.dow, v.time, mn) && loadOf(x.s.id, v.dow) < capOf(x, v.dow); })
+        .sort(function(a, b){ return loadOf(a.s.id, v.dow) - loadOf(b.s.id, v.dow) || (a.full === b.full ? 0 : a.full ? -1 : 1); }); return c.length ? c[0].s.id : ''; };
+    var aide = function(v, mn){ var a = aides.filter(function(s){ return dayOK(s, v.dow) && !busy(s.id, v.dow, v.time, mn); })[0]; return a ? a.id : ''; };
+    rows.forEach(function(v){ if(!okWith(v.withId)) v.withId = ''; });
+    var firstSeen = {}, hojoUsed = {};
+    rows.forEach(function(v){ if(v.withId && AIDE_JOBS.indexOf(jobOf(staff().filter(function(x){ return x.id === v.withId; })[0] || {})) >= 0) hojoUsed[v.no] = 1; });
     rows.slice().sort(function(a, b){ var da = (+a.dow + 6) % 7, db = (+b.dow + 6) % 7; return da - db || (a.time < b.time ? -1 : 1); }).forEach(function(v){
-      var p = patient(v.no) || {}; if(p.team !== '2名' || v.withId) return;
-      var first = !firstSeen[v.no], mn = v.min || p.vmin || 30; firstSeen[v.no] = 1;
-      if(first){ var ai = aides.filter(function(s){ return dayOK(s, v.dow) && !busy(s.id, v.dow, v.time, mn); })[0]; if(ai){ v.withId = ai.id; v.autoWith = true; return; } }
-      var cand = ST.filter(function(x){ return x.s.id !== v.staffId && x.days.indexOf(v.dow) >= 0 && !busy(x.s.id, v.dow, v.time, mn) && loadOf(x.s.id, v.dow) < capOf(x, v.dow); })
-        .sort(function(a, b){ return loadOf(a.s.id, v.dow) - loadOf(b.s.id, v.dow) || (a.full === b.full ? 0 : a.full ? -1 : 1); });
-      if(cand.length){ v.withId = cand[0].s.id; v.autoWith = true; }
+      var p = patient(v.no) || {}, tb = isTbd(v.withId) ? v.withId : '';
+      if(v.withId && !tb){ firstSeen[v.no] = 1; return; }
+      if(!tb && p.team !== '2名') return;
+      var mn = v.min || p.vmin || 30, w = '';
+      if(tb === 'tbd:h' || (!tb && !hojoUsed[v.no])){ w = hojoUsed[v.no] ? '' : aide(v, mn); if(w) hojoUsed[v.no] = 1; }
+      if(!w && tb !== 'tbd:h') w = nurse(v, mn, tb === 'tbd:n' ? '看護師（正看）' : tb === 'tbd:j' ? '准看護師' : '') || (tb ? '' : '');
+      if(!w && !tb) w = nurse(v, mn, '');
+      firstSeen[v.no] = 1;
+      if(w){ v.withId = w; v.autoWith = true; } else if(tb) v.withId = tb;
     });
   })();
   auPlan = { rows:rows, miss:miss, nos:out.map(function(o){ return o.p.no; }), info:info };
@@ -4751,7 +4771,13 @@ function auMake(course){
     (function(){ var nos = {}; out.forEach(function(o){ nos[o.p.no] = 1; }); return '<div id="au_pdiff">' + auDiffHTML(auDiff(wk, rows, nos), 'いまの週間予定から変わる訪問', 'いまの週間予定から、曜日と担当の変わる訪問はありません。') + '</div>'; })() +
     (function(){ /* 2026-11-03：週の回数をどこから取ったかを、患者さんごとに出す。取り決めの欄が読めなかった人は先に知らせる */
       /* 2026-11-03 改め（宏史さん「出来ない理由ばかり並んでいる」）：取り決めの欄には計画書の文がそのまま入っている人が多いので、読めなかった人の枠は出さない */
-      return         '<details style="margin:8px 0"><summary>患者さんごとの週の回数（どこから取ったか）を見る</summary><ul style="margin:4px 0 0 18px">' + P.slice().sort(function(a, b){ return b.f - a.f || (a.no < b.no ? -1 : 1); }).map(function(p){ return '<li>' + esc(dnn(p.no)) + '：週' + p.f + '回（' + esc(p.fi.src) + '）</li>'; }).join('') + '</ul></details>'; })() +
+      return         (function(){ /* 2026-11-03（宏史さん「2名体制はこんなに少なくない。ちゃんと見直しなさい」）：トライタイムが2名体制として扱っている人を、全部並べる */
+          var two = P.filter(function(p){ return (patient(p.no) || {}).team === '2名' || rows.some(function(r){ return r.no === p.no && r.withId; }); });
+          return '<div class="judge free" style="margin:8px 0"><b>2名体制として組んだ人：' + two.length + '人</b>' + (two.length ? '<ul style="margin:4px 0 0 18px">' + two.map(function(p){
+            var rs = rows.filter(function(r){ return r.no === p.no; }).sort(function(a, b){ return ((+a.dow + 6) % 7) - ((+b.dow + 6) % 7); });
+            return '<li>' + esc(dnn(p.no)) + '：' + rs.map(function(r){ return DOW[+r.dow] + ' ' + esc(staffName(r.staffId)) + '・' + esc(r.withId ? '同行 ' + staffName(r.withId) : '同行未定'); }).join('／') + '</li>'; }).join('') + '</ul>' : '') +
+            '<small class="muted">利用者登録の「⑤ 体制」が「2名」の人と、週間予定に同行が入っている人です。ここに無い2名体制の人は、利用者登録の「⑤ 体制」を「2名」にしてください。</small></div>'; })() +
+        '<details style="margin:8px 0"><summary>患者さんごとの週の回数（どこから取ったか）を見る</summary><ul style="margin:4px 0 0 18px">' + P.slice().sort(function(a, b){ return b.f - a.f || (a.no < b.no ? -1 : 1); }).map(function(p){ return '<li>' + esc(dnn(p.no)) + '：週' + p.f + '回（' + esc(p.fi.src) + '）</li>'; }).join('') + '</ul></details>'; })() +
     '<div class="tbl-scroll"><table class="mhT">' + head + body + '</table></div>' +
     '<p class="muted">同じ地区の患者さんを、同じ職員・同じ曜日に寄せています。いまの担当がいる患者さんは、なるべく同じ職員のままにしています。週の回数は、利用者登録の「訪問の回数・時間帯の取り決め」の週◯回です（無ければ「予定の希望」の希望の曜日の数、それも無ければいまの週間予定の回数、それも無ければ週1回）。1日の中は、地区ごと・位置が分かるものは近い順に並べ、時刻は「勤務の決まり」の1日の流れに当てています。2名体制の同行者は、いまの週間予定に入っている分を引き継ぎ、足りない分は自動で付けます（その患者さんの週の1回目は看護補助者、2回目以降は担当とは別の、その日に空いている看護師）。</p>';
   $('au_apply').style.display = rows.length ? '' : 'none';

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """トライタイムの回数の読み取りの試験（2026-11-03・宏史さん「サービス提供回数を増やしても週間回数の数が変わらないのはなぜ」）
 ・取り決めの欄が「週二回」（漢数字）でも週2回で組む
-・取り決めの欄に字があるのに読めない人（「2回」など）は、組み方の上に「欄が読めず、回数に使えなかった人」として出る
+・取り決めの欄が読めない人の枠は出さない（取り決めの欄には計画書の文が入っている人が多い。宏史さん「出来ない理由ばかり並んでいる」）
 ・患者さんごとの週の回数と、どこから取ったかが一覧で見られる"""
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
@@ -31,7 +31,7 @@ async def test(p):
         await pg.click('#au_make'); await pg.wait_for_timeout(800)
         out = await pg.inner_text('#au_out')
         assert '週 6回' in out, '「週二回」「2回（読めない→週1回）」「月12回（週3回）」で、合わせて週6回になりません：' + out[:200]
-        assert '欄が読めず、回数に使えなかった人' in out and '試験 読めない' in out, '取り決めの欄が読めなかった人が出ません'
+        assert '回数に使えなかった人' not in out, '取り決めの欄が読めなかった人の枠が、まだ出ています（宏史さん「出来ない理由ばかり並んでいる」）'
         await pg.click('#au_out summary:has-text("患者さんごとの週の回数")'); await pg.wait_for_timeout(200)
         out = await pg.inner_text('#au_out')
         assert '試験 漢数字：週2回（取り決め「週二回・午前」）' in out, '患者さんごとの回数と出どころが出ません'

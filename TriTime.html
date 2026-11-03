@@ -286,7 +286,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-16</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-17</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -1383,6 +1383,12 @@ function pnVisitText(date, time, no, what){ return '【トライタイム】' + 
    同行者の欄に職員の代わりに入れる。売上はその職種の同行の料金で数え、職員の稼働・連絡には数えない */
 var TBD = { 'tbd:n':'看護師', 'tbd:j':'准看護師', 'tbd:h':'看護補助者' };
 function isTbd(id){ return !!TBD[id]; }
+/* 2026-11-03（宏史さん「同行者の予定なども表示されていない」）：訪問の札に出す同行の文字。同行が入っていれば「同行 ◯◯」、
+   利用者登録の体制が「2名」で同行が空なら「2名・同行未定」、1名なら空 */
+function withLabel(v){
+  if(v.withId) return isTbd(v.withId) ? '2名・同行' + staffName(v.withId) : '2名・同行 ' + (staffName(v.withId) || '名簿にいない職員');
+  return (patient(v.no) || {}).team === '2名' ? '2名・同行未定' : '';
+}
 function staffName(id){ if(TBD[id]) return '未定（' + TBD[id] + '）'; var s = raw('staff').filter(function(x){ return x.id === id; })[0]; return s ? s.name : ''; }
 function patient(no){ return patients().filter(function(p){ return p.no === no; })[0] || null; }
 /* 職員は「職種」「雇用形態」「管理者かどうか」を持つ（2026-10-12）。
@@ -1870,7 +1876,7 @@ function gapCands(date, time, no, me){
     .sort(function(a, b){ var sa = (a.area && a.area === area) ? 0 : 1, sb = (b.area && b.area === area) ? 0 : 1; return sa - sb || (a.time < b.time ? -1 : 1); });
 }
 function dayPlanText(date, sid){
-  return visitsOn(date).filter(function(v){ return !v.cx && (v.staffId === sid || v.withId === sid); }).map(function(v){ return v.time + ' ' + dnn(v.no) + '（' + (v.area || '地区未登録') + '）' + (v.moved ? '［組み換え・元 ' + v.moved.from + '］' : ''); }).join('／') || 'この日の訪問はありません';
+  return visitsOn(date).filter(function(v){ return !v.cx && (v.staffId === sid || v.withId === sid); }).map(function(v){ return v.time + ' ' + dnn(v.no) + '（' + (v.area || '地区未登録') + '）' + (v.withId === sid ? '［同行・担当 ' + staffName(v.staffId) + '］' : (withLabel(v) ? '［' + withLabel(v) + '］' : '')) + (v.moved ? '［組み換え・元 ' + v.moved.from + '］' : ''); }).join('／') || 'この日の訪問はありません';
 }
 function afterOpen(c){
   var box = $('c_after'); if(!box) return;
@@ -4572,7 +4578,7 @@ function renderToday(){
   var live = vs.filter(function(v){ return !v.cx; });
   var rows = vs.map(function(v){
     var p = patient(v.no) || {}, n = live.indexOf(v) + 1;
-    return '<tr' + (v.cx ? ' style="opacity:.55"' : '') + '><td class="num"><b>' + (v.cx ? '—' : n) + '</b></td><td>' + esc(v.time) + '<br><small class="muted">' + esc(v.min || 30) + '分</small></td><td><b>' + esc(dnn(v.no)) + '</b>' + (v.withId ? ' <span class="tag amber">2名体制（' + esc(staffName(v.withId === sid ? v.staffId : v.withId)) + 'さんと）</span>' : '') + (v.cx ? ' <span class="tag red">キャンセル</span>' : '') + (v.moved ? ' <span class="tag green">組み換え（元 ' + esc(v.moved.from) + '）</span>' : '') + (trustOf(v.no).lv === '低' ? ' ' + trustTag(v.no) : '') +
+    return '<tr' + (v.cx ? ' style="opacity:.55"' : '') + '><td class="num"><b>' + (v.cx ? '—' : n) + '</b></td><td>' + esc(v.time) + '<br><small class="muted">' + esc(v.min || 30) + '分</small></td><td><b>' + esc(dnn(v.no)) + '</b>' + (v.withId === sid ? ' <span class="tag amber">同行（担当 ' + esc(staffName(v.staffId)) + 'さん）</span>' : (withLabel(v) ? ' <span class="tag amber">' + esc(withLabel(v)) + '</span>' : '')) + (v.cx ? ' <span class="tag red">キャンセル</span>' : '') + (v.moved ? ' <span class="tag green">組み換え（元 ' + esc(v.moved.from) + '）</span>' : '') + (trustOf(v.no).lv === '低' ? ' ' + trustTag(v.no) : '') +
       '<br><small>' + esc(p.addr || v.area || '住所未登録') + (p.spot ? '・' + esc(p.spot) : '') + '</small>' + (p.addr && !p.lat ? ' <span class="tag gray">地図の位置が未取得</span>' : '') + '</td><td><small>' + esc(p.asmRisk || '') + '</small></td></tr>';
   }).join('');
   $('td_list').innerHTML = vs.length ? '<table><tr><th class="num">順</th><th>時刻</th><th>訪問先</th><th>気を付けること</th></tr>' + rows + '</table><p class="muted">' + esc(jpDate(date)) + '：訪問 ' + live.length + '件' + (vs.length > live.length ? '（キャンセル ' + (vs.length - live.length) + '件）' : '') + '。地図の番号は、この表の「順」と同じです。</p>'
@@ -4693,6 +4699,9 @@ function auMake(course){
       a.forEach(function(p, i){ var t = at[p.no] != null ? at[p.no] : (free[fi] != null ? slots[free[fi++]].a : 540 + i * 60); rows.push({ dow:d, time:hm(t), no:p.no, staffId:x.s.id, area:p.area, wish:p.wish || p.band || '', min:p.vmin || 0 }); });
     });
   });
+  /* 2026-11-03：同行（いまの週間予定から引き継ぐ分）を、表に出す前に行へ付けておく。入れ替えでも同じものを使う */
+  var wUsed0 = {}; rows.forEach(function(v){ var inf = info[v.no] || {}; v.withId = '';
+    if(inf.withId && inf.withId !== v.staffId && (wUsed0[v.no] || 0) < (inf.withN || 0)){ v.withId = inf.withId; wUsed0[v.no] = (wUsed0[v.no] || 0) + 1; } });
   auPlan = { rows:rows, miss:miss, nos:out.map(function(o){ return o.p.no; }), info:info };
   var tot = rows.length, need = P.reduce(function(t, p){ return t + p.f; }, 0);
   var head = '<tr><th class="who">職員</th>' + MD_DOW.map(function(d){ return '<th' + (d === '0' || d === '6' ? ' class="we"' : '') + '>' + DOW[+d] + '</th>'; }).join('') + '</tr>';
@@ -4701,8 +4710,11 @@ function auMake(course){
     var cells = MD_DOW.map(function(d){
       if(x.days.indexOf(d) < 0) return '<td class="mhOff">休</td>';
       var r = rows.filter(function(v){ return v.staffId === x.s.id && v.dow === d; }).sort(function(a, b){ return a.time < b.time ? -1 : 1; }); w += r.length;
+      /* 2026-11-03：この職員が同行で入る訪問も、この升に「同行」として出す（件数には数えない） */
+      var rw = rows.filter(function(v){ return v.withId === x.s.id && v.staffId !== x.s.id && v.dow === d; });
       var cp = capOf(x, d), empty = course ? Math.max(0, cp - r.length) : 0;
-      return '<td>' + r.map(function(v){ return '<span class="ssChip">' + esc(v.time) + ' ' + esc(dnn(v.no)) + '<br><small>' + esc(v.area) + (v.wish ? '・<span' + (toMin(v.wish) != null ? (Math.abs(toMin(v.wish) - toMin(v.time)) > 30 ? ' style="color:var(--red)"' : '') : ((v.wish === '午前') !== (toMin(v.time) < 720) ? ' style="color:var(--red)"' : '')) + '>希望 ' + esc(v.wish) + '</span>' : '') + '</small></span>'; }).join('') + (empty ? '<span class="ssChip" style="background:#fff;border:1px dashed var(--amber);color:var(--amber)">空き ' + empty + '件</span>' : '') + '<div class="mhCnt' + (r.length >= cp ? ' full' : '') + '">' + r.length + (course ? '／' + cp : '') + '件</div></td>';
+      return '<td>' + r.map(function(v){ return '<span class="ssChip">' + esc(v.time) + ' ' + esc(dnn(v.no)) + '<br><small>' + esc(v.area) + (v.wish ? '・<span' + (toMin(v.wish) != null ? (Math.abs(toMin(v.wish) - toMin(v.time)) > 30 ? ' style="color:var(--red)"' : '') : ((v.wish === '午前') !== (toMin(v.time) < 720) ? ' style="color:var(--red)"' : '')) + '>希望 ' + esc(v.wish) + '</span>' : '') + (withLabel(v) ? '<br><b style="color:var(--amber)">' + esc(withLabel(v)) + '</b>' : '') + '</small></span>'; }).join('') +
+        rw.map(function(v){ return '<span class="ssChip" style="background:#fff7ec;border:1px solid var(--amber)">' + esc(v.time) + ' <b>同行</b> ' + esc(dnn(v.no)) + '<br><small>担当 ' + esc(staffName(v.staffId)) + '・' + esc(v.area) + '</small></span>'; }).join('') + (empty ? '<span class="ssChip" style="background:#fff;border:1px dashed var(--amber);color:var(--amber)">空き ' + empty + '件</span>' : '') + '<div class="mhCnt' + (r.length >= cp ? ' full' : '') + '">' + r.length + (course ? '／' + cp : '') + '件</div></td>';
     }).join('');
     return '<tr><th class="who">' + esc(x.s.name) + '<small>' + (x.full ? '常勤' : '非常勤') + (course ? '・コースの枠' : '・1日 ' + x.cap + '件まで') + '</small><small>週 ' + w + '件</small></th>' + cells + '</tr>';
   }).join('');
@@ -4756,9 +4768,7 @@ function auApply(){
   try{ localStorage.setItem(AU_BAK, JSON.stringify({ at:nowLocal(), rows:all })); }catch(e){}
   var set = {}; auPlan.nos.forEach(function(n){ set[n] = 1; });
   var keep = all.filter(function(v){ return !set[v.no]; });
-  var wUsed = {};
-  auPlan.rows.forEach(function(v){ var inf = auPlan.info[v.no] || {}, w = '';
-    if(inf.withId && inf.withId !== v.staffId && (wUsed[v.no] || 0) < (inf.withN || 0)){ w = inf.withId; wUsed[v.no] = (wUsed[v.no] || 0) + 1; }
+  auPlan.rows.forEach(function(v){ var inf = auPlan.info[v.no] || {}, w = v.withId || '';
     keep.push({ id:uid(), dow:v.dow, time:v.time, min:v.min || inf.min || 30, no:v.no, staffId:v.staffId, withId:w }); });
   saveCol('weekly', keep);
   $('au_msg').textContent = '週間予定に入れました（' + auPlan.rows.length + '件）。入れ替える前の予定は控えに残しています。';
@@ -6028,7 +6038,7 @@ function ssRender(){
           if(!v.cx) prev = v;
           var warn = why && !v.cx;
           var vk = ''; if(!v.cx && !v.asWith && date >= today){ vk = date + '|' + v.no + '|' + v.time; SS_V[vk] = v; }
-          return gap + '<span class="ssChip' + (v.cx ? ' cx' : '') + (warn ? ' warn' : '') + (vk ? ' dg' : '') + '"' + (vk ? ' data-vk="' + esc(vk) + '"' : '') + ' title="' + esc(v.time + ' ' + dnn(v.no) + '（' + v.min + '分）' + (v.area ? '・' + v.area : '') + (v.cx ? '・キャンセル' : '') + (warn ? '・休みの日の訪問' : '')) + '">' + esc(v.time) + '<br>' + (v.asWith ? '<b>同行</b><br>' : '') + esc(ssShortNo(v.no)) + (nameOf(v.no) ? '<br>' + esc(nameOf(v.no)) : '') + (warn ? '<br>要調整' : '') + '</span>';
+          return gap + '<span class="ssChip' + (v.cx ? ' cx' : '') + (warn ? ' warn' : '') + (vk ? ' dg' : '') + '"' + (vk ? ' data-vk="' + esc(vk) + '"' : '') + ' title="' + esc(v.time + ' ' + dnn(v.no) + '（' + v.min + '分）' + (v.area ? '・' + v.area : '') + (v.cx ? '・キャンセル' : '') + (warn ? '・休みの日の訪問' : '')) + '">' + esc(v.time) + '<br>' + (v.asWith ? '<b>同行</b><br>' : '') + esc(ssShortNo(v.no)) + (nameOf(v.no) ? '<br>' + esc(nameOf(v.no)) : '') + (v.asWith ? '<small style="display:block;white-space:normal">担当 ' + esc(staffName(v.staffId)) + '</small>' : (withLabel(v) ? '<small style="display:block;white-space:normal;color:var(--amber);font-weight:700">' + esc(withLabel(v)) + '</small>' : '')) + (warn ? '<br>要調整' : '') + '</span>';
         }).join('') + (live2 ? '<span class="ssCnt' + (live2 >= wr.target ? ' ok' : '') + '">' + live2 + '件</span>' : '') + '</td>';
     });
     h += '</tr>';

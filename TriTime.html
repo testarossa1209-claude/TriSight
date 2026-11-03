@@ -286,7 +286,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-08</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-09</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -370,7 +370,7 @@ function tsPortalAsk(){
     <p class="lead">利用中の患者さんを地区ごとにまとめ、看護師の出る曜日（名簿の公休）と1日の件数の上限の中で、週間予定の組み方を自動で出します。出た組み方を見て、よければ「この組み方を週間予定に入れる」を押します。</p>
     <div class="row">
       <div><label class="f" for="au_full">常勤の1日の件数の上限</label><input type="number" id="au_full" min="1" max="10"></div>
-      <div><label class="f" for="au_part">非常勤の1日の件数の上限</label><input type="number" id="au_part" min="1" max="10" value="3"></div>
+      <div><label class="f" for="au_part">非常勤の1日の件数の上限</label><input type="number" id="au_part" min="1" max="10"></div>
     </div>
     <div class="btns"><button class="btn" id="au_make">組み方を出す</button><button class="btn amber" id="au_apply" style="display:none">この組み方を週間予定に入れる</button><button class="btn sub" id="au_undo" style="display:none">元に戻す</button><span class="muted" id="au_msg"></span></div>
     <div id="au_out"></div>
@@ -4573,7 +4573,8 @@ function auFreq(p, cur){ var m = String(p.freq || '').match(/週\s*([1-7１-７]
 function auCombos(days, f){ var out = []; (function rec(i, a){ if(a.length === f){ out.push(a.slice()); return; } for(var j = i; j < days.length; j++){ a.push(days[j]); rec(j + 1, a); a.pop(); } })(0, []); return out; }
 function auMake(course){
   if(course && course.type) course = null;
-  var capF = Math.max(1, +$('au_full').value || 5), capP = Math.max(1, +$('au_part').value || 3);
+  var capF = Math.max(1, +$('au_full').value || 8), capP = Math.max(1, +$('au_part').value || 5);
+  try{ localStorage.setItem('tritime_au_caps', JSON.stringify({ f:capF, p:capP })); }catch(e){}
   var ST = deptStaff().filter(function(s){ return !staffOrphan(s) && !isStandby(s) && NURSE_JOBS.indexOf(jobOf(s)) >= 0; }).map(function(s){
     var off = staffOff(s), days = MD_DOW.filter(function(d){ return off.length ? off.indexOf(d) < 0 : ['1','2','3','4','5'].indexOf(d) >= 0; });
     var x = { s:s, full:s.emp !== '非常勤', days:days, cap:s.emp !== '非常勤' ? capF : capP, load:{}, areas:{} };
@@ -4690,7 +4691,11 @@ function auUndo(){
 function renderAuto(){
   var c = $('cardAuto'); if(!c) return;
   var R = role(); c.style.display = (R.lv === 'all' || R.lv === 'dept' || R.lv === 'office') && D().kind === 'visit' ? '' : 'none';
-  if(!$('au_full').value) $('au_full').value = 5;
+  /* 2026-11-03：1日の件数の上限は、常勤8件・非常勤5件まで（宏史さんの指示「常勤者は1日8件までは許容範囲。非常勤者も5件までは許容範囲」）。
+     変えた値はこの端末で覚え、次に開いたときもその値にする */
+  var cp = {}; try{ cp = JSON.parse(localStorage.getItem('tritime_au_caps') || '{}') || {}; }catch(e){}
+  if(!$('au_full').value) $('au_full').value = cp.f || 8;
+  if(!$('au_part').value) $('au_part').value = cp.p || 5;
   auUndoShow();
 }
 function refreshAll(){

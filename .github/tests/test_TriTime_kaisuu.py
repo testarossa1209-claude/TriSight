@@ -26,7 +26,8 @@ async def test(p):
           var st = JSON.parse(localStorage.getItem('tritime_staff') || '[]'), sid = st.filter(function(s){ return s.name === '常勤 二子'; })[0].id, t = Date.now();
           localStorage.setItem('tritime_patients', JSON.stringify([
             { no:'2010-01-看-9001', name:'試験 二回', area:'東町', status:'利用中', freq:'週2回', wDays:['2','4'], upd:t },
-            { no:'2010-01-看-9002', name:'試験 一回', area:'東町', status:'利用中', upd:t } ]));
+            { no:'2010-01-看-9002', name:'試験 一回', area:'東町', status:'利用中', upd:t },
+            { no:'2010-01-看-9003', name:'試験 曜日', area:'東町', status:'利用中', wDays:['1','5'], upd:t } ]));
           localStorage.setItem('tritime_weekly', JSON.stringify([ { id:'w1', dow:'2', time:'09:15', min:30, no:'2010-01-看-9001', staffId:sid, withId:'', upd:t } ])); })()""")
         # 画面は記録を毎回 localStorage から読むので、開き直さずにそのまま使う
         await pg.evaluate("document.querySelector('#tabs button[data-tab=plan]').click()"); await pg.wait_for_timeout(400)
@@ -36,7 +37,7 @@ async def test(p):
             info = await pg.evaluate("[document.getElementById('au_out').innerText.slice(0,200), localStorage.getItem('tritime_patients'), (localStorage.getItem('tritime_staff')||'').slice(0,300)]")
             assert False, '組み方が出ません：' + ' ｜ '.join(str(x) for x in info)
         note = await pg.inner_text('#au_out')
-        assert '「訪問の回数・時間帯の取り決め」の週◯回です' in note, '組み方の下の説明が、回数の決め方の新しい順になっていません'
+        assert '「訪問の回数・時間帯の取り決め」の週◯回です（無ければ「予定の希望」の希望の曜日の数' in note, '組み方の下の説明が、回数の決め方の新しい順になっていません'
         await s.shot('#cardAuto', 'TriTime_kaisuu_kumikata.png')
         await pg.evaluate("window.confirm = function(){ return true; }")
         await pg.click('#au_apply', timeout=15000); await pg.wait_for_timeout(400)
@@ -45,6 +46,8 @@ async def test(p):
         assert len(two) == 2, '「週2回」と登録した人が、週間予定の1件に引っぱられて週' + str(len(two)) + '回で組まれます'
         assert two == ['2', '4'], '希望の曜日（火・木）で組まれません：' + '、'.join(two)
         assert len(one) == 1, '回数の欄が空の人が週1回で組まれません：' + str(len(one))
+        yb = sorted(d for n, d in wk if n == '2010-01-看-9003')
+        assert yb == ['1', '5'], '回数の欄が空で希望の曜日（月・金）に印のある人が、月・金の2回で組まれません：' + '、'.join(yb)
         await pg.evaluate("document.getElementById('ssTab').click()"); await pg.wait_for_timeout(500)
         chips = await pg.evaluate("[].slice.call(document.querySelectorAll('#ssBody .ssChip')).filter(function(e){ return e.textContent.indexOf('看-9001') >= 0; }).length")
         assert chips == 2, '仮スケジュール表に週2回の2件が出ません：' + str(chips)

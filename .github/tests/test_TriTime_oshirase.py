@@ -26,16 +26,22 @@ async def test(p):
           localStorage.setItem('tritime_patients', JSON.stringify([
             { no:'2010-01-看-9901', name:'試験 携帯', area:'東町', status:'利用中', telMobile:'090-1111-2222', upd:t },
             { no:'2010-01-看-9902', name:'試験 無し', area:'東町', status:'利用中', upd:t },
-            { no:'2010-01-看-9903', name:'試験 休み', area:'東町', status:'利用中', telMobile:'090-3333-4444', upd:t } ]));
+            { no:'2010-01-看-9903', name:'試験 休み', area:'東町', status:'利用中', telMobile:'090-3333-4444', upd:t },
+            { no:'2010-01-看-9904', name:'試験 自宅欄', area:'東町', status:'利用中', telHome:'０８０－５５５５－６６６６', upd:t },
+            { no:'2010-01-看-9905', name:'試験 家族', area:'東町', status:'利用中', telHome:'042-111-2222', em1Name:'試験 花子', em1Rel:'長女', em1Tel:'070-7777-8888', em1Contact:'連絡してよい', upd:t },
+            { no:'2010-01-看-9906', name:'試験 固定', area:'東町', status:'利用中', telHome:'042-333-4444', em1Tel:'090-9999-0000', em1Contact:'緊急時のみ', upd:t } ]));
           localStorage.setItem('tritime_weekly', JSON.stringify([
             { id:'w1', dow:dow, time:'10:00', min:30, no:'2010-01-看-9901', staffId:a, withId:'', upd:t },
             { id:'w2', dow:dow, time:'09:15', min:30, no:'2010-01-看-9902', staffId:a, withId:'', upd:t },
-            { id:'w3', dow:dow, time:'10:45', min:30, no:'2010-01-看-9903', staffId:a, withId:'', upd:t } ]));
+            { id:'w3', dow:dow, time:'10:45', min:30, no:'2010-01-看-9903', staffId:a, withId:'', upd:t },
+            { id:'w4', dow:dow, time:'13:00', min:30, no:'2010-01-看-9904', staffId:a, withId:'', upd:t },
+            { id:'w5', dow:dow, time:'14:00', min:30, no:'2010-01-看-9905', staffId:a, withId:'', upd:t },
+            { id:'w6', dow:dow, time:'15:00', min:30, no:'2010-01-看-9906', staffId:a, withId:'', upd:t } ]));
           localStorage.setItem('tritime_events', JSON.stringify([{ id:'c1', type:'cancel', patientNo:'2010-01-看-9903', date:dt, time:'10:45', upd:t }])); })()""")
         await pg.evaluate("document.querySelector('#tabs button[data-tab=plan]').click()"); await pg.wait_for_timeout(300)
         assert await pg.is_visible('#osTab'), '右端に「お知らせ」のつまみが出ません'
         bd = await pg.evaluate("(document.querySelector('#osTab .osCnt') || {}).textContent || ''")
-        assert bd == '1', 'つまみに、今日まだ知らせていない人数（携帯のある1人）が出ません：' + bd
+        assert bd == '3', 'つまみに、今日まだ知らせていない人数（携帯の番号のある3人）が出ません：' + bd
         # 2026-11-03 改め（宏史さん「お知らせだけファットで並びが悪い」）：人数の丸でつまみの幅が変わらない
         wd = await pg.evaluate("['mnTab','osTab','rqTab'].map(function(id){ return Math.round(document.getElementById(id).getBoundingClientRect().width); })")
         assert wd[1] == wd[0] == wd[2], '「お知らせ」のつまみだけ幅が違います：' + str(wd)
@@ -47,12 +53,19 @@ async def test(p):
         assert '携帯番号なし' in ob, '携帯番号の無い人に「携帯番号なし」が出ません'
         href = await pg.get_attribute('#osBody [data-ossend]', 'href')
         assert href.startswith('sms:09011112222') and '10%3A00' in href and '%E8%A8%AA%E5%95%8F%E7%9C%8B%E8%AD%B7' in href, '「送る」の宛先と文面（時刻入り）が正しくありません：' + href
+        # 2026-11-03（宏史さん「ラップトップのお知らせ画面は、携帯番号がすべてなし」）：自宅の欄の携帯・ご家族の携帯にも送れる
+        hs = await pg.evaluate("[...document.querySelectorAll('#osBody [data-ossend]')].map(a => a.getAttribute('data-ossend') + '=' + a.getAttribute('href').split('?')[0])")
+        assert 'sms:08055556666' in ' '.join(hs), '本人の自宅の欄に入っている携帯（全角）へ送れません：' + str(hs)
+        assert 'sms:07077778888' in ' '.join(hs), 'ご家族の連絡先の携帯へ送れません：' + str(hs)
+        assert '長女 試験 花子さん' in ob, 'ご家族へ送るとき、誰あてかが出ません'
+        assert '試験 固定' in ob and '登録の電話 042-333-4444' in ob, '携帯の無い人に、登録の電話が添えて出ません'
+        assert len(hs) == 3, '「緊急時のみ」の連絡先に送る形になっています：' + str(hs)
         await pg.evaluate("document.querySelector('#osBody [data-ossend]').addEventListener('click', function(e){ e.preventDefault(); }, true)")
         await pg.click('#osBody [data-ossend]'); await pg.wait_for_timeout(700)
         ob2 = await pg.inner_text('#osBody')
         assert '送った' in ob2, '「送る」を押しても「送った」になりません'
         bd2 = await pg.evaluate("(document.querySelector('#osTab .osCnt') || {}).textContent || ''")
-        assert bd2 == '', '送った後も、つまみの残りの人数が消えません：' + bd2
+        assert bd2 == '2', '送った後に、つまみの残りの人数が減りません：' + bd2
         await s.shot('#osPanel', 'TriTime_oshirase.png')
         assert not s.errs, '画面の中で誤りが出ました：' + s.errs[0]
     finally:

@@ -28,7 +28,8 @@ async def test(p):
         await pg.evaluate("""(function(){ var t = Date.now();
           localStorage.setItem('tritime_patients', JSON.stringify([
             { no:'2010-01-看-9401', name:'試験 二名', area:'東町', status:'利用中', team:'2名', freq:'週2回', wDays:['2','4'], upd:t },
-            { no:'2010-01-看-9402', name:'試験 職種', area:'西町', status:'利用中', freq:'週1回', wDays:['3'], upd:t } ]));
+            { no:'2010-01-看-9402', name:'試験 職種', area:'西町', status:'利用中', freq:'週1回', wDays:['3'], upd:t },
+            { no:'2010-01-看-9403', name:'試験 指示書', area:'南町', status:'利用中', freq:'週1回', wDays:['5'], instPoint:'精神科訪問看護指示書　複数名訪問の必要性　○あり・なし　理由：暴力行為', upd:t } ]));
           /* 9402：体制の欄は空のまま、週間予定の同行に「2名（看護師・未定）」 */
           var st = JSON.parse(localStorage.getItem('tritime_staff')), a = st.filter(function(x){ return x.name === '看護 一子'; })[0].id;
           localStorage.setItem('tritime_weekly', JSON.stringify([{ id:'w1', dow:'3', time:'09:15', min:30, no:'2010-01-看-9402', staffId:a, withId:'tbd:n', upd:t }])); localStorage.removeItem('tritime_weekly_backup'); })()""")
@@ -40,8 +41,9 @@ async def test(p):
         assert '2名・同行 看護' in au, '週の2回目に、看護師が同行に付きません'
         assert '2名・同行未定' not in au, '同行者を付けられる人がいるのに「同行未定」が残っています'
         assert '事務 四子' not in au.split('2名体制として組んだ人')[1].split('職員')[0] and '同行 事務 四子' not in au, '事務局の人が同行に付いています'
-        assert '2名体制として組んだ人：2人' in au, '2名体制として組んだ人の一覧に、体制「2名」の人と「2名（看護師・未定）」の人の2人が出ません'
-        assert '試験 職種：水 看護 一子・同行 看護 二子' in au, '「2名（看護師・未定）」の訪問に、看護師（担当と別の人）が付きません'
+        assert '2名体制として組んだ人：3人' in au, '2名体制として組んだ人の一覧に、体制「2名」・「2名（看護師・未定）」・指示書に複数名訪問ありの3人が出ません'
+        assert '試験 指示書（指示書の複数名訪問）：金 ' in au and '試験 指示書（指示書の複数名訪問）：金 看護 一子・同行未定' not in au, '指示書に複数名訪問「あり」と書かれた人が、2名体制として同行付きで組まれません'
+        assert '試験 職種（週間予定の同行）：水 看護 一子・同行 看護 二子' in au, '「2名（看護師・未定）」の訪問に、看護師（担当と別の人）が付きません'
         await s.shot('#cardAuto', 'TriTime_doukou_jidou.png')
         await pg.evaluate("window.confirm = function(){ return true; }")
         await pg.click('#au_apply'); await pg.wait_for_timeout(500)

@@ -40,6 +40,12 @@ async def test(p):
         l1 = await setup(False)
         assert '週 2回' in l1 and '7,500' in l1, '同行者の決まっていない2名体制の週2回が、1回目は看護補助者3,000円・2回目は看護師4,500円（計7,500円）で数えられません：' + l1
         assert '103,180' in l1, '2名体制の加算（4週30,000円）と月の初回の管理療養費の高い分（4,700円）が、いまの合計（訪問2件×4週×8,560円＝68,480円）に足されません：' + l1
+        # 月ごとの見込み：週2回の1人（81,740円）に、いまの2名体制の加算（週7,500円 × 30.4/7 ＝ 32,571円）を足して 114,311円
+        await pg.evaluate("['gr_f1','gr_f2','gr_f3','gr_add'].forEach(function(id){ document.getElementById(id).value = ''; })")
+        await pg.evaluate("document.getElementById('gr_f2').value = '1'; document.getElementById('gr_add').value = '0'")
+        await pg.click('#gr_make'); await pg.wait_for_timeout(300)
+        g = await pg.inner_text('#gr_out')
+        assert '114,311' in g, '月ごとの見込みに、いまの2名体制の加算が足されません：' + g[:200]
         await s.shot('#tab-mihon', 'TriTime_nimei_hojo.png')
         l2 = await setup(True)
         assert '週 2回' in l2 and '9,000' in l2, '看護師を同行者にした2名体制が、看護師の加算（4,500円×2回）で数えられません：' + l2

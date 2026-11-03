@@ -286,7 +286,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-13</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-14</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -4590,7 +4590,23 @@ var AU_BAK = 'tritime_weekly_backup', auPlan = null;
 /* 2026-11-03：利用者登録の「訪問の回数・時間帯の取り決め」（週◯回）を先に見る。無いときだけ、いまの週間予定の回数を使う（宏史さんの指摘：週2回と入れても、週間予定に入っている1件が先に効いて1回で組まれていた） */
 /* 2026-11-03 追記：回数の欄が空で、「予定の希望」の希望の曜日に印があるときは、その曜日の数を回数にする
    （宏史さんの指摘「清水さんは週3回（月水金）で入れたが反映されない」「川越さんは月金だが月が入らない」。希望の曜日に印を付けた人は、その曜日に毎週行くつもりで入れている） */
-function auFreq(p, cur){ var m = String(p.freq || '').match(/週\s*([1-7１-７])/); if(m) return Math.min(3, +String(m[1]).replace(/[１-７]/, function(c){ return '１２３４５６７'.indexOf(c) + 1; })); var wd = (p.wDays || []).length; if(wd) return Math.min(3, wd); if(cur) return Math.min(3, cur); return 1; }
+/* 2026-11-03 改め（宏史さん「サービス提供回数を増やしても週間回数の数が変わらないのはなぜ」）：
+   取り決めの欄は「週2回」だけでなく「週二回」「週に2回」「2回/週」「月8回」「毎日」も読む。全角の数字・漢数字も読む。
+   どこから回数を取ったか（src）と、取り決めの欄に字があるのに読めなかったか（bad）も返し、組み方の下に一覧で出す */
+function auFreqInfo(p, cur){
+  var t = String(p.freq || '').replace(/[０-９]/g, function(c){ return String('０１２３４５６７８９'.indexOf(c)); }).replace(/[一二三四五六七八九]/g, function(c){ return String('一二三四五六七八九'.indexOf(c) + 1); }).replace(/\s/g, '');
+  var n = 0, m;
+  if((m = t.match(/週に?(\d+)回?/))) n = +m[1];
+  else if((m = t.match(/(\d+)回[\/／]週/))) n = +m[1];
+  else if((m = t.match(/月に?(\d+)回/))) n = Math.ceil(+m[1] / 4);
+  else if(/毎日/.test(t)) n = 7;
+  if(n) return { f:Math.min(3, n), src:'取り決め「' + p.freq + '」' + (n > 3 ? '（週3回までで組みます）' : '') };
+  var wd = (p.wDays || []).length, bad = !!t;
+  if(wd) return { f:Math.min(3, wd), src:'希望の曜日の数', bad:bad };
+  if(cur) return { f:Math.min(3, cur), src:'いまの週間予定の回数', bad:bad };
+  return { f:1, src:'回数の決まりが無いため', bad:bad };
+}
+function auFreq(p, cur){ return auFreqInfo(p, cur).f; }
 function auCombos(days, f){ var out = []; (function rec(i, a){ if(a.length === f){ out.push(a.slice()); return; } for(var j = i; j < days.length; j++){ a.push(days[j]); rec(j + 1, a); a.pop(); } })(0, []); return out; }
 function auMake(course){
   if(course && course.type) course = null;
@@ -4609,7 +4625,7 @@ function auMake(course){
   wk.forEach(function(v){ cnt[v.no] = (cnt[v.no] || 0) + 1; (main[v.no] = main[v.no] || {})[v.staffId] = (main[v.no][v.staffId] || 0) + 1; if(!info[v.no]) info[v.no] = { min:v.min || 30, withId:'', withN:0 }; if(v.withId){ info[v.no].withId = info[v.no].withId || v.withId; info[v.no].withN++; } });
   var P = patients().filter(function(p){ return !p.status || p.status === '利用中'; }).map(function(p){
     var m = main[p.no] || {}, ms = Object.keys(m).sort(function(a, b){ return m[b] - m[a]; })[0] || '';
-    return { no:p.no, area:p.area || '（地区なし）', f:auFreq(p, cnt[p.no] || 0), lat:p.lat, lng:p.lng, main:ms, wish:p.wish || '', band:p.wBand || '', wDays:p.wDays || [], ngDays:p.ngDays || [], vmin:+p.vmin || 0, team:p.team || '', why:[] };
+    return { no:p.no, area:p.area || '（地区なし）', f:auFreq(p, cnt[p.no] || 0), fi:auFreqInfo(p, cnt[p.no] || 0), freqT:p.freq || '', lat:p.lat, lng:p.lng, main:ms, wish:p.wish || '', band:p.wBand || '', wDays:p.wDays || [], ngDays:p.ngDays || [], vmin:+p.vmin || 0, team:p.team || '', why:[] };
   });
   var byArea = {}; P.forEach(function(p){ (byArea[p.area] = byArea[p.area] || []).push(p); });
   var areas = Object.keys(byArea).sort(function(a, b){ return byArea[b].length - byArea[a].length || (a < b ? -1 : 1); });
@@ -4688,6 +4704,10 @@ function auMake(course){
       return (w.length ? '<div class="judge fee" style="margin:8px 0"><b>希望どおりに組めなかった人</b><ul style="margin:4px 0 0 18px">' + w.map(function(p){ return '<li>' + esc(dnn(p.no)) + '：' + esc(p.why.join('／')) + '</li>'; }).join('') + '</ul>希望に合わせるには、担当や曜日を週間予定で手直ししてください。</div>' : '') +
         (t2.length ? '<div class="judge fee" style="margin:8px 0"><b>2名体制の希望で、同行の欄が空の人</b>：' + t2.map(function(p){ return esc(dnn(p.no)); }).join('、') + '。売上は2名で数えています（週の1回目を看護補助者、2回目以降を看護師の加算）。同行する人か、職種だけ決まっていれば「2名（看護師・未定）」などを、「名簿・設定」の「週間予定」の一覧の同行の欄で選んでください。</div>' : ''); })() +
     (function(){ var nos = {}; out.forEach(function(o){ nos[o.p.no] = 1; }); return '<div id="au_pdiff">' + auDiffHTML(auDiff(wk, rows, nos), 'いまの週間予定から変わる訪問', 'いまの週間予定から、曜日と担当の変わる訪問はありません。') + '</div>'; })() +
+    (function(){ /* 2026-11-03：週の回数をどこから取ったかを、患者さんごとに出す。取り決めの欄が読めなかった人は先に知らせる */
+      var bad = P.filter(function(p){ return p.fi.bad; });
+      return (bad.length ? '<div class="judge fee" style="margin:8px 0"><b>「訪問の回数・時間帯の取り決め」の欄が読めず、回数に使えなかった人</b><ul style="margin:4px 0 0 18px">' + bad.map(function(p){ return '<li>' + esc(dnn(p.no)) + '：「' + esc(p.freqT) + '」→ 週' + p.f + '回で組みました（' + esc(p.fi.src) + '）</li>'; }).join('') + '</ul>回数は「週2回」のように「週」と数字で書いてください。</div>' : '') +
+        '<details style="margin:8px 0"><summary>患者さんごとの週の回数（どこから取ったか）を見る</summary><ul style="margin:4px 0 0 18px">' + P.slice().sort(function(a, b){ return b.f - a.f || (a.no < b.no ? -1 : 1); }).map(function(p){ return '<li>' + esc(dnn(p.no)) + '：週' + p.f + '回（' + esc(p.fi.src) + '）</li>'; }).join('') + '</ul></details>'; })() +
     '<div class="tbl-scroll"><table class="mhT">' + head + body + '</table></div>' +
     '<p class="muted">同じ地区の患者さんを、同じ職員・同じ曜日に寄せています。いまの担当がいる患者さんは、なるべく同じ職員のままにしています。週の回数は、利用者登録の「訪問の回数・時間帯の取り決め」の週◯回です（無ければ「予定の希望」の希望の曜日の数、それも無ければいまの週間予定の回数、それも無ければ週1回）。1日の中は、地区ごと・位置が分かるものは近い順に並べ、時刻は「勤務の決まり」の1日の流れに当てています。2名体制の同行者は、いまの週間予定の回数の分だけ引き継ぎます。</p>';
   $('au_apply').style.display = rows.length ? '' : 'none';

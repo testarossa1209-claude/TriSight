@@ -49,6 +49,17 @@ async def test(p):
         assert ss.count('担当 島 試験') == 2, '同行の佐野さんの行に、同行の札（担当 島 試験）が出ません'
         assert 'この週の「出勤」' in ss and '島 試験' in ss, '出勤にした人が枠に出ません'
         await s.shot('#ssBody', 'TriTime_kyujitsu.png')
+        # 付け替えた後に、週間予定の時刻・担当を組み直しても（今日の分の訪問の時刻が変わっても）、今日の付け替えは動かない
+        await pg.evaluate("(function(){ var a = JSON.parse(localStorage.getItem('tritime_weekly')); a.forEach(function(v){ v.time = v.time === '09:15' ? '11:00' : '14:00'; v.upd = Date.now(); }); localStorage.setItem('tritime_weekly', JSON.stringify(a)); })()")
+        await pg.evaluate("document.getElementById('ssThis').click()"); await pg.wait_for_timeout(600)
+        ss3 = await pg.inner_text('#ssBody table')
+        assert ss3.count('2名・同行 佐野 試験') == 2 and '要調整' not in ss3, '週間予定を組み直すと、今日の付け替えが外れます'
+        # 予定タブの「今週の訪問予定」にも、付け替えた担当と同行が出る
+        await pg.evaluate("document.body.classList.remove('ssOpen')")
+        pb = await pg.inner_text('#planBody')
+        assert pb.count('2名・同行 佐野 試験') >= 2, '予定タブの「今週の訪問予定」に、付け替えた同行が出ません'
+        await pg.evaluate("document.getElementById('ssTab').click()"); await pg.wait_for_timeout(600)
+        await pg.evaluate("var b = document.getElementById('ssBulk'); if(b && !b.open) b.open = true"); await pg.wait_for_timeout(200)
         await pg.click('#sb_undo'); await pg.wait_for_timeout(600)
         ss2 = await pg.inner_text('#ssBody table')
         assert ss2.count('要調整') >= 2 and '2名・同行 佐野 試験' not in ss2, '取り消しても元の予定に戻りません'

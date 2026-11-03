@@ -286,7 +286,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-10</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-11</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -4175,7 +4175,7 @@ function miMake(){
      利用者登録の体制が「2名」で同行者が決まっていない訪問も、看護補助者として数える（宏史さんの指示） */
   var twoFee = 0, hojoW = {}, ptOf = {}; act.forEach(function(p){ ptOf[p.no] = p; });
   weekly().forEach(function(v){ cnt[v.no] = (cnt[v.no] || 0) + 1; if(!nos[v.no]) return;
-    var wj = v.withId ? feeJob(v.withId) : ((ptOf[v.no] || {}).team === '2名' ? 'h' : ''); if(!wj) return;
+    var wj = v.withId ? feeJob(v.withId) : ((ptOf[v.no] || {}).team === '2名' ? (hojoW[v.no] ? 'n' : 'h') : ''); if(!wj) return;   /* 同行者未定の2回目以降は看護師で数える */
     two++; if(wj !== 'h') twoFee += FEE.psyWith[wj]; else if(!hojoW[v.no]){ hojoW[v.no] = 1; twoFee += FEE.psyWith.h; } });
   var U = act.length, cur = act.reduce(function(t, p){ return t + (cnt[p.no] || 0); }, 0);
   var room = 0, roomN = 0; act.forEach(function(p){ var r = Math.max(0, capF - (cnt[p.no] || 0)); room += r; if(r) roomN++; });
@@ -4189,7 +4189,7 @@ function miMake(){
     '<tr><td><b>いまの合計</b></td><td class="num"><b>' + cur + '件</b></td><td class="num"><b>' + yen(base + kasan) + '</b></td></tr>' +
     '<tr><td>目標設定額 ' + esc(mdYenShort(goal)) + 'コースに要る訪問</td><td class="num">' + needW + '件</td><td class="num">' + yen(goal) + '</td></tr>' +
     '<tr style="background:' + (red ? '#fbecea' : '#eef5ef') + '"><td><b>' + (red ? '足りない分' : '上回っている分') + '</b></td><td class="num"><b style="color:' + col + '">' + (red ? '−' : '+') + Math.abs(gap) + '件</b></td><td class="num"><b style="color:' + col + '">' + (diffY > 0 ? '−' : '+') + yen(Math.abs(diffY)) + '</b></td></tr>' +
-    (two ? '<tr><td>上振れ：2名体制の加算（いまの週間予定で週 ' + two + '回・週 ' + yen(twoFee) + '。同行者が決まっていない人は看護補助者の加算で数えています）</td><td class="num">—</td><td class="num">＋' + yen(wUp) + '</td></tr>' : '<tr><td>上振れ：2名体制の加算（いまの週間予定には2名体制の訪問がありません。入ると1回 ' + yen(wFee) + ' ふえます）</td><td class="num">—</td><td class="num">—</td></tr>') + '</table>';
+    (two ? '<tr><td>上振れ：2名体制の加算（いまの週間予定で週 ' + two + '回・週 ' + yen(twoFee) + '。同行者が決まっていない人は、週の1回目を看護補助者、2回目以降を看護師の加算で数えています）</td><td class="num">—</td><td class="num">＋' + yen(wUp) + '</td></tr>' : '<tr><td>上振れ：2名体制の加算（いまの週間予定には2名体制の訪問がありません。入ると1回 ' + yen(wFee) + ' ふえます）</td><td class="num">—</td><td class="num">—</td></tr>') + '</table>';
   if(!red){ $('mi_out').innerHTML = h + '<div class="judge free" style="margin:8px 0"><b>このコースには、いまの週間予定で届いています。上のコースを狙えます。</b></div>'; return; }
   var useRoom = Math.min(gap, room), rest = gap - useRoom, newN = Math.ceil(rest / nf);
   h += '<h3 style="margin:12px 0 4px">週にあと ' + gap + '件 ふやす方法</h3><table><tr><th>ふやし方</th><th class="num">ふやせる・要る件数</th><th>中身</th></tr>' +
@@ -5340,8 +5340,9 @@ function mdFees(m){
       var nth = Object.keys(wk[v.no]).length;
       if(!inM) return;
       /* 2026-11-03：利用者登録の体制が「2名」の人は、同行者が決まっていなくても2名で数える（宏史さんの指示「指示書では2名体制なので、売上は2名で計算」）。
-         同行者が決まっていなければ看護補助者の加算（週1日まで）で、看護師・准看護師が同行者ならその料金で数える */
-      var mj = feeJob(v.staffId) === 'j' ? 'j' : 'n', wj = v.withId ? feeJob(v.withId) : (p.team === '2名' ? 'h' : ''), min = +v.min || 30, fee = 0;
+         同行者が決まっていなければ看護補助者の加算（週1日まで）で、看護師・准看護師が同行者ならその料金で数える。
+         2026-11-03 追記（宏史さんの指示）：同行者が決まっていない人の、同じ週の2回目以降は、看護補助者の加算が付かないため看護師の同行（4,500円）で数える */
+      var mj = feeJob(v.staffId) === 'j' ? 'j' : 'n', wj = v.withId ? feeJob(v.withId) : (p.team === '2名' ? (hojo[v.no] ? 'n' : 'h') : ''), min = +v.min || 30, fee = 0;
       if(ins === '精神科訪問看護（医療）' || ins === '医療保険'){
         var w4 = nth >= 4;
         if(w4 && !feeSpecial(p, date)){ out.w4ng++; out.map[key] = { fee:0, ng:true }; return; }

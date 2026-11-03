@@ -286,7 +286,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-22</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-23</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -4775,16 +4775,25 @@ function auMake(course){
   })();
   auPlan = { rows:rows, miss:miss, nos:out.map(function(o){ return o.p.no; }), info:info };
   var tot = rows.length, need = P.reduce(function(t, p){ return t + p.f; }, 0);
-  var head = '<tr><th class="who">職員</th>' + MD_DOW.map(function(d){ return '<th' + (d === '0' || d === '6' ? ' class="we"' : '') + '>' + DOW[+d] + '</th>'; }).join('') + '</tr>';
+  /* 2026-11-03（宏史さん「仮スケジュールが正規の表記ならば本体スケジュールも更新してください。2つあると混乱する」）：
+     自動の振り分けの表も、仮スケジュール表と同じく今週の日付・祝日を見出しに出し、その日に休み（祝日・届け・申告外）の人の升には「休（理由）」を出す。
+     休みの日に組まれた訪問は「要調整」にする（週間予定には毎週の予定として入るので、その日だけの休みは仮スケジュール表で付け替える） */
+  var wk0 = mondayOf(new Date()), dateOf = function(d){ return ymd(addDays(wk0, (+d + 6) % 7)); };
+  /* 仮スケジュール表で「この日の訪問をまとめて付け替える」をした日は、その日の実際の担当がそちらにあるので、この表では要調整にしない */
+  var bulkDay = function(dt){ return events().some(function(e){ return e.type === 'move' && e.rec && e.bulk && (e.toDate || e.date) === dt; }); };
+  var head = '<tr><th class="who">職員</th>' + MD_DOW.map(function(d){ var dt = dateOf(d), hn = holidayName(dt), pd = parseYmd(dt);
+    return '<th' + (d === '0' || d === '6' || hn ? ' class="we" style="color:var(--red)"' : '') + '>' + DOW[+d] + '<br><small>' + (pd.getMonth() + 1) + '/' + pd.getDate() + (hn ? '<br>' + esc(hn) : '') + (bulkDay(dt) ? '<br><b>付け替え済み</b>' : '') + '</small></th>'; }).join('') + '</tr>';
   var body = ST.map(function(x){
     var w = 0;
     var cells = MD_DOW.map(function(d){
-      if(x.days.indexOf(d) < 0) return '<td class="mhOff">休</td>';
+      var why = bulkDay(dateOf(d)) ? '' : offWhy(x.s.id, dateOf(d));
+      if(x.days.indexOf(d) < 0) return '<td class="mhOff">休' + (why && why !== '公休' ? '（' + esc(why) + '）' : '') + '</td>';
       var r = rows.filter(function(v){ return v.staffId === x.s.id && v.dow === d; }).sort(function(a, b){ return a.time < b.time ? -1 : 1; }); w += r.length;
       /* 2026-11-03：この職員が同行で入る訪問も、この升に「同行」として出す（件数には数えない） */
       var rw = rows.filter(function(v){ return v.withId === x.s.id && v.staffId !== x.s.id && v.dow === d; });
+      if(why && !r.length && !rw.length) return '<td class="mhOff">休（' + esc(why) + '）</td>';
       var cp = capOf(x, d), empty = course ? Math.max(0, cp - r.length) : 0;
-      return '<td>' + r.map(function(v){ return '<span class="ssChip">' + esc(v.time) + ' ' + esc(dnn(v.no)) + '<br><small>' + esc(v.area) + (v.wish ? '・<span' + (toMin(v.wish) != null ? (Math.abs(toMin(v.wish) - toMin(v.time)) > 30 ? ' style="color:var(--red)"' : '') : ((v.wish === '午前') !== (toMin(v.time) < 720) ? ' style="color:var(--red)"' : '')) + '>希望 ' + esc(v.wish) + '</span>' : '') + (withLabel(v) ? '<br><b style="color:var(--amber)">' + esc(withLabel(v)) + '</b>' : '') + '</small></span>'; }).join('') +
+      return '<td' + (why ? ' class="mhOff"' : '') + '>' + (why ? '<div class="sm" style="font-weight:700">休（' + esc(why) + '）</div>' : '') + r.map(function(v){ return '<span class="ssChip"' + (why ? ' style="border:1px solid var(--red);color:var(--red)"' : '') + '>' + esc(v.time) + ' ' + esc(dnn(v.no)) + (why ? ' <b>要調整</b>' : '') + '<br><small>' + esc(v.area) + (v.wish ? '・<span' + (toMin(v.wish) != null ? (Math.abs(toMin(v.wish) - toMin(v.time)) > 30 ? ' style="color:var(--red)"' : '') : ((v.wish === '午前') !== (toMin(v.time) < 720) ? ' style="color:var(--red)"' : '')) + '>希望 ' + esc(v.wish) + '</span>' : '') + (withLabel(v) ? '<br><b style="color:var(--amber)">' + esc(withLabel(v)) + '</b>' : '') + '</small></span>'; }).join('') +
         rw.map(function(v){ return '<span class="ssChip" style="background:#fff7ec;border:1px solid var(--amber)">' + esc(v.time) + ' <b>同行</b> ' + esc(dnn(v.no)) + '<br><small>担当 ' + esc(staffName(v.staffId)) + '・' + esc(v.area) + '</small></span>'; }).join('') + (empty ? '<span class="ssChip" style="background:#fff;border:1px dashed var(--amber);color:var(--amber)">空き ' + empty + '件</span>' : '') + '<div class="mhCnt' + (r.length >= cp ? ' full' : '') + '">' + r.length + (course ? '／' + cp : '') + '件</div></td>';
     }).join('');
     return '<tr><th class="who">' + esc(x.s.name) + '<small>' + (x.full ? '常勤' : '非常勤') + (course ? '・コースの枠' : '・1日 ' + x.cap + '件まで') + '</small><small>週 ' + w + '件</small></th>' + cells + '</tr>';
@@ -4806,6 +4815,7 @@ function auMake(course){
             return '<li>' + esc(dnn(p.no)) + (twoWhy(patient(p.no)) ? '<small class="muted">（' + esc(twoWhy(patient(p.no))) + '）</small>' : '<small class="muted">（週間予定の同行）</small>') + '：' + rs.map(function(r){ return DOW[+r.dow] + ' ' + esc(staffName(r.staffId)) + '・' + esc(r.withId ? '同行 ' + staffName(r.withId) : '同行未定'); }).join('／') + '</li>'; }).join('') + '</ul>' : '') +
             '<small class="muted">利用者登録の「⑤ 体制」が「2名」の人、「指示書から」の「指示の内容」に複数名訪問が「あり」と書かれている人、週間予定に同行が入っている人です。</small></div>'; })() +
         '<details style="margin:8px 0"><summary>患者さんごとの週の回数（どこから取ったか）を見る</summary><ul style="margin:4px 0 0 18px">' + P.slice().sort(function(a, b){ return b.f - a.f || (a.no < b.no ? -1 : 1); }).map(function(p){ return '<li>' + esc(dnn(p.no)) + '：週' + p.f + '回（' + esc(p.fi.src) + '）</li>'; }).join('') + '</ul></details>'; })() +
+    '<p class="muted sm" style="margin:6px 0 2px">日付は今週（' + esc(jpDate(dateOf('1'))) + '〜' + esc(jpDate(dateOf('0'))) + '）に当てはめています。祝日などその日だけ休みの人の訪問は「要調整」と出ます。週間予定には毎週の予定として入るので、その日だけの付け替えは仮スケジュール表で行います（付け替えた日は見出しに「付け替え済み」と出ます）。</p>' +
     '<div class="tbl-scroll"><table class="mhT">' + head + body + '</table></div>' +
     '<p class="muted">同じ地区の患者さんを、同じ職員・同じ曜日に寄せています。いまの担当がいる患者さんは、なるべく同じ職員のままにしています。週の回数は、利用者登録の「訪問の回数・時間帯の取り決め」の週◯回です（無ければ「予定の希望」の希望の曜日の数、それも無ければいまの週間予定の回数、それも無ければ週1回）。1日の中は、地区ごと・位置が分かるものは近い順に並べ、時刻は「勤務の決まり」の1日の流れに当てています。2名体制の同行者は、いまの週間予定に入っている分を引き継ぎ、足りない分は自動で付けます（その患者さんの週の1回目は看護補助者、2回目以降は担当とは別の、その日に空いている看護師）。</p>';
   $('au_apply').style.display = rows.length ? '' : 'none';

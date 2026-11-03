@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """トライタイムの1日の予定と地図の「全員」の試験（2026-11-03・宏史さん「看護師でないと出ないの？管理者はすべての画面を見れるようにするはず」）
 ・この端末を使う人が決まっていない端末では、「1日の予定と地図」の職員の欄が最初から「全員」になり、全員のこの日の予定が担当つきで出る
-・地図に出せる位置がある訪問先は、地図に出る"""
+・地図に出せる位置がある訪問先は、地図に出る
+・地図の下に、その日を含む1週間の本スケジュール表（職員 × 曜日）が出て、札に地図の番号が付く"""
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 from tt_helper import Screen, run
@@ -37,6 +38,14 @@ async def test(p):
         await pg.evaluate("document.querySelector('#tabs button[data-tab=plan]').click()"); await pg.wait_for_timeout(600)
         v = await pg.evaluate("document.getElementById('td_staff').value")
         assert v == '*', '1日の予定と地図の職員の欄が、最初から「全員」になりません：' + v
+        wk = await pg.inner_text('#td_week')
+        assert '本スケジュール表' in wk and '看護 一子' in wk and '看護 二子' in wk and '試験 一' in wk and '試験 二' in wk, '地図の下に、本スケジュール表（職員 × 曜日）が出ません：' + wk[:300]
+        cols = await pg.evaluate("document.querySelectorAll('#td_week thead th').length")
+        assert cols == 8, '本スケジュール表が1週間（7日）の表になっていません：' + str(cols)
+        nos = await pg.evaluate("[...document.querySelectorAll('#td_week .ssNo')].map(e => e.textContent)")
+        assert sorted(nos) == ['1', '1'], '本スケジュール表の札に、地図の番号が出ません：' + str(nos)
+        await pg.evaluate("document.getElementById('td_dayBox').open = true"); await pg.wait_for_timeout(100)
+        await s.shot('#cardToday', 'TriTime_hon_schedule.png')
         tl = await pg.inner_text('#td_list')
         assert '看護 一子' in tl and '看護 二子' in tl and '試験 一' in tl and '試験 二' in tl, '「全員」で、全員のこの日の予定が担当つきで出ません：' + tl[:300]
         shown = await pg.evaluate("document.getElementById('td_map').style.display")

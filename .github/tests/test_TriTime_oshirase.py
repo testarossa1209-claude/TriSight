@@ -3,7 +3,7 @@
 ・右端のつまみ「お知らせ」で、今日の訪問の利用者さんが時刻順に1人1行で出る（キャンセルの入った訪問は出ない）
 ・携帯番号のある人には「送る」が出て、押すと宛先と定型文（時刻入り）の入ったメッセージが開く。押すと「送った」になる
 ・携帯番号の無い人は「携帯番号なし」
-・つまみに、今日まだ知らせていない人数が「残◯」と赤く出て、送ると消える（宏史さん「横の引き出しに一押し情報もつけてもらえれば忘れずに一押しできる」）"""
+・つまみの角に、今日まだ知らせていない人数が赤い丸の数字で出て、送ると消える。丸でつまみの幅は変わらない（宏史さん「横の引き出しに一押し情報もつけてもらえれば忘れずに一押しできる」）"""
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 from tt_helper import Screen, run
@@ -34,8 +34,12 @@ async def test(p):
           localStorage.setItem('tritime_events', JSON.stringify([{ id:'c1', type:'cancel', patientNo:'2010-01-看-9903', date:dt, time:'10:45', upd:t }])); })()""")
         await pg.evaluate("document.querySelector('#tabs button[data-tab=plan]').click()"); await pg.wait_for_timeout(300)
         assert await pg.is_visible('#osTab'), '右端に「お知らせ」のつまみが出ません'
-        bd = await pg.inner_text('#osTab')
-        assert '残1' in bd, 'つまみに、今日まだ知らせていない人数（携帯のある1人）が出ません：' + bd
+        bd = await pg.evaluate("(document.querySelector('#osTab .osCnt') || {}).textContent || ''")
+        assert bd == '1', 'つまみに、今日まだ知らせていない人数（携帯のある1人）が出ません：' + bd
+        # 2026-11-03 改め（宏史さん「お知らせだけファットで並びが悪い」）：人数の丸でつまみの幅が変わらない
+        wd = await pg.evaluate("['mnTab','osTab','rqTab'].map(function(id){ return Math.round(document.getElementById(id).getBoundingClientRect().width); })")
+        assert wd[1] == wd[0] == wd[2], '「お知らせ」のつまみだけ幅が違います：' + str(wd)
+        await s.shot('.sideTabs.lft', 'TriTime_oshirase_tsumami.png')
         await pg.click('#osTab'); await pg.wait_for_timeout(400)
         ob = await pg.inner_text('#osBody')
         assert '試験 携帯' in ob and '試験 無し' in ob and '試験 休み' not in ob, '今日の訪問の利用者さん（キャンセルを除く）が出ません：' + ob[:300]
@@ -48,7 +52,7 @@ async def test(p):
         ob2 = await pg.inner_text('#osBody')
         assert '送った' in ob2, '「送る」を押しても「送った」になりません'
         bd2 = await pg.evaluate("(document.querySelector('#osTab .osCnt') || {}).textContent || ''")
-        assert '残' not in bd2, '送った後も、つまみの残りの人数が消えません：' + bd2
+        assert bd2 == '', '送った後も、つまみの残りの人数が消えません：' + bd2
         await s.shot('#osPanel', 'TriTime_oshirase.png')
         assert not s.errs, '画面の中で誤りが出ました：' + s.errs[0]
     finally:

@@ -53,6 +53,9 @@ async def test(p):
         dp = await pg.evaluate("document.getElementById('tab-plan').innerText")
         assert '2名・同行 同行 二子' in dp, '1日の予定の担当の行に同行が出ません'
         await pg.select_option('#td_staff', ids[1]); await pg.wait_for_timeout(500)
+        wk2 = await pg.evaluate("document.getElementById('td_week').innerText")
+        assert '同行' in wk2 and '担当 担当 一子' in wk2, '本スケジュール表の同行の職員の行に「同行」の札が出ません：' + wk2[:300]
+        await pg.evaluate("document.getElementById('td_dayBox').open = true"); await pg.wait_for_timeout(100)
         dp2 = await pg.evaluate("document.getElementById('tab-plan').innerText")
         assert '同行（担当 担当 一子さん）' in dp2, '1日の予定の同行の職員の行に「同行（担当 ◯◯さん）」が出ません'
         assert not s.errs, '画面の中で誤りが出ました：' + s.errs[0]

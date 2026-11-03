@@ -286,7 +286,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-21</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-22</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -1110,7 +1110,7 @@ function tsPortalAsk(){
     <p class="lead">仮スケジュール表の印と、管理者の窓の「出勤と実績」の計算に使います。常勤の所定の勤務時間から、サービス時間・移動の見積もり・休憩を引いた残りを、内勤と予備の時間として出します。</p>
     <div class="row">
       <div><label class="f" for="wr_target">1日の目標件数</label><input type="number" id="wr_target" min="1" max="20"></div>
-      <div><label class="f" for="wr_mvmin">訪問の間の移動の目安・最短（分）</label><input type="number" id="wr_mvmin" min="0" max="60"></div>
+      <div><label class="f" for="wr_mvmin">訪問の間の移動の目安・最短（分）</label><small class="muted">予定は最短と最長の真ん中（ふだんの移動）で組みます</small><input type="number" id="wr_mvmin" min="0" max="60"></div>
       <div><label class="f" for="wr_mvmax">移動の目安・最長（分）</label><input type="number" id="wr_mvmax" min="1" max="120"></div>
       <div><label class="f" for="wr_visit">1回の訪問の決まりの長さ（分）</label><input type="number" id="wr_visit" min="10" max="120" step="5"></div>
     </div>
@@ -1530,6 +1530,12 @@ function movesOn(date){ return events().filter(function(e){ return e.type === 'm
    どの訪問からも、元の週間予定の1件（od＝元の日・ot＝元の時刻・wid＝週間予定の番号）をたどれるようにする */
 function visitsOn(date){
   var d = parseYmd(date); var w = d.getDay(), mv = movesOn(date), wk = weekly();
+  /* 2026-11-03（宏史さん「祭日に島さんと佐野さんが全部2人で回った」）：「この日の訪問をまとめて付け替える」で残した今日・過ぎた日の記録（rec）がある日は、
+     その記録だけでその日の訪問を出す。あとで週間予定を組み直しても（時刻や曜日が変わっても）、その日の実際の訪問は動かない */
+  var recs = events().filter(function(e){ return e.type === 'move' && e.rec && e.bulk && (e.toDate || e.date) === date; });
+  if(recs.length) return recs.map(function(m){ var p = patient(m.patientNo) || {};
+    return { date:date, time:m.toTime, min:m.min || 30, no:m.patientNo, area:p.area || '', staffId:m.toStaff, withId:m.toWith || '', cx:cancelOf(m.patientNo, date, m.toTime), moved:{ id:m.id, from:m.fromTime, fromStaff:m.fromStaff || '' }, od:m.date, ot:m.fromTime, wid:m.wid || '' };
+  }).sort(function(a, b){ return a.time < b.time ? -1 : 1; });
   var out = wk.filter(function(v){ return +v.dow === w; }).map(function(v){
     var p = patient(v.no) || {}, m = mv.filter(function(e){ return e.patientNo === v.no && e.fromTime === v.time; })[0];
     if(m && m.toDate && m.toDate !== date) return null;
@@ -1602,7 +1608,7 @@ function renderPlan(){
   if(!weekly().length && !events().some(function(e){ return e.type === 'note' && e.kind === '会議の案内'; })){ $('planBody').innerHTML = '<p class="empty">週間予定がまだありません。「名簿・設定」で入れてください。</p>'; renderOffice(); renderBoard(); return; }
   for(var i = 0; i < 7; i++){
     var date = ymd(addDays(start, i));
-    var vs = visitsOn(date).filter(function(v){ return !only || v.staffId === only; });
+    var vs = visitsOn(date).filter(function(v){ return !only || v.staffId === only || v.withId === only; });   /* 2026-11-03：同行で入る訪問も、その人で絞ったときに出す */
     var meets = events().filter(function(e){ return e.type === 'note' && e.kind === '会議の案内' && e.mDate === date && (!only || isNoteFor(e, only)); });
     if(!vs.length && !meets.length) continue;
     html += '<div class="day"><h3>' + esc(jpDate(date)) + '</h3>';
@@ -1624,7 +1630,7 @@ function renderPlan(){
       if(chg && chg.consent === false) tags += '<span class="tag red">要連絡（了承前）</span> <button class="btn small sub" data-consent="' + esc(chg.moveId) + '">了承を得た</button>';
       var key = v.date + '|' + v.time + '|' + v.no;
       html += '<div class="visit' + (v.cx ? ' cx' : '') + '"><div class="t">' + esc(v.time) + '</div>' +
-        '<div class="who">' + (red ? '<b style="color:var(--red)">' + esc(dnn(v.no)) + '</b>' : esc(dnn(v.no))) + ' <small>' + esc(v.area) + '・' + lampFor(v.staffId) + esc(staffName(v.staffId)) + '</small><br>' + tags + '</div>' +
+        '<div class="who">' + (red ? '<b style="color:var(--red)">' + esc(dnn(v.no)) + '</b>' : esc(dnn(v.no))) + ' <small>' + esc(v.area) + '・' + lampFor(v.staffId) + esc(staffName(v.staffId)) + (withLabel(v) ? '・<b style="color:var(--amber)">' + esc(withLabel(v)) + '</b>' : '') + '</small><br>' + tags + '</div>' +
         '<div class="act">' + (v.cx ? '<button class="btn small amber" data-gap="' + esc(key) + '">空いた時間の案</button>' : '') + '</div></div>' +
         (v.cx ? '<div class="gap" id="gap-' + esc(key.replace(/[^0-9A-Za-z]/g,'_')) + '" style="display:none"></div>' : '');
     });
@@ -4325,9 +4331,13 @@ function mhApproach(users, cap, need0, P, goal){
 function mhDay(k){
   var w = workRule(), st = toMin(w.start), en = toMin(w.end), lb = 12 * 60, le = lb + (w.brk || 0), ie = en - (w.inner || 0);
   var amLen = Math.max(0, lb - st), pmLen = Math.max(0, ie - le), tot = amLen + pmLen;
-  var am = tot ? Math.round(k * amLen / tot) : 0; am = Math.min(am, k); var pm = k - am;
+  /* 2026-11-03 改め：午前から詰めて入れ、午前に入りきらない分を午後へ（訪問＋ふだんの移動 で何件入るかで数える）。両方に入りきらないときは、これまでどおり長さの割合で分ける */
+  var one = w.visit + w.mvStd, capAm = Math.floor(amLen / one), capPm = Math.floor(pmLen / one);
+  var am = Math.min(k, capAm), pm = k - am;
+  if(pm > capPm){ am = tot ? Math.round(k * amLen / tot) : 0; am = Math.min(am, k); pm = k - am; }
   var out = [];
-  var put = function(a, len, c){ if(!c) return; var L = len / c; for(var i = 0; i < c; i++){ var s0 = Math.round(a + L * i), vs = s0 + Math.min(w.mvMax, Math.max(0, L - w.visit)); out.push({ k:'v', a:vs, b:vs + w.visit, gap:Math.max(0, Math.round(L - w.visit)) }); } };
+  /* 2026-11-03 改め：訪問は、前の訪問の終わりから ふだんの移動（mvStd・最長 mvMax）をあけて詰めて並べる。間が取れないときだけ、入る長さまで縮める */
+  var put = function(a, len, c){ if(!c) return; var tr = Math.min(w.mvStd, Math.max(0, len / c - w.visit)); for(var i = 0; i < c; i++){ var vs = Math.round(a + tr + i * (w.visit + tr)); out.push({ k:'v', a:vs, b:vs + w.visit, gap:Math.round(tr) }); } };
   put(st, amLen, am);
   if(w.brk) out.push({ k:'brk', a:lb, b:le });
   put(le, pmLen, pm);
@@ -5241,7 +5251,11 @@ $('bk_in').addEventListener('change', function(){
    日付の決まった祝日・第n月曜の祝日・春分日と秋分日（国立天文台の公表に一致する近似式）・振替休日（第3条第2項）・国民の休日（同第3項）。 */
 function workRule(){
   var w = (lj(K.settings, {}) || {}).work || {};
-  return { target: +w.target || 8, mvMin: (w.mvMin == null ? 5 : +w.mvMin), mvMax: +w.mvMax || 15, visit: +w.visit || 30,
+  /* 2026-11-03（宏史さんの指示「移動の時間を最長でも20分にしてください。通常は10分〜15分です」）：移動の目安は最短10分・最長20分。
+     この日より前に保存した移動の目安（最短5分・最長15分のころ）は使わず、10分・20分にする（mv20 の印が付いた保存だけを使う）。
+     予定を組むときの移動は、ふだんの目安＝最短と最長の真ん中（15分）で取る */
+  var mvOK = w.mv20 === 1, mn = mvOK && w.mvMin != null ? +w.mvMin : 10, mx = mvOK && +w.mvMax ? +w.mvMax : 20;
+  return { target: +w.target || 8, mvMin: mn, mvMax: mx, mvStd: Math.round((mn + mx) / 2), visit: +w.visit || 30,
     start: w.start || '09:00', end: w.end || '18:00', brk: (w.brk == null ? 60 : +w.brk), inner: (w.inner == null ? 60 : +w.inner) };
 }
 function toMin(t){ var m = String(t || '').match(/^(\d{1,2}):(\d{2})/); return m ? (+m[1]) * 60 + (+m[2]) : null; }
@@ -5333,12 +5347,12 @@ function renderWorkRule(){
   var w = workRule();
   $('wr_target').value = w.target; $('wr_mvmin').value = w.mvMin; $('wr_mvmax').value = w.mvMax; $('wr_visit').value = w.visit;
   $('wr_start').value = w.start; $('wr_end').value = w.end; $('wr_brk').value = w.brk; $('wr_inner').value = w.inner;
-  var span = (toMin(w.end) - toMin(w.start)) - w.brk, svc = w.target * w.visit, mv = w.target * w.mvMax, rest = span - svc - mv - w.inner;
-  $('wr_calc').textContent = '常勤の1日：勤務 ' + minLabel(span) + '（' + w.start + '〜' + w.end + '、休憩 ' + w.brk + '分を除く）＝ サービス ' + minLabel(svc) + '（' + w.target + '件×' + w.visit + '分）＋ 移動 ' + minLabel(mv) + '（' + w.target + '件×' + w.mvMax + '分）＋ 内勤 ' + minLabel(w.inner) + '＋ 予備 ' + minLabel(rest) + '。';
+  var span = (toMin(w.end) - toMin(w.start)) - w.brk, svc = w.target * w.visit, mv = w.target * w.mvStd, rest = span - svc - mv - w.inner;
+  $('wr_calc').textContent = '常勤の1日：勤務 ' + minLabel(span) + '（' + w.start + '〜' + w.end + '、休憩 ' + w.brk + '分を除く）＝ サービス ' + minLabel(svc) + '（' + w.target + '件×' + w.visit + '分）＋ 移動 ' + minLabel(mv) + '（' + w.target + '件×' + w.mvStd + '分）＋ 内勤 ' + minLabel(w.inner) + '＋ 予備 ' + minLabel(rest) + '。';
 }
 $('wr_save').addEventListener('click', function(){
   var cur = lj(K.settings, {}) || {};
-  var w = { target:Math.max(1, +$('wr_target').value || 8), mvMin:Math.max(0, +$('wr_mvmin').value || 0), mvMax:Math.max(1, +$('wr_mvmax').value || 15), visit:Math.max(10, +$('wr_visit').value || 30),
+  var w = { mv20:1, target:Math.max(1, +$('wr_target').value || 8), mvMin:Math.max(0, +$('wr_mvmin').value || 0), mvMax:Math.max(1, +$('wr_mvmax').value || 20), visit:Math.max(10, +$('wr_visit').value || 30),
     start:$('wr_start').value || '09:00', end:$('wr_end').value || '18:00', brk:Math.max(0, +$('wr_brk').value || 0), inner:Math.max(0, +$('wr_inner').value || 0) };
   if(w.mvMin > w.mvMax){ $('wr_msg').textContent = '移動の目安は、最短を最長より小さくしてください。'; return; }
   saveSettings(Object.assign({}, cur, { work:w })); $('wr_msg').textContent = '保存しました。'; refreshAll();
@@ -5378,7 +5392,7 @@ function renderAttend(){
     });
     var wd = Object.keys(workDays).length, full = s.emp === '常勤';
     var span = (toMin(w.end) - toMin(w.start)) - w.brk;
-    var inner = full ? wd * span - svc - rs.length * w.mvMax : null;
+    var inner = full ? wd * span - svc - rs.length * w.mvStd : null;
     return '<tr><td>' + esc(s.name) + (s.dept && s.dept !== D().name ? '<br><small class="muted">兼務</small>' : '') + '<br><small class="muted">' + esc(s.emp || '') + '</small></td>' +
       '<td>' + wd + '日<br><small class="muted">予定 ' + plan + '日</small>' + (clash ? '<br><small style="color:var(--red)">休みの日の予定 ' + clash + '日</small>' : '') + '</td>' +
       '<td>' + rs.length + '件<br><small class="muted">1日平均 ' + (wd ? (rs.length / wd).toFixed(1) : '0') + '件（目標 ' + w.target + '件）</small></td>' +
@@ -5386,14 +5400,14 @@ function renderAttend(){
       '<td>' + (over ? '<b style="color:var(--red)">' + over + '件</b><br><small class="muted">超過 計' + minLabel(overMin) + '</small>' : '0件') + '</td>' +
       '<td><small>公休 ' + offN['公休'] + '日・祝日 ' + offN['祝日'] + '日・届け ' + offN['届け'] + '日</small></td>' +
       '<td>' + (miss.length ? '<b style="color:var(--red)">' + miss.length + '日</b><br><small class="muted">' + esc(miss.join('、')) + '</small>' : '0日') + '</td>' +
-      '<td>' + (full ? minLabel(inner) + '<br><small class="muted">勤務 ' + minLabel(wd * span) + '−サービス−移動 ' + minLabel(rs.length * w.mvMax) + '</small>' : '<small class="muted">常勤のみ</small>') + '</td></tr>';
+      '<td>' + (full ? minLabel(inner) + '<br><small class="muted">勤務 ' + minLabel(wd * span) + '−サービス−移動 ' + minLabel(rs.length * w.mvStd) + '</small>' : '<small class="muted">常勤のみ</small>') + '</td></tr>';
   });
   box.innerHTML = people.length ? '<table><tr><th>職員</th><th>出勤日数<br><small>（看護記録のある日）</small></th><th>訪問の件数</th><th>サービス時間</th><th>' + w.visit + '分を超えた訪問</th><th>休み</th><th>予定があって記録の無い日</th><th>内勤と予備の見積もり<br><small>（常勤）</small></th></tr>' + rows.join('') + '</table>'
     : '<p class="empty">この部署の職員がまだいません。</p>';
   var ok = Object.keys(odd);
   $('adAttendNote').innerHTML = (recs.length ? '' : 'この月の看護記録はまだ取り込まれていません。') +
     (ok.length ? '<br><b style="color:var(--red)">職員名簿の呼び名と合わない看護師名の記録</b>：' + ok.map(function(k){ return esc(k) + '（' + odd[k] + '件）'; }).join('、') + '。名簿の呼び名か、看護記録の看護師名の書き方をそろえてください。' : '') +
-    '<br>移動は「勤務の決まり」の最長の目安（' + w.mvMax + '分）×件数で見積もっています。予定があって記録の無い日は、今日までの日で、休みでない日だけを数えます。';
+    '<br>移動は、ふだんの目安（最短と最長の真ん中・' + w.mvStd + '分）×件数で見積もっています。予定があって記録の無い日は、今日までの日で、休みでない日だけを数えます。';
 }
 
 /* ============================================================
@@ -5773,8 +5787,8 @@ function mdResult(){
 function mdCourse(n){
   var w = workRule(), t = toMin(w.start), end = toMin(w.end), noon = 12 * 60, brk = !(w.brk > 0), out = [];
   for(var i = 0; i < n; i++){
-    if(!brk && t + w.mvMax + w.visit > noon){ out.push({ k:'brk', a:t, b:t + w.brk }); t += w.brk; brk = true; }
-    out.push({ k:'mv', a:t, b:t + w.mvMax }); t += w.mvMax;
+    if(!brk && t + w.mvStd + w.visit > noon){ out.push({ k:'brk', a:t, b:t + w.brk }); t += w.brk; brk = true; }
+    out.push({ k:'mv', a:t, b:t + w.mvStd }); t += w.mvStd;
     out.push({ k:'v', a:t, b:t + w.visit }); t += w.visit;
   }
   if(!brk){ out.push({ k:'brk', a:t, b:t + w.brk }); t += w.brk; }
@@ -5826,7 +5840,7 @@ function mdDay(){
     h += '<p class="muted" style="margin-top:6px">空き枠 ' + free + '件。' + (Object.keys(areas).length ? 'この日に回っている地区：' + Object.keys(areas).map(function(a){ return esc(a) + '（' + areas[a] + '件）'; }).join('、') + '。空き枠には、同じ地区の' + D().client + 'を入れると移動が短くなります。' : '') + '</p>';
     if(left.length) h += '<p style="color:var(--red);margin-top:4px">モデルの件数を超えて入っている予定：' + left.map(function(v){ return esc(v.time) + ' ' + esc(dnn(v.no)); }).join('、') + '</p>';
   }
-  h += '<p class="muted" style="margin-top:6px">移動は「勤務の決まり」の最長の目安（' + w.mvMax + '分）で取っています。訪問先どうしの距離はまだ見ていません。お昼をまたぐ前に休憩（' + w.brk + '分）、最後に内勤（' + w.inner + '分）を入れ、退勤までの残りを予備にしています。</p></div>';
+  h += '<p class="muted" style="margin-top:6px">移動は、ふだんの目安（' + w.mvStd + '分・最長 ' + w.mvMax + '分）で取っています。訪問先どうしの距離はまだ見ていません。お昼をまたぐ前に休憩（' + w.brk + '分）、最後に内勤（' + w.inner + '分）を入れ、退勤までの残りを予備にしています。</p></div>';
   box.innerHTML = h;
 }
 $('md_save').addEventListener('click', function(){ mdStore(mdCollect()); $('md_msg').textContent = '保存して計算しました。'; renderModel(); });
@@ -5850,7 +5864,7 @@ function evSheet(s, kind, m){
     '<table class="meta"><tr><th>職員</th><td>' + esc(s.name) + '（' + esc(s.emp || '') + '）</td><th>作成日</th><td>' + esc(jpDate(today)) + '</td></tr></table>' +
     '<h2>1　この月のモデルコース</h2>' +
     '<p>1日 <b>' + r.c.n + '件</b>・出る曜日 <b>' + (r.c.days.map(function(d){ return DOW[+d]; }).join('・') || 'なし') + '</b>（公休・祝日休みの日は除く）。この月のモデルは <b>' + r.model + '件</b> です。</p>' +
-    (r.c.n ? '<p class="sm">1日の流れ：' + esc(w.start) + ' 出発 → 訪問 ' + r.c.n + '件（1件 ' + w.visit + '分・移動は1回 ' + w.mvMax + '分まで）' + (visits.length ? '・最後の訪問の終わり ' + hm(visits[visits.length - 1].b) : '') + ' → 休憩 ' + w.brk + '分 → 内勤 ' + w.inner + '分 → ' + esc(w.end) + ' 退勤' + (cs.over > 0 ? '　<b class="red">（この件数では退勤時刻を ' + minLabel(cs.over) + ' 超えます）</b>' : '') + '</p>' : '') +
+    (r.c.n ? '<p class="sm">1日の流れ：' + esc(w.start) + ' 出発 → 訪問 ' + r.c.n + '件（1件 ' + w.visit + '分・移動は1回 ' + w.mvStd + '分、最長 ' + w.mvMax + '分）' + (visits.length ? '・最後の訪問の終わり ' + hm(visits[visits.length - 1].b) : '') + ' → 休憩 ' + w.brk + '分 → 内勤 ' + w.inner + '分 → ' + esc(w.end) + ' 退勤' + (cs.over > 0 ? '　<b class="red">（この件数では退勤時刻を ' + minLabel(cs.over) + ' 超えます）</b>' : '') + '</p>' : '') +
     '<h2>2　モデルに対する数字</h2>' +
     '<table class="nums"><tr><th></th><th class="n">件数</th>' + (mgr ? '<th class="n">売上にすると</th>' : '') + '</tr>' +
       row('モデルコース', r.model + '件', mgr ? yenOf(r.model) : null) +
@@ -6141,12 +6155,15 @@ function ssWireBulk(){
     var date = $('sb_date').value, sid = $('sb_staff').value, wid = $('sb_with').value;
     if(!sid){ $('sb_msg').textContent = '担当を選んでください。'; return; }
     if(wid === sid){ $('sb_msg').textContent = '担当と同行が同じ人です。'; return; }
-    var vs = visitsOn(date).filter(function(v){ return !v.cx; });
+    var all0 = visitsOn(date), vs = all0.filter(function(v){ return !v.cx; });
     if(!vs.length){ $('sb_msg').textContent = 'この日の訪問がありません。'; return; }
     if(!confirm(jpDate(date) + 'の訪問 ' + vs.length + '件を、担当 ' + staffName(sid) + (wid ? '・同行 ' + staffName(wid) : '') + 'に付け替えます。よろしいですか。')) return;
     var me = dev().me || '', now = nowLocal(), bid = uid(), rec = date <= ymd(new Date());
-    var ev = events().filter(function(e){ return !(e.type === 'move' && vs.some(function(v){ return v.od === e.date && v.no === e.patientNo && v.ot === e.fromTime; })); });
-    vs.forEach(function(v){ var r = { id:uid(), type:'move', patientNo:v.no, date:v.od, fromTime:v.ot, toTime:v.time, toStaff:sid, toWith:wid, by:me, consent:true, created:now, bulk:bid };
+    var ev = events().filter(function(e){ return !(e.type === 'move' && all0.some(function(v){ return v.od === e.date && v.no === e.patientNo && v.ot === e.fromTime; })); });
+    /* キャンセルの入った訪問も、担当はそのままで記録に残す（その日の表から消えないように） */
+    all0.filter(function(v){ return v.cx; }).forEach(function(v){ var r = { id:uid(), type:'move', patientNo:v.no, date:v.od, fromTime:v.ot, toTime:v.time, toStaff:v.staffId, toWith:v.withId || '', by:me, consent:true, created:now, bulk:bid, min:v.min || 30, fromStaff:v.staffId, wid:v.wid || '' };
+      if(v.od !== date) r.toDate = date; if(rec) r.rec = true; ev.push(r); });
+    vs.forEach(function(v){ var r = { id:uid(), type:'move', patientNo:v.no, date:v.od, fromTime:v.ot, toTime:v.time, toStaff:sid, toWith:wid, by:me, consent:true, created:now, bulk:bid, min:v.min || 30, fromStaff:v.moved ? v.moved.fromStaff : v.staffId, wid:v.wid || '' };
       if(v.od !== date) r.toDate = date; if(rec) r.rec = true; ev.push(r); });
     [sid, wid].filter(function(x){ return x && !isTbd(x); }).forEach(function(x){ if(!ev.some(function(e){ return e.type === 'work' && e.staffId === x && e.date === date; })) ev.push({ id:uid(), type:'work', staffId:x, date:date, by:me, at:now, bulk:bid }); });
     saveEvents(ev);
@@ -6270,8 +6287,10 @@ function ssMoveDo(v, sid, date, weeklyToo){
     var ev0 = events().filter(function(e){ return !(e.type === 'move' && e.patientNo === v.no && e.fromTime === v.ot && e.date >= ymd(new Date())); }); saveEvents(ev0);
   } else {
     if(date < ymd(new Date())){ alert('今日より前の日へは動かせません。'); return; }
+    var old0 = events().filter(function(e){ return e.type === 'move' && e.date === v.od && e.patientNo === v.no && e.fromTime === v.ot; })[0];
     var ev = events().filter(function(e){ return !(e.type === 'move' && e.date === v.od && e.patientNo === v.no && e.fromTime === v.ot); });
     var rec = { id:uid(), type:'move', patientNo:v.no, date:v.od, fromTime:v.ot, toTime:t, toStaff:sid, by:me, consent:ok, created:now };
+    if(old0 && old0.bulk){ ['bulk','rec','min','fromStaff','wid','toWith'].forEach(function(k){ if(old0[k] != null) rec[k] = old0[k]; }); }   /* 2026-11-03：まとめて付け替えた訪問は、動かしても付け替えの記録のまま */
     if(date !== v.od) rec.toDate = date;
     ev.push(rec); saveEvents(ev);
   }

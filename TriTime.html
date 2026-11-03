@@ -1398,6 +1398,15 @@ function instTwo(t){
 }
 function isTwoP(p){ return !!p && (p.team === '2名' || instTwo(p.instPoint)); }
 function twoWhy(p){ return !p ? '' : p.team === '2名' ? '利用者登録の体制' : instTwo(p.instPoint) ? '指示書の複数名訪問' : ''; }
+/* 2026-11-03（宏史さん「仮スケジュール表と本スケジュール表に、利用者と利用者の間の移動時間の表示もないのはなぜ」）：
+   訪問と訪問の間に、移動の時間を出す。間が移動の目安（最短〜最長）に入っていれば「移動 ◯分」、最長より長ければ「移動 ◯分・空き ◯分」（移動はふだんの目安）、
+   最短より短ければ「移動 ◯分（短い）」。訪問先どうしの実際の距離ではなく、予定の時刻の間から出す */
+function mvGapHTML(g, wr){
+  if(g == null || isNaN(g)) return '';
+  if(g < wr.mvMin) return '<span class="ssGap short">移動 ' + Math.max(0, g) + '分（短い）</span>';
+  if(g <= wr.mvMax) return '<span class="ssGap">移動 ' + g + '分</span>';
+  return '<span class="ssGap">移動 ' + wr.mvStd + '分・空き ' + minLabel(g - wr.mvStd) + '</span>';
+}
 function withLabel(v){
   if(v.withId) return isTbd(v.withId) ? '2名・同行' + staffName(v.withId) : '2名・同行 ' + (staffName(v.withId) || '名簿にいない職員');
   return isTwoP(patient(v.no)) ? '2名・同行未定' : '';
@@ -4793,7 +4802,7 @@ function auMake(course){
       var rw = rows.filter(function(v){ return v.withId === x.s.id && v.staffId !== x.s.id && v.dow === d; });
       if(why && !r.length && !rw.length) return '<td class="mhOff">休（' + esc(why) + '）</td>';
       var cp = capOf(x, d), empty = course ? Math.max(0, cp - r.length) : 0;
-      return '<td' + (why ? ' class="mhOff"' : '') + '>' + (why ? '<div class="sm" style="font-weight:700">休（' + esc(why) + '）</div>' : '') + r.map(function(v){ return '<span class="ssChip"' + (why ? ' style="border:1px solid var(--red);color:var(--red)"' : '') + '>' + esc(v.time) + ' ' + esc(dnn(v.no)) + (why ? ' <b>要調整</b>' : '') + '<br><small>' + esc(v.area) + (v.wish ? '・<span' + (toMin(v.wish) != null ? (Math.abs(toMin(v.wish) - toMin(v.time)) > 30 ? ' style="color:var(--red)"' : '') : ((v.wish === '午前') !== (toMin(v.time) < 720) ? ' style="color:var(--red)"' : '')) + '>希望 ' + esc(v.wish) + '</span>' : '') + (withLabel(v) ? '<br><b style="color:var(--amber)">' + esc(withLabel(v)) + '</b>' : '') + '</small></span>'; }).join('') +
+      return '<td' + (why ? ' class="mhOff"' : '') + '>' + (why ? '<div class="sm" style="font-weight:700">休（' + esc(why) + '）</div>' : '') + r.map(function(v, i){ var pv = r[i - 1], wr0 = workRule(); return (pv ? mvGapHTML(toMin(v.time) - (toMin(pv.time) + (+pv.min || wr0.visit)), wr0) : '') + '<span class="ssChip"' + (why ? ' style="border:1px solid var(--red);color:var(--red)"' : '') + '>' + esc(v.time) + ' ' + esc(dnn(v.no)) + (why ? ' <b>要調整</b>' : '') + '<br><small>' + esc(v.area) + (v.wish ? '・<span' + (toMin(v.wish) != null ? (Math.abs(toMin(v.wish) - toMin(v.time)) > 30 ? ' style="color:var(--red)"' : '') : ((v.wish === '午前') !== (toMin(v.time) < 720) ? ' style="color:var(--red)"' : '')) + '>希望 ' + esc(v.wish) + '</span>' : '') + (withLabel(v) ? '<br><b style="color:var(--amber)">' + esc(withLabel(v)) + '</b>' : '') + '</small></span>'; }).join('') +
         rw.map(function(v){ return '<span class="ssChip" style="background:#fff7ec;border:1px solid var(--amber)">' + esc(v.time) + ' <b>同行</b> ' + esc(dnn(v.no)) + '<br><small>担当 ' + esc(staffName(v.staffId)) + '・' + esc(v.area) + '</small></span>'; }).join('') + (empty ? '<span class="ssChip" style="background:#fff;border:1px dashed var(--amber);color:var(--amber)">空き ' + empty + '件</span>' : '') + '<div class="mhCnt' + (r.length >= cp ? ' full' : '') + '">' + r.length + (course ? '／' + cp : '') + '件</div></td>';
     }).join('');
     return '<tr><th class="who">' + esc(x.s.name) + '<small>' + (x.full ? '常勤' : '非常勤') + (course ? '・コースの枠' : '・1日 ' + x.cap + '件まで') + '</small><small>週 ' + w + '件</small></th>' + cells + '</tr>';
@@ -6128,7 +6137,7 @@ function ssRender(){
         ms.map(function(m){ return '<span class="ssChip meet">' + esc(m.mTime || '') + ' 会議</span>'; }).join('') +
         vs.map(function(v){
           var gap = '';
-          if(!v.cx && prev){ var g = toMin(v.time) - (toMin(prev.time) + (+prev.min || 30)); if(g < wr.mvMin) gap = '<span class="ssGap short">間 ' + g + '分（短い）</span>'; else if(g > wr.mvMax) gap = '<span class="ssGap">空き ' + minLabel(g) + '</span>'; }
+          if(!v.cx && prev){ var g = toMin(v.time) - (toMin(prev.time) + (+prev.min || 30)); gap = mvGapHTML(g, wr); }
           if(!v.cx) prev = v;
           var warn = why && !v.cx;
           var vk = ''; if(!v.cx && !v.asWith && date >= today){ vk = date + '|' + v.no + '|' + v.time; SS_V[vk] = v; }

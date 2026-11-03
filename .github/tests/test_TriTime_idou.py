@@ -2,7 +2,8 @@
 """トライタイムの移動の時間の試験（2026-11-03・宏史さん「移動の時間を最長でも20分にしてください。通常は10分〜15分です」）
 ・移動の目安は最短10分・最長20分（前に最短5分・最長15分で保存してあっても、10分・20分になる）
 ・自動の振り分けは、訪問と訪問の間を ふだんの移動（最短と最長の真ん中＝15分）で詰めて組む（9:15 → 10:00 → 10:45）
-・勤務の決まりで保存し直した値は、そのまま使う"""
+・勤務の決まりで保存し直した値は、そのまま使う
+・自動の振り分けの表と仮スケジュール表の、訪問と訪問の間に「移動 15分」が出る（宏史さん「移動時間の表示もないのはなぜ」）"""
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 from tt_helper import Screen, run
@@ -40,6 +41,14 @@ async def test(p):
         au = await pg.inner_text('#au_out table')
         for t in ['09:15', '10:00', '10:45']:
             assert t in au.replace('\n', ' '), '訪問の間が15分で詰めて組まれません（%s が無い）：%s' % (t, au[:300])
+        assert au.count('移動 15分') == 2, '自動の振り分けの表に、訪問の間の「移動 15分」が出ません（宏史さん「移動時間の表示もない」）：' + au[:300]
+        # 週間予定に入れると、仮スケジュール表にも訪問の間の移動が出る
+        await pg.evaluate("window.confirm = function(){ return true; }")
+        await pg.click('#au_apply'); await pg.wait_for_timeout(500)
+        await pg.evaluate("document.getElementById('ssTab').click()"); await pg.wait_for_timeout(600)
+        ss = await pg.inner_text('#ssBody table')
+        assert ss.count('移動 15分') == 2, '仮スケジュール表に、訪問の間の「移動 15分」が出ません：' + ss[:300]
+        await pg.evaluate("document.body.classList.remove('ssOpen')")
         await s.shot('#cardAuto', 'TriTime_idou.png')
         # 勤務の決まりで保存し直した値（最短10・最長30）は、そのまま使う
         await pg.evaluate("document.querySelector('#tabs button[data-tab=setup]').click()"); await pg.wait_for_timeout(400)

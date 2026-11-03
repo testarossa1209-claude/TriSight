@@ -190,6 +190,18 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   .ssBody td.off{background:repeating-linear-gradient(135deg,#f1eee7 0 6px,#e9e5dc 6px 12px)}
   .ssOff{display:block;font-size:11px;color:var(--muted);font-weight:700;margin-bottom:3px}
   .ssChip.warn{background:#fbecea;color:var(--red);outline:1.5px solid var(--red)}
+  /* 2026-11-03：仮スケジュール表で札を引っぱって動かす・待機者リスト・翌月の申告（宏史さんの指示） */
+  .ssBody .ssChip.dg{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+  .ssGhost{position:fixed;z-index:9500;pointer-events:none;opacity:.88;transform:translate(-50%,-60%);box-shadow:0 6px 18px rgba(16,36,59,.3);border-radius:6px;background:#fff;padding:3px 6px;font-size:12px}
+  .ssBody td.ssOver{outline:3px dashed var(--amber);outline-offset:-3px;background:#fff6e5}
+  .ssBody tr.sb th.who{background:#f1f5ef}
+  .ssMv{position:fixed;inset:0;z-index:9400;background:rgba(10,20,40,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+  .ssMv .card{max-width:500px;width:100%;margin:0;max-height:90vh;overflow:auto}
+  .avCal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:6px 0;max-width:460px}
+  .avCal b{font-size:12px;text-align:center;color:var(--muted)}
+  .avCal button{font:inherit;font-size:13px;padding:8px 0;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer}
+  .avCal button.on{background:var(--ok,#2f7d4f);color:#fff;border-color:transparent;font-weight:700}
+  .avCal button.we{color:var(--red)}.avCal button.on.we{color:#fff}
   .ssGap{display:block;font-size:10.5px;line-height:1.3;margin:-1px 0 3px;color:var(--muted)}
   .ssGap.short{color:var(--red);font-weight:700}
   .ssCnt{display:block;font-size:10.5px;color:var(--muted);text-align:right}
@@ -274,7 +286,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-02</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-03</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -319,7 +331,7 @@ function tsPortalAsk(){
   if(!app){ var n = document.getElementById('iriguchiNote'); if(n) n.style.display = ''; }
 })();
 </script>
-<div id="alertBox"></div>
+<div id="alertBox"></div><div id="avAlert"></div>
 <div class="labBar" id="labBar" style="display:none">この端末はいま<b>実験機</b>です。ここで入れた記録は、この端末の中だけにあり、ほかの端末へは送られません。</div>
 <div class="note" id="shareNote"></div>
 <div class="note" id="presBar" style="display:none;background:#eef7f0;border-color:#9fd3ad"></div>
@@ -1044,6 +1056,16 @@ function tsPortalAsk(){
     <div style="margin-top:8px"><label class="f">兼務する部署（所属部門のほかに横断して入る部署に印を付けます）</label><div id="st_sub" class="btns" style="margin-top:2px"></div></div>
     <div style="margin-top:8px"><label class="f">公休の曜日（毎週決まって休む曜日に印を付けます）</label><div id="st_off" class="btns" style="margin-top:2px"></div>
       <label style="display:inline-flex;align-items:center;gap:6px;margin-top:4px"><input type="checkbox" id="st_hol"> 祝日は休み（祝日に訪問が入ると「要調整」の印が出ます）</label></div>
+    <!-- 2026-11-03：非常勤の兼業・不定期・待機（宏史さんの指示「非常勤でもモデルコースに組み込めない人は、待機者リストに入れて、調整が難しいときにお願いする」） -->
+    <div id="st_hjBox" style="margin-top:8px;padding:10px 12px;border:1px solid var(--paper-deep);border-radius:10px;background:#fbf8f2;display:none">
+      <b>非常勤の勤め方</b>
+      <div class="row">
+        <div><label class="f" for="st_kengyo">兼業先（ほかに勤めている病院など）</label><input type="text" id="st_kengyo" maxlength="80" placeholder="例：○○病院（病棟）"></div>
+        <div><label class="f" for="st_meyasu">こちらに出られる目安</label><input type="text" id="st_meyasu" maxlength="120" placeholder="例：本業が休みの日の午後"></div>
+      </div>
+      <label style="display:block;margin-top:6px"><input type="checkbox" id="st_irreg"> 不定期（毎月、月末までに翌月の出られる日を申告してもらう）</label>
+      <label style="display:block;margin-top:4px"><input type="checkbox" id="st_standby"> 待機（モデルコース・自動の振り分けに入れない。調整が難しいときにお願いする人として、仮スケジュール表の待機者リストに出す）</label>
+    </div>
     <input type="hidden" id="st_id"><div class="btns"><button class="btn" id="st_add">追加する</button><button class="btn sub" id="st_cancel" style="display:none">直すのをやめる</button></div>
     <div class="tbl-scroll" id="stList"></div>
   </div>
@@ -1059,6 +1081,25 @@ function tsPortalAsk(){
     <div class="btns"><button class="btn" id="lv_add">休みを入れる</button><span class="muted" id="lv_msg"></span></div>
     <div class="row"><div><label class="f" for="lv_month">表示する月</label><input type="month" id="lv_month" style="max-width:220px"></div></div>
     <div class="tbl-scroll" id="lvList"></div>
+  </div>
+  <!-- 2026-11-03：非常勤の翌月の予定の申告（宏史さんの指示「非常勤の人は全員、翌月の予定を自身の端末か、事務局からのメールで入力して返してもらう」） -->
+  <div class="card" id="cardAvail">
+    <h2>翌月の予定の申告（非常勤）</h2>
+    <p class="lead">非常勤の人全員に、翌月の出られる日を出してもらいます。毎週決まった曜日で入っている人は、いつもの曜日を確かめて直します。兼業先の休みが決まっていない人（名簿で「不定期」の人）は、月末までに出してもらいます。申告のある月は申告の日だけが出勤日になり、仮スケジュール表ではそれ以外の日が灰色（申告外）になります。</p>
+    <div class="row">
+      <div><label class="f" for="av_ym">申告する月</label><input type="month" id="av_ym"></div>
+      <div><label class="f" for="av_staff">職員（非常勤）</label><select id="av_staff"></select></div>
+    </div>
+    <p class="muted sm" id="av_info"></p>
+    <div class="btns"><button type="button" class="btn sub small" id="av_fill">いつもの曜日で埋める</button><button type="button" class="btn sub small" id="av_clear">全部外す</button></div>
+    <div class="avCal" id="av_cal"></div>
+    <div class="btns"><button type="button" class="btn" id="av_save">この内容で申告する</button><span class="muted" id="av_msg"></span></div>
+    <details style="margin-top:8px" id="av_replyBox"><summary>メールの返信から読み込む（事務局）</summary>
+      <p class="muted sm">お願いのメールに「○」を付けて返信してもらったら、その返信の文をここに貼り付けて「読み込む」を押すと、○の付いた日に印が入ります。中身を見てから「この内容で申告する」を押してください。</p>
+      <textarea id="av_reply" style="min-height:90px" placeholder="12/1(火)：○&#10;12/2(水)：&#10;12/3(木)：○"></textarea>
+      <div class="btns"><button type="button" class="btn sub small" id="av_parse">読み込む</button></div>
+    </details>
+    <div id="av_list" style="margin-top:12px"></div>
   </div>
   <div class="card" id="cardWorkRule">
     <h2>勤務の決まり</h2>
@@ -1446,13 +1487,22 @@ function cancelOf(no, date, time){
 /* 予定の組み換え（2026-10-27）：キャンセルで空いた時間に、同じ日の後の訪問を前倒しした記録（type "move"）。
    週間予定は書き換えず、その日だけ時刻と担当を置き換える。取り消しは move の記録を消すだけ。 */
 function movesOn(date){ return events().filter(function(e){ return e.type === 'move' && e.date === date; }); }
+/* 2026-11-03：仮スケジュール表で別の日へ動かした訪問（move に toDate が付いたもの）は、元の日から外し、動かした先の日に出す。
+   どの訪問からも、元の週間予定の1件（od＝元の日・ot＝元の時刻・wid＝週間予定の番号）をたどれるようにする */
 function visitsOn(date){
-  var d = parseYmd(date); var w = d.getDay(), mv = movesOn(date);
-  return weekly().filter(function(v){ return +v.dow === w; }).map(function(v){
+  var d = parseYmd(date); var w = d.getDay(), mv = movesOn(date), wk = weekly();
+  var out = wk.filter(function(v){ return +v.dow === w; }).map(function(v){
     var p = patient(v.no) || {}, m = mv.filter(function(e){ return e.patientNo === v.no && e.fromTime === v.time; })[0];
+    if(m && m.toDate && m.toDate !== date) return null;
     var t = m ? m.toTime : v.time, sid = m ? (m.toStaff || v.staffId) : v.staffId;
-    return { date:date, time:t, min:v.min, no:v.no, area:p.area || '', staffId:sid, withId:v.withId || '', cx:cancelOf(v.no, date, t), moved:m ? { id:m.id, from:v.time, fromStaff:v.staffId } : null };
-  }).sort(function(a,b){ return a.time < b.time ? -1 : 1; });
+    return { date:date, time:t, min:v.min, no:v.no, area:p.area || '', staffId:sid, withId:v.withId || '', cx:cancelOf(v.no, date, t), moved:m ? { id:m.id, from:v.time, fromStaff:v.staffId } : null, od:date, ot:v.time, wid:v.id };
+  }).filter(Boolean);
+  events().filter(function(e){ return e.type === 'move' && e.toDate === date && e.date !== date; }).forEach(function(m){
+    var ow = (parseYmd(m.date) || new Date(0)).getDay(), v = wk.filter(function(x){ return +x.dow === ow && x.no === m.patientNo && x.time === m.fromTime; })[0];
+    if(!v) return; var p = patient(v.no) || {}, sid = m.toStaff || v.staffId;
+    out.push({ date:date, time:m.toTime, min:v.min, no:v.no, area:p.area || '', staffId:sid, withId:v.withId || '', cx:cancelOf(v.no, date, m.toTime), moved:{ id:m.id, from:jpDate(m.date) + ' ' + v.time, fromStaff:v.staffId }, od:m.date, ot:v.time, wid:v.id });
+  });
+  return out.sort(function(a,b){ return a.time < b.time ? -1 : 1; });
 }
 /* 2026-11-01：予定が変わった訪問の「事務所へ連絡」（宏史さんの指示）。
    キャンセルや組み換えで今日以降の予定が変わったら、予定表の契約書番号を赤くし、担当の職員の端末に小窓を出す。
@@ -2792,7 +2842,7 @@ function renderSetup(){
   var st = staff();
   $('stList').innerHTML = st.length ? '<table><tr><th>呼び名</th><th>職種</th><th>所属部門</th><th>兼務する部署</th><th>公休</th><th>雇用形態</th><th>管理者</th><th>連絡先</th><th></th></tr>' + st.map(function(s){
     var sd = staffDept(s);
-    return '<tr' + (staffOrphan(s) ? ' style="background:#fdecea"' : staffOut(s) ? ' style="opacity:.55"' : '') + '><td>' + esc(s.name) + (s.post ? ' <small class="muted">（' + esc(s.post) + '）</small>' : '') + (staffOrphan(s) ? ' <span class="tag red">名簿にいません</span>' : '') + (s.out ? ' <span class="tag gray">' + (staffOut(s) ? '退職' : '退職予定') + ' ' + esc(jpDate(s.out)) + '</span>' : '') + '</td><td>' + esc(jobOf(s) || '未設定') + '</td><td>' + esc(s.dept || (sd ? sd.name + '（職種から）' : '未設定')) + '</td><td>' + esc(staffSub(s).join('・')) + '</td><td>' + esc([1,2,3,4,5,6,0].filter(function(w){ return staffOff(s).indexOf(String(w)) >= 0; }).map(function(w){ return DOW[w]; }).join('・') + (s.holOff ? (staffOff(s).length ? '・' : '') + '祝日' : '')) + '</td><td>' + esc(s.emp || '未設定') + '</td><td>' + (isMgr(s) ? '管理者' : '') + '</td><td class="sm">' + (s.tel ? '<a href="tel:' + esc(s.tel.replace(/-/g, '')) + '">' + esc(s.tel) + '</a>' : '<span class="muted">携帯 なし</span>') + '<br>' + (s.mail ? esc(s.mail) : '<span class="muted">メール なし</span>') + '</td><td><button class="btn small sub" data-stedit="' + esc(s.id) + '">直す</button> <button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
+    return '<tr' + (staffOrphan(s) ? ' style="background:#fdecea"' : staffOut(s) ? ' style="opacity:.55"' : '') + '><td>' + esc(s.name) + (s.post ? ' <small class="muted">（' + esc(s.post) + '）</small>' : '') + (staffOrphan(s) ? ' <span class="tag red">名簿にいません</span>' : '') + (s.out ? ' <span class="tag gray">' + (staffOut(s) ? '退職' : '退職予定') + ' ' + esc(jpDate(s.out)) + '</span>' : '') + '</td><td>' + esc(jobOf(s) || '未設定') + '</td><td>' + esc(s.dept || (sd ? sd.name + '（職種から）' : '未設定')) + '</td><td>' + esc(staffSub(s).join('・')) + '</td><td>' + esc([1,2,3,4,5,6,0].filter(function(w){ return staffOff(s).indexOf(String(w)) >= 0; }).map(function(w){ return DOW[w]; }).join('・') + (s.holOff ? (staffOff(s).length ? '・' : '') + '祝日' : '')) + '</td><td>' + esc(s.emp || '未設定') + (isIrreg(s) ? '<br><span class="tag gray">不定期</span>' : '') + (isStandby(s) ? '<br><span class="tag gray">待機</span>' : '') + (s.emp === '非常勤' && s.kengyo ? '<br><small class="muted">兼業：' + esc(s.kengyo) + '</small>' : '') + '</td><td>' + (isMgr(s) ? '管理者' : '') + '</td><td class="sm">' + (s.tel ? '<a href="tel:' + esc(s.tel.replace(/-/g, '')) + '">' + esc(s.tel) + '</a>' : '<span class="muted">携帯 なし</span>') + '<br>' + (s.mail ? esc(s.mail) : '<span class="muted">メール なし</span>') + '</td><td><button class="btn small sub" data-stedit="' + esc(s.id) + '">直す</button> <button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
   }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var wk = weekly().slice().sort(function(a,b){ var da = (+a.dow + 6) % 7, db = (+b.dow + 6) % 7; return da - db || (a.time < b.time ? -1 : 1); });
   $('wkList').innerHTML = wk.length ? '<table><tr><th>曜日</th><th>時刻</th><th>契約書番号</th><th>担当</th><th></th></tr>' + wk.map(function(v){
@@ -2804,7 +2854,7 @@ function renderSetup(){
 
   $('stList').querySelectorAll('[data-stedit]').forEach(function(b){ b.addEventListener('click', function(){
     var s = staff().filter(function(x){ return x.id === b.getAttribute('data-stedit'); })[0]; if(!s) return;
-    $('st_id').value = s.id; $('st_name').value = s.name; (function(){ var sj = $('st_job'), jv = jobOf(s) || 'その他'; [].slice.call(sj.querySelectorAll('option[data-old]')).forEach(function(o){ o.remove(); }); if(![].some.call(sj.options, function(o){ return o.value === jv; })){ var op = document.createElement('option'); op.textContent = jv; op.dataset.old = '1'; sj.appendChild(op); } sj.value = jv; })(); $('st_dept').value = s.dept || ''; stSubDraw(staffSub(s)); stOffDraw(staffOff(s)); $('st_hol').checked = !!s.holOff; $('st_emp').value = s.emp || '常勤'; $('st_mgr').checked = isMgr(s);
+    $('st_id').value = s.id; $('st_name').value = s.name; (function(){ var sj = $('st_job'), jv = jobOf(s) || 'その他'; [].slice.call(sj.querySelectorAll('option[data-old]')).forEach(function(o){ o.remove(); }); if(![].some.call(sj.options, function(o){ return o.value === jv; })){ var op = document.createElement('option'); op.textContent = jv; op.dataset.old = '1'; sj.appendChild(op); } sj.value = jv; })(); $('st_dept').value = s.dept || ''; stSubDraw(staffSub(s)); stOffDraw(staffOff(s)); $('st_hol').checked = !!s.holOff; $('st_kengyo').value = s.kengyo || ''; $('st_meyasu').value = s.meyasu || ''; $('st_irreg').checked = !!s.irreg; $('st_standby').checked = !!s.standby; stHjShow(); $('st_emp').value = s.emp || '常勤'; $('st_mgr').checked = isMgr(s);
     $('st_out').value = s.out || ''; $('st_sex').value = s.sex || ''; $('st_tel').value = s.tel || ''; $('st_mail').value = s.mail || ''; $('st_add').textContent = 'この内容で直す'; $('st_cancel').style.display = ''; $('st_name').focus();
   }); });
   $('stList').querySelectorAll('[data-stdel]').forEach(function(b){ b.addEventListener('click', function(){
@@ -3979,6 +4029,7 @@ function applyDept(){
   /* 職員の端末：名簿・設定は、共有と合言葉の枠だけを出す。仮スケジュール表（予定を組む人の道具）も出さない */
   var stf = (R.lv === 'staff');
   ['cardStaff','cardLeave','cardWorkRule','cardBackup','cardFolder'].forEach(function(id){ show(id, !stf); });
+  show('cardAvail', !stf || !!(R.s && R.s.emp === '非常勤'));   /* 2026-11-03：非常勤の職員は自分の端末で翌月の予定を申告する */
   if(window.TT_LAB) show('cardFolder', false);
   show('cardLab', !!window.TT_DEV || (R.lv === 'all' && !dev().share));
   labRender();
@@ -4353,7 +4404,7 @@ function scMake(){
 /* 部署の職員で1週間を組む：常勤は1日5〜8件、非常勤は1日3〜6件。全員を段階1から始め、週の目標に届くまで常勤から順に1件ずつ上げる。
    出る曜日は名簿の「公休」（休みの曜日）から。休みの曜日が無い人は月〜金で置く。 */
 function mhStaffPlan(N){
-  var list = deptStaff().filter(function(s){ return !staffOrphan(s) && NURSE_JOBS.indexOf(jobOf(s)) >= 0; }).map(function(s){
+  var list = deptStaff().filter(function(s){ return !staffOrphan(s) && !isStandby(s) && NURSE_JOBS.indexOf(jobOf(s)) >= 0; }).map(function(s){
     var off = staffOff(s), full = s.emp !== '非常勤', set = off.length > 0;
     var days = MD_DOW.filter(function(d){ return set ? off.indexOf(d) < 0 : ['1','2','3','4','5'].indexOf(d) >= 0; });
     return { s:s, full:full, days:days, guess:!set, lo:full ? 5 : 3, hi:full ? 8 : 6, n:full ? 5 : 3 };
@@ -4499,7 +4550,7 @@ function auCombos(days, f){ var out = []; (function rec(i, a){ if(a.length === f
 function auMake(course){
   if(course && course.type) course = null;
   var capF = Math.max(1, +$('au_full').value || 5), capP = Math.max(1, +$('au_part').value || 3);
-  var ST = deptStaff().filter(function(s){ return !staffOrphan(s) && NURSE_JOBS.indexOf(jobOf(s)) >= 0; }).map(function(s){
+  var ST = deptStaff().filter(function(s){ return !staffOrphan(s) && !isStandby(s) && NURSE_JOBS.indexOf(jobOf(s)) >= 0; }).map(function(s){
     var off = staffOff(s), days = MD_DOW.filter(function(d){ return off.length ? off.indexOf(d) < 0 : ['1','2','3','4','5'].indexOf(d) >= 0; });
     var x = { s:s, full:s.emp !== '非常勤', days:days, cap:s.emp !== '非常勤' ? capF : capP, load:{}, areas:{} };
     if(course){ var pd = course.caps[s.id] || {}; x.capDay = pd; x.days = days.filter(function(d){ return (pd[d] || 0) > 0; }); }
@@ -4765,7 +4816,7 @@ function stSubDraw(cur){
 function stSubVal(){ var main = $('st_dept').value; return [].slice.call($('st_sub').querySelectorAll('[data-stsub]:checked')).map(function(c){ return c.getAttribute('data-stsub'); }).filter(function(x){ return x !== main; }); }
 $('st_dept').addEventListener('change', function(){ stSubDraw(stSubVal()); });
 stSubDraw([]);
-function stFormReset(){ $('st_id').value = ''; $('st_name').value = ''; $('st_sex').value = ''; $('st_mgr').checked = false; $('st_out').value = ''; $('st_tel').value = ''; $('st_mail').value = ''; stSubDraw([]); if($('st_off')) stOffDraw([]); if($('st_hol')) $('st_hol').checked = $('st_emp').value === '常勤'; $('st_add').textContent = '追加する'; $('st_cancel').style.display = 'none'; }
+function stFormReset(){ $('st_id').value = ''; $('st_name').value = ''; $('st_sex').value = ''; $('st_mgr').checked = false; $('st_out').value = ''; $('st_tel').value = ''; $('st_mail').value = ''; $('st_kengyo').value = ''; $('st_meyasu').value = ''; $('st_irreg').checked = false; $('st_standby').checked = false; stSubDraw([]); if($('st_off')) stOffDraw([]); if($('st_hol')) $('st_hol').checked = $('st_emp').value === '常勤'; $('st_add').textContent = '追加する'; $('st_cancel').style.display = 'none'; }
 $('st_cancel').addEventListener('click', stFormReset);
 $('st_add').addEventListener('click', function(){
   var n = $('st_name').value.trim(); if(!n){ $('st_name').focus(); return; }
@@ -4774,6 +4825,9 @@ $('st_add').addEventListener('click', function(){
   if(mail && !mailOk(mail)){ alert('メールアドレスの形が合いません。name@example.jp のように、＠の入った形で入れてください。'); $('st_mail').focus(); return; }
   var a = staff(), id = $('st_id').value;
   var rec = { name:n, job:$('st_job').value, dept:$('st_dept').value, sub:stSubVal(), off:stOffVal(), holOff:$('st_hol').checked, emp:$('st_emp').value, mgr:$('st_mgr').checked, out:$('st_out').value || '', sex:$('st_sex').value, tel:tel, mail:mail };
+  /* 2026-11-03：非常勤の勤め方（常勤に直したときは消す） */
+  var hj = rec.emp === '非常勤';
+  rec.kengyo = hj ? $('st_kengyo').value.trim() : ''; rec.meyasu = hj ? $('st_meyasu').value.trim() : ''; rec.irreg = hj && $('st_irreg').checked; rec.standby = hj && $('st_standby').checked;
   var cur = id ? a.filter(function(x){ return x.id === id; })[0] : null;
   var sid = cur ? cur.id : uid();
   if(cur){ delete cur.role; Object.assign(cur, rec); } else { a.push(Object.assign({ id:sid }, rec)); }
@@ -5023,12 +5077,21 @@ function jpHolidays(y){
 }
 function holidayName(date){ var d = parseYmd(date); return d ? (jpHolidays(d.getFullYear())[date] || '') : ''; }
 function staffOff(s){ return Array.isArray(s && s.off) ? s.off.map(String) : []; }
+/* 2026-11-03：非常勤の勤め方（宏史さんの指示）。待機＝モデルコース・自動の振り分けに入れない人。不定期＝毎月、翌月の出られる日を申告する人 */
+function isStandby(s){ return !!(s && s.emp === '非常勤' && s.standby); }
+function isIrreg(s){ return !!(s && s.emp === '非常勤' && s.irreg); }
+/* 翌月の予定の申告（type "avail"）：その月に出られる日（日付の一覧）。同じ人・同じ月は新しいものだけを使う。
+   申告のある月は、申告の日だけが出勤日（公休・祝日の決まりより申告を先に見る）。申告の無い月は、これまでどおり公休の曜日で見る */
+function availRec(sid, ym){ var a = events().filter(function(e){ return e.type === 'avail' && e.staffId === sid && e.ym === ym; }); return a.length ? a[a.length - 1] : null; }
+function availOf(sid, ym){ var r = availRec(sid, ym); return r ? (r.days || []) : null; }
+function ymNext(){ var d = new Date(); return ymd(new Date(d.getFullYear(), d.getMonth() + 1, 1)).slice(0, 7); }
 function leaves(){ return events().filter(function(e){ return e.type === 'leave'; }); }
 /* その日、その職員が休みか。休みなら理由（公休／祝日／届けの種類）を返す */
 function offWhy(staffId, date){
   var s = staff().filter(function(x){ return x.id === staffId; })[0]; if(!s) return '';
   if(staffOut(s, date)) return '退職';
   var lv = leaves().filter(function(e){ return e.staffId === staffId && e.date === date; })[0]; if(lv) return lv.kind || '休み';
+  if(s.emp === '非常勤'){ var av = availOf(s.id, date.slice(0, 7)); if(av) return av.indexOf(date) >= 0 ? '' : '申告外'; }
   var d = parseYmd(date); if(d && staffOff(s).indexOf(String(d.getDay())) >= 0) return '公休';
   if(s.holOff && holidayName(date)) return '祝日';
   return '';
@@ -5039,7 +5102,9 @@ function stOffDraw(cur){
 }
 function stOffVal(){ return [].slice.call($('st_off').querySelectorAll('[data-stoff]:checked')).map(function(c){ return c.getAttribute('data-stoff'); }); }
 stOffDraw([]);
-$('st_emp').addEventListener('change', function(){ if(!$('st_id').value) $('st_hol').checked = $('st_emp').value === '常勤'; });
+$('st_emp').addEventListener('change', function(){ if(!$('st_id').value) $('st_hol').checked = $('st_emp').value === '常勤'; stHjShow(); });
+function stHjShow(){ $('st_hjBox').style.display = $('st_emp').value === '非常勤' ? '' : 'none'; }
+stHjShow();
 $('st_hol').checked = true;
 /* 休みの届け */
 function renderLeave(){
@@ -5189,7 +5254,7 @@ function mgMigrate(){
   Object.keys(mod).forEach(function(k){ var x = mod[k] || {}; nm[k] = { staff:x.staff, prices:x.prices, kanri:x.kanri, tanka:x.tanka, shogu:x.shogu }; });
   var n = Object.assign({}, cur, { model:nm }); delete n.modelSnap; saveSettings(n);
 }
-function mdPeople(){ return deptStaff().filter(function(s){ return jobOf(s) !== '事務局'; }); }
+function mdPeople(){ return deptStaff().filter(function(s){ return jobOf(s) !== '事務局' && !isStandby(s); }); }   /* 2026-11-03：待機の人はモデルコースに入れない */
 function mdWeekOf(sid){ return weekly().filter(function(v){ return v.staffId === sid || v.withId === sid; }); }   /* 同行（2名体制）も、その職員の時間を使う訪問として数える */
 /* 初めの値：常勤＝勤務の決まりの目標件数・公休以外の曜日。非常勤＝いまの週間予定（いちばん多い日の件数・予定のある曜日） */
 function mdDef(s){
@@ -5814,33 +5879,140 @@ function ssRender(){
       if(!v.cx) cnt[k] = (cnt[k] || 0) + 1;
     });
   });
-  var rows = people.map(function(p){ return { id:p.id, name:p.name, sub: p.dept && p.dept !== d.name ? '兼務' : '' }; });
+  /* 2026-11-03：待機の人（調整が難しいときにお願いする非常勤）は表のいちばん下にまとめる */
+  var rows = people.filter(function(p){ return !isStandby(p); }).map(function(p){ return { id:p.id, name:p.name, sub: p.dept && p.dept !== d.name ? '兼務' : '' }; })
+    .concat(people.filter(isStandby).map(function(p){ return { id:p.id, name:p.name, sub:'待機', sb:true }; }));
   if(extra) rows.push({ id:'_none', name:'担当が名簿にない', sub:'' });
+  SS_V = {};
   if(!rows.length){ $('ssBody').innerHTML = '<p class="empty">この部署の職員がまだいません。「名簿・設定」の「職員」で所属部門か兼務する部署を付けると、ここに行が並びます。</p>'; return; }
   var h = '<table><thead><tr><th class="who">担当</th>' + days.map(function(x){ var w = parseYmd(x).getDay(); var hn = holidayName(x); return '<th class="' + (w === 0 || w === 6 || hn ? 'we' : '') + '">' + DOW[w] + '<br><small>' + (parseYmd(x).getMonth()+1) + '/' + parseYmd(x).getDate() + '</small>' + (hn ? '<small class="hol">' + esc(hn) + '</small>' : '') + '</th>'; }).join('') + '</tr></thead><tbody>';
   rows.forEach(function(r){
     var wk = 0; days.forEach(function(date){ ((cells[r.id] || {})[date] || []).forEach(function(v){ if(!v.cx) wk += (+v.min || 30); }); });
-    h += '<tr><th class="who">' + esc(r.name) + '<small>' + (r.sub ? r.sub + '・' : '') + '週 ' + (cnt[r.id] || 0) + '件・' + minLabel(wk) + '</small></th>';
+    h += '<tr' + (r.sb ? ' class="sb"' : '') + '><th class="who">' + esc(r.name) + '<small>' + (r.sub ? r.sub + '・' : '') + '週 ' + (cnt[r.id] || 0) + '件・' + minLabel(wk) + '</small></th>';
     days.forEach(function(date){
       var vs = (cells[r.id] || {})[date] || [];
       var ms = r.id === '_none' ? [] : events().filter(function(e){ return e.type === 'note' && e.kind === '会議の案内' && e.mDate === date && isNoteFor(e, r.id); });
       var why = r.id === '_none' ? '' : offWhy(r.id, date), wr = workRule(), prev = null, live2 = vs.filter(function(v){ return !v.cx; }).length;
       var cls = [date === today ? 'today' : '', why ? 'off' : ''].filter(Boolean).join(' ');
-      h += '<td' + (cls ? ' class="' + cls + '"' : '') + '>' + (why ? '<span class="ssOff">休（' + esc(why) + '）</span>' : '') +
+      h += '<td' + (cls ? ' class="' + cls + '"' : '') + (r.id === '_none' ? '' : ' data-sid="' + esc(r.id) + '" data-date="' + date + '"') + '>' + (why ? '<span class="ssOff">休（' + esc(why) + '）</span>' : '') +
         ms.map(function(m){ return '<span class="ssChip meet">' + esc(m.mTime || '') + ' 会議</span>'; }).join('') +
         vs.map(function(v){
           var gap = '';
           if(!v.cx && prev){ var g = toMin(v.time) - (toMin(prev.time) + (+prev.min || 30)); if(g < wr.mvMin) gap = '<span class="ssGap short">間 ' + g + '分（短い）</span>'; else if(g > wr.mvMax) gap = '<span class="ssGap">空き ' + minLabel(g) + '</span>'; }
           if(!v.cx) prev = v;
           var warn = why && !v.cx;
-          return gap + '<span class="ssChip' + (v.cx ? ' cx' : '') + (warn ? ' warn' : '') + '" title="' + esc(v.time + ' ' + dnn(v.no) + '（' + v.min + '分）' + (v.area ? '・' + v.area : '') + (v.cx ? '・キャンセル' : '') + (warn ? '・休みの日の訪問' : '')) + '">' + esc(v.time) + '<br>' + esc(ssShortNo(v.no)) + (nameOf(v.no) ? '<br>' + esc(nameOf(v.no)) : '') + (warn ? '<br>要調整' : '') + '</span>';
+          var vk = ''; if(!v.cx && date >= today){ vk = date + '|' + v.no + '|' + v.time; SS_V[vk] = v; }
+          return gap + '<span class="ssChip' + (v.cx ? ' cx' : '') + (warn ? ' warn' : '') + (vk ? ' dg' : '') + '"' + (vk ? ' data-vk="' + esc(vk) + '"' : '') + ' title="' + esc(v.time + ' ' + dnn(v.no) + '（' + v.min + '分）' + (v.area ? '・' + v.area : '') + (v.cx ? '・キャンセル' : '') + (warn ? '・休みの日の訪問' : '')) + '">' + esc(v.time) + '<br>' + esc(ssShortNo(v.no)) + (nameOf(v.no) ? '<br>' + esc(nameOf(v.no)) : '') + (warn ? '<br>要調整' : '') + '</span>';
         }).join('') + (live2 ? '<span class="ssCnt' + (live2 >= wr.target ? ' ok' : '') + '">' + live2 + '件</span>' : '') + '</td>';
     });
     h += '</tr>';
   });
-  $('ssBody').innerHTML = h + '</tbody></table>';
+  $('ssBody').innerHTML = h + '</tbody></table>' + '<p class="muted sm" style="margin:6px 0 0">今日以降の訪問の札は、指で押さえたまま別の人の升・別の曜日の升へ引っぱると動かせます。</p>' + ssStandbyHTML(days);
+  ssWireStandby();
+}
+/* 2026-11-03：待機者リスト（宏史さんの指示「調整が難しいときにお願いする、本来の非常勤の使い方による待機者リスト」）。
+   名前・兼業先・出られる目安・この週に申告のある日・連絡先を並べ、お願いの連絡を一押しで開く */
+function ssStandbyHTML(days){
+  var sb = deptStaff().filter(isStandby);
+  if(!sb.length) return '<div style="margin-top:12px"><b>待機者リスト</b><p class="muted sm">待機の人はいません。「名簿・設定」の「職員」で、非常勤の人の「待機」に印を付けると、ここに出ます。</p></div>';
+  return '<div style="margin-top:12px"><b>待機者リスト（調整が難しいときにお願いする人）</b><p class="muted sm">モデルコースと自動の振り分けには入れていない人です。お願いするときは、上の表の札をこの人の行の升へ引っぱってから、下のボタンで連絡します。</p>' +
+    '<div class="tbl-scroll"><table class="mhT" style="min-width:0"><thead><tr><th class="who">名前</th><th>兼業先・出られる目安</th><th>この週の申告</th><th>連絡</th></tr></thead><tbody>' +
+    sb.map(function(st){
+      var ok = days.filter(function(x){ var a = availOf(st.id, x.slice(0, 7)); return a && a.indexOf(x) >= 0; });
+      var any = days.some(function(x){ return availOf(st.id, x.slice(0, 7)); });
+      return '<tr><th class="who">' + esc(st.name) + '</th><td>' + esc(st.kengyo || '') + (st.meyasu ? '<br><small class="muted">' + esc(st.meyasu) + '</small>' : '') + '</td><td>' +
+        (ok.length ? esc(ok.map(function(x){ return (parseYmd(x).getMonth() + 1) + '/' + parseYmd(x).getDate() + '(' + DOW[parseYmd(x).getDay()] + ')'; }).join('・')) : (any ? '出られる日の申告なし' : '<span class="muted">申告がまだです</span>')) +
+        '</td><td><button type="button" class="btn small sub" data-sbask="' + esc(st.id) + '">お願いの連絡</button></td></tr>';
+    }).join('') + '</tbody></table></div><div id="sbAskBox"></div></div>';
+}
+function ssWireStandby(){
+  $('ssBody').querySelectorAll('[data-sbask]').forEach(function(b){ b.onclick = function(){
+    var id = b.getAttribute('data-sbask'), wk = $('ssWeek').textContent;
+    $('sbAskBox').innerHTML = pnHTML([{ to:[id], label:staffName(id) + 'さんへのお願い', subj:'【ノア】訪問のお願い（' + wk + '）',
+      text:staffName(id) + 'さん\n' + wk + 'の週で、訪問をお願いできる日がありましたら事務所までご連絡ください。日時と契約書番号はトライタイムでご確認いただけます。' }]) || '<p class="muted sm">この人の携帯電話番号・メールアドレスが名簿にありません。</p>';
+  }; });
 }
 $('ssTab').addEventListener('click', function(){ ssOpen(true); });
+/* ---- 仮スケジュール表の札を引っぱって動かす（2026-11-03・宏史さんの指示「一覧を見て、この利用者はこちらへ動かす」「移動の時間は再計算し、担当者に連絡」）----
+   指（マウス）で札を押さえて別の升へ離すと、小窓で「この日だけ動かす」か「毎週の予定を変える」かを選ぶ。
+   この日だけ＝組み換えの記録（type "move"。別の日へは toDate を付ける）を残し、週間予定は書き換えない。毎週＝週間予定の1件の曜日・担当・時刻を書き換える。
+   どちらも、移った先の日の前後の訪問との間を計算し直して小窓に出し、元の担当と新しい担当へ連絡板の知らせと携帯・メールの一押しを出す。
+   この日だけの動きは、11/1の「スケジュールが変わりました」の小窓と赤い番号の仕組みにそのまま乗る。 */
+var SS_V = {}, ssDrag = null;
+document.addEventListener('pointerdown', function(e){
+  var c = e.target && e.target.closest && e.target.closest('#ssBody .ssChip.dg'); if(!c) return;
+  ssDrag = { vk:c.getAttribute('data-vk'), x:e.clientX, y:e.clientY, on:false, el:c, ghost:null, over:null, pid:e.pointerId };
+});
+document.addEventListener('pointermove', function(e){
+  if(!ssDrag) return;
+  if(!ssDrag.on){ if(Math.abs(e.clientX - ssDrag.x) + Math.abs(e.clientY - ssDrag.y) < 8) return;
+    ssDrag.on = true; var g = document.createElement('div'); g.className = 'ssGhost'; g.innerHTML = ssDrag.el.innerHTML; document.body.appendChild(g); ssDrag.ghost = g; }
+  e.preventDefault();
+  ssDrag.ghost.style.left = e.clientX + 'px'; ssDrag.ghost.style.top = e.clientY + 'px';
+  var t = document.elementFromPoint(e.clientX, e.clientY), td = t && t.closest ? t.closest('#ssBody td[data-sid]') : null;
+  if(ssDrag.over && ssDrag.over !== td) ssDrag.over.classList.remove('ssOver');
+  if(td) td.classList.add('ssOver'); ssDrag.over = td;
+}, { passive:false });
+function ssDragEnd(e, cancel){
+  if(!ssDrag) return; var dg = ssDrag; ssDrag = null;
+  if(dg.ghost) dg.ghost.remove(); if(dg.over) dg.over.classList.remove('ssOver');
+  if(cancel || !dg.on || !dg.over) return;
+  var v = SS_V[dg.vk]; if(!v) return;
+  var sid = dg.over.getAttribute('data-sid'), date = dg.over.getAttribute('data-date');
+  if(sid === v.staffId && date === v.date) return;
+  ssMoveAsk(v, sid, date);
+}
+document.addEventListener('pointerup', function(e){ ssDragEnd(e, false); });
+document.addEventListener('pointercancel', function(e){ ssDragEnd(e, true); });
+/* その人のその日の訪問の並びから、前後の訪問との間（移動とゆとりの分）を文にする */
+function ssGapText(sid, date){
+  var vs = visitsOn(date).filter(function(v){ return v.staffId === sid && !v.cx; }), wr = workRule(), out = [];
+  for(var i = 1; i < vs.length; i++){ var g = toMin(vs[i].time) - (toMin(vs[i-1].time) + (+vs[i-1].min || 30));
+    out.push(vs[i-1].time + '→' + vs[i].time + '：間 ' + g + '分' + (g < wr.mvMin ? '（短い）' : g > wr.mvMax ? '（空きが長い）' : '')); }
+  return vs.length ? staffName(sid) + 'さんの ' + jpDate(date) + '：' + vs.length + '件' + (out.length ? '（' + out.join('、') + '）' : '') : staffName(sid) + 'さんの ' + jpDate(date) + '：訪問なし';
+}
+function ssMoveAsk(v, sid, date){
+  var box = document.createElement('div'); box.className = 'ssMv'; box.id = 'ssMv';
+  var why = offWhy(sid, date);
+  box.innerHTML = '<div class="card"><h2>訪問を動かす</h2><p><b>' + esc(dnn(v.no)) + '</b><br>' + esc(jpDate(v.date) + ' ' + v.time + '（' + staffName(v.staffId) + '）') + '<br>→ <b>' + esc(jpDate(date) + '（' + staffName(sid) + '）') + '</b></p>' +
+    (why ? '<p style="color:var(--red)">' + esc(staffName(sid)) + 'さんはこの日「' + esc(why) + '」です。動かすと「要調整」の印が付きます。</p>' : '') +
+    '<div class="row"><div><label class="f" for="mv_time">時刻</label><input type="time" id="mv_time" value="' + esc(v.time) + '"></div></div>' +
+    '<label style="display:block;margin:6px 0"><input type="checkbox" id="mv_ok"> 患者さんの了承を得た（まだなら印を付けずに動かすと「要連絡（了承前）」の札が付きます）</label>' +
+    '<div class="btns"><button class="btn amber" type="button" id="mv_once">この日だけ動かす</button><button class="btn" type="button" id="mv_week">毎週の予定を変える</button><button class="btn sub" type="button" id="mv_no">やめる</button></div>' +
+    '<p class="muted sm">「毎週の予定を変える」は、' + esc(DOW[parseYmd(v.od).getDay()]) + '曜の週間予定を、' + esc(DOW[parseYmd(date).getDay()]) + '曜・' + esc(staffName(sid)) + 'さんに書き換えます。</p><div id="mv_res"></div></div>';
+  document.body.appendChild(box);
+  $('mv_no').onclick = function(){ box.remove(); };
+  $('mv_once').onclick = function(){ ssMoveDo(v, sid, date, false); };
+  $('mv_week').onclick = function(){ ssMoveDo(v, sid, date, true); };
+}
+function ssMoveDo(v, sid, date, weeklyToo){
+  var t = $('mv_time').value || v.time, ok = $('mv_ok').checked, me = dev().me || '', now = nowLocal(), from = v.staffId;
+  if(weeklyToo){
+    var wk = live('weekly'), w = wk.filter(function(x){ return x.id === v.wid; })[0]; if(!w){ alert('元の週間予定が見つかりません。'); return; }
+    w.dow = String(parseYmd(date).getDay()); w.staffId = sid; w.time = t; if(w.withId === sid) w.withId = '';
+    saveCol('weekly', wk);
+    var ev0 = events().filter(function(e){ return !(e.type === 'move' && e.patientNo === v.no && e.fromTime === v.ot && e.date >= ymd(new Date())); }); saveEvents(ev0);
+  } else {
+    if(date < ymd(new Date())){ alert('今日より前の日へは動かせません。'); return; }
+    var ev = events().filter(function(e){ return !(e.type === 'move' && e.date === v.od && e.patientNo === v.no && e.fromTime === v.ot); });
+    var rec = { id:uid(), type:'move', patientNo:v.no, date:v.od, fromTime:v.ot, toTime:t, toStaff:sid, by:me, consent:ok, created:now };
+    if(date !== v.od) rec.toDate = date;
+    ev.push(rec); saveEvents(ev);
+  }
+  var head = (weeklyToo ? '【毎週の予定の変更】' : '【予定の組み換え】') + dnn(v.no), what = (weeklyToo ? DOW[parseYmd(v.od).getDay()] + '曜 ' + v.ot + '（' + staffName(from) + '）→ 毎週 ' + DOW[parseYmd(date).getDay()] + '曜 ' + t + '（' + staffName(sid) + '）'
+    : jpDate(v.date) + ' ' + v.time + '（' + staffName(from) + '）→ ' + jpDate(date) + ' ' + t + '（' + staffName(sid) + '）');
+  var to = [from, sid].filter(function(x, i, a){ return x && a.indexOf(x) === i; }), ev2 = events();
+  ev2.push({ id:uid(), type:'note', kind:'予定の組み換え', from:me, to:to, title:head + '　' + what, body:(ok ? '患者さんの了承あり。' : '患者さんの了承はまだです。') + '　' + ssGapText(sid, date) + (from !== sid ? '　' + ssGapText(from, v.date) : ''), mDate:'', mTime:'', created:now, date:ymd(new Date()) });
+  saveEvents(ev2);
+  /* 携帯・メールの文面には、患者さんの氏名を入れない（11/2の決め）。日時と契約書番号だけ */
+  var txt = (weeklyToo ? '毎週の訪問の予定が変わりました。' : '訪問の予定が変わりました。') + '\n' + dn(v.no) + '：' + (weeklyToo ? DOW[parseYmd(v.od).getDay()] + '曜 ' + v.ot + ' → ' + DOW[parseYmd(date).getDay()] + '曜 ' + t : jpDate(v.date) + ' ' + v.time + ' → ' + jpDate(date) + ' ' + t) + '\n担当：' + staffName(sid) + '\nトライタイムで確認し、事務所へ連絡をお願いします。';
+  $('mv_res').innerHTML = '<div class="judge free" style="margin-top:8px"><b>動かしました。</b><br>' + esc(what) + '<br><small>移動の間を計算し直しました：' + esc(ssGapText(sid, date)) + (from !== sid || v.date !== date ? '／' + esc(ssGapText(from, v.date)) : '') + '</small><br><small>連絡板に、' + esc(to.map(staffName).join('・')) + 'さんあての知らせを残しました。</small></div>' +
+    pnHTML([{ to:to, label:to.map(staffName).join('・') + 'さんへ', subj:'【ノア】訪問の予定が変わりました', text:txt }]) +
+    '<div class="btns" style="margin-top:8px"><button class="btn sub" type="button" id="mv_close">閉じる</button></div>';
+  ['mv_once','mv_week'].forEach(function(id){ $(id).disabled = true; });
+  $('mv_close').onclick = function(){ var b = $('ssMv'); if(b) b.remove(); };
+  refreshAll();
+}
 /* ---- 情報の引き出し（2026-10-29・宏史さんの発案「画面を変えたり、情報を探したりする必要がなくなる」）----
    右端のつまみから、対照表と使い方を、いまの画面のまま横に開く。 */
 function sideOpen(k, on){
@@ -5895,7 +6067,10 @@ var MN_MARKS = [
     ['灰色の斜線の升', 'その職員の休みの日です。'],
     ['赤枠の「要調整」', '休みの日に訪問が入っています。'],
     ['訪問の間の赤字・「空き」', '訪問と訪問の間が、移動の目安より短いと赤字、長いと「空き」と出ます。'],
-    ['升の右下の数字', 'その日の訪問の件数です。目標の件数に届くと緑になります。']
+    ['升の右下の数字', 'その日の訪問の件数です。目標の件数に届くと緑になります。'],
+    ['休（申告外）', '非常勤の人が、その月の予定の申告で出られる日にしていない日です（「名簿・設定」の「翌月の予定の申告」）。'],
+    ['札を引っぱって動かす', '今日以降の訪問の札を、指で押さえたまま別の人の升・別の曜日の升へ離すと、「この日だけ動かす」か「毎週の予定を変える」かを選べます。動かすと、移動の間を計算し直し、元の担当と新しい担当へ連絡板の知らせと、携帯・メールの一押しを出します。'],
+    ['待機・待機者リスト', '名簿で「待機」に印を付けた非常勤の人は、表のいちばん下にまとめて出ます。モデルコースと自動の振り分けには入りません。調整が難しいときは、札をこの人の升へ動かし、待機者リストの「お願いの連絡」で頼みます。']
   ]],
   ['自動の振り分け（「予定」の2つ目の枠）の見方', [
     ['希望 ○○（赤字）', '組まれた時刻・時間帯が、本人の希望とずれています。'],
@@ -5936,7 +6111,92 @@ $('ssPrev').addEventListener('click', function(){ ssStart = addDays(ssStart || m
 $('ssNext').addEventListener('click', function(){ ssStart = addDays(ssStart || mondayOf(new Date()), 7); ssRender(); });
 $('ssThis').addEventListener('click', function(){ ssStart = mondayOf(new Date()); ssRender(); });
 var refreshAll0 = refreshAll;
-refreshAll = function(){ refreshAll0(); renderLeave(); renderWorkRule(); renderAttend(); ssRender(); };
+/* ---- 翌月の予定の申告（2026-11-03・宏史さんの指示）----
+   非常勤の人の、ある月の出られる日を type "avail" で持つ（同じ人・同じ月は新しいものを使う）。
+   本人の端末では本人の分だけ、事務局・管理者の端末では部署の非常勤全員の分を入れられる。
+   お願いの連絡は、日付の並んだ予定表を本文にしたメール（携帯へはSMS）を一押しで開く。返信の「○」は貼り付けて読み込める。
+   月末が近い（20日以降）のに翌月の申告がまだの人がいると、事務局・管理者の画面の上に知らせを出す。 */
+var avSel = {};
+function avPeople(){ var R = role(), a = deptStaff().filter(function(x){ return x.emp === '非常勤' && !staffOrphan(x); }); return R.lv === 'staff' ? a.filter(function(x){ return R.s && x.id === R.s.id; }) : a; }
+function avDays(ym){ var y = +ym.slice(0, 4), m = +ym.slice(5, 7), out = []; for(var d = new Date(y, m - 1, 1); d.getMonth() === m - 1; d = addDays(d, 1)) out.push(ymd(d)); return out; }
+function avUsual(st, ym){ var off = staffOff(st); return avDays(ym).filter(function(x){ var w = String(parseYmd(x).getDay()); return off.length ? off.indexOf(w) < 0 : ['1','2','3','4','5'].indexOf(w) >= 0; }).filter(function(x){ return !(st.holOff && holidayName(x)); }); }
+function avLoad(){ var sid = $('av_staff').value, ym = $('av_ym').value; avSel = {}; if(!sid || !ym) return; var a = availOf(sid, ym); (a || []).forEach(function(x){ avSel[x] = 1; }); }
+function avCalDraw(){
+  var ym = $('av_ym').value, sid = $('av_staff').value, st = staff().filter(function(x){ return x.id === sid; })[0];
+  if(!ym || !st){ $('av_cal').innerHTML = ''; $('av_info').textContent = avPeople().length ? '' : 'この部署に非常勤の職員がいません。'; return; }
+  var ds = avDays(ym), pad = (parseYmd(ds[0]).getDay() + 6) % 7, h = ['月','火','水','木','金','土','日'].map(function(x){ return '<b>' + x + '</b>'; }).join('');
+  for(var i = 0; i < pad; i++) h += '<span></span>';
+  ds.forEach(function(x){ var w = parseYmd(x).getDay(), hn = holidayName(x); h += '<button type="button" data-avd="' + x + '" class="' + (avSel[x] ? 'on' : '') + (w === 0 || w === 6 || hn ? ' we' : '') + '" title="' + esc(hn || '') + '">' + parseYmd(x).getDate() + '</button>'; });
+  $('av_cal').innerHTML = h;
+  $('av_cal').querySelectorAll('[data-avd]').forEach(function(b){ b.onclick = function(){ var x = b.getAttribute('data-avd'); if(avSel[x]) delete avSel[x]; else avSel[x] = 1; b.classList.toggle('on', !!avSel[x]); avInfo(); }; });
+  avInfo();
+}
+function avInfo(){
+  var ym = $('av_ym').value, sid = $('av_staff').value, st = staff().filter(function(x){ return x.id === sid; })[0]; if(!st) return;
+  var r = availRec(sid, ym), n = Object.keys(avSel).length;
+  $('av_info').textContent = st.name + 'さん（' + (isStandby(st) ? '待機' : isIrreg(st) ? '不定期' : '毎週決まった曜日') + (st.kengyo ? '・兼業：' + st.kengyo : '') + '）　' + (r ? '申告済み（' + String(r.at || '').replace('T', ' ').slice(0, 16) + '）' : 'まだ申告がありません') + '　いま選んでいる日：' + n + '日';
+}
+function avText(st, ym){
+  var y = +ym.slice(0, 4), m = +ym.slice(5, 7), usual = isIrreg(st) || isStandby(st) ? [] : avUsual(st, ym), cur = availOf(st.id, ym);
+  var on = {}; (cur || usual).forEach(function(x){ on[x] = 1; });
+  return st.name + 'さん\n' + y + '年' + m + '月に出勤できる日に「○」を付けて、このメールに返信してください（' + (m === 1 ? 12 : m - 1) + '月末までにお願いします）。' +
+    (usual.length && !cur ? '\nいつもの曜日に○を付けてあります。違う日があれば直してください。' : '') + '\n\n' +
+    avDays(ym).map(function(x){ var d = parseYmd(x); return (d.getMonth() + 1) + '/' + d.getDate() + '(' + DOW[d.getDay()] + ')：' + (on[x] ? '○' : ''); }).join('\n') +
+    '\n\nトライタイムをお使いの方は、「名簿・設定」タブの「翌月の予定の申告」から直接入れることもできます。';
+}
+function avRender(){
+  if(!$('cardAvail')) return;
+  if(!$('av_ym').value) $('av_ym').value = ymNext();
+  var ppl = avPeople(), cur = $('av_staff').value;
+  fillSelect('av_staff', ppl.map(function(x){ return { v:x.id, t:x.name + (isStandby(x) ? '（待機）' : isIrreg(x) ? '（不定期）' : '') }; }), ppl.length > 1 ? '選んでください' : null);
+  if(cur && $('av_staff').value !== cur) avSel = {};
+  if(ppl.length === 1) $('av_staff').value = ppl[0].id;
+  if($('av_staff').value !== (avRender.last || '') || $('av_ym').value !== (avRender.ym || '')){ avLoad(); avRender.last = $('av_staff').value; avRender.ym = $('av_ym').value; }
+  avCalDraw();
+  var R = role(), ym = $('av_ym').value, office = R.lv !== 'staff';
+  $('av_replyBox').style.display = office ? '' : 'none';
+  if(!office){ $('av_list').innerHTML = ''; avAlert(); return; }
+  var not = ppl.filter(function(x){ return !availRec(x.id, ym); });
+  $('av_list').innerHTML = ppl.length ? '<b>' + esc(ym.replace('-', '年').replace(/年0?/, '年')) + '月の申告の状況</b><div class="tbl-scroll"><table><tr><th>名前</th><th>区分</th><th>申告</th><th></th></tr>' + ppl.map(function(x){
+      var r = availRec(x.id, ym);
+      return '<tr><td>' + esc(x.name) + (x.kengyo ? '<br><small class="muted">兼業：' + esc(x.kengyo) + '</small>' : '') + '</td><td>' + (isStandby(x) ? '待機' : isIrreg(x) ? '不定期' : '毎週決まった曜日') + '</td><td>' + (r ? '済み（' + (r.days || []).length + '日）' : '<span style="color:var(--red)">まだ</span>') + '</td><td><button type="button" class="btn small sub" data-avask="' + esc(x.id) + '">お願いの連絡</button></td></tr>';
+    }).join('') + '</table></div>' + (not.length ? '<div class="btns" style="margin-top:6px"><button type="button" class="btn small amber" id="av_askAll">まだの人（' + not.length + '人）にお願いの連絡をする</button></div>' : '') + '<div id="av_askBox"></div>' : '';
+  $('av_list').querySelectorAll('[data-avask]').forEach(function(b){ b.onclick = function(){ var st = staff().filter(function(x){ return x.id === b.getAttribute('data-avask'); })[0]; if(!st) return;
+    $('av_askBox').innerHTML = pnHTML([{ to:[st.id], label:st.name + 'さんへのお願い', subj:'【ノア】' + ym.replace('-', '年').replace(/年0?/, '年') + '月の出勤予定のご提出のお願い', text:avText(st, ym) }]) || '<p class="muted sm">' + esc(st.name) + 'さんの携帯電話番号・メールアドレスが名簿にありません。</p>'; }; });
+  if($('av_askAll')) $('av_askAll').onclick = function(){
+    $('av_askBox').innerHTML = not.map(function(st){ return pnHTML([{ to:[st.id], label:st.name + 'さんへのお願い', subj:'【ノア】' + ym.replace('-', '年').replace(/年0?/, '年') + '月の出勤予定のご提出のお願い', text:avText(st, ym) }]); }).join('') || '<p class="muted sm">連絡先が名簿に入っている人がいません。</p>';
+  };
+  avAlert();
+}
+/* 月末が近い（20日以降）のに翌月の申告がまだの非常勤がいるとき、事務局・管理者の画面の上に知らせる */
+function avAlert(){
+  var box = $('avAlert'); if(!box) return;
+  var R = role(); if(R.lv === 'staff' || R.lv === 'none' || D().kind !== 'visit' || new Date().getDate() < 20){ box.innerHTML = ''; return; }
+  var ym = ymNext(), not = deptStaff().filter(function(x){ return x.emp === '非常勤' && !staffOrphan(x) && !availRec(x.id, ym); });
+  box.innerHTML = not.length ? '<div class="alert"><b>' + esc(ym.replace('-', '年').replace(/年0?/, '年')) + '月の予定の申告がまだの非常勤の人がいます</b>：' + esc(not.map(function(x){ return x.name; }).join('・')) + '<div class="btns"><button type="button" class="btn small" id="avGo">申告の画面を開く</button></div></div>' : '';
+  if($('avGo')) $('avGo').onclick = function(){ document.querySelector('#tabs button[data-tab=setup]').click(); $('av_ym').value = ym; avRender(); if($('cardAvail').scrollIntoView) $('cardAvail').scrollIntoView({ behavior:'smooth', block:'start' }); };
+}
+$('av_ym').addEventListener('change', function(){ avRender.ym = ''; avRender(); });
+$('av_staff').addEventListener('change', function(){ avRender.last = ''; avRender(); });
+$('av_fill').addEventListener('click', function(){ var st = staff().filter(function(x){ return x.id === $('av_staff').value; })[0]; if(!st) return; avSel = {}; avUsual(st, $('av_ym').value).forEach(function(x){ avSel[x] = 1; }); avCalDraw(); });
+$('av_clear').addEventListener('click', function(){ avSel = {}; avCalDraw(); });
+$('av_parse').addEventListener('click', function(){
+  var ym = $('av_ym').value, m = +ym.slice(5, 7), y = +ym.slice(0, 4), n = 0; avSel = {};
+  String($('av_reply').value || '').split(/\r?\n/).forEach(function(line){
+    var t = line.replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }), r = t.match(/(\d{1,2})\s*[\/／月]\s*(\d{1,2})/);
+    if(!r || +r[1] !== m || !/[○〇◯]/.test(t)) return; var x = ymd(new Date(y, m - 1, +r[2])); if(x.slice(0, 7) === ym){ avSel[x] = 1; n++; }
+  });
+  avCalDraw(); $('av_msg').textContent = n ? '返信から ' + n + '日を読み込みました。中身を見てから「この内容で申告する」を押してください。' : '○の付いた日が見つかりませんでした。申告する月と、返信の文を確かめてください。';
+});
+$('av_save').addEventListener('click', function(){
+  var sid = $('av_staff').value, ym = $('av_ym').value; if(!sid || !ym){ alert('申告する月と職員を選んでください。'); return; }
+  var days = Object.keys(avSel).filter(function(x){ return x.slice(0, 7) === ym; }).sort();
+  var ev = events().filter(function(e){ return !(e.type === 'avail' && e.staffId === sid && e.ym === ym); });
+  ev.push({ id:uid(), type:'avail', staffId:sid, ym:ym, days:days, by:dev().me || '', at:nowLocal(), date:ymd(new Date()) });
+  saveEvents(ev); $('av_msg').textContent = staffName(sid) + 'さんの ' + ym.replace('-', '年').replace(/年0?/, '年') + '月の申告を保存しました（' + days.length + '日）。';
+  refreshAll();
+});
+refreshAll = function(){ refreshAll0(); renderLeave(); renderWorkRule(); renderAttend(); avRender(); ssRender(); };
 (function(){ var on = false; try{ on = localStorage.getItem(SS_KEY) === '1'; }catch(e){} if(on) ssOpen(true); })();
 
 nrScanLocal();

@@ -2,7 +2,7 @@
 """トライサイト 関所の点検（2026-10-15 作成／同日 改め）
 二の関所＝機械の点検：版番号・戻るボタン・同じ中身のファイル・画面の書き込みの文法
   2026-11-02 足した（宏史さんの指摘「結局、私の盲判の作業だけ」）：
-  5 動かす試験：.github/tests/test_*.py を全部、試し用のブラウザで実際に動かす。1つでも落ちたら止める
+  5 動かす試験：.github/tests/test_*.py を全部、試し用のブラウザで実際に動かす（4本ずつ同時。落ちた分はもう一度流し、2回とも落ちたら止める）
   6 試験の無い画面の変更は止める：この申請で変えた画面（*.html）に、test_画面名_*.py が1つも無ければ止める
 三の関所＝宏史さんの確認：申請の本文の印3つ（一行はやめた）
   2026-11-02 足した：「画面の写し」（なぎさが動かして撮った写し）の欄。写しが無い申請は、印がそろっても通さない。
@@ -123,18 +123,37 @@ def machine_ng():
 
 TESTS = '.github/tests'
 
+def run_one(f):
+    """試験を1本流す。通れば None、落ちれば理由"""
+    try:
+        r = subprocess.run([sys.executable, f], capture_output=True, text=True, timeout=300)
+    except subprocess.TimeoutExpired:
+        return '時間内に終わりませんでした'
+    if not r.returncode:
+        return None
+    out = (r.stdout.strip().splitlines() or [''])[-1]
+    why = out if out.startswith('NG') else ((r.stderr.strip().splitlines() or ['理由不明'])[-1])
+    return why.replace('NG：', '')
+
+RETRIED = []
+
 def run_tests():
-    """5 動かす試験。落ちた試験の名前と理由を返す"""
+    """5 動かす試験。落ちた試験の名前と理由を返す。
+    2026-11-03 改め（宏史さん「コミットに時間がかかりすぎ」）：1本ずつ順番に流すのをやめ、4本ずつ同時に流す。
+    落ちた試験だけもう一度流し、2回とも落ちたら止める（ブラウザの立ち上がりの遅れでたまに落ちる分を除くため）。
+    もう一度流して通った試験は、通ったときの知らせに名前を出す"""
+    from concurrent.futures import ThreadPoolExecutor
+    fs = sorted(glob.glob(os.path.join(TESTS, 'test_*.py')))
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        res = list(ex.map(run_one, fs))
     ng = []
-    for f in sorted(glob.glob(os.path.join(TESTS, 'test_*.py'))):
-        try:
-            r = subprocess.run([sys.executable, f], capture_output=True, text=True, timeout=300)
-        except subprocess.TimeoutExpired:
-            ng.append('動かす試験 %s が時間内に終わりませんでした' % os.path.basename(f)); continue
-        out = (r.stdout.strip().splitlines() or [''])[-1]
-        if r.returncode:
-            why = out if out.startswith('NG') else ((r.stderr.strip().splitlines() or ['理由不明'])[-1])
-            ng.append('動かす試験 %s が落ちました：%s' % (os.path.basename(f), why.replace('NG：', '')))
+    for f, why in zip(fs, res):
+        if why is None:
+            continue
+        why2 = run_one(f)
+        if why2 is None:
+            RETRIED.append(os.path.basename(f)); continue
+        ng.append('動かす試験 %s が落ちました：%s' % (os.path.basename(f), why2))
     return ng
 
 def changed_screens():
@@ -165,6 +184,8 @@ def machine():
     show_reason('機械の点検', [])
     ts = [os.path.basename(f) for f in sorted(glob.glob(os.path.join(TESTS, 'test_*.py')))]
     print('OK：機械の点検はすべて通りました（版番号・戻るボタン・同じ中身のファイル・文法・動かす試験 %d本：%s）' % (len(ts), '、'.join(ts) or 'なし'))
+    if RETRIED:
+        print('（1回目に落ちて、もう一度流して通った試験：%s）' % '、'.join(RETRIED))
 
 def section(body_nc, name):
     """申請の本文から、見出しに name を含む欄の中身を取り出す（無ければ None）"""

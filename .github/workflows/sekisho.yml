@@ -5,11 +5,17 @@
 # 2026-11-02 足した：機械の点検で、画面を実際に動かす試験（.github/tests）を走らせる。
 # 2026-10-19 改め：知らせ（申請への書き込み＝宏史さんのメールに届く）は、止まったとき・点検できなかったときだけ出す。
 #   通ったとき、および「三」の印がまだ付いていないだけ（確認待ち）のときは出さない。
+# 2026-11-03 改め（宏史さん「コミットに時間がかかりすぎ」）：宏史さんの確認（hiroshi-kakunin）は別の決まり（sekisho_kakunin.yml）へ分けた。
+#   本文の書き換え（印を付ける・なぎさが写しを足す）では、機械の点検をやり直さない。やり直すのは中身（プログラム）が変わったときだけ。
+#   同じ申請で新しい中身が上がったら、古い中身の点検は途中で止める。
 name: sekisho
 on:
   pull_request:
     branches: [main]
-    types: [opened, edited, synchronize, reopened]
+    types: [opened, synchronize, reopened]
+concurrency:
+  group: kikai-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 permissions:
   contents: read
   checks: write
@@ -32,20 +38,3 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: python3 .github/scripts/sekisho_check.py machine
-  approval:
-    name: hiroshi-kakunin
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - env:
-          PR_BODY: ${{ github.event.pull_request.body }}
-          ACTOR: ${{ github.actor }}
-          OWNER: ${{ github.repository_owner }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: python3 .github/scripts/sekisho_check.py approval

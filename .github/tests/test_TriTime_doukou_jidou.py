@@ -40,10 +40,9 @@ async def test(p):
         assert '2名・同行 補助 三郎' in au, '週の1回目に、看護補助者が同行に付きません'
         assert '2名・同行 看護' in au, '週の2回目に、看護師が同行に付きません'
         assert '2名・同行未定' not in au, '同行者を付けられる人がいるのに「同行未定」が残っています'
-        assert '事務 四子' not in au.split('2名体制として組んだ人')[1].split('職員')[0] and '同行 事務 四子' not in au, '事務局の人が同行に付いています'
-        assert '2名体制として組んだ人：3人' in au, '2名体制として組んだ人の一覧に、体制「2名」・「2名（看護師・未定）」・指示書に複数名訪問ありの3人が出ません'
-        assert '試験 指示書（指示書の複数名訪問）：金 ' in au and '試験 指示書（指示書の複数名訪問）：金 看護 一子・同行未定' not in au, '指示書に複数名訪問「あり」と書かれた人が、2名体制として同行付きで組まれません'
-        assert '試験 職種（週間予定の同行）：水 看護 一子・同行 看護 二子' in au, '「2名（看護師・未定）」の訪問に、看護師（担当と別の人）が付きません'
+        assert '同行 事務 四子' not in au, '事務局の人が同行に付いています'
+        # 2026-11-03 改め（宏史さん「縦長になりすぎ。2名体制は右の引き出しに分けて」）：組み方の上は人数の1行だけ。一覧は右の引き出し「2名体制」
+        assert '2名体制として組んだ人：3人（一覧は右端の引き出し「2名体制」）' in au, '組み方の上に、2名体制の人数の1行（3人）が出ません'
         await s.shot('#cardAuto', 'TriTime_doukou_jidou.png')
         await pg.evaluate("window.confirm = function(){ return true; }")
         await pg.click('#au_apply'); await pg.wait_for_timeout(500)
@@ -53,6 +52,13 @@ async def test(p):
         assert len(wk) == 2, '週2回で入りません：' + str(wk)
         assert wk[0][2] == '補助 三郎', '週の1回目（火）の同行が看護補助者になりません：' + str(wk)
         assert wk[1][2].startswith('看護') and wk[1][2] != wk[1][1], '週の2回目（木）の同行が、担当と別の看護師になりません：' + str(wk)
+        # 右の引き出し「2名体制」：週間予定に入れた同行が、理由つきで出る
+        await pg.click('#nmTab'); await pg.wait_for_timeout(400)
+        nm = await pg.inner_text('#nmPanel')
+        assert '3人' in nm, '2名体制名簿に3人が出ません：' + nm[:300]
+        assert '利用者登録の体制' in nm and '指示書の複数名訪問' in nm and '週間予定の同行' in nm, '2名体制名簿に、2名とした理由が出ません'
+        assert '同行 補助 三郎' in nm and '同行 事務 四子' not in nm and '同行未定' not in nm, '2名体制名簿の同行が正しくありません：' + nm[:400]
+        await s.shot('#nmPanel', 'TriTime_nimei_meibo.png')
         assert not s.errs, '画面の中で誤りが出ました：' + s.errs[0]
     finally:
         await s.close()

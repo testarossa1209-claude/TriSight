@@ -1,0 +1,30 @@
+# トライサイト 関所 三の関所＝宏史さんの確認（2026-11-03 sekisho.yml から分けた）
+# 印を付けた・本文を書き換えたときにも動く（機械の点検は動かさない）。中身は sekisho_check.py approval。
+name: sekisho-kakunin
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]
+permissions:
+  contents: read
+  checks: write
+  issues: write
+  pull-requests: write
+jobs:
+  approval:
+    name: hiroshi-kakunin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python3 .github/scripts/sekisho_check.py approval

@@ -45,7 +45,8 @@ async def test(p):
         await pg.wait_for_selector('#au_make', state='visible', timeout=15000)
         await pg.click('#au_make'); await pg.wait_for_timeout(800)
         au = await pg.inner_text('#au_out')
-        assert '2名・同行 同行 二子' in au and '2名・同行未定（看護師）' in au, '自動の振り分けの表の札に同行が出ません'
+        # 2026-11-03-20 から、職種だけの同行（看護師・未定）と、体制2名で同行が空の訪問にも、自動の振り分けで人が付く
+        assert au.count('2名・同行 同行 二子') == 3 and '同行未定' not in au.split('職員')[-1], '自動の振り分けの表の札に同行が出ません'
         assert '同行 2010-01-看-9201' in au, '自動の振り分けの表で、同行の職員の升に「同行」の札が出ません'
         # 1日の予定（担当の職員）
         await pg.select_option('#td_staff', ids[0]); await pg.wait_for_timeout(500)

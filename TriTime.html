@@ -286,7 +286,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-20</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-03-21</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -4200,14 +4200,17 @@ function mhExtra(){
 /* 各コースに要る週の訪問件数と、いまの週の訪問件数の差。足りなければ赤、届いていれば「上のコースを狙えます」 */
 function mhNow(){
   var now = mhNowUsers(), P = mhPrice().v, C = [3000000, 4000000, 5000000, 6000000], sel = +$('mh_goal').value || 0, X = mhExtra(), ex = X.mon2 + X.kan;
+  /* 2026-11-03（宏史さん「回数は34回でも金額は増えているはず。2名体制が増えれば結果として回数が増えたことになりませんか」）：
+     2名体制の加算と月の初回の管理療養費の高い分を、1回 P円の訪問の件数に直して足した「売上で数えた件数（件分）」で、コースに要る件数と比べる */
+  var eqV = Math.round((now.visits * 4 * P + ex) / 4 / P);
   var rows = C.map(function(g, i){
-    var need = Math.ceil(Math.max(0, g - ex) / 4 / P), d = now.visits - need, ok = d >= 0;
+    var need = Math.ceil(g / 4 / P), d = eqV - need, ok = d >= 0;
     var j = ok ? (i < C.length - 1 ? '届いています。上のコースを狙えます' : '届いています') : '週 ' + (-d) + '件 足りません';
     return '<tr' + (g === sel ? ' style="background:#fffaf2"' : '') + '><td><b>' + mdYenShort(g) + 'コース</b></td><td class="num">週 ' + need + '件</td><td class="num" style="font-weight:700;color:' + (ok ? 'var(--ok)' : 'var(--red)') + '">' + (d > 0 ? '+' : '') + d + '件</td><td><span class="tag ' + (ok ? 'green' : 'red') + '">' + j + '</span></td></tr>';
   }).join('');
-  $('mh_now').innerHTML = '<div class="judge free" style="margin:8px 0"><b style="font-size:15px;color:var(--ink)">現在の訪問件数：週 ' + now.visits + '件</b>（患者さん登録 ' + now.users + '人の、週間予定の訪問の合計）。4週でおよそ ' + yen(now.visits * 4 * P + ex) + 'です（訪問 ' + yen(now.visits * 4 * P) + '＋2名体制の加算 ' + yen(X.mon2) + '＋月の初回の管理療養費の高い分 ' + yen(X.kan) + '）。</div>' +
-    '<div class="tbl-scroll"><table><tr><th>目標設定額</th><th class="num">コースに要る週の訪問</th><th class="num">現在との差</th><th>判定</th></tr>' + rows + '</table></div>' +
-    '<p class="muted">コースに要る週の訪問は「（目標設定額 − 2名体制の加算 − 月の初回の管理療養費の高い分）÷ 4週 ÷ 1回 ' + yen(P) + '」です。差がマイナス（赤）はそのコースに足りない件数、プラス（緑）は届いていて上のコースを狙える件数です。</p>';
+  $('mh_now').innerHTML = '<div class="judge free" style="margin:8px 0"><b style="font-size:15px;color:var(--ink)">現在の訪問件数：週 ' + now.visits + '件・売上で数えると週 ' + eqV + '件分</b>（患者さん登録 ' + now.users + '人の、週間予定の訪問の合計。2名体制の加算と月の初回の管理療養費の高い分を、1回 ' + yen(P) + 'の訪問の件数に直して足すと週 ' + eqV + '件分です）。4週でおよそ ' + yen(now.visits * 4 * P + ex) + 'です（訪問 ' + yen(now.visits * 4 * P) + '＋2名体制の加算 ' + yen(X.mon2) + '＋月の初回の管理療養費の高い分 ' + yen(X.kan) + '）。</div>' +
+    '<div class="tbl-scroll"><table><tr><th>目標設定額</th><th class="num">コースに要る週の訪問</th><th class="num">現在（週 ' + eqV + '件分）との差</th><th>判定</th></tr>' + rows + '</table></div>' +
+    '<p class="muted">コースに要る週の訪問は「目標設定額 ÷ 4週 ÷ 1回 ' + yen(P) + '」です。現在は、2名体制の加算などを件数に直して足した「件分」で比べています。差がマイナス（赤）はそのコースに足りない件数、プラス（緑）は届いていて上のコースを狙える件数です。</p>';
 }
 /* 選んだコースに届くまでの道のり（2026-10-27 宏史さんの指示）
    いまの週の訪問（週間予定）から、コースに要る週の訪問までの差を、期限までの月ごとの目標に割る。
@@ -4225,6 +4228,7 @@ function miMake(){
   var room = 0, roomN = 0; act.forEach(function(p){ var r = Math.max(0, capF - (cnt[p.no] || 0)); room += r; if(r) roomN++; });
   var kasan = U * MI_KASAN, base = cur * 4 * P, wUp = twoFee * 4, kan = X.kan, tot = base + kasan + wUp + kan;
   var needW = Math.ceil(Math.max(0, goal - kasan - wUp - kan) / 4 / P), gap = needW - cur, diffY = goal - tot;
+  var eqC = Math.round(tot / 4 / P), needP = Math.ceil(goal / 4 / P);   /* 売上で数えた件数（件分）。足りない分＝コースの件分 − いまの件分 */
   if(!$('mi_to').value){ var y = new Date().getFullYear(), mm = new Date().getMonth() + 1; $('mi_to').value = (mm >= 3 ? y + 1 : y) + '-02'; }
   var red = gap > 0, col = red ? 'var(--red)' : 'var(--ok)';
   var h = '<table><tr><th>見るもの</th><th class="num">週の訪問</th><th class="num">4週の売上</th></tr>' +
@@ -4232,8 +4236,8 @@ function miMake(){
     '<tr><td>訪問看護ベースアップ評価料（Ⅰ）（利用者 ' + U + '人 × 月 1,050円）：全額を職員の賃上げに充てるため、売上に入れていません</td><td class="num">—</td><td class="num">—</td></tr>' +
     '<tr><td>2名体制の加算（いまの週間予定で週 ' + two + '回・週 ' + yen(twoFee) + '。同行者が決まっていない人は、週の1回目を看護補助者、2回目以降を看護師の加算で数えています）</td><td class="num">—</td><td class="num">＋' + yen(wUp) + '</td></tr>' +
     '<tr><td>月の初回の管理療養費の高い分（利用者 ' + U + '人 × ' + yen(X.kanD) + '）</td><td class="num">—</td><td class="num">＋' + yen(kan) + '</td></tr>' +
-    '<tr><td><b>いまの合計</b></td><td class="num"><b>' + cur + '件</b></td><td class="num"><b>' + yen(tot) + '</b></td></tr>' +
-    '<tr><td>目標設定額 ' + esc(mdYenShort(goal)) + 'コースに要る訪問</td><td class="num">' + needW + '件</td><td class="num">' + yen(goal) + '</td></tr>' +
+    '<tr><td><b>いまの合計</b><br><small class="muted">売上で数えると、週 ' + cur + '件の訪問が週 ' + eqC + '件分になっています（2名体制の加算などを1回 ' + yen(P) + 'の件数に直して足したもの）</small></td><td class="num"><b>' + cur + '件</b><br><small>（' + eqC + '件分）</small></td><td class="num"><b>' + yen(tot) + '</b></td></tr>' +
+    '<tr><td>目標設定額 ' + esc(mdYenShort(goal)) + 'コースに要る訪問</td><td class="num">' + needP + '件分</td><td class="num">' + yen(goal) + '</td></tr>' +
     '<tr style="background:' + (red ? '#fbecea' : '#eef5ef') + '"><td><b>' + (red ? '足りない分' : '上回っている分') + '</b></td><td class="num"><b style="color:' + col + '">' + (red ? '−' : '+') + Math.abs(gap) + '件</b></td><td class="num"><b style="color:' + col + '">' + (diffY > 0 ? '−' : '+') + yen(Math.abs(diffY)) + '</b></td></tr>' +
     '</table>';
   if(!red){ $('mi_out').innerHTML = h + '<div class="judge free" style="margin:8px 0"><b>このコースには、いまの週間予定で届いています。上のコースを狙えます。</b></div>'; return; }

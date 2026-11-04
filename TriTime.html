@@ -209,6 +209,10 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   .ssGap.short{color:var(--red);font-weight:700}
   .ssCnt{display:block;font-size:10.5px;color:var(--muted);text-align:right}
   .ssCnt.ok{color:var(--ok);font-weight:700}
+  /* 2026-11-04：人情変更の札（点線）・H&Nパトリオットの指摘で光る札 */
+  .ssChip.hv{outline:1.5px dashed #b97a2a;outline-offset:-1px}
+  .ssChip .hvL{display:inline-block;font-size:10px;line-height:1.2;padding:0 4px;border-radius:3px;background:#fbf3e4;color:#7a4e12;margin-left:2px}
+  .ssChip.ptrHit{outline:3px solid #993c1d;outline-offset:-1px;background:#fff3e0}
   /* 2026-10-29：情報の引き出し（右端のつまみを縦に並べる：仮スケジュール表・対照表・使い方） */
   .sideTabs{position:fixed;right:0;top:30%;z-index:60;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
   .sideTabs .ssTab{position:static}
@@ -305,7 +309,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-03-32</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-04-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -390,6 +394,7 @@ function tsPortalAsk(){
   <button data-tab="course">利用者経過</button>
   <button data-tab="report">計画書・報告書</button>
   <button data-tab="admin">管理者の窓</button>
+  <button data-tab="slip">伝票</button>
   <button data-tab="model">モデルコース</button>
   <button data-tab="mihon">モデルコースの見本</button>
   <button data-tab="req">ご要望</button>
@@ -811,7 +816,7 @@ function tsPortalAsk(){
     <textarea id="c_words" placeholder="例：今日は気分が乗らないので休みたい"></textarea>
     <div class="row">
       <div><label class="f" for="c_cat">理由の分類</label>
-        <select id="c_cat"><option value="">選んでください</option><option value="体調・病状">体調・病状によるもの</option><option value="それ以外">体調・病状以外</option></select></div>
+        <select id="c_cat"><option value="">選んでください</option><option value="体調・病状">体調・病状によるもの</option><option value="それ以外">体調・病状以外</option><option value="事業所都合">事業所の都合（職員の休み・調整）</option></select></div>
       <div><label class="f" for="c_recv">連絡を受けた日時</label><input type="datetime-local" id="c_recv"></div>
       <div><label class="f" for="c_by">受けた人</label><select id="c_by"></select></div>
     </div>
@@ -1012,6 +1017,27 @@ function tsPortalAsk(){
 <!-- ===== モデルコース（2026-10-27・宏史さんの発案。試作）=====
      1日の件数を決めると、職員ごと・曜日ごとのモデルコースを組み、それをこなしたときの月の売上を出す。
      いまの週間予定・キャンセル・看護記録（または手で入れた件数）と比べて稼働率を出し、目標売上に届くかを示す。 -->
+<!-- 2026-11-04：伝票（カイポケの実績CSV）の読み込みと保管・三つの突き合わせ（宏史さんの決定） -->
+<section class="tab" id="tab-slip">
+  <div class="card">
+    <h2>カイポケの伝票を読み込む</h2>
+    <p class="lead">カイポケで出した実績（伝票）のCSVを選ぶと、見出しから列を当てて下に並びます。列の対応を確かめてから「この月の伝票として保管する」を押してください。読んだ伝票は月ごとに記録に残り（共有されます）、元のCSVは事業所の保管フォルダ（SSD）の slips／年-月 の中にそのまま置きます。トライタイムは伝票を読むだけで、書き換えません（請求の正本はカイポケ）。</p>
+    <div class="row"><div><label class="f" for="slp_file">カイポケの伝票CSV</label><input type="file" id="slp_file" accept=".csv,text/csv"></div></div>
+    <p class="muted" id="slp_msg"></p>
+    <div id="slp_prev"></div>
+    <div class="btns" id="slp_btns" style="display:none"><button class="btn" type="button" id="slp_go">この月の伝票として保管する</button></div>
+  </div>
+  <div class="card">
+    <h2>保管した伝票</h2>
+    <div id="slp_list"></div>
+  </div>
+  <div class="card">
+    <h2>予定・看護記録・伝票の突き合わせ</h2>
+    <p class="lead">同じ日・同じ利用者で、予定（キャンセルを除く）・看護記録・伝票の三つがそろっているかを見ます。そろっていないもの、時刻が30分を超えてずれているものを赤で出します。</p>
+    <div class="row"><div><label class="f" for="slp_month">月</label><input type="month" id="slp_month"></div></div>
+    <div id="slp_match"></div>
+  </div>
+</section>
 <section class="tab" id="tab-model">
   <div class="card">
     <h2>モデルコースの条件</h2>
@@ -1697,7 +1723,7 @@ function chgPopup(){
 /* キャンセル料をいただかない扱いを決められるのは、事務局（経営企画事務職）と全体の管理者だけ（2026-10-27 宏史さんの指示：看護師がキャンセル料の案内を避けて事務局に伝えないことを防ぐ） */
 function canWaive(){ var r = role(); return r.lv === 'all' || r.lv === 'office'; }
 function trustOf(no){
-  var since = ymd(addDays(new Date(), -90)), cx = events().filter(function(e){ return e.type === 'cancel' && e.patientNo === no && (e.date || '') >= since; });
+  var since = ymd(addDays(new Date(), -90)), cx = events().filter(function(e){ return e.type === 'cancel' && e.patientNo === no && (e.date || '') >= since && e.cat !== '事業所都合'; });   /* 2026-11-04：事業所の都合は利用者の信用度に入れない */
   var other = cx.filter(function(e){ return e.cat !== '体調・病状'; }), sc = 100;
   cx.forEach(function(e){ sc -= (e.cat === '体調・病状' ? 3 : 10) + (e.cat !== '体調・病状' && e.late ? 5 : 0); });
   sc = Math.max(0, sc);
@@ -1983,6 +2009,7 @@ function renderJudge(){
   if(!cw) waive = false;
   tr += (cat === 'それ以外' ? '<div style="margin-top:6px;padding:8px 10px;background:#fff;border-radius:6px;color:var(--ink);font-weight:400">「気分が乗らない」「会いたくない」などは、明確な理由に当たりません。キャンセル料の案内は、社会のルールを身につける支援（主治医の指示書にもある指導）の一部です。' + D().client + 'の気持ちを理由に案内をしないことは、指導の方針に反します。キャンセル料は必ず事務局に伝え、いただかない扱いは事務局が決めます。</div>' : '') +
     (late && !cw ? '<div class="muted" style="margin-top:4px">「今回はキャンセル料をいただかない」は、事務局の端末でだけ選べます。</div>' : '');
+  if(cat === '事業所都合'){ $('c_judge').innerHTML = '<div class="judge free">事業所の都合による休み・変更です。キャンセル料はかからず、信用度も下がりません。条項表の「事業所の都合による休み・変更」に数えます。</div>'; return; }   /* 2026-11-04 */
   if(!late) $('c_judge').innerHTML = '<div class="judge free">前日' + cut + '時までの連絡です。契約上、キャンセル料はかかりません。' + (cat === 'それ以外' ? '<br><b>体調・病状以外の理由のため、信用度が下がります。</b>' : '') + tr + '</div>';
   else $('c_judge').innerHTML = '<div class="judge fee">前日' + cut + '時を過ぎた連絡です。' + (waive ? '今回はキャンセル料をいただかない扱いにします（理由を必ず残してください）。' : (cat === '体調・病状' ? 'キャンセル料の対象です（体調・病状によるものです。いただかない場合は、下で理由を残してください）。' : '<b>明確な理由のないキャンセルです。キャンセル料を請求します。</b>')) + tr + '</div>';
 }
@@ -2064,14 +2091,14 @@ function intakeSave(){
   var waive = $('c_waive').checked;
   if(waive && !canWaive()){ alert('キャンセル料をいただかない扱いは、事務局だけが決められます。'); return; }
   if(late && waive && !$('c_waiveWhy').value.trim()){ alert('キャンセル料をいただかない理由を入れてください。'); $('c_waiveWhy').focus(); return; }
-  var ev = events(), cxNo = selNo('c_no'), cxDate = $('c_date').value, cxTime = $('c_time').value, cxStaff = $('c_staff').value, fee = !!late && !waive;
+  var ev = events(), cxNo = selNo('c_no'), cxDate = $('c_date').value, cxTime = $('c_time').value, cxStaff = $('c_staff').value, fee = !!late && !waive && $('c_cat').value !== '事業所都合';   /* 2026-11-04：事業所の都合はキャンセル料なし */
   /* 事務局へ連絡板で知らせる（担当の看護師には、共有でキャンセルの知らせが別に届く） */
   var office = DEPTS.filter(function(d){ return d.kind === 'office'; })[0], offIds = office ? deptStaff(office).map(function(s){ return s.id; }).filter(function(id){ return id !== $('c_by').value; }) : [];
   if(offIds.length) ev.push({ id:uid(), type:'note', kind:'キャンセル', from:$('c_by').value, to:offIds, title:'【キャンセル】' + jpDate(cxDate) + ' ' + cxTime + '　' + dnn(cxNo) + '（担当 ' + staffName(cxStaff) + '）' + (fee ? '　キャンセル料あり' : ''),
     body:'理由（言葉のまま）：「' + $('c_words').value.trim() + '」／分類：' + $('c_cat').value + '／連絡を受けた日時：' + $('c_recv').value.replace('T', ' ') + '／' + (late ? '前日の締め切りを過ぎた連絡' : '前日の締め切りまでの連絡') + (fee ? '・キャンセル料を請求' : (late ? '・いただかない（' + $('c_waiveWhy').value.trim() + '）' : '')) + '／信用度：' + trustOf(cxNo).lv, mDate:'', mTime:'', created:nowLocal(), date:ymd(new Date()) });
   ev.push({ id:uid(), type:'cancel', patientNo:selNo('c_no'), date:$('c_date').value, time:$('c_time').value, staffId:$('c_staff').value,
     words:$('c_words').value.trim(), cat:$('c_cat').value, recv:$('c_recv').value, by:$('c_by').value,
-    fwdTo:$('c_fwdTo').value, late:!!late, fee:!!late && !waive, waive:waive, waiveWhy:$('c_waiveWhy').value.trim(), note:$('c_note').value.trim(), created:nowLocal() });
+    fwdTo:$('c_fwdTo').value, late:!!late, fee:fee, waive:waive, waiveWhy:$('c_waiveWhy').value.trim(), note:$('c_note').value.trim(), created:nowLocal() });
   saveEvents(ev);
   var afterArg = { no:cxNo, date:cxDate, time:cxTime, staffId:cxStaff, fee:fee, late:!!late, words:$('c_words').value.trim(), cat:$('c_cat').value, recv:$('c_recv').value, by:$('c_by').value };
   intakeClear();
@@ -3549,7 +3576,7 @@ document.addEventListener('keydown', function(e){
    ・個人のパーソナルデータ（入職日・生年月日・追加の資格・経歴と特記）は野木画面でだけ入れ、ゼウスキーで鍵をかけて保管する（mgmt の own:person:職員の番号）
    ・評価項目（職員の評価・評価する管理者の評価）は、この土台ができてから改めて決める（宏史さんの指示） */
 var NG = { month:'', open:'', view:'people' };
-var NG_VIEWS = [['summary','部門のようす'],['people','人物情報表'],['attend','出勤状況'],['seval','職員評価'],['meval','管理者評価'],['cand','幹部候補']];
+var NG_VIEWS = [['summary','部門のようす'],['people','人物情報表'],['attend','出勤状況'],['cmp','予定表の比較'],['rules','条項表'],['seval','職員評価'],['meval','管理者評価'],['cand','幹部候補']];   /* 2026-11-04：予定表の比較（人情×効率）と条項表 */
 function ngDeptKey(){ var d = D(); return d.kind === 'office' ? 'all' : d.k; }
 function ngPerson(id){ return live('mgmt').filter(function(x){ return x.id === 'own:person:' + id; })[0] || { id:'own:person:' + id }; }
 function ngSavePerson(id, data){
@@ -3635,6 +3662,11 @@ function ngRender(){
       }).join('') + '</table></div>' : '<p class="empty">この部門の職員がいません。</p>');
   } else if(NG.view === 'seval' || NG.view === 'meval'){
     body = '<h2>' + (NG.view === 'meval' ? '管理者評価（管理者を評価する）' : '職員評価（管理者以外の職員を評価する）') + '</h2><p class="muted">会社評価です。評価の基準（区分・項目・重み・クラスの線）は下の「評価の基準」で書き換えます。初めに入っているのは見本です。</p><div id="ngEvSlot"></div>';
+  } else if(NG.view === 'cmp'){
+    /* 2026-11-04（宏史さんの決め）：人情バージョン（管理者が直した表）と効率バージョン（AIが効率だけで組み直した表）の比較は、野木画面の中だけ。マネジメント評価の材料 */
+    body = '<h2>予定表の比較（人情×効率）（' + esc(depName) + '・' + esc(jpMonth(m)) + '）</h2>' + (dk === 'all' ? '<p class="muted">上の「使う部署」で訪問の部署（訪問看護部など）を選ぶと、その部署の比較が出ます。</p>' : cmpRender(m));
+  } else if(NG.view === 'rules'){
+    body = '<h2>許容範囲外の条項表</h2>' + rulesRender();
   } else {
     var nm = (NG_VIEWS.filter(function(v){ return v[0] === NG.view; })[0] || [])[1] || '';
     body = '<h2>' + esc(nm) + '</h2><p class="muted">評価項目を決めてから、ここに中身を作ります。</p>';
@@ -3647,6 +3679,8 @@ function ngRender(){
   sec.querySelectorAll('[data-ngp]').forEach(function(b){ b.addEventListener('click', function(){ var id = b.getAttribute('data-ngp'); NG.open = NG.open === id ? '' : id; ngRender(); }); });
   $('ng_month').addEventListener('change', function(){ NG.month = this.value || ymd(new Date()).slice(0, 7); ngRender(); });
   var slot = $('ngEvSlot'); if(slot){ evMode = NG.view; slot.appendChild($('evBody')); evRender(); }
+  if($('cmp_save')){ $('cmp_save').onclick = cmpSave; cmpHistRender(); }   /* 2026-11-04 */
+  rulesWire();
   var sv = $('ng_save'); if(sv) sv.addEventListener('click', function(){
     var id = sv.getAttribute('data-id');
     ngSavePerson(id, { joined:$('ng_joined').value || '', birth:$('ng_birth').value || '', quals:$('ng_quals').value.trim(), career:$('ng_career').value.trim() });
@@ -4209,7 +4243,7 @@ function applyDept(){
     d.kind === 'monitor' ? 'モニタリングの予定・面談の記録・' + d.client + 'の経過を、時間の流れで持つ（' + d.name + '）' :
     '各部署の予定のようすと、事務局からの連絡（' + d.name + '）';
   var show = function(id, on){ var el = $(id); if(el) el.style.display = on ? '' : 'none'; };
-  var tabOn = { plan:true, pt: d.kind !== 'office', intake: d.kind === 'visit', course: d.kind !== 'office', report: !!d.report, admin: d.kind === 'visit', model: d.kind === 'visit', mihon: d.kind === 'visit', req:false, setup:true, nogi: !!R.zeus };   /* 2026-11-03：ご要望は左の引き出しへ移した */
+  var tabOn = { plan:true, pt: d.kind !== 'office', intake: d.kind === 'visit', course: d.kind !== 'office', report: !!d.report, admin: d.kind === 'visit', slip: d.kind === 'visit' && canSched(), model: d.kind === 'visit', mihon: d.kind === 'visit', req:false, setup:true, nogi: !!R.zeus };   /* 2026-11-04：伝票は予定を組む人の端末だけ */   /* 2026-11-03：ご要望は左の引き出しへ移した */
   /* 見る範囲（2026-10-27）：職員には管理者の窓とモデルコースを出さない。モデルコース（売上・評価）は管理者の端末だけ */
   if(R.lv === 'none') Object.keys(tabOn).forEach(function(k){ tabOn[k] = (k === 'setup'); });
   if(R.lv === 'staff') tabOn.admin = false;
@@ -4758,8 +4792,9 @@ function renderToday(){
   /* 2026-11-03（宏史さん「地図の下に当日の分しか出ていない。本スケジュール表を出すのではなかったか」）：地図の下に、選んだ日を含む1週間の本スケジュール表を出す */
   var num = {}; live.forEach(function(v, i){ num[date + '|' + v.no + '|' + v.time + '|' + v.staffId] = ALL ? v._n : i + 1; });
   var mon = mondayOf(parseYmd(date)), wdays = []; for(var di = 0; di < 7; di++) wdays.push(ymd(addDays(mon, di)));
-  var wg = D().kind === 'office' ? { empty:'' } : ssGridHTML(wdays, { only:ALL ? null : sid, mark:date, num:num, col:colOf });
-  $('td_week').innerHTML = wg.empty != null ? wg.empty : '<h3 style="margin:6px 0 4px;font-size:15px">本スケジュール表 <small class="muted" style="font-weight:400">' + esc(jpDate(wdays[0])) + ' 〜 ' + esc(jpDate(wdays[6])) + '</small></h3><div class="ssBody tdWeek">' + wg.html + '</div><p class="muted sm" style="margin:4px 0 0">色の付いた列が選んだ日です。日付を変えると、その日の週の表に変わります。札の丸い番号は地図の番号と同じです。</p>';
+  var wg = D().kind === 'office' ? { empty:'' } : ssGridHTML(wdays, { only:ALL ? null : sid, mark:date, num:num, col:colOf, drag:canSched() });   /* 2026-11-04：本体の表でも札を動かせる（予定を組む人の端末だけ） */
+  $('td_week').innerHTML = wg.empty != null ? wg.empty : '<h3 style="margin:6px 0 4px;font-size:15px">本スケジュール表 <small class="muted" style="font-weight:400">' + esc(jpDate(wdays[0])) + ' 〜 ' + esc(jpDate(wdays[6])) + '</small></h3><div class="ssBody tdWeek">' + wg.html + '</div><p class="muted sm" style="margin:4px 0 0">色の付いた列が選んだ日です。日付を変えると、その日の週の表に変わります。札の丸い番号は地図の番号と同じです。' + (canSched() ? '今日以降の札は、指で押さえたまま別の人・別の日の升へ引っぱると動かせます（動かすときに理由を残せます。点線の札は人情変更）。' : '') + '</p>' + (canSched() ? ptrBtnHTML('ptr_td', 'ptr_tdbox') : '');
+  if($('ptr_td')) $('ptr_td').onclick = function(){ ptrRun(wdays, 'ptr_tdbox', '#td_week', '本スケジュール表'); };
   var pts = live.map(function(v, i){ var p = patient(v.no) || {}; return p.lat ? { n:ALL ? v._n : i + 1, sid:v.staffId, lat:+p.lat, lng:+p.lng, t:(ALL ? staffName(v.staffId) + ' ' : '') + v.time + ' ' + dnn(v.no) } : null; }).filter(Boolean);
   if(!pts.length){ $('td_map').style.display = 'none'; if(live.length) $('td_week').insertAdjacentHTML('afterbegin', '<p class="muted">地図に出せる訪問先がありません。利用者登録で住所（番地まで）を入れ、「住所から位置を取る」を押してください。</p>'); return; }
   $('td_map').style.display = '';
@@ -4802,17 +4837,16 @@ function auFreqInfo(p, cur){
 }
 function auFreq(p, cur){ return auFreqInfo(p, cur).f; }
 function auCombos(days, f){ var out = []; (function rec(i, a){ if(a.length === f){ out.push(a.slice()); return; } for(var j = i; j < days.length; j++){ a.push(days[j]); rec(j + 1, a); a.pop(); } })(0, []); return out; }
-function auMake(course){
-  if(course && course.type) course = null;
-  var capF = Math.max(1, +$('au_full').value || 8), capP = Math.max(1, +$('au_part').value || 5);
-  try{ localStorage.setItem('tritime_au_caps', JSON.stringify({ f:capF, p:capP })); }catch(e){}
+/* 2026-11-04：組み立て（auCompute）と画面（auMake）を分けた。野木画面の比較では auCompute({ keep:false }) で、担当の引き継ぎも曜日の据え置きもしない効率だけの組み方を作る */
+function auCompute(opt){
+  opt = opt || {}; var course = opt.course || null, capF = Math.max(1, +opt.capF || 8), capP = Math.max(1, +opt.capP || 5), kf = opt.keep === false ? 0 : 1;
   var ST = deptStaff().filter(function(s){ return !staffOrphan(s) && !isStandby(s) && NURSE_JOBS.indexOf(jobOf(s)) >= 0; }).map(function(s){
     var off = staffOff(s), days = MD_DOW.filter(function(d){ return off.length ? off.indexOf(d) < 0 : ['1','2','3','4','5'].indexOf(d) >= 0; });
     var x = { s:s, full:s.emp !== '非常勤', days:days, cap:s.emp !== '非常勤' ? capF : capP, load:{}, areas:{} };
     if(course){ var pd = course.caps[s.id] || {}; x.capDay = pd; x.days = days.filter(function(d){ return (pd[d] || 0) > 0; }); }
     return x;
   }).filter(function(x){ return x.days.length; });
-  if(!ST.length){ $('au_out').innerHTML = '<p class="empty">振り分けられる看護師が名簿にいません。</p>'; return; }
+  if(!ST.length) return null;
   var wk = weekly(), cnt = {}, main = {}, info = {};
   var curD = {};   /* 2026-11-03：いまの週間予定で、その患者さんをその職員が何曜日に訪問しているか（押し直しても、組めるものは同じ曜日のまま残すため） */
   wk.forEach(function(v){ ((curD[v.no] = curD[v.no] || {})[v.staffId] = curD[v.no][v.staffId] || []).push(String(v.dow)); });
@@ -4829,7 +4863,7 @@ function auMake(course){
   areas.forEach(function(ar){
     byArea[ar].sort(function(a, b){ return b.f - a.f; }).forEach(function(p){
       var cand = ST.slice().sort(function(a, b){
-        var ka = (a.s.id === p.main ? 100 : 0) + (a.areas[ar] || 0) * 10, kb = (b.s.id === p.main ? 100 : 0) + (b.areas[ar] || 0) * 10;
+        var ka = (a.s.id === p.main ? 100 * kf : 0) + (a.areas[ar] || 0) * 10, kb = (b.s.id === p.main ? 100 * kf : 0) + (b.areas[ar] || 0) * 10;
         var ra = a.days.reduce(function(t, d){ return t + capOf(a, d) - used(a, d); }, 0), rb = b.days.reduce(function(t, d){ return t + capOf(b, d) - used(b, d); }, 0);
         return (kb - ka) || (rb - ra);
       });
@@ -4847,7 +4881,7 @@ function auMake(course){
           var lv = c.reduce(function(t, d){ return t + used(x, d); }, 0);
           /* 2026-11-03（宏史さん「なんで島看護師の訪問が1回減ったのか」）：いまと同じ職員・同じ曜日で組めるなら、それを強く優先する。押し直すたびに曜日や担当がずれないように */
           var keepD = ((curD[p.no] || {})[x.s.id] || []), kept = c.filter(function(d){ return keepD.indexOf(d) >= 0; }).length;
-          var sc = (idx.length > 1 ? Math.min(gap, 2) * 20 : 0) + same * 6 - lv * 3 + kept * 100;
+          var sc = (idx.length > 1 ? Math.min(gap, 2) * 20 : 0) + same * 6 - lv * 3 + kept * 100 * kf;
           if(sc > bs){ bs = sc; best = c; }
         });
         if(best){ best.forEach(function(d){ (x.load[d] = x.load[d] || []).push(p); }); x.areas[ar] = (x.areas[ar] || 0) + 1; done = true; out.push({ p:p, x:x, days:best }); if(ps > 0) p.why.push('希望の曜日（' + p.wDays.map(function(d){ return DOW[+d]; }).join('・') + '）では空きが無く、別の曜日で組みました'); }
@@ -4922,6 +4956,15 @@ function auMake(course){
       if(w){ v.withId = w; v.autoWith = true; } else if(tb) v.withId = tb;
     });
   })();
+  return { rows:rows, miss:miss, out:out, info:info, P:P, ST:ST, wk:wk, capOf:capOf };
+}
+function auMake(course){
+  if(course && course.type) course = null;
+  var capF = Math.max(1, +$('au_full').value || 8), capP = Math.max(1, +$('au_part').value || 5);
+  try{ localStorage.setItem('tritime_au_caps', JSON.stringify({ f:capF, p:capP })); }catch(e){}
+  var RR = auCompute({ course:course, capF:capF, capP:capP, keep:true });
+  if(!RR){ $('au_out').innerHTML = '<p class="empty">振り分けられる看護師が名簿にいません。</p>'; return; }
+  var rows = RR.rows, miss = RR.miss, out = RR.out, info = RR.info, P = RR.P, ST = RR.ST, wk = RR.wk, capOf = RR.capOf;
   auPlan = { rows:rows, miss:miss, nos:out.map(function(o){ return o.p.no; }), info:info };
   var tot = rows.length, need = P.reduce(function(t, p){ return t + p.f; }, 0);
   /* 2026-11-03（宏史さん「仮スケジュールが正規の表記ならば本体スケジュールも更新してください。2つあると混乱する」）：
@@ -5042,6 +5085,7 @@ function refreshAll(){
   ptForm(); rdKinds(); renderPtList(); nrRender(); renderReq(); keyStatus(); mkStatus(); if(!hasOwnKey()) purgeOwn(); zRender(); renderMine();
   if(typeof renderModel === 'function' && canMoney()) renderModel();
   var ngs = $('tab-nogi'); if(ngs && ngs.classList.contains('on')) ngRender();
+  slpRender();   /* 2026-11-04：伝票タブが開いているときだけ描く */
 }
 
 /* ---- 配線 ---- */
@@ -5055,6 +5099,7 @@ document.querySelectorAll('#tabs button').forEach(function(b){
     if(t === 'course') renderCourse();
     if(t === 'report'){ renderReport(); renderPlanDoc(); }
     if(t === 'admin') renderAdmin();
+    if(t === 'slip') slpRender();   /* 2026-11-04 */
     if(t === 'model') renderModel();
     if(t === 'eval') evRender();
     if(t === 'mihon') mhRender();
@@ -5665,13 +5710,14 @@ var MD_MANUAL = ['障害福祉', '自費'];
 function feeJob(sid){ if(TBD[sid]) return sid.slice(4); var s = staff().filter(function(x){ return x.id === sid; })[0]; var j = s ? jobOf(s) : ''; return j === '准看護師' ? 'j' : (j === '看護師（正看）' ? 'n' : 'h'); }
 function feeSpecial(p, date){ return p && p.special === 'あり' && (!p.specialEnd || date <= p.specialEnd); }
 /* その月の訪問1件ごとの売上。週の日数は月曜始まりで数える（月をまたぐ週は前月の分から数える） */
-function mdFees(m){
+function mdFees(m, vfn){
+  vfn = vfn || visitsOn;   /* 2026-11-04：野木画面の比較で、AIの効率バージョンの売上を同じ料金表で出すため */
   var c = mdCfg(), days = mdDays(m), end = parseYmd(days[days.length - 1]);
   var out = { map:{}, w4ng:0, medWith:0, hojoOver:0, noPrice:0 }, wk = {}, hojo = {}, first = {};
   for(var d = mondayOf(parseYmd(days[0])); d <= end; d = addDays(d, 1)){
     var date = ymd(d), inM = ym(date) === m;
     if(d.getDay() === 1){ wk = {}; hojo = {}; }
-    visitsOn(date).forEach(function(v){
+    vfn(date).forEach(function(v){
       if(v.cx || offWhy(v.staffId, date)) return;
       var p = patient(v.no) || {}, ins = p.ins || '', key = date + '|' + v.time + '|' + v.no;
       (wk[v.no] = wk[v.no] || {})[date] = 1;
@@ -6264,7 +6310,7 @@ function ssGridHTML(days, opt){
   var rows = people.filter(function(p){ return !isStandby(p); }).map(function(p){ return { id:p.id, name:p.name, sub: p.dept && p.dept !== d.name ? '兼務' : '' }; })
     .concat(people.filter(isStandby).map(function(p){ return { id:p.id, name:p.name, sub:'待機', sb:true }; }));
   if(extra) rows.push({ id:'_none', name:'担当が名簿にない', sub:'' });
-  if(opt.drag) SS_V = {};
+  /* 2026-11-04：本スケジュール表でも札を動かすため、表を描くたびに消さない（同じ訪問は同じ鍵で上書きされる） */
   if(opt.only) rows = rows.filter(function(r){ return r.id === opt.only; });
   if(!rows.length) return { empty:'<p class="empty">この部署の職員がまだいません。「名簿・設定」の「職員」で所属部門か兼務する部署を付けると、ここに行が並びます。</p>' };
   var h = '<table><thead><tr><th class="who">担当</th>' + days.map(function(x){ var w = parseYmd(x).getDay(); var hn = holidayName(x); return '<th class="' + (w === 0 || w === 6 || hn ? 'we' : '') + (opt.mark === x ? ' sel' : '') + '">' + DOW[w] + '<br><small>' + (parseYmd(x).getMonth()+1) + '/' + parseYmd(x).getDate() + '</small>' + (hn ? '<small class="hol">' + esc(hn) + '</small>' : '') + '</th>'; }).join('') + '</tr></thead><tbody>';
@@ -6284,7 +6330,8 @@ function ssGridHTML(days, opt){
           if(!v.cx) prev = v;
           var warn = why && !v.cx;
           var vk = '', mn = opt.num && !v.cx ? opt.num[date + '|' + v.no + '|' + v.time + '|' + v.staffId] : 0; if(opt.drag && !v.cx && !v.asWith && date >= today){ vk = date + '|' + v.no + '|' + v.time; SS_V[vk] = v; }
-          return gap + '<span class="ssChip' + (v.cx ? ' cx' : '') + (warn ? ' warn' : '') + (vk ? ' dg' : '') + '"' + (vk ? ' data-vk="' + esc(vk) + '"' : '') + ' title="' + esc(v.time + ' ' + dnn(v.no) + '（' + v.min + '分）' + (v.area ? '・' + v.area : '') + (v.cx ? '・キャンセル' : '') + (warn ? '・休みの日の訪問' : '')) + '">' + (mn ? '<b class="ssNo"' + (opt.col ? ' style="background:' + opt.col(v.staffId) + '"' : '') + '>' + mn + '</b>' : '') + esc(v.time) + '<br>' + (v.asWith ? '<b>同行</b><br>' : '') + esc(ssShortNo(v.no)) + (nameOf(v.no) ? '<br>' + esc(nameOf(v.no)) : '') + (v.asWith ? '<small style="display:block;white-space:normal">担当 ' + esc(staffName(v.staffId)) + '</small>' : (withLabel(v) ? '<small style="display:block;white-space:normal;color:var(--amber);font-weight:700">' + esc(withLabel(v)) + '</small>' : '')) + (warn ? '<br>要調整' : '') + '</span>';
+          var hv = !v.cx && hvOf(v);   /* 2026-11-04：人情変更の札 */
+          return gap + '<span class="ssChip' + (v.cx ? ' cx' : '') + (warn ? ' warn' : '') + (vk ? ' dg' : '') + (hv ? ' hv' : '') + '"' + (vk ? ' data-vk="' + esc(vk) + '"' : '') + ' data-pk="' + esc(date + '|' + v.no + '|' + v.time) + '" title="' + esc(v.time + ' ' + dnn(v.no) + '（' + v.min + '分）' + (v.area ? '・' + v.area : '') + (v.cx ? '・キャンセル' : '') + (warn ? '・休みの日の訪問' : '') + (hv ? '・' + hv.why + (hv.note ? '：' + hv.note : '') : '')) + '">' + (mn ? '<b class="ssNo"' + (opt.col ? ' style="background:' + opt.col(v.staffId) + '"' : '') + '>' + mn + '</b>' : '') + esc(v.time) + '<br>' + (v.asWith ? '<b>同行</b><br>' : '') + esc(ssShortNo(v.no)) + (nameOf(v.no) ? '<br>' + esc(nameOf(v.no)) : '') + (hv ? '<small class="hvL">人情</small>' : '') + (v.asWith ? '<small style="display:block;white-space:normal">担当 ' + esc(staffName(v.staffId)) + '</small>' : (withLabel(v) ? '<small style="display:block;white-space:normal;color:var(--amber);font-weight:700">' + esc(withLabel(v)) + '</small>' : '')) + (warn ? '<br>要調整' : '') + '</span>';
         }).join('') + (live2 ? '<span class="ssCnt' + (live2 >= wr.target ? ' ok' : '') + '">' + live2 + '件</span>' : '') + '</td>';
     });
     h += '</tr>';
@@ -6307,8 +6354,9 @@ function ssRender(){
   var g = ssGridHTML(days, { drag:true });
   if(g.empty){ $('ssBody').innerHTML = g.empty; return; }
   var h = g.html;
-  $('ssBody').innerHTML = h + '<p class="muted sm" style="margin:6px 0 0">今日以降の訪問の札は、指で押さえたまま別の人の升・別の曜日の升へ引っぱると動かせます。</p>' + ssBulkHTML(days) + ssStandbyHTML(days);
+  $('ssBody').innerHTML = h + '<p class="muted sm" style="margin:6px 0 0">今日以降の訪問の札は、指で押さえたまま別の人の升・別の曜日の升へ引っぱると動かせます。点線の札は人情変更です。</p>' + ptrBtnHTML('ptr_ss', 'ptr_ssbox') + ssBulkHTML(days) + ssStandbyHTML(days);
   ssWireStandby(); ssWireBulk();
+  $('ptr_ss').onclick = function(){ ptrRun(days, 'ptr_ssbox', '#ssBody', '仮スケジュール表'); };   /* 2026-11-04 */
 }
 /* 2026-11-03：その日の訪問を、まとめて担当・同行に付け替える（宏史さん「本日（祭日）は全部の利用者を島さんと佐野（夫）さんが回った。全部複数名。要確認の直し方は」）。
    その日の訪問（キャンセルを除く）ごとに組み換え（move）を残し、担当と同行を替える。担当と同行の人には、その日の「出勤」（type "work"）を付けて、公休・祝日の要調整を消す。
@@ -6399,7 +6447,7 @@ $('ssTab').addEventListener('click', function(){ ssOpen(true); });
    この日だけの動きは、11/1の「スケジュールが変わりました」の小窓と赤い番号の仕組みにそのまま乗る。 */
 var SS_V = {}, ssDrag = null;
 document.addEventListener('pointerdown', function(e){
-  var c = e.target && e.target.closest && e.target.closest('#ssBody .ssChip.dg'); if(!c) return;
+  var c = e.target && e.target.closest && e.target.closest('.ssBody .ssChip.dg'); if(!c) return;
   ssDrag = { vk:c.getAttribute('data-vk'), x:e.clientX, y:e.clientY, on:false, el:c, ghost:null, over:null, pid:e.pointerId };
 });
 document.addEventListener('pointermove', function(e){
@@ -6408,7 +6456,7 @@ document.addEventListener('pointermove', function(e){
     ssDrag.on = true; var g = document.createElement('div'); g.className = 'ssGhost'; g.innerHTML = ssDrag.el.innerHTML; document.body.appendChild(g); ssDrag.ghost = g; }
   e.preventDefault();
   ssDrag.ghost.style.left = e.clientX + 'px'; ssDrag.ghost.style.top = e.clientY + 'px';
-  var t = document.elementFromPoint(e.clientX, e.clientY), td = t && t.closest ? t.closest('#ssBody td[data-sid]') : null;
+  var t = document.elementFromPoint(e.clientX, e.clientY), td = t && t.closest ? t.closest('.ssBody td[data-sid]') : null;
   if(ssDrag.over && ssDrag.over !== td) ssDrag.over.classList.remove('ssOver');
   if(td) td.classList.add('ssOver'); ssDrag.over = td;
 }, { passive:false });
@@ -6439,6 +6487,10 @@ function ssMoveAsk(v, sid, date){
     (why ? '<p style="color:var(--red)">' + esc(staffName(sid)) + 'さんはこの日「' + esc(why) + '」です。動かすと「要調整」の印が付きます。</p>' : '') +
     '<div class="row"><div><label class="f" for="mv_time">時刻</label><input type="time" id="mv_time" value="' + esc(v.time) + '"></div></div>' +
     '<label style="display:block;margin:6px 0"><input type="checkbox" id="mv_ok"> 患者さんの了承を得た（まだなら印を付けずに動かすと「要連絡（了承前）」の札が付きます）</label>' +
+    /* 2026-11-04（宏史さんの決め）：変更の理由を残す。「人情変更」は管理者のワイルドカードで、効率だけの物差しでは指摘しない（度が過ぎたものは条項表で指摘） */
+    '<div class="row"><div><label class="f" for="mv_why">変更の理由</label><select id="mv_why"><option value="">（選ばない）</option>' + hvWhyList().map(function(w){ return '<option value="' + esc(w) + '">' + esc(w) + '</option>'; }).join('') + '</select></div>' +
+    '<div><label class="f" for="mv_note">ひとこと（任意）</label><input type="text" id="mv_note" placeholder="例：本人が島さんでないと落ち着かない"></div></div>' +
+    '<p class="muted sm">「人情変更」を選んだ札は点線で出ます。H&amp;Nパトリオットは、効率だけの条項ではその札を指摘しません。</p>' +
     '<div class="btns"><button class="btn amber" type="button" id="mv_once">この日だけ動かす</button><button class="btn" type="button" id="mv_week">毎週の予定を変える</button><button class="btn sub" type="button" id="mv_no">やめる</button></div>' +
     '<p class="muted sm">「毎週の予定を変える」は、' + esc(DOW[parseYmd(v.od).getDay()]) + '曜の週間予定を、' + esc(DOW[parseYmd(date).getDay()]) + '曜・' + esc(staffName(sid)) + 'さんに書き換えます。</p><div id="mv_res"></div></div>';
   document.body.appendChild(box);
@@ -6472,16 +6524,18 @@ function ssWithAsk(box, v, tg, date){
 }
 function ssMoveDo(v, sid, date, weeklyToo){
   var t = $('mv_time').value || v.time, ok = $('mv_ok').checked, me = dev().me || '', now = nowLocal(), from = v.staffId;
+  var why = $('mv_why') ? $('mv_why').value : '', note = $('mv_note') ? $('mv_note').value.trim() : '', hv = hvIs(why);   /* 2026-11-04 */
   if(weeklyToo){
     var wk = live('weekly'), w = wk.filter(function(x){ return x.id === v.wid; })[0]; if(!w){ alert('元の週間予定が見つかりません。'); return; }
     w.dow = String(parseYmd(date).getDay()); w.staffId = sid; w.time = t; if(w.withId === sid) w.withId = '';
+    w.why = why; w.note = note; w.hv = hv; w.hvAt = now; w.hvBy = me;   /* 2026-11-04：理由と人情変更の印を週間予定の1件に残す */
     saveCol('weekly', wk);
     var ev0 = events().filter(function(e){ return !(e.type === 'move' && e.patientNo === v.no && e.fromTime === v.ot && e.date >= ymd(new Date())); }); saveEvents(ev0);
   } else {
     if(date < ymd(new Date())){ alert('今日より前の日へは動かせません。'); return; }
     var old0 = events().filter(function(e){ return e.type === 'move' && e.date === v.od && e.patientNo === v.no && e.fromTime === v.ot; })[0];
     var ev = events().filter(function(e){ return !(e.type === 'move' && e.date === v.od && e.patientNo === v.no && e.fromTime === v.ot); });
-    var rec = { id:uid(), type:'move', patientNo:v.no, date:v.od, fromTime:v.ot, toTime:t, toStaff:sid, by:me, consent:ok, created:now };
+    var rec = { id:uid(), type:'move', patientNo:v.no, date:v.od, fromTime:v.ot, toTime:t, toStaff:sid, by:me, consent:ok, created:now, why:why, note:note, hv:hv };   /* 2026-11-04：理由と人情変更の印 */
     if(old0 && old0.bulk){ ['bulk','rec','min','fromStaff','wid','toWith'].forEach(function(k){ if(old0[k] != null) rec[k] = old0[k]; }); }   /* 2026-11-03：まとめて付け替えた訪問は、動かしても付け替えの記録のまま */
     if(date !== v.od) rec.toDate = date;
     ev.push(rec); saveEvents(ev);
@@ -6489,7 +6543,7 @@ function ssMoveDo(v, sid, date, weeklyToo){
   var head = (weeklyToo ? '【毎週の予定の変更】' : '【予定の組み換え】') + dnn(v.no), what = (weeklyToo ? DOW[parseYmd(v.od).getDay()] + '曜 ' + v.ot + '（' + staffName(from) + '）→ 毎週 ' + DOW[parseYmd(date).getDay()] + '曜 ' + t + '（' + staffName(sid) + '）'
     : jpDate(v.date) + ' ' + v.time + '（' + staffName(from) + '）→ ' + jpDate(date) + ' ' + t + '（' + staffName(sid) + '）');
   var to = [from, sid].filter(function(x, i, a){ return x && a.indexOf(x) === i; }), ev2 = events();
-  ev2.push({ id:uid(), type:'note', kind:'予定の組み換え', from:me, to:to, title:head + '　' + what, body:(ok ? '患者さんの了承あり。' : '患者さんの了承はまだです。') + '　' + ssGapText(sid, date) + (from !== sid ? '　' + ssGapText(from, v.date) : ''), mDate:'', mTime:'', created:now, date:ymd(new Date()) });
+  ev2.push({ id:uid(), type:'note', kind:'予定の組み換え', from:me, to:to, title:head + '　' + what, body:(ok ? '患者さんの了承あり。' : '患者さんの了承はまだです。') + (why ? '　理由：' + why + (note ? '（' + note + '）' : '') : '') + '　' + ssGapText(sid, date) + (from !== sid ? '　' + ssGapText(from, v.date) : ''), mDate:'', mTime:'', created:now, date:ymd(new Date()) });
   saveEvents(ev2);
   /* 携帯・メールの文面には、患者さんの氏名を入れない（11/2の決め）。日時と契約書番号だけ */
   var txt = (weeklyToo ? '毎週の訪問の予定が変わりました。' : '訪問の予定が変わりました。') + '\n' + dn(v.no) + '：' + (weeklyToo ? DOW[parseYmd(v.od).getDay()] + '曜 ' + v.ot + ' → ' + DOW[parseYmd(date).getDay()] + '曜 ' + t : jpDate(v.date) + ' ' + v.time + ' → ' + jpDate(date) + ' ' + t) + '\n担当：' + staffName(sid) + '\nトライタイムで確認し、事務所へ連絡をお願いします。';
@@ -6634,6 +6688,14 @@ var MN_MARKS = [
     ['休（申告外）', '非常勤の人が、その月の予定の申告で出られる日にしていない日です（「名簿・設定」の「翌月の予定の申告」）。'],
     ['札を引っぱって動かす', '今日以降の訪問の札を、指で押さえたまま別の人の升・別の曜日の升へ離すと、「この日だけ動かす」か「毎週の予定を変える」かを選べます。動かすと、移動の間を計算し直し、元の担当と新しい担当へ連絡板の知らせと、携帯・メールの一押しを出します。'],
     ['待機・待機者リスト', '名簿で「待機」に印を付けた非常勤の人は、表のいちばん下にまとめて出ます。モデルコースと自動の振り分けには入りません。調整が難しいときは、札をこの人の升へ動かし、待機者リストの「お願いの連絡」で頼みます。']
+  ]],
+  ['札の移動・人情変更・H&Nパトリオット・伝票（2026-11-04）', [
+    ['本スケジュール表の札', '「予定」の地図の下の本スケジュール表でも、今日以降の札を引っぱって動かせます（予定を組む人の端末だけ）。動かす小窓の「変更の理由」で理由を残せます。'],
+    ['人情変更', '変更の理由で「人情変更（相性・体調への配慮・家族の事情・その他）」を選んだ札は点線で出ます。管理者の判断（ワイルドカード）として、H&Nパトリオットは効率だけの条項ではその札を指摘しません。度が過ぎたもの（1日の件数の超過・休みの日の予定・人情変更の割合など）だけを指摘します。'],
+    ['H&Nパトリオット', '本スケジュール表と仮スケジュール表の下のボタン。表の週の予定を「許容範囲外の条項表」で確かめ、根拠付きの指摘を出します。指摘を押すと表の中の訪問が光ります。「問題なし」とは言わず、見た範囲だけを言います。'],
+    ['条項表', 'H&Nパトリオットが使う線です。野木画面の「条項表」で値を変えたり、行を足したり外したりできます（全端末に共有）。'],
+    ['事業所の都合', 'キャンセル受付の理由の分類に「事業所の都合（職員の休み・調整）」を足しました。キャンセル料はかからず、利用者の信用度も下がりません。条項表の「事業所の都合による休み・変更」に数えます。'],
+    ['伝票', '「伝票」タブで、カイポケの実績（伝票）のCSVを読み込んで月ごとに保管し、予定・看護記録・伝票の三つを突き合わせます。元のCSVは保管フォルダの slips／年-月 に残ります。']
   ]],
   ['自動の振り分け（「予定」の2つ目の枠）の見方', [
     ['希望 ○○（赤字）', '組まれた時刻・時間帯が、本人の希望とずれています。'],
@@ -7031,6 +7093,446 @@ function verCheck(){
     }
   }).catch(function(){});
 }
+
+/* ============================================================
+   2026-11-04：人情変更・H&Nパトリオット・予定表の比較・伝票（宏史さんの要望と決定）
+   ・本体のスケジュール表（「予定」の「1日の予定と地図」の下）でも札を動かせる。動かすときに「変更の理由」を残し、
+     思いやりから来る変更は「人情変更」として管理者のワイルドカード（権限）にする。
+   ・「H&Nパトリオット」ボタン：いまの予定表を「許容範囲外の条項表」で確かめ、根拠付きの指摘を出す。
+     人情変更の札は、効率だけの物差し（条項表で「人情変更でも指摘」の印が無いもの）では指摘しない。
+     指摘が無いときも「問題なし」とは言わず、見た範囲だけを言う（8/12の決め：安全宣言を出させない）。
+   ・条項表は野木画面でだけ書き換える（行を足す・値を変える・外す）。中身は全端末で共有する決まりごと（settings.ptr）に置く。
+   ・予定表の比較（人情×効率）は野木画面の中だけ：管理者が直して確定した表（人情バージョン）と、AIが効率だけで組み直した表（効率バージョン）を
+     左右に並べ、真ん中に違い・効率の目と人情の目の採点・1か月続けたときの結果予測を出す（マネジメント評価の材料）。
+   ・伝票：カイポケの実績（伝票）のCSVを読み込み、月ごとに保管し、「予定」「看護記録」「伝票」の三つを突き合わせる。
+   ============================================================ */
+
+/* ---- 条項表（許容範囲外の条項）---- */
+var PTR_M = [
+  { k:'dayN',      t:'1日の件数（1人の職員）',                         u:'件',   src:'予定',           emp:true },
+  { k:'gap',       t:'訪問と訪問の間（前の終わりから次の始まりまで）',   u:'分',   src:'予定' },
+  { k:'dayArea',   t:'1日の町名の数（1人の職員）',                       u:'か所', src:'予定' },
+  { k:'areaStaff', t:'同じ町名を受け持つ職員の数（1週間）',               u:'人',   src:'予定' },
+  { k:'wishDay',   t:'希望の曜日に反する・訪問できない曜日に入っている', u:'件',   src:'予定', bool:true },
+  { k:'wishTime',  t:'希望の時刻・時間帯とのずれ',                       u:'分',   src:'予定' },
+  { k:'twoMiss',   t:'2名体制なのに同行がいない',                        u:'件',   src:'予定', bool:true },
+  { k:'aideWeek',  t:'看護補助者の同行（同じ利用者・1週間）',             u:'回',   src:'予定' },
+  { k:'offDay',    t:'休み・申告外の日に予定が入っている',               u:'件',   src:'予定', bool:true },
+  { k:'mono',      t:'一人の職員が占める割合（同じ利用者・その月）',     u:'%',    src:'予定・看護記録' },
+  { k:'longVisit', t:'1回の提供の長さ',                                 u:'分',   src:'看護記録' },
+  { k:'late',      t:'次の利用者への遅れ（予定の時刻より）',             u:'分',   src:'看護記録' },
+  { k:'officeCx',  t:'事業所の都合による休み・変更（同じ利用者・その月）', u:'回',  src:'キャンセル受付' },
+  { k:'hvShare',   t:'人情変更が全変更に占める割合（その月）',           u:'%',    src:'変更の記録' },
+  { k:'hvRepeat',  t:'同じ利用者の人情変更が続いた月数',                 u:'か月', src:'変更の記録' }
+];
+var PTR_OPS = ['以上', '超', '以下', '未満'];
+function ptrMeasure(k){ return PTR_M.filter(function(m){ return m.k === k; })[0] || null; }
+function ptrDefaults(){
+  var wr = workRule(), caps = lj('tritime_au_caps', {}) || {};
+  return [
+    { id:'r1',  m:'dayN',      op:'超',   v:+caps.f || wr.target || 8, emp:'常勤',   hard:true,  on:true },
+    { id:'r2',  m:'dayN',      op:'超',   v:+caps.p || 5,             emp:'非常勤', hard:true,  on:true },
+    { id:'r3',  m:'gap',       op:'未満', v:wr.mvMin,                 emp:'全員',   hard:false, on:true },
+    { id:'r4',  m:'gap',       op:'超',   v:wr.mvMax,                 emp:'全員',   hard:true,  on:true },
+    { id:'r5',  m:'dayArea',   op:'以上', v:3,                        emp:'全員',   hard:false, on:true },
+    { id:'r6',  m:'areaStaff', op:'以上', v:3,                        emp:'全員',   hard:false, on:true },
+    { id:'r7',  m:'wishDay',   op:'以上', v:1,                        emp:'全員',   hard:false, on:true },
+    { id:'r8',  m:'wishTime',  op:'超',   v:30,                       emp:'全員',   hard:false, on:true },
+    { id:'r9',  m:'twoMiss',   op:'以上', v:1,                        emp:'全員',   hard:false, on:true },
+    { id:'r10', m:'aideWeek',  op:'超',   v:1,                        emp:'全員',   hard:true,  on:true },
+    { id:'r11', m:'offDay',    op:'以上', v:1,                        emp:'全員',   hard:true,  on:true },
+    { id:'r12', m:'mono',      op:'以上', v:80,                       emp:'全員',   hard:true,  on:true },
+    { id:'r13', m:'longVisit', op:'以上', v:50,                       emp:'全員',   hard:true,  on:true },
+    { id:'r14', m:'late',      op:'以上', v:10,                       emp:'全員',   hard:true,  on:true },
+    { id:'r15', m:'officeCx',  op:'以上', v:1,                        emp:'全員',   hard:true,  on:true },
+    { id:'r16', m:'hvShare',   op:'超',   v:30,                       emp:'全員',   hard:true,  on:true },
+    { id:'r17', m:'hvRepeat',  op:'以上', v:3,                        emp:'全員',   hard:true,  on:true }
+  ];
+}
+function ptrRules(){ var s = lj(K.settings, {}) || {}; return (s.ptr && Array.isArray(s.ptr.rules)) ? s.ptr.rules : ptrDefaults(); }
+function ptrSaveRules(rules){ var cur = lj(K.settings, {}) || {}; saveSettings(Object.assign({}, cur, { ptr:Object.assign({}, cur.ptr || {}, { rules:rules, at:nowLocal() }) })); }
+function ptrHit(op, x, v){ x = +x; v = +v; if(isNaN(x) || isNaN(v)) return false; return op === '以上' ? x >= v : op === '超' ? x > v : op === '以下' ? x <= v : x < v; }
+function ptrRuleLabel(r){ var m = ptrMeasure(r.m); if(!m) return ''; return m.t + (r.emp && r.emp !== '全員' ? '（' + r.emp + '）' : '') + ' が ' + r.v + m.u + r.op; }
+function ptrEmpOk(r, sid){ if(!r.emp || r.emp === '全員') return true; var s = staff().filter(function(x){ return x.id === sid; })[0]; if(!s) return false; return r.emp === '非常勤' ? s.emp === '非常勤' : s.emp !== '非常勤'; }
+
+/* 人情変更の印（組み換えの記録、または週間予定の1件に付いたもの）。記録が変わったときだけ引き直す（札ごとに記録を読み直さない） */
+var HV_C = { es:undefined, ws:undefined, mv:{}, wk:{} };
+function hvMaps(){
+  if(!HV_C) HV_C = { es:undefined, ws:undefined, mv:{}, wk:{} };   /* 最初の描画はこの宣言より前に走るため */
+  var es = null, ws = null; try{ es = localStorage.getItem(K.events); ws = localStorage.getItem(K.weekly); }catch(e){}
+  if(es !== HV_C.es){ HV_C.es = es; HV_C.mv = {}; events().forEach(function(e){ if(e.type === 'move' && e.hv) HV_C.mv[e.id] = { why:e.why || '人情変更', note:e.note || '' }; }); }
+  if(ws !== HV_C.ws){ HV_C.ws = ws; HV_C.wk = {}; live('weekly').forEach(function(w){ if(w.hv) HV_C.wk[w.id] = { why:w.why || '人情変更', note:w.note || '' }; }); }
+  return HV_C;
+}
+function hvOf(v){ if(!v) return null; var c = hvMaps(); if(v.moved && v.moved.id && c.mv[v.moved.id]) return c.mv[v.moved.id]; if(v.wid && c.wk[v.wid]) return c.wk[v.wid]; return null; }
+function hvWhyList(){ return ['利用者の希望', '事業所の都合（職員の休み・調整）', '人情変更（相性）', '人情変更（体調への配慮）', '人情変更（家族の事情）', '人情変更（その他）']; }
+function hvIs(why){ return /^人情変更/.test(String(why || '')); }
+
+/* 予定の物差し：1週間（または1か月）の訪問の並びを見る。vfn(date) がその日の訪問を返す。hv の付いた訪問は、hard でない条項では飛ばす */
+function ptrEvalPlan(days, vfn, rules, opt){
+  opt = opt || {}; var wr = workRule(), out = [], lb = 12 * 60, le = lb + (wr.brk || 0);
+  var R = rules.filter(function(r){ return r.on !== false; });
+  var byRule = {}; R.forEach(function(r){ byRule[r.m] = byRule[r.m] || []; byRule[r.m].push(r); });
+  var add = function(r, text, basis, keys, hv){ if(hv && !r.hard) return; out.push({ rule:r, text:text, basis:basis, keys:keys || [], hv:!!hv }); };
+  var pk = function(v){ return v.date + '|' + v.no + '|' + v.time; };
+  var byStaffDay = {}, areaStaff = {}, aideWeek = {}, monoP = {};
+  days.forEach(function(date){
+    var vs = (vfn(date) || []).filter(function(v){ return !v.cx; });
+    vs.forEach(function(v){
+      var k = v.staffId + '|' + date; (byStaffDay[k] = byStaffDay[k] || { sid:v.staffId, date:date, vs:[] }).vs.push(v);
+      if(v.area){ (areaStaff[v.area] = areaStaff[v.area] || {})[v.staffId] = 1; }
+      (monoP[v.no] = monoP[v.no] || { n:0, by:{} }); monoP[v.no].n++; monoP[v.no].by[v.staffId] = (monoP[v.no].by[v.staffId] || 0) + 1;
+      var p = patient(v.no) || {}, hv = opt.noHv ? null : hvOf(v), dow = String(parseYmd(date).getDay());
+      (byRule.wishDay || []).forEach(function(r){
+        var bad = (p.ngDays || []).indexOf(dow) >= 0 ? '訪問できない曜日（' + DOW[+dow] + '）に入っています' : ((p.wDays || []).length && (p.wDays || []).indexOf(dow) < 0 ? '希望の曜日（' + (p.wDays || []).map(function(d){ return DOW[+d]; }).join('・') + '）ではなく' + DOW[+dow] + '曜に入っています' : '');
+        if(bad && ptrHit(r.op, 1, r.v)) add(r, dnn(v.no) + '：' + bad, jpDate(date) + ' ' + v.time + '（' + staffName(v.staffId) + '）', [pk(v)], hv);
+      });
+      (byRule.wishTime || []).forEach(function(r){
+        var t = toMin(v.time), diff = null, how = '';
+        if(p.wish && toMin(p.wish) != null){ diff = Math.abs(t - toMin(p.wish)); how = '希望の時刻 ' + p.wish; }
+        else if(p.wBand === '午前' && t >= 720){ diff = t - 720 + 1; how = '希望の時間帯 午前'; }
+        else if(p.wBand === '午後' && t < 720){ diff = 720 - t; how = '希望の時間帯 午後'; }
+        if(diff != null && ptrHit(r.op, diff, r.v)) add(r, dnn(v.no) + '：' + how + 'に対して ' + v.time + '（ずれ ' + minLabel(diff) + '）', jpDate(date) + '（' + staffName(v.staffId) + '）', [pk(v)], hv);
+      });
+      (byRule.twoMiss || []).forEach(function(r){ if(isTwoP(p) && !v.withId && ptrHit(r.op, 1, r.v)) add(r, dnn(v.no) + '：2名体制の指示ですが、同行が組まれていません', jpDate(date) + ' ' + v.time + '（' + staffName(v.staffId) + '）', [pk(v)], hv); });
+      (byRule.offDay || []).forEach(function(r){ var why = offWhy(v.staffId, date); if(why && ptrHit(r.op, 1, r.v)) add(r, staffName(v.staffId) + 'さんの「' + why + '」の日に ' + dnn(v.no) + ' が入っています', jpDate(date) + ' ' + v.time, [pk(v)], hv); });
+      if(v.withId){ var ws = staff().filter(function(x){ return x.id === v.withId; })[0]; if(ws && AIDE_JOBS.indexOf(jobOf(ws)) >= 0){ var wk = ymd(mondayOf(parseYmd(date))) + '|' + v.no; (aideWeek[wk] = aideWeek[wk] || { no:v.no, vs:[] }).vs.push(v); } }
+    });
+  });
+  Object.keys(byStaffDay).forEach(function(k){
+    var g = byStaffDay[k], vs = g.vs.slice().sort(function(a, b){ return a.time < b.time ? -1 : 1; }), hvAll = vs.length && vs.every(function(v){ return !opt.noHv && hvOf(v); });
+    var own = vs.filter(function(v){ return v.staffId === g.sid; });
+    (byRule.dayN || []).forEach(function(r){ if(ptrEmpOk(r, g.sid) && ptrHit(r.op, own.length, r.v)) add(r, staffName(g.sid) + 'さん：' + jpDate(g.date) + 'は ' + own.length + '件（許容は' + r.v + '件' + r.op + 'で指摘）', own.map(function(v){ return v.time + ' ' + dn(v.no); }).join('、'), own.map(pk), hvAll); });
+    (byRule.dayArea || []).forEach(function(r){ var ar = {}; own.forEach(function(v){ if(v.area) ar[v.area] = 1; }); var n = Object.keys(ar).length; if(ptrEmpOk(r, g.sid) && ptrHit(r.op, n, r.v)) add(r, staffName(g.sid) + 'さん：' + jpDate(g.date) + 'は町名が ' + n + 'か所に散っています（' + Object.keys(ar).join('・') + '）', own.length + '件', own.map(pk), hvAll); });
+    (byRule.gap || []).forEach(function(r){
+      for(var i = 1; i < own.length; i++){
+        var a = own[i - 1], b = own[i], ga = toMin(a.time) + (+a.min || wr.visit), gb = toMin(b.time), gap = gb - ga;
+        var ov = Math.max(0, Math.min(gb, le) - Math.max(ga, lb)); gap -= ov;   /* 昼休みにかかる分は差し引く */
+        if(!ptrEmpOk(r, g.sid) || !ptrHit(r.op, gap, r.v)) continue;
+        var hv2 = !opt.noHv && (hvOf(a) || hvOf(b));
+        add(r, staffName(g.sid) + 'さん：' + jpDate(g.date) + ' ' + a.time + '（' + dn(a.no) + '・' + (a.area || '地区なし') + '）→ ' + b.time + '（' + dn(b.no) + '・' + (b.area || '地区なし') + '）の間が ' + gap + '分' + (ov ? '（昼休み ' + ov + '分を除く）' : ''), '移動の目安は ' + wr.mvMin + '〜' + wr.mvMax + '分', [pk(a), pk(b)], hv2);
+      }
+    });
+  });
+  (byRule.areaStaff || []).forEach(function(r){ Object.keys(areaStaff).forEach(function(ar){ var n = Object.keys(areaStaff[ar]).length; if(ptrHit(r.op, n, r.v)) add(r, '町名「' + ar + '」を ' + n + '人の職員（' + Object.keys(areaStaff[ar]).map(staffName).join('・') + '）が分けて受け持っています', days.length + '日間の予定', [], false); }); });
+  (byRule.aideWeek || []).forEach(function(r){ Object.keys(aideWeek).forEach(function(k){ var g = aideWeek[k]; if(ptrHit(r.op, g.vs.length, r.v)) add(r, dnn(g.no) + '：看護補助者の同行が週 ' + g.vs.length + '回（加算は週1回まで）', g.vs.map(function(v){ return jpDate(v.date) + ' ' + v.time; }).join('、'), g.vs.map(pk), false); }); });
+  if(opt.month){
+    (byRule.mono || []).forEach(function(r){ Object.keys(monoP).forEach(function(no){ var g = monoP[no]; if(g.n < 2) return; var top = Object.keys(g.by).sort(function(a, b){ return g.by[b] - g.by[a]; })[0], pct = Math.round(g.by[top] / g.n * 100); if(ptrHit(r.op, pct, r.v)) add(r, dnn(no) + '：' + staffName(top) + 'さんが ' + g.n + '回中 ' + g.by[top] + '回（' + pct + '%）を受け持つ予定です', jpMonth(opt.month) + 'の予定', [], false); }); });
+  }
+  return out;
+}
+/* 実績の物差し：看護記録・キャンセル受付・変更の記録から（その月） */
+function ptrEvalActual(m, rules){
+  var out = [], wr = workRule(), R = rules.filter(function(r){ return r.on !== false; });
+  var byRule = {}; R.forEach(function(r){ byRule[r.m] = byRule[r.m] || []; byRule[r.m].push(r); });
+  var add = function(r, text, basis, keys){ out.push({ rule:r, text:text, basis:basis, keys:keys || [], hv:false }); };
+  var recs = live('records').filter(function(x){ return x.date && ym(x.date) === m && inDept(D().pfx + String(x.patientNo || '')); }), all = staff();
+  (byRule.longVisit || []).forEach(function(r){ recs.forEach(function(x){ var a = toMin(x.start), b = toMin(x.end); if(a == null || b == null) return; var len = b - a; if(ptrHit(r.op, len, r.v)) add(r, (x.nurse || '担当不明') + '：' + dnn(D().pfx + x.patientNo) + ' への提供が ' + len + '分（' + x.start + '〜' + x.end + '）。理由の説明が要ります', '看護記録 ' + jpDate(x.date), [x.date + '|' + D().pfx + x.patientNo + '|' + x.start]); }); });
+  (byRule.late || []).forEach(function(r){ recs.forEach(function(x){ var no = D().pfx + x.patientNo, st = recStaff(x, all), a = toMin(x.start); if(a == null) return; var v = visitsOn(x.date).filter(function(q){ return !q.cx && q.no === no && (!st || q.staffId === st.id || q.withId === st.id); })[0]; if(!v) return; var d = a - toMin(v.time); if(ptrHit(r.op, d, r.v)) add(r, (x.nurse || '担当不明') + '：' + dnn(no) + ' の予定 ' + v.time + 'に対し、開始が ' + x.start + '（' + d + '分の遅れ）', '看護記録 ' + jpDate(x.date), [v.date + '|' + v.no + '|' + v.time]); }); });
+  (byRule.mono || []).forEach(function(r){ var g = {}; recs.forEach(function(x){ var no = D().pfx + x.patientNo; (g[no] = g[no] || { n:0, by:{} }); g[no].n++; g[no].by[x.nurse || '担当不明'] = (g[no].by[x.nurse || '担当不明'] || 0) + 1; }); Object.keys(g).forEach(function(no){ if(g[no].n < 2) return; var top = Object.keys(g[no].by).sort(function(a, b){ return g[no].by[b] - g[no].by[a]; })[0], pct = Math.round(g[no].by[top] / g[no].n * 100); if(ptrHit(r.op, pct, r.v)) add(r, dnn(no) + '：看護記録では ' + top + ' が ' + g[no].n + '回中 ' + g[no].by[top] + '回（' + pct + '%）を担っています', jpMonth(m) + 'の看護記録', []); }); });
+  (byRule.officeCx || []).forEach(function(r){ var g = {}; events().filter(function(e){ return e.type === 'cancel' && e.cat === '事業所都合' && ym(e.date) === m && inDept(e.patientNo); }).forEach(function(e){ (g[e.patientNo] = g[e.patientNo] || []).push(e); }); Object.keys(g).forEach(function(no){ if(ptrHit(r.op, g[no].length, r.v)) add(r, dnn(no) + '：事業所の都合による休み・変更が ' + g[no].length + '回', g[no].map(function(e){ return jpDate(e.date) + (e.time ? ' ' + e.time : ''); }).join('、'), []); }); });
+  var mv = events().filter(function(e){ return e.type === 'move' && ym(e.toDate || e.date) === m && inDept(e.patientNo); }), wkh = live('weekly').filter(function(w){ return w.hv && w.hvAt && ym(w.hvAt) === m && inDept(w.no); });
+  var hvN = mv.filter(function(e){ return e.hv; }).length + wkh.length, allN = mv.length + wkh.length;
+  (byRule.hvShare || []).forEach(function(r){ if(allN && ptrHit(r.op, Math.round(hvN / allN * 100), r.v)) add(r, jpMonth(m) + 'の変更 ' + allN + '件のうち人情変更が ' + hvN + '件（' + Math.round(hvN / allN * 100) + '%）', '組み換えの記録と週間予定の変更', []); });
+  (byRule.hvRepeat || []).forEach(function(r){
+    var byNo = {}; events().filter(function(e){ return e.type === 'move' && e.hv && inDept(e.patientNo); }).forEach(function(e){ (byNo[e.patientNo] = byNo[e.patientNo] || {})[ym(e.toDate || e.date)] = 1; });
+    live('weekly').filter(function(w){ return w.hv && w.hvAt && inDept(w.no); }).forEach(function(w){ (byNo[w.no] = byNo[w.no] || {})[ym(w.hvAt)] = 1; });
+    Object.keys(byNo).forEach(function(no){ var ms = Object.keys(byNo[no]).sort(), run = 0, best = 0; for(var i = 0; i < ms.length; i++){ run = (i && prevYm(ms[i]) === ms[i - 1]) ? run + 1 : 1; best = Math.max(best, run); } if(ptrHit(r.op, best, r.v)) add(r, dnn(no) + '：人情変更が ' + best + 'か月続いています（' + ms.join('・') + '）', '変更の記録', []); });
+  });
+  return out;
+}
+function ptrFindingsHTML(list, rules, where){
+  var seen = rules.filter(function(r){ return r.on !== false; }).length;
+  var h = '<div class="judge ' + (list.length ? 'fee' : 'free') + '" style="margin:8px 0"><b>H&amp;Nパトリオットの指摘（条項表の ' + seen + '条で確かめました）</b>';
+  if(!list.length) return h + '<br>条項表の ' + seen + '条で引っかかる箇所はありませんでした。見た範囲はこの表の予定だけです。</div>';
+  h += '<ul style="margin:6px 0 0 18px">' + list.map(function(f, i){
+    return '<li' + (f.keys.length ? ' class="ptrRow" data-ptr="' + esc(f.keys.join(';')) + '" style="cursor:pointer"' : '') + '>' + (f.hv ? '<span class="tag amber">人情変更</span> ' : '') + esc(f.text) + '<br><small class="muted">条項：' + esc(ptrRuleLabel(f.rule)) + '／根拠：' + esc(f.basis) + '</small>' + (f.hv ? '<br><small class="muted">この変更は思いやりから来ていると見ていますが、結果としてこの線を超えています。</small>' : '') + '</li>';
+  }).join('') + '</ul><small class="muted">指摘を押すと、表の中のその訪問が光ります。</small></div>';
+  return h;
+}
+function ptrWire(box, gridSel){
+  box.querySelectorAll('.ptrRow').forEach(function(li){ li.addEventListener('click', function(){
+    var keys = li.getAttribute('data-ptr').split(';'), g = document.querySelector(gridSel); if(!g) return;
+    g.querySelectorAll('.ssChip.ptrHit').forEach(function(c){ c.classList.remove('ptrHit'); });
+    var first = null; keys.forEach(function(k){ g.querySelectorAll('.ssChip[data-pk="' + k.replace(/"/g, '') + '"]').forEach(function(c){ c.classList.add('ptrHit'); if(!first) first = c; }); });
+    if(first && first.scrollIntoView) first.scrollIntoView({ block:'center', inline:'center' });
+  }); });
+}
+/* 本体・仮スケジュール表の「H&Nパトリオット」ボタン：表に出ている週を確かめ、指摘を出し、記録を残す */
+function ptrRun(days, boxId, gridSel, label){
+  var rules = ptrRules(), m = ym(days[0]);
+  var list = ptrEvalPlan(days, visitsOn, rules, { month:m }).concat(ptrEvalActual(m, rules));
+  var box = $(boxId); if(!box) return;
+  box.innerHTML = ptrFindingsHTML(list, rules, label); ptrWire(box, gridSel);
+  var ev = events(); ev.push({ id:uid(), type:'patriot', date:ymd(new Date()), at:nowLocal(), by:dev().me || '', dept:D().k, from:days[0], to:days[days.length - 1], n:list.length, hvN:list.filter(function(f){ return f.hv; }).length, items:list.slice(0, 60).map(function(f){ return f.rule.m + '|' + f.text.slice(0, 60); }) });
+  saveEvents(ev);
+}
+function ptrBtnHTML(id, boxId){ return '<div class="btns" style="margin:6px 0 2px"><button type="button" class="btn sub" id="' + id + '" style="border-color:#993c1d;color:#712b13;font-weight:700">H&amp;Nパトリオット</button><small class="muted">この表の予定を、許容範囲外の条項表で確かめます。</small></div><div id="' + boxId + '"></div>'; }
+function canSched(){ var r = role(); return D().kind === 'visit' && (r.lv === 'all' || r.lv === 'dept' || r.lv === 'office'); }
+
+/* ---- 予定表の比較（人情×効率）＝野木画面の中だけ ---- */
+/* 効率バージョン：いまの利用者・職員で、担当の引き継ぎも曜日の据え置きもせず、効率だけで組み直したもの */
+function cmpAiRows(){
+  var caps = lj('tritime_au_caps', {}) || {};
+  var R = auCompute({ capF:+caps.f || workRule().target || 8, capP:+caps.p || 5, keep:false });
+  return R ? R.rows : [];
+}
+function cmpVisitsFn(rows){
+  var inf = {}; weekly().forEach(function(w){ if(!inf[w.no]) inf[w.no] = w.min || 30; });
+  return function(date){ var w = String(parseYmd(date).getDay()); return rows.filter(function(r){ return r.dow === w; }).map(function(r){ var p = patient(r.no) || {}; return { date:date, time:r.time, min:r.min || inf[r.no] || 30, no:r.no, area:p.area || r.area || '', staffId:r.staffId, withId:r.withId || '', cx:null, od:date, ot:r.time, wid:'' }; }).sort(function(a, b){ return a.time < b.time ? -1 : 1; }); };
+}
+/* 一つの組み方の数字（効率の目・人情の目）。vfn(date)→訪問 */
+function cmpScore(m, vfn, isHuman){
+  var days = mdDays(m), wr = workRule(), lb = 12 * 60, le = lb + (wr.brk || 0), today = ymd(new Date());
+  var o = { n:0, days:0, travel:0, idle:0, over:0, sdays:{}, wishOk:0, wishAll:0, fixOk:0, fixAll:0, trustLow:0, refuseHit:0, hv:0, byP:{} };
+  var caps = lj('tritime_au_caps', {}) || {}, capF = +caps.f || wr.target || 8, capP = +caps.p || 5;
+  var refusals = events().filter(function(e){ return e.type === 'refusal' && e.kind === 'staff' && e.status === '有効' && e.staffId; });
+  days.forEach(function(date){
+    var vs = (vfn(date) || []).filter(function(v){ return !v.cx; }), by = {};
+    vs.forEach(function(v){ if(offWhy(v.staffId, date)) return; (by[v.staffId] = by[v.staffId] || []).push(v); });
+    Object.keys(by).forEach(function(sid){
+      var a = by[sid].sort(function(x, y){ return x.time < y.time ? -1 : 1; }), s = staff().filter(function(x){ return x.id === sid; })[0], cap = s && s.emp === '非常勤' ? capP : capF;
+      o.n += a.length; o.sdays[sid + '|' + date] = 1; if(a.length > cap) o.over++;
+      for(var i = 1; i < a.length; i++){ var ga = toMin(a[i - 1].time) + (+a[i - 1].min || wr.visit), gb = toMin(a[i].time), gap = gb - ga - Math.max(0, Math.min(gb, le) - Math.max(ga, lb)); if(gap <= wr.mvMax) o.travel += Math.max(0, gap); else { o.travel += wr.mvStd; o.idle += gap - wr.mvStd; } }
+      a.forEach(function(v){
+        var p = patient(v.no) || {}, dow = String(parseYmd(date).getDay());
+        if((p.wDays || []).length || p.wish || p.wBand || (p.ngDays || []).length){
+          o.wishAll++; var ok = (p.ngDays || []).indexOf(dow) < 0 && (!(p.wDays || []).length || (p.wDays || []).indexOf(dow) >= 0);
+          if(ok && p.wish && toMin(p.wish) != null) ok = Math.abs(toMin(v.time) - toMin(p.wish)) <= 30;
+          else if(ok && p.wBand) ok = p.wBand === '午前' ? toMin(v.time) < 720 : toMin(v.time) >= 720;
+          if(ok) o.wishOk++;
+        }
+        (o.byP[v.no] = o.byP[v.no] || {}); o.byP[v.no][sid] = (o.byP[v.no][sid] || 0) + 1;
+        if(trustOf(v.no).lv === '低') o.trustLow++;
+        if(refusals.some(function(e){ return e.patientNo === v.no && (e.staffId === sid || e.staffId === v.withId); })) o.refuseHit++;
+        if(isHuman && hvOf(v)) o.hv++;
+      });
+    });
+  });
+  o.days = Object.keys(o.sdays).length; o.avg = o.days ? Math.round(o.n / o.days * 10) / 10 : 0;
+  /* 担当の固定：いまの主担当（週間予定でいちばん多い職員）が、その月もいちばん多く受け持っているか */
+  var main = {}; weekly().forEach(function(w){ (main[w.no] = main[w.no] || {})[w.staffId] = (main[w.no][w.staffId] || 0) + 1; });
+  Object.keys(o.byP).forEach(function(no){ var mm = main[no]; if(!mm) return; var top = Object.keys(mm).sort(function(a, b){ return mm[b] - mm[a]; })[0], t2 = Object.keys(o.byP[no]).sort(function(a, b){ return o.byP[no][b] - o.byP[no][a]; })[0]; o.fixAll++; if(top === t2) o.fixOk++; });
+  var F = mdFees(m, vfn), sales = 0; Object.keys(F.map).forEach(function(k){ sales += F.map[k].fee || 0; });
+  o.sales = sales; o.w4ng = F.w4ng;
+  return o;
+}
+function cmpForecast(m, o){
+  var goal = +mdCfg().goal || 0, days = mdDays(m), today = ymd(new Date());
+  var f = { sales1:o.sales, sales3:o.sales * 3, goal:goal, goalDiff:goal ? o.sales - goal : null, monthsToGoal:null, cxExp:null, cxNote:'' };
+  /* キャンセルの見込み：利用者ごとの直近90日のキャンセル率 × その月の予定件数。90日の記録が無いときは出さない */
+  var since = ymd(addDays(new Date(), -90)), visN = 0;
+  for(var d = parseYmd(since); ymd(d) <= today; d = addDays(d, 1)){ visitsOn(ymd(d)).forEach(function(v){ if(o.byP[v.no]) visN++; }); }
+  var cxAny = events().some(function(e){ return e.type === 'cancel' && (e.date || '') >= since && inDept(e.patientNo); });
+  if(visN >= 20 && cxAny){ var cx = events().filter(function(e){ return e.type === 'cancel' && (e.date || '') >= since && e.cat !== '事業所都合' && o.byP[e.patientNo]; }).length; var allV = 0; Object.keys(o.byP).forEach(function(no){ Object.keys(o.byP[no]).forEach(function(s){ allV += o.byP[no][s]; }); }); f.cxExp = Math.round(cx / visN * allV * 10) / 10; f.cxNote = '直近90日の予定 ' + visN + '件に対しキャンセル ' + cx + '件（事業所都合を除く）の率から'; }
+  else f.cxNote = 'キャンセルの履歴がまだ無い・少ない（直近90日の予定 ' + visN + '件・キャンセル受付の記録 ' + (cxAny ? 'あり' : 'なし') + '）ため算出していません';
+  return f;
+}
+function cmpDiff(m, vH, vA){
+  var days = mdDays(m), kH = {}, kA = {};
+  days.forEach(function(date){ (vH(date) || []).filter(function(v){ return !v.cx; }).forEach(function(v){ kH[date + '|' + v.no] = v; }); (vA(date) || []).forEach(function(v){ kA[date + '|' + v.no] = v; }); });
+  var rows = [];
+  Object.keys(kH).forEach(function(k){ var h = kH[k], a = kA[k]; if(!a) rows.push({ no:h.no, date:k.slice(0, 10), h:h, a:null }); else if(h.staffId !== a.staffId || Math.abs(toMin(h.time) - toMin(a.time)) > 15) rows.push({ no:h.no, date:k.slice(0, 10), h:h, a:a }); });
+  Object.keys(kA).forEach(function(k){ if(!kH[k]) rows.push({ no:kA[k].no, date:k.slice(0, 10), h:null, a:kA[k] }); });
+  return rows.sort(function(x, y){ return (x.date + x.no) < (y.date + y.no) ? -1 : 1; });
+}
+function cmpRender(m){
+  var vH = visitsOn, rows = cmpAiRows(), vA = cmpVisitsFn(rows), rules = ptrRules();
+  if(!patients().length) return '<p class="empty">この部署に利用者さんがまだいません。</p>';
+  var H = cmpScore(m, vH, true), A = cmpScore(m, vA, false), fH = cmpForecast(m, H), fA = cmpForecast(m, A), df = cmpDiff(m, vH, vA);
+  var pH = ptrEvalPlan(mdDays(m), vH, rules, { month:m }), pA = ptrEvalPlan(mdDays(m), vA, rules, { month:m, noHv:true });
+  var pct = function(a, b){ return b ? Math.round(a / b * 100) + '%（' + a + '／' + b + '）' : '—'; };
+  var cell = function(x){ return '<td class="num">' + x + '</td>'; };
+  /* 緑の升：数で比べる（表示の文字では比べない）。hv・av は比べる数、h・a は出す文字 */
+  var tr = function(lab, h, a, better, hv, av){ if(hv == null) hv = h; if(av == null) av = a; var hb = better && hv !== av && better(hv, av), ab = better && hv !== av && better(av, hv); return '<tr><th style="text-align:left">' + lab + '</th><td class="num"' + (hb ? ' style="background:#eef5ef;font-weight:700"' : '') + '>' + h + '</td><td class="num"' + (ab ? ' style="background:#eef5ef;font-weight:700"' : '') + '>' + a + '</td></tr>'; };
+  var hi = function(a, b){ return a > b; }, lo = function(a, b){ return a < b; };
+  var h = '<p class="muted">左＝管理者が直して確定している予定（人情バージョン）、右＝AIが効率だけで組み直した予定（効率バージョン）。' + esc(jpMonth(m)) + 'の日付に当てはめ、休み（公休・祝日・届け・申告外）の日の訪問は数えていません。緑の升は、その目で見て良い方です。</p>' +
+    '<div class="tbl-scroll"><table><tr><th></th><th>人情バージョン（管理者）</th><th>効率バージョン（AI）</th></tr>' +
+    '<tr><th colspan="3" style="text-align:left;background:#eef3f8">効率の目</th></tr>' +
+    tr('月の訪問件数', H.n + '件', A.n + '件') +
+    tr('1日あたりの平均件数', H.avg + '件', A.avg + '件', hi, H.avg, A.avg) +
+    tr('移動に使う時間（月の合計）', minLabel(H.travel), minLabel(A.travel), lo, H.travel, A.travel) +
+    tr('空き時間（月の合計）', minLabel(H.idle), minLabel(A.idle), lo, H.idle, A.idle) +
+    tr('許容範囲を超える日（職員×日）', H.over + '日', A.over + '日', lo, H.over, A.over) +
+    tr('売上見込み（1か月）', mdYen(H.sales), mdYen(A.sales), hi, H.sales, A.sales) +
+    tr('条項表の指摘（人情変更を除く）', pH.filter(function(f){ return !f.hv; }).length + '件', pA.length + '件', lo, pH.filter(function(f){ return !f.hv; }).length, pA.length) +
+    '<tr><th colspan="3" style="text-align:left;background:#fbf3e4">人情の目</th></tr>' +
+    tr('利用者の希望（曜日・時刻・時間帯）との合致', pct(H.wishOk, H.wishAll), pct(A.wishOk, A.wishAll), hi, H.wishAll ? H.wishOk / H.wishAll : 0, A.wishAll ? A.wishOk / A.wishAll : 0) +
+    tr('主担当がそのまま受け持つ利用者', pct(H.fixOk, H.fixAll), pct(A.fixOk, A.fixAll), hi, H.fixAll ? H.fixOk / H.fixAll : 0, A.fixAll ? A.fixOk / A.fixAll : 0) +
+    tr('信用度「低」の利用者への訪問', H.trustLow + '件', A.trustLow + '件') +
+    tr('拒否の申し出のある職員への配置', H.refuseHit + '件', A.refuseHit + '件', lo, H.refuseHit, A.refuseHit) +
+    tr('人情変更の札', H.hv + '件', '—') +
+    '<tr><th colspan="3" style="text-align:left;background:#eef3f8">この組み方で1か月続けたら</th></tr>' +
+    tr('売上（1か月／3か月）', mdYen(fH.sales1) + '／' + mdYen(fH.sales3), mdYen(fA.sales1) + '／' + mdYen(fA.sales3), hi, fH.sales1, fA.sales1) +
+    (fH.goal ? tr('目標設定額との差（' + mdYen(fH.goal) + '）', (fH.goalDiff >= 0 ? '+' : '') + mdYen(fH.goalDiff), (fA.goalDiff >= 0 ? '+' : '') + mdYen(fA.goalDiff), hi, fH.goalDiff, fA.goalDiff) : '<tr><th style="text-align:left">目標設定額との差</th><td colspan="2" class="muted">目標設定額が入っていないため出していません（モデルコース）</td></tr>') +
+    tr('キャンセルの見込み（月）', fH.cxExp != null ? fH.cxExp + '件' : '算出していません', fA.cxExp != null ? fA.cxExp + '件' : '算出していません', (fH.cxExp != null && fA.cxExp != null) ? lo : null, fH.cxExp, fA.cxExp) +
+    '</table></div>' +
+    '<p class="muted sm">計算の元：件数と移動・空きは各日の訪問の時刻の並びから（移動の目安 ' + workRule().mvMin + '〜' + workRule().mvMax + '分）。売上は料金表（モデルコースと同じ）。希望は利用者登録の「予定の希望」。' + esc(fH.cxNote) + '。</p>';
+  h += '<h3 style="margin:12px 0 4px;font-size:15px">違い（' + df.length + '件）</h3>' + (df.length ? '<div class="tbl-scroll" style="max-height:360px;overflow:auto"><table><tr><th>日</th><th>利用者</th><th>人情（管理者）</th><th>効率（AI）</th></tr>' + df.map(function(r){
+    return '<tr><td>' + esc(jpDate(r.date)) + '</td><td>' + esc(dnn(r.no)) + '</td><td>' + (r.h ? esc(r.h.time + ' ' + staffName(r.h.staffId)) + (hvOf(r.h) ? ' <span class="tag amber">人情</span>' : '') : '<span class="muted">—</span>') + '</td><td>' + (r.a ? esc(r.a.time + ' ' + staffName(r.a.staffId)) : '<span class="muted">—</span>') + '</td></tr>'; }).join('') + '</table></div>' : '<p class="muted">担当・時刻（15分超）の違う訪問はありません。</p>');
+  h += '<details style="margin-top:10px"><summary>H&amp;Nパトリオットの指摘を見る（左右それぞれ）</summary><div class="row"><div>' + ptrFindingsHTML(pH, rules) + '</div><div>' + ptrFindingsHTML(pA, rules) + '</div></div></details>';
+  h += '<div class="btns" style="margin-top:10px"><button type="button" class="btn" id="cmp_save">この月の比較を記録する</button><span class="muted sm" id="cmp_msg"></span></div><div id="cmp_hist"></div>';
+  CMP_LAST = { m:m, dept:D().k, at:nowLocal(), H:{ n:H.n, avg:H.avg, travel:H.travel, idle:H.idle, over:H.over, sales:H.sales, ptr:pH.filter(function(f){ return !f.hv; }).length, wish:[H.wishOk, H.wishAll], fix:[H.fixOk, H.fixAll], hv:H.hv }, A:{ n:A.n, avg:A.avg, travel:A.travel, idle:A.idle, over:A.over, sales:A.sales, ptr:pA.length, wish:[A.wishOk, A.wishAll], fix:[A.fixOk, A.fixAll] } };
+  return h;
+}
+var CMP_LAST = null;
+function cmpHistRender(){
+  var box = $('cmp_hist'); if(!box || !hasOwnKey()) return;
+  evBoxGet('own:cmp:' + D().k).then(function(d){
+    var list = (d && d.list) || []; if(!list.length){ box.innerHTML = ''; return; }
+    box.innerHTML = '<h3 style="margin:10px 0 4px;font-size:15px">記録した比較の推移（' + list.length + '件）</h3><div class="tbl-scroll"><table><tr><th>月</th><th>記録した日時</th><th class="num">件数 人情／効率</th><th class="num">移動 人情／効率</th><th class="num">売上見込み 人情／効率</th><th class="num">指摘 人情／効率</th><th class="num">人情変更</th></tr>' +
+      list.slice().reverse().map(function(x){ return '<tr><td>' + esc(jpMonth(x.m)) + '</td><td>' + esc(String(x.at).replace('T', ' ')) + '</td><td class="num">' + x.H.n + '／' + x.A.n + '</td><td class="num">' + minLabel(x.H.travel) + '／' + minLabel(x.A.travel) + '</td><td class="num">' + mdYen(x.H.sales) + '／' + mdYen(x.A.sales) + '</td><td class="num">' + x.H.ptr + '／' + x.A.ptr + '</td><td class="num">' + x.H.hv + '</td></tr>'; }).join('') + '</table></div>';
+  });
+}
+function cmpSave(){
+  if(!CMP_LAST || !hasOwnKey()) return;
+  var id = 'own:cmp:' + D().k;
+  evBoxGet(id).then(function(d){ var list = (d && d.list) || []; list = list.filter(function(x){ return x.m !== CMP_LAST.m; }); list.push(CMP_LAST); if(list.length > 36) list = list.slice(-36); return evBoxPut(id, { list:list }); })
+    .then(function(){ var mm = $('cmp_msg'); if(mm) mm.textContent = jpMonth(CMP_LAST.m) + 'の比較を記録しました（同じ月は上書き）。'; cmpHistRender(); });
+}
+/* 条項表の画面（野木画面） */
+function rulesRender(){
+  var rules = ptrRules(), mo = function(sel, list){ return list.map(function(x){ return '<option value="' + esc(x) + '"' + (x === sel ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join(''); };
+  var h = '<p class="muted">H&amp;Nパトリオットが予定表を確かめるときの線です。1行が1条項で、「物差し」と「線の値」の組み合わせです。「人情変更でも指摘」に印の無い条項は、人情変更の札には当てません（度が過ぎたものだけを指摘する決め）。値を変えたら「保存する」。新しい条項は「1行足す」で足します。</p>' +
+    '<div class="tbl-scroll"><table id="rulesT"><tr><th>使う</th><th>物差し</th><th>線</th><th>対象</th><th>人情変更でも指摘</th><th>出所</th><th></th></tr>' +
+    rules.map(function(r, i){ var m = ptrMeasure(r.m) || {};
+      return '<tr data-ri="' + i + '"><td><input type="checkbox" class="rl_on"' + (r.on !== false ? ' checked' : '') + '></td>' +
+        '<td><select class="rl_m">' + PTR_M.map(function(x){ return '<option value="' + x.k + '"' + (x.k === r.m ? ' selected' : '') + '>' + esc(x.t) + '</option>'; }).join('') + '</select></td>' +
+        '<td style="white-space:nowrap"><input type="number" class="rl_v" value="' + esc(r.v) + '" style="width:5em;display:inline-block"> ' + esc(m.u || '') + ' <select class="rl_op" style="display:inline-block;width:auto;min-width:5em">' + mo(r.op, PTR_OPS) + '</select></td>' +
+        '<td><select class="rl_emp" style="min-width:6.5em">' + mo(r.emp || '全員', ['全員', '常勤', '非常勤']) + '</select></td>' +
+        '<td><input type="checkbox" class="rl_hard"' + (r.hard ? ' checked' : '') + '></td><td><small class="muted">' + esc(m.src || '') + '</small></td>' +
+        '<td><button type="button" class="btn small sub rl_del" style="white-space:nowrap">外す</button></td></tr>'; }).join('') + '</table></div>' +
+    '<div class="btns"><button type="button" class="btn" id="rl_save">保存する</button><button type="button" class="btn sub" id="rl_add">1行足す</button><button type="button" class="btn sub" id="rl_reset">最初の条項表に戻す</button><span class="muted sm" id="rl_msg"></span></div>' +
+    '<p class="muted sm">物差しの意味：' + PTR_M.map(function(x){ return x.t + '（' + x.src + '）'; }).join('／') + '</p>';
+  return h;
+}
+function rulesWire(){
+  var t = $('rulesT'); if(!t) return;
+  var read = function(){ return [].map.call(t.querySelectorAll('tr[data-ri]'), function(tr, i){ return { id:'r' + Date.now().toString(36) + i, m:tr.querySelector('.rl_m').value, op:tr.querySelector('.rl_op').value, v:+tr.querySelector('.rl_v').value || 0, emp:tr.querySelector('.rl_emp').value, hard:tr.querySelector('.rl_hard').checked, on:tr.querySelector('.rl_on').checked }; }); };
+  $('rl_save').onclick = function(){ ptrSaveRules(read()); $('rl_msg').textContent = '保存しました（全端末に共有されます）。'; };
+  $('rl_add').onclick = function(){ var a = read(); a.push({ id:'r' + Date.now().toString(36), m:'dayN', op:'超', v:8, emp:'全員', hard:false, on:true }); ptrSaveRules(a); ngRender(); };
+  $('rl_reset').onclick = function(){ if(!confirm('条項表を最初の内容に戻します。よろしいですか。')) return; ptrSaveRules(ptrDefaults()); ngRender(); };
+  t.querySelectorAll('.rl_del').forEach(function(b, i){ b.onclick = function(){ var a = read(); a.splice(i, 1); ptrSaveRules(a); ngRender(); }; });
+}
+
+/* ---- 伝票（カイポケの実績CSV）---- */
+/* 伝票は「伝票」タブで読み込み、1か月分を1件（type "slips"）として記録に置く（共有される）。元のCSVは保管フォルダ（SSD）の slips/年-月 の中にそのまま残す。
+   列の並びはカイポケの現物で決まるため、最初に読んだときに見出しから当て、人が直せる。決めた列の対応は決まりごと（settings.slipMap）に残す */
+var SLP = { rows:[], head:[], file:'', text:'', ym:'' }, SLP_ONLYBAD = true;
+var SLP_F = [['date','提供日（日付）'],['name','利用者の氏名'],['no','契約書番号（あれば）'],['start','開始時刻'],['end','終了時刻'],['who','担当（職員名）'],['kind','サービスの内容・種類'],['amt','単位数・金額']];
+var SLP_GUESS = { date:['提供日','サービス提供日','実施日','訪問日','日付','年月日'], name:['利用者名','氏名','利用者氏名','お名前'], no:['契約書番号','契約番号'], start:['開始時刻','開始時間','開始'], end:['終了時刻','終了時間','終了'], who:['担当者','担当','職員','訪問者','従業者','サービス提供者'], kind:['サービス内容','サービス種類','サービス名','種別','内容'], amt:['単位数','単位','金額','合計'] };
+function slpMap(){ var s = lj(K.settings, {}) || {}; return s.slipMap || {}; }
+function slpGuess(head){
+  var m = Object.assign({}, slpMap()), h = head.map(function(x){ return String(x || '').replace(/[\s　]/g, ''); });
+  SLP_F.forEach(function(f){ var k = f[0]; if(m[k] != null && h[m[k]] != null) return; m[k] = -1; (SLP_GUESS[k] || []).some(function(w){ var i = -1; h.forEach(function(x, j){ if(i < 0 && x.indexOf(w) >= 0) i = j; }); if(i >= 0){ m[k] = i; return true; } return false; }); });
+  return m;
+}
+function slpDate(s){
+  s = kpiHan(String(s || '')).trim(); var m;
+  if((m = /^(\d{4})[\/\-\.年](\d{1,2})[\/\-\.月](\d{1,2})/.exec(s))) return m[1] + '-' + pad(+m[2]) + '-' + pad(+m[3]);
+  if((m = /^(\d{4})(\d{2})(\d{2})$/.exec(s))) return m[1] + '-' + m[2] + '-' + m[3];
+  var w = kpiWa(s); if(w) return w;
+  if((m = /^[RrHh]?(\d{1,2})[\/\.](\d{1,2})[\/\.](\d{1,2})/.exec(s)) && /^[Rr]/.test(s)) return (2018 + +m[1]) + '-' + pad(+m[2]) + '-' + pad(+m[3]);
+  return '';
+}
+function slpTime(s){ s = kpiHan(String(s || '')).trim(); var m = /^(\d{1,2})[:：時](\d{1,2})/.exec(s) || /^(\d{2})(\d{2})$/.exec(s); return m ? pad(+m[1]) + ':' + pad(+m[2]) : ''; }
+function slpRender(){
+  var sec = $('tab-slip'); if(!sec || !sec.classList.contains('on')) return;
+  var list = events().filter(function(e){ return e.type === 'slips' && e.dept === D().k; }).sort(function(a, b){ return a.ym < b.ym ? 1 : -1; });
+  var lb = $('slp_list'); if(lb) lb.innerHTML = list.length ? '<table><tr><th>月</th><th class="num">件数</th><th>元のファイル</th><th>読み込んだ人・日時</th><th></th></tr>' + list.map(function(e){ return '<tr><td><button type="button" class="btn sub small" data-slpm="' + esc(e.ym) + '">' + esc(jpMonth(e.ym)) + '</button></td><td class="num">' + (e.rows || []).length + '件</td><td><small>' + esc(e.src || '') + '</small></td><td><small>' + esc(staffName(e.by) || '') + ' ' + esc(String(e.at || '').replace('T', ' ')) + '</small></td><td><button type="button" class="btn small sub" data-slpdel="' + esc(e.id) + '">消す</button></td></tr>'; }).join('') + '</table>' : '<p class="empty">まだ伝票を読み込んでいません。</p>';
+  if(lb){ lb.querySelectorAll('[data-slpm]').forEach(function(b){ b.onclick = function(){ $('slp_month').value = b.getAttribute('data-slpm'); slpMatch(); }; });
+    lb.querySelectorAll('[data-slpdel]').forEach(function(b){ b.onclick = function(){ if(!confirm('この月の伝票の記録を消します（保管フォルダの元のCSVは残ります）。よろしいですか。')) return; saveEvents(events().filter(function(e){ return e.id !== b.getAttribute('data-slpdel'); })); slpRender(); }; }); }
+  if($('slp_month') && !$('slp_month').value) $('slp_month').value = ymd(new Date()).slice(0, 7);
+  slpMatch();
+}
+function slpLoad(file){
+  SLP = { rows:[], head:[], file:'', text:'', ym:'' }; $('slp_prev').innerHTML = ''; $('slp_btns').style.display = 'none';
+  if(!file){ $('slp_msg').textContent = ''; return; }
+  var fr = new FileReader();
+  fr.onload = function(){
+    var text = kpiDecode(fr.result); if(text == null){ $('slp_msg').textContent = 'このファイルの文字が読めませんでした。'; return; }
+    var t = kpiCsv(text); if(t.length < 2){ $('slp_msg').textContent = 'このファイルには伝票の行がありません。'; return; }
+    SLP.head = t[0]; SLP.rows = t.slice(1); SLP.file = file.name; SLP.text = text;
+    $('slp_msg').textContent = file.name + '：見出し ' + SLP.head.length + '列・' + SLP.rows.length + '行を読みました。下で列の対応を確かめてから「この月の伝票として保管する」を押してください。';
+    slpPreview(slpGuess(SLP.head));
+  };
+  fr.onerror = function(){ $('slp_msg').textContent = 'ファイルを読めませんでした。'; };
+  fr.readAsArrayBuffer(file);
+}
+function slpPreview(map){
+  var h = '<div class="row">' + SLP_F.map(function(f){ return '<div><label class="f">' + esc(f[1]) + '</label><select data-slpf="' + f[0] + '"><option value="-1">（この列は無い）</option>' + SLP.head.map(function(x, i){ return '<option value="' + i + '"' + (map[f[0]] === i ? ' selected' : '') + '>' + esc(x || ('列' + (i + 1))) + '</option>'; }).join('') + '</select></div>'; }).join('') + '</div>';
+  var parsed = slpParse(map), ok = parsed.filter(function(r){ return r.date && r.no; }), noMatch = parsed.filter(function(r){ return r.date && !r.no; }), noDate = parsed.filter(function(r){ return !r.date; });
+  var months = {}; ok.forEach(function(r){ months[ym(r.date)] = (months[ym(r.date)] || 0) + 1; });
+  var mk = Object.keys(months).sort();
+  h += '<p class="sm" style="margin:8px 0">読めた行：' + ok.length + '件' + (mk.length ? '（' + mk.map(function(m){ return jpMonth(m) + ' ' + months[m] + '件'; }).join('・') + '）' : '') + (noMatch.length ? '。<span style="color:var(--red)">利用者が登録と合わなかった行 ' + noMatch.length + '件</span>' : '') + (noDate.length ? '。日付の読めなかった行 ' + noDate.length + '件' : '') + '</p>';
+  if(noMatch.length) h += '<details><summary>利用者が合わなかった行（氏名が利用者登録と一致しない）</summary><ul>' + noMatch.slice(0, 40).map(function(r){ return '<li>' + esc(r.date) + '　' + esc(r.name) + '</li>'; }).join('') + (noMatch.length > 40 ? '<li>…ほか ' + (noMatch.length - 40) + '件</li>' : '') + '</ul></details>';
+  h += '<div class="tbl-scroll" style="max-height:260px;overflow:auto"><table><tr><th>提供日</th><th>利用者</th><th>開始〜終了</th><th>担当</th><th>内容</th><th class="num">単位・金額</th></tr>' + ok.slice(0, 30).map(function(r){ return '<tr><td>' + esc(r.date) + '</td><td>' + esc(dnn(r.no)) + '</td><td>' + esc(r.st) + (r.en ? '〜' + esc(r.en) : '') + '</td><td>' + esc(r.who) + '</td><td>' + esc(r.kind) + '</td><td class="num">' + esc(r.amt) + '</td></tr>'; }).join('') + '</table>' + (ok.length > 30 ? '<p class="muted sm">最初の30件だけを出しています。</p>' : '') + '</div>';
+  if(mk.length){ h += '<div class="row" style="margin-top:8px"><div><label class="f" for="slp_ym">どの月の伝票として保管するか</label><select id="slp_ym">' + mk.map(function(m){ return '<option value="' + m + '">' + esc(jpMonth(m)) + '（' + months[m] + '件）</option>'; }).join('') + '</select></div></div>'; }
+  $('slp_prev').innerHTML = h; $('slp_btns').style.display = ok.length ? '' : 'none';
+  $('slp_prev').querySelectorAll('[data-slpf]').forEach(function(sel){ sel.addEventListener('change', function(){ var m2 = {}; $('slp_prev').querySelectorAll('[data-slpf]').forEach(function(s2){ m2[s2.getAttribute('data-slpf')] = +s2.value; }); slpPreview(m2); }); });
+  SLP.map = map;
+}
+function slpParse(map){
+  var byName = {}, byNo = {}; patients().forEach(function(p){ if(p.name) byName[kpiKey(p.name)] = p.no; byNo[dn(p.no)] = p.no; });
+  var g = function(r, k){ return map[k] >= 0 ? kpiVal(r[map[k]]) : ''; };
+  return SLP.rows.map(function(r){
+    var name = kpiSp(g(r, 'name')), noT = kpiHan(g(r, 'no')), no = (noT && byNo[noT]) || byName[kpiKey(name)] || '';
+    return { date:slpDate(g(r, 'date')), name:name, no:no, st:slpTime(g(r, 'start')), en:slpTime(g(r, 'end')), who:kpiSp(g(r, 'who')), kind:kpiSp(g(r, 'kind')), amt:kpiHan(g(r, 'amt')) };
+  }).filter(function(r){ return r.name || r.date; });
+}
+function slpCommit(){
+  var map = SLP.map || slpGuess(SLP.head), ymv = $('slp_ym') ? $('slp_ym').value : '';
+  if(!ymv){ $('slp_msg').textContent = '保管する月が選べません。日付の列を確かめてください。'; return; }
+  var rows = slpParse(map).filter(function(r){ return r.date && r.no && ym(r.date) === ymv; });
+  if(!rows.length){ $('slp_msg').textContent = 'この月の伝票として読めた行がありません。'; return; }
+  var old = events().filter(function(e){ return e.type === 'slips' && e.dept === D().k && e.ym === ymv; });
+  if(old.length && !confirm(jpMonth(ymv) + 'の伝票はすでに保管されています（' + (old[0].rows || []).length + '件）。今回の内容に置き換えます。よろしいですか。')) return;
+  var cur = lj(K.settings, {}) || {}; saveSettings(Object.assign({}, cur, { slipMap:map }));
+  var ev = events().filter(function(e){ return !(e.type === 'slips' && e.dept === D().k && e.ym === ymv); });
+  ev.push({ id:uid(), type:'slips', dept:D().k, ym:ymv, src:SLP.file, by:dev().me || '', at:nowLocal(), rows:rows.map(function(r){ return { d:r.date, no:r.no, st:r.st, en:r.en, who:r.who, k:r.kind, a:r.amt }; }) });
+  saveEvents(ev);
+  var msg = jpMonth(ymv) + 'の伝票 ' + rows.length + '件を保管しました。';
+  if(FD.on && FD.handle){
+    fdFp().then(function(fp){ return FD.handle.getDirectoryHandle('TriTime_' + fp, { create:true }); }).then(function(sub){ return sub.getDirectoryHandle('slips', { create:true }); }).then(function(d){ return d.getDirectoryHandle(ymv, { create:true }); })
+      .then(function(d){ return fdWriteFile(d, SLP.file || ('slips_' + ymv + '.csv'), SLP.text); })
+      .then(function(){ $('slp_msg').textContent = msg + '元のCSVは保管フォルダの slips／' + ymv + ' にそのまま残しました。'; }, function(e){ $('slp_msg').textContent = msg + '元のCSVを保管フォルダへ置けませんでした（' + (e && e.message || e) + '）。'; });
+  } else $('slp_msg').textContent = msg + '（この端末には保管フォルダが無いため、元のCSVは置いていません。記録は共有で事業所のPCへ届きます）';
+  SLP = { rows:[], head:[], file:'', text:'', ym:'' }; $('slp_prev').innerHTML = ''; $('slp_btns').style.display = 'none'; $('slp_file').value = '';
+  $('slp_month').value = ymv; slpRender();
+}
+/* 突き合わせ：予定（キャンセルを除く）・看護記録・伝票の三つ */
+function slpMatch(){
+  var box = $('slp_match'); if(!box) return;
+  var m = $('slp_month').value; if(!m){ box.innerHTML = ''; return; }
+  var sl = events().filter(function(e){ return e.type === 'slips' && e.dept === D().k && e.ym === m; })[0];
+  var keyOf = function(d, no){ return d + '|' + no; }, P = {}, R = {}, S = {}, today = ymd(new Date());
+  mdDays(m).forEach(function(date){ visitsOn(date).forEach(function(v){ if(v.cx) return; var k = keyOf(date, v.no); (P[k] = P[k] || []).push(v); }); });
+  live('records').forEach(function(x){ if(!x.date || ym(x.date) !== m) return; var no = D().pfx + String(x.patientNo || ''); if(!inDept(no)) return; var k = keyOf(x.date, no); (R[k] = R[k] || []).push(x); });
+  ((sl && sl.rows) || []).forEach(function(r){ var k = keyOf(r.d, r.no); (S[k] = S[k] || []).push(r); });
+  var keys = {}; [P, R, S].forEach(function(o){ Object.keys(o).forEach(function(k){ keys[k] = 1; }); });
+  var rows = Object.keys(keys).sort().map(function(k){
+    var p = P[k] || [], r = R[k] || [], s = S[k] || [], d = k.slice(0, 10), no = k.slice(11), prob = [], past = d <= today;
+    /* 今日より後の日は、記録・伝票がまだ無いのが当たり前なので「なし」を出さない。伝票は、その月の伝票を保管してから「なし」を出す */
+    if(!p.length) prob.push('予定なし');
+    if(past && !r.length) prob.push('看護記録なし');
+    if(past && sl && !s.length) prob.push('伝票なし');
+    if(p.length && s.length && s[0].st && p[0].time && Math.abs(toMin(s[0].st) - toMin(p[0].time)) > 30) prob.push('時刻が30分超ずれ（予定 ' + p[0].time + '・伝票 ' + s[0].st + '）');
+    if(p.length !== s.length && p.length && s.length) prob.push('件数が違う（予定 ' + p.length + '・伝票 ' + s.length + '）');
+    return { d:d, no:no, p:p, r:r, s:s, prob:prob };
+  });
+  var bad = rows.filter(function(x){ return x.prob.length; });
+  var h = '<p class="sm">' + esc(jpMonth(m)) + '：予定 ' + Object.keys(P).length + '件・看護記録 ' + Object.keys(R).length + '件・伝票 ' + (sl ? Object.keys(S).length : 0) + '件' + (sl ? '' : '（この月の伝票はまだ保管されていません）') + '。<b style="color:' + (bad.length ? 'var(--red)' : 'var(--ok)') + '">合わないもの ' + bad.length + '件</b></p>' +
+    '<label class="sm" style="display:block;margin:4px 0"><input type="checkbox" id="slp_onlybad"' + (SLP_ONLYBAD ? ' checked' : '') + '> 合わないものだけ出す</label>';
+  var show = SLP_ONLYBAD ? bad : rows;
+  h += show.length ? '<div class="tbl-scroll" style="max-height:420px;overflow:auto"><table><tr><th>日</th><th>利用者</th><th>予定</th><th>看護記録</th><th>伝票</th><th>合わない点</th></tr>' + show.map(function(x){
+    return '<tr' + (x.prob.length ? ' style="background:#fbecea"' : '') + '><td>' + esc(jpDate(x.d)) + '</td><td>' + esc(dnn(x.no)) + '</td><td>' + esc(x.p.map(function(v){ return v.time + ' ' + staffName(v.staffId); }).join('、') || '—') + '</td><td>' + esc(x.r.map(function(q){ return (q.start || '') + (q.end ? '〜' + q.end : '') + ' ' + (q.nurse || ''); }).join('、') || '—') + '</td><td>' + esc(x.s.map(function(q){ return (q.st || '') + (q.en ? '〜' + q.en : '') + ' ' + (q.who || '') + (q.k ? '（' + q.k + '）' : ''); }).join('、') || '—') + '</td><td>' + (x.prob.length ? '<span style="color:var(--red)">' + esc(x.prob.join('・')) + '</span>' : '') + '</td></tr>'; }).join('') + '</table></div>' : '<p class="muted">出すものがありません。</p>';
+  box.innerHTML = h;
+  $('slp_onlybad').addEventListener('change', function(){ SLP_ONLYBAD = this.checked; slpMatch(); });
+}
+$('slp_file').addEventListener('change', function(){ slpLoad(this.files && this.files[0]); });
+$('slp_go').addEventListener('click', slpCommit);
+$('slp_month').addEventListener('change', slpMatch);
+
 verCheck();
 setInterval(function(){ if(document.visibilityState === 'visible') verCheck(); }, 300000);
 document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') verCheck(); });

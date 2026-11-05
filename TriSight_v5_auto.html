@@ -593,6 +593,12 @@ function tsGoBack(){
   var r="";try{r=document.referrer?new URL(document.referrer).origin:"";}catch(e){}
   if(history.length>1&&r===location.origin){history.back();}else{location.href="index.html";}
 }
+/* 2026-11-06（宏史さんの指示）：前の画面が無いとき（タブレットのアイコンから直接開いたときなど）は、ボタン自体を出さない。
+   トライサイトを契約していない人には表札へ行く道は要らないため */
+(function(){
+  var r="";try{if(document.referrer)r=new URL(document.referrer).origin;}catch(e){}
+  if(!(history.length>1&&r===location.origin)){var b=document.getElementById("tsBackBar");if(b)b.style.display="none";}
+})();
 </script>
 
 
@@ -831,7 +837,7 @@ function tsGoBack(){
   <div class="wf-footer">© 2026 合同会社トライサイト　TriSight® is a registered trademark.</div>
 </div>
 <!-- 2026-10-27：版の表示は実行前の画面でも見えるよう、開いた時点で画面本体（body）のいちばん下へ移す（宏史さんの指摘「一番下にスクロールしても版は表示されていません」。結果の区画の中に閉じていない区画があり、置き場所だけでは外に出せないため） -->
-<div class="verline" style="text-align:center;padding:6px 0 22px;font-size:14px;color:#f5f0e8;font-family:'Zen Kaku Gothic New',sans-serif">版 <span id="verLabel">2026-10-30-03</span>（AI連携オプション）</div>
+<div class="verline" style="text-align:center;padding:6px 0 22px;font-size:14px;color:#f5f0e8;font-family:'Zen Kaku Gothic New',sans-serif">版 <span id="verLabel">2026-11-06-01</span>（AI連携オプション）</div>
 <script>document.addEventListener('DOMContentLoaded',function(){var v=document.getElementById('verLabel');if(v&&v.parentElement)document.body.appendChild(v.parentElement);});</script>
 
 <script>

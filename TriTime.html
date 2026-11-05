@@ -287,6 +287,12 @@ function tsGoBack(){
   if(!toPortal){history.back();return;}
   tsPortalAsk();
 }
+/* 2026-11-06（宏史さんの指示）：前の画面が無いとき（タブレットのアイコンから直接開いたときなど）は、ボタン自体を出さない。
+   トライサイトを契約していない人には表札へ行く道は要らないため */
+(function(){
+  var r="";try{if(document.referrer)r=new URL(document.referrer).origin;}catch(e){}
+  if(!(history.length>1&&r===location.origin)){var b=document.getElementById("tsBackBar");if(b)b.style.display="none";}
+})();
 function tsPortalAsk(){
   try{if(localStorage.getItem("trisight_portal_ok")==="1"){location.href="index.html";return;}}catch(e){}
   var old=document.getElementById("tsPortal");if(old)old.remove();
@@ -328,7 +334,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-06-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-06-05</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->

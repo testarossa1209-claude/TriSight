@@ -88,6 +88,12 @@ function tsGoBack(){
   var r="";try{r=document.referrer?new URL(document.referrer).origin:"";}catch(e){}
   if(history.length>1&&r===location.origin){history.back();}else{location.href="index.html";}
 }
+/* 2026-11-06（宏史さんの指示）：前の画面が無いとき（タブレットのアイコンから直接開いたときなど）は、ボタン自体を出さない。
+   トライサイトを契約していない人には表札へ行く道は要らないため */
+(function(){
+  var r="";try{if(document.referrer)r=new URL(document.referrer).origin;}catch(e){}
+  if(!(history.length>1&&r===location.origin)){var b=document.getElementById("tsBackBar");if(b)b.style.display="none";}
+})();
 </script>
 
 <header><div class="hd">

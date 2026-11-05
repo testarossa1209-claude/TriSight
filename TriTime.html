@@ -321,7 +321,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-05-03</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-05-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -1910,7 +1910,7 @@ function renderBoard(){
     var done = rec.filter(function(id){ return rd[id]; }), yet = rec.filter(function(id){ return !rd[id]; });
     var forMe = isNoteFor(n, me), readByMe = !!rd[me];
     return '<div class="note-item' + (forMe && !readByMe ? ' unread' : '') + '">' +
-      '<div><span class="tag ' + (n.kind === '会議の案内' ? 'amber' : (n.kind === '申し送り' ? 'gray' : 'green')) + '">' + esc(n.kind) + '</span> <b>' + esc(n.title) + '</b></div>' +
+      '<div><span class="tag ' + (n.kind === '会議の案内' ? 'amber' : (n.kind === '申し送り' ? 'gray' : (n.kind === '上申' ? 'red' : 'green'))) + '">' + esc(n.kind) + '</span> <b>' + esc(n.title) + '</b></div>' +
       '<div class="muted">' + esc(staffName(n.from) || '（出す人の記録なし）') + ' → ' + esc(toLabel(n)) + '　' + esc(String(n.created || '').replace('T', ' ')) + '</div>' +
       (n.kind === '会議の案内' && n.mDate ? '<div><b>会議：' + esc(jpDate(n.mDate)) + ' ' + esc(n.mTime || '') + '</b></div>' : '') +
       (n.body ? '<div style="white-space:pre-wrap;margin-top:4px">' + esc(n.body) + '</div>' : '') +
@@ -4805,10 +4805,11 @@ function renderToday(){
   var num = {}; live.forEach(function(v, i){ num[date + '|' + v.no + '|' + v.time + '|' + v.staffId] = ALL ? v._n : i + 1; });
   var mon = mondayOf(parseYmd(date)), wdays = []; for(var di = 0; di < 7; di++) wdays.push(ymd(addDays(mon, di)));
   var wg = D().kind === 'office' ? { empty:'' } : ssGridHTML(wdays, { only:ALL ? null : sid, mark:date, num:num, col:colOf, drag:canSched(), dragSelf:canMoveSelf() ? dev().me : '' });   /* 2026-11-04：本体の表でも札を動かせる（予定を組む人の端末）。2026-11-05：一般の職員は自分の担当の札だけ（宏史さんの決め(b)） */
-  $('td_week').innerHTML = wg.empty != null ? wg.empty : pwBtnHTML() + '<h3 style="margin:6px 0 4px;font-size:15px">本スケジュール表 <small class="muted" style="font-weight:400">' + esc(jpDate(wdays[0])) + ' 〜 ' + esc(jpDate(wdays[6])) + '</small></h3><div class="ssBody tdWeek">' + wg.html + '</div><p class="muted sm" style="margin:4px 0 0">色の付いた列が選んだ日です。日付を変えると、その日の週の表に変わります。札の丸い番号は地図の番号と同じです。' + (canSched() ? '今日以降の札は、指で押さえたまま別の人・別の日の升へ引っぱると動かせます（動かすときに理由を残せます。点線の札は人情変更）。' : (canMoveSelf() ? '自分の担当の今日以降の札は、指で押さえたまま自分の別の日の升へ引っぱると動かせます（順番の入れ替え・日のずらし）。動かすと事務局に知らせが出ます。ほかの人への付け替えは事務局へ。' : '')) + '</p>' + (canSched() ? ptrBtnHTML('ptr_td', 'ptr_tdbox') : '') + hbBtnHTML();   /* 2026-11-05：空の表から組む（手組み） */
+  $('td_week').innerHTML = wg.empty != null ? wg.empty : pwBtnHTML() + '<h3 style="margin:6px 0 4px;font-size:15px">本スケジュール表 <small class="muted" style="font-weight:400">' + esc(jpDate(wdays[0])) + ' 〜 ' + esc(jpDate(wdays[6])) + '</small></h3><div class="ssBody tdWeek">' + wg.html + '</div><p class="muted sm" style="margin:4px 0 0">色の付いた列が選んだ日です。日付を変えると、その日の週の表に変わります。札の丸い番号は地図の番号と同じです。' + (canSched() ? '今日以降の札は、指で押さえたまま別の人・別の日の升へ引っぱると動かせます（動かすときに理由を残せます。点線の札は人情変更）。' : '') + '</p>' + (canSched() ? ptrBtnHTML('ptr_td', 'ptr_tdbox') : '') + hbBtnHTML() + jsBtnHTML();   /* 2026-11-05：空の表から組む（手組み） */
   if($('ptr_td')) $('ptr_td').onclick = function(){ ptrRun(wdays, 'ptr_tdbox', '#td_week', '本スケジュール表'); };
   if($('hb_open')) $('hb_open').onclick = hbToggle; if(window.HB && HB.on) hbRender();
-  if($('pw_open')) $('pw_open').onclick = pwOpen;   /* 2026-11-05：予定表の作り方を選ぶ */   /* 最初の描画はこの宣言より前に走る */
+  if($('pw_open')) $('pw_open').onclick = pwOpen;   /* 2026-11-05：予定表の作り方を選ぶ */
+  if($('js_open')) $('js_open').onclick = jsOpen;   /* 2026-11-05：管理者へ上申する（一般の職員） */   /* 最初の描画はこの宣言より前に走る */
   var pts = live.map(function(v, i){ var p = patient(v.no) || {}; return p.lat ? { n:ALL ? v._n : i + 1, sid:v.staffId, lat:+p.lat, lng:+p.lng, t:(ALL ? staffName(v.staffId) + ' ' : '') + v.time + ' ' + dnn(v.no) } : null; }).filter(Boolean);
   if(!pts.length){ $('td_map').style.display = 'none'; if(live.length) $('td_week').insertAdjacentHTML('afterbegin', '<p class="muted">地図に出せる訪問先がありません。利用者登録で住所（番地まで）を入れ、「住所から位置を取る」を押してください。</p>'); return; }
   $('td_map').style.display = '';
@@ -6709,7 +6710,7 @@ var MN_MARKS = [
     ['本スケジュール表の札', '「予定」の地図の下の本スケジュール表でも、今日以降の札を引っぱって動かせます（予定を組む人の端末だけ）。動かす小窓の「変更の理由」で理由を残せます。'],
     ['人情変更', '変更の理由で「人情変更（相性・体調への配慮・家族の事情・その他）」を選んだ札は点線で出ます。管理者の判断（ワイルドカード）として、H&Nパトリオットは効率だけの条項ではその札を指摘しません。度が過ぎたもの（1日の件数の超過・休みの日の予定・人情変更の割合など）だけを指摘します。'],
     ['予定表の作り方を選ぶ', '「予定」タブの本スケジュール表の上にあるオレンジのボタン（予定を組む人の端末だけ）。押すと「AIが作る」「AIがベースを作って自分で直す」「自分で作る」の三つの道が出ます。AIが作る＝自動の振り分けの枠へ。AIがベース＝いまの週間予定を手組みの表に写して直す。自分で作る＝空の表に札を置いて組む。'],
-    ['自分の担当の札を動かす（一般の職員）', '本スケジュール表で、自分の担当の今日以降の札は、指で押さえたまま自分の別の日の升へ引っぱると動かせます（順番の入れ替え・日のずらし）。動かすとき理由を残せ、事務局の連絡板に知らせが出ます。ほかの人への付け替え・毎週の予定の変更・人情変更は事務局と管理者だけです。'],
+    ['管理者へ上申する（一般の職員）', '予定を変えられるのは管理者と事務局だけです。職員の画面では、本スケジュール表の下のオレンジの「管理者へ上申する」から、利用者さん・上申の種類（相性に問題がある／利用者側から「来ないでほしい」と言われた／訪問が難しい事情がある／その他）・内容を入れて「上申する」と、部門の管理者の連絡板に届きます（担当の変更や拒否の記録への反映は管理者が決めます）。'],
     ['空の表から組む（手組み）', '本スケジュール表の下のボタン（予定を組む人の端末だけ）。職員 × 曜日の空の表に、下に並ぶ利用者の札を引っぱって置き、週の予定をホワイトボードのように組みます。升の端にその曜日の件数と訪問の間の合計が出ます（許容を超えると赤）。「効率バージョンを写す」で今の予定から直すこともでき、「H&Nパトリオットで確かめる」で下書きを確かめ、「この表で確定」で毎週の予定に置き換えます。下書きは閉じても残ります。'],
     ['H&Nパトリオット', '本スケジュール表と仮スケジュール表の下のボタン。表の週の予定を「許容範囲外の条項表」で確かめ、根拠付きの指摘を出します。指摘を押すと表の中の訪問が光ります。「問題なし」とは言わず、見た範囲だけを言います。'],
     ['条項表', 'H&Nパトリオットが使う線です。野木画面の「条項表」で値を変えたり、行を足したり外したりできます（全端末に共有）。'],
@@ -6754,7 +6755,7 @@ var MN_GUIDE = [
     ['①AIが作る', '押すと「週間予定を地区で寄せて組む（自動の振り分け）」の枠へ移ります。「常勤の1日の件数の上限」「非常勤の1日の件数の上限」を確かめて白い「組み方を出す」。出た表と「いまの週間予定から変わる訪問」を見て、よければオレンジの「この組み方を週間予定に入れる」。入れる前の予定は控えに残り「元に戻す」で戻せます。モデルコースの見本の枠のまま当てはめたいときは「モデルコースの見本」タブで表を作り「このコースで患者さんを当てはめる」を押すと、同じ枠に出ます。'],
     ['②AIがベースを作って自分で直す', '押すと、いま使っている週間予定（AIが組んだもの）が手組みの表（職員 × 曜日）に写って開きます。札を引っぱって別の曜日・別の人へ動かし、升の右下の件数と「訪問と訪問の間」（赤＝許容を超えた）を見ながら直します。直し終えたら「H&Nパトリオットで確かめる」で条項表に当て、「この表で確定」で週間予定を入れ替えます（理由を残せます。「人情変更」を選ぶと変わった札に点線の印）。週間予定がまだ空のときは、先に①で組んでください。'],
     ['③自分で作る', '押すと空の手組みの表が開きます。下に並ぶ利用者さんの札（契約書番号＋氏名・2名体制は「2名」・週の回数ぶんの残り枚数）を升へ引っぱって置きます（札を一度押してから升を押しても置けます）。時刻は自動（勤務の始まり→前の終わり＋移動15分）で、置いた札を押すと時刻を直したり外したりできます。「効率バージョンを写す」で①の表から始めることも、「全部消す」でやり直すこともできます。最後に「この表で確定」。下書きは閉じても残ります。'],
-    ['できたあとの直し方', '本スケジュール表と仮スケジュール表（右端のつまみ）で、今日以降の札を指で押さえたまま別の人・別の日の升へ引っぱると動かせます（小窓で時刻・理由・了承の印）。一般の職員は自分の担当の札だけ、自分の別の日へ動かせます（事務局に知らせが出ます）。'],
+    ['できたあとの直し方', '本スケジュール表と仮スケジュール表（右端のつまみ）で、今日以降の札を指で押さえたまま別の人・別の日の升へ引っぱると動かせます（小窓で時刻・理由・了承の印）。動かせるのは管理者と事務局の端末だけで、一般の職員は与えられた予定を消化します（伝えたいことは「管理者へ上申する」から）。'],
     ['組み方を出す', '「予定」タブの「週間予定を地区で寄せて組む（自動の振り分け）」で「組み方を出す」。町名ごとに寄せ、午前から移動15分で詰めて組みます。今の担当と曜日のまま組めるものは動かしません。'],
     ['週間予定に入れる', '出た表を見て、よければオレンジの「この組み方を週間予定に入れる」。入れる前の予定は控えに残り、「元に戻す」で戻せます。'],
     ['変わる訪問を見る', '組み方を出すと「いまの週間予定から変わる訪問」が、入れた後は「元に戻す」の下に「入れ替える前から変わった訪問」が出ます。'],
@@ -7293,8 +7294,11 @@ function ptrRun(days, boxId, gridSel, label){
 }
 function ptrBtnHTML(id, boxId){ return '<div class="btns" style="margin:6px 0 2px"><button type="button" class="btn sub" id="' + id + '" style="border-color:#993c1d;color:#712b13;font-weight:700">H&amp;Nパトリオット</button><small class="muted">この表の予定を、許容範囲外の条項表で確かめます。</small></div><div id="' + boxId + '"></div>'; }
 function canSched(){ var r = role(); return D().kind === 'visit' && (r.lv === 'all' || r.lv === 'dept' || r.lv === 'office'); }
-/* 2026-11-05（宏史さんの決め(a)(b)）：一般の職員の端末でも、自分の担当の札だけは動かせる（他の人の札・他の人への付け替えは事務局・管理者だけ） */
-function canMoveSelf(){ var r = role(); return D().kind === 'visit' && r.lv === 'staff' && !!dev().me && !canSched(); }
+/* 2026-11-05 昼（渋谷さんのヒアリングを受けた宏史さんの決め）：予定の変更は管理者・事務局だけ。一般の職員は与えられた予定を消化する側なので、札は動かさない（午前に入れた「自分の担当の札だけ動かせる」はやめる）。
+   代わりに、相性の問題・利用者からの出禁などを部門の管理者へ上申するボタンと窓（jsOpen）を付ける */
+function canMoveSelf(){ return false; }
+/* 一般の職員の端末（主に使う人がその部署の職員・予定を組めない端末）か */
+function canJoshin(){ var r = role(); return D().kind === 'visit' && r.lv === 'staff' && !!dev().me && !canSched(); }
 
 /* ============================================================
    2026-11-05：空の表から組む（手組み）——人が組む予定表（宏史さんの11/4の決め「ゼロからの手組み・ホワイトボードの転記」の口）
@@ -7376,6 +7380,41 @@ function pwOpen(){
   $('pw_hand').onclick = function(){ box.remove(); HB.on = true; HB.sel = null; hbRender(); pwScroll(); };
 }
 function pwScroll(){ var b = $('hbBox'); if(b && b.scrollIntoView) b.scrollIntoView({ behavior:'smooth', block:'start' }); }
+
+/* ============================================================
+   2026-11-05：管理者へ上申する（一般の職員）——渋谷さんのヒアリング（宏史さん伝達）：
+   職員は予定を変えず与えられた予定を消化する。ただし「この利用者とは相性に問題がある」「利用者側から出禁を言われている」等を
+   部門の管理者へ上申するボタンと、その内容を入れる窓は欲しい。
+   ・「予定」タブの本スケジュール表の下に「管理者へ上申する」ボタン（一般の職員の端末だけ）
+   ・窓：利用者（その部署の利用中の人）・上申の種類・内容。「上申する」で連絡板（type note・kind 上申）に、部門の管理者あてで残す
+     （管理者がいない部署は事務局あて）。拒否の記録（利用者登録の「拒否の記録」）に入れるかは、管理者が上申を読んで決める
+   ============================================================ */
+var JS_KINDS = ['相性に問題がある', '利用者側から「来ないでほしい」と言われた（出禁）', '訪問が難しい事情がある（安全・体調・家族など）', 'その他'];
+function jsBtnHTML(){ return canJoshin() ? '<div class="btns" style="margin:6px 0 2px"><button type="button" class="btn amber" id="js_open">管理者へ上申する</button><small class="muted">相性の問題・利用者さんからの申し出など、予定に関わることを部門の管理者へ伝えます。</small></div>' : ''; }
+function jsTargets(){ var m = deptStaff().filter(isMgr).map(function(x){ return x.id; }); if(m.length) return m; var od = DEPTS.filter(function(d){ return d.kind === 'office'; })[0]; return od ? deptStaff(od).map(function(x){ return x.id; }) : []; }
+function jsOpen(){
+  var box = document.createElement('div'); box.className = 'ssMv'; box.id = 'ssMv';
+  var ps = patients().filter(function(p){ return !p.status || p.status === '利用中'; }).slice().sort(function(a, b){ return (a.kana || a.name || '') < (b.kana || b.name || '') ? -1 : 1; });
+  var to = jsTargets();
+  box.innerHTML = '<div class="card"><h2>管理者へ上申する</h2><p class="muted sm">宛先：' + esc(to.length ? to.map(staffName).join('・') + 'さん' : '（宛先の管理者がいません）') + '。連絡板に残り、宛先の人の画面に出ます。</p>' +
+    '<div class="row"><div><label class="f" for="js_pt">利用者さん</label><select id="js_pt"><option value="">（利用者さんに関わらない内容）</option>' + ps.map(function(p){ return '<option value="' + esc(p.no) + '">' + esc(dn(p.no) + '　' + (p.name || '')) + '</option>'; }).join('') + '</select></div>' +
+    '<div><label class="f" for="js_kind">上申の種類</label><select id="js_kind">' + JS_KINDS.map(function(k){ return '<option value="' + esc(k) + '">' + esc(k) + '</option>'; }).join('') + '</select></div></div>' +
+    '<label class="f" for="js_body">内容（いつ・何があったか・どうしてほしいか）</label><textarea id="js_body" rows="4" placeholder="例：11/4の訪問で「次から男性の看護師は来ないでほしい」と本人から言われました。担当の変更をお願いします。"></textarea>' +
+    '<div class="btns"><button class="btn amber" type="button" id="js_ok"' + (to.length ? '' : ' disabled') + '>上申する</button><button class="btn sub" type="button" id="js_no">やめる</button></div><div id="js_res"></div></div>';
+  document.body.appendChild(box);
+  $('js_no').onclick = function(){ box.remove(); };
+  $('js_ok').onclick = function(){
+    var no = $('js_pt').value, kind = $('js_kind').value, body = $('js_body').value.trim();
+    if(!body){ alert('内容を入れてください。'); return; }
+    var me = dev().me || '', now = nowLocal(), ev = events();
+    var title = '【上申】' + kind + (no ? '　' + dnn(no) : '') + '（' + staffName(me) + '）';
+    ev.push({ id:uid(), type:'note', kind:'上申', from:me, to:to, title:title, body:body, patientNo:no, jsKind:kind, dept:D().k, created:now });
+    saveEvents(ev);
+    $('js_res').innerHTML = '<div class="judge free" style="margin-top:8px"><b>上申しました。</b><br>' + esc(to.map(staffName).join('・')) + 'さんの連絡板に出ます。返事は連絡板で届きます。</div>';
+    $('js_ok').disabled = true; $('js_no').textContent = '閉じる';
+    try{ renderBoard(); }catch(e){}
+  };
+}
 function hbToggle(){ var b = $('hbBox'); if(!b) return; HB.on = !HB.on; HB.sel = null; if(HB.on) hbRender(); else b.innerHTML = ''; }
 function hbRender(){
   var box = $('hbBox'); if(!box || !HB.on) return;

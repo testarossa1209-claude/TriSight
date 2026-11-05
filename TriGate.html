@@ -383,6 +383,13 @@ function tsGoBack(){
   if(!toPortal){history.back();return;}
   tsPortalAsk();
 }
+/* 2026-11-06（宏史さんの指示）：前の画面が無いとき（タブレットのアイコンから直接開いたときなど）は、ボタン自体を出さない。
+   トライサイトを契約していない人には表札へ行く道は要らないため */
+(function(){
+  var r="",rp="";try{if(document.referrer){var u=new URL(document.referrer);r=u.origin;rp=u.pathname;}}catch(e){}
+  /* 自分自身を読み直したとき（前の画面が自分）も、前の画面が無いものとして扱う（戻るの判定と同じ） */
+  if(!(history.length>1&&r===location.origin)||rp===location.pathname){var b=document.getElementById("tsBackBar");if(b)b.style.display="none";}
+})();
 function tsPortalAsk(){
   try{if(localStorage.getItem("trisight_portal_ok")==="1"){location.href="index.html";return;}}catch(e){}
   var old=document.getElementById("tsPortal");if(old)old.remove();
@@ -8284,7 +8291,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-10-30-04';
+  const TRIGATE_VERSION = '2026-11-06-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

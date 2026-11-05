@@ -52,6 +52,13 @@ function tsGoBack(){
   var r="";try{r=document.referrer?new URL(document.referrer).origin:"";}catch(e){}
   if(history.length>1&&r===location.origin){history.back();}else{location.href="index.html";}
 }
+/* 2026-11-06（宏史さんの指示）：前の画面が無いとき（タブレットのアイコンから直接開いたときなど）は、ボタン自体を出さない。
+   トライサイトを契約していない人には表札へ行く道は要らないため */
+(function(){
+  var r="",rp="";try{if(document.referrer){var u=new URL(document.referrer);r=u.origin;rp=u.pathname;}}catch(e){}
+  /* 自分自身を読み直したとき（前の画面が自分）も、前の画面が無いものとして扱う（戻るの判定と同じ） */
+  if(!(history.length>1&&r===location.origin)||rp===location.pathname){var b=document.getElementById("tsBackBar");if(b)b.style.display="none";}
+})();
 </script>
 <div class="wrap">
 <div style="padding:0.5rem 0">
@@ -60,7 +67,7 @@ function tsGoBack(){
     <div style="font-size:20px;font-weight:500">トライケア　アセスメント・モニタリング</div>
   </div>
   <div style="font-size:12px;color:var(--text-secondary);margin-top:2px">発行：合同会社トライサイト</div>
-  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-10-31-01</span> <span id="verMsg"></span></div>
+  <div style="font-size:11px;color:var(--text-muted);margin-top:2px">版 <span id="verLabel">2026-11-06-01</span> <span id="verMsg"></span></div>
   <div style="border-top:1px solid var(--border-strong);margin:8px 0 12px"></div>
   <div style="font-size:13px"><a href="index.html">トライサイト ファミリー（表札）へ戻る</a>　<a href="TriSight_Report_CarePlan.html">ケアプランの帳票へ</a></div>
 

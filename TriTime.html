@@ -287,6 +287,13 @@ function tsGoBack(){
   if(!toPortal){history.back();return;}
   tsPortalAsk();
 }
+/* 2026-11-06（宏史さんの指示）：前の画面が無いとき（タブレットのアイコンから直接開いたときなど）は、ボタン自体を出さない。
+   トライサイトを契約していない人には表札へ行く道は要らないため */
+(function(){
+  var r="",rp="";try{if(document.referrer){var u=new URL(document.referrer);r=u.origin;rp=u.pathname;}}catch(e){}
+  /* 自分自身を読み直したとき（前の画面が自分）も、前の画面が無いものとして扱う（戻るの判定と同じ） */
+  if(!(history.length>1&&r===location.origin)||rp===location.pathname){var b=document.getElementById("tsBackBar");if(b)b.style.display="none";}
+})();
 function tsPortalAsk(){
   try{if(localStorage.getItem("trisight_portal_ok")==="1"){location.href="index.html";return;}}catch(e){}
   var old=document.getElementById("tsPortal");if(old)old.remove();
@@ -328,7 +335,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-06-03</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-06-05</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -4370,13 +4377,14 @@ function roleFix(){
 function roleNote(R){
   var el = $('roleNote'); if(!el) return;
   var t = '';
-  if(R.lv === 'none' && dev().shared && !dev().me) t = '<b>この端末は共用端末です。</b>今日使う人を選ぶと、その人の予定が出ます。';
+  if(R.lv === 'none' && dev().shared && !dev().me) t = '<b>この端末は共用端末です。</b>今日使う人を選ぶと、その人の予定が出ます。 <button type="button" class="btn small" id="shPickBtn" style="margin-left:8px">今日使う人を選ぶ</button>';   /* 2026-11-06（宏史さん「名簿・設定からトップページに戻れません」）：ここから窓を出せる */
   else if(R.lv === 'none' && R.unshared) t = '<b>この端末は「記録を共有する」の印が外れています。</b>合言葉の入っていた端末なので、印を外したままでは中身を出しません。「名簿・設定」タブの「この端末と共有」で印を付けて「保存する」を押してください。';
   else if(R.lv === 'none') t = '<b>この端末を使う人が、まだ選ばれていません。</b>「名簿・設定」タブの「この端末と共有」で、この端末を使う人を選んで「保存する」を押してください。選ぶまでは、このタブだけを出します。';
   /* 2026-11-01（宏史さんの指摘「この画面を見ている職員には、見ている画面以外に別の画面があるんだと思いますよね」）：
      「見える範囲」の帯は出さない。管理者の印が付いた人の端末で、管理者の合言葉がまだ入っていないときだけ、入れ方を出す */
   /* 2026-11-01（宏史さんの指摘「管理者の合言葉をいれると管理者の画面がでますは残すのですか？」）：合言葉の入れ方の帯も出さない。入れ方は「名簿・設定」の枠「管理者の合言葉」だけに置く */
   el.innerHTML = t; el.style.display = t ? '' : 'none';
+  if($('shPickBtn')) $('shPickBtn').onclick = function(){ sharedPick(true); };
 }
 function withDept(k, fn){
   var o = null; try{ o = localStorage.getItem(DEPT_KEY); localStorage.setItem(DEPT_KEY, k); }catch(e){}

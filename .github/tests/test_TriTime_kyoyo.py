@@ -32,6 +32,10 @@ async def test(p):
         await pg.reload(); await pg.wait_for_timeout(1500)
         await pg.wait_for_selector('#shPick', timeout=15000)
         names = await pg.evaluate("[].map.call(document.querySelectorAll('#shPick .who'), function(b){ return b.textContent; })")
+        assert '戻る（名簿・設定へ）' in await pg.inner_text('#shPickClose'), '最初の窓に「戻る」がありません'
+        await pg.evaluate("document.getElementById('shPickClose').click()"); await pg.wait_for_timeout(300)
+        assert not await pg.query_selector('#shPick') and await pg.evaluate("document.querySelector('#tabs button.on').getAttribute('data-tab')") == 'setup', '「戻る」で名簿・設定へ行きません'
+        await pg.reload(); await pg.wait_for_timeout(1500); await pg.wait_for_selector('#shPick', timeout=15000)
         assert len(names) == 1 and '非常勤 三子' in names[0], '選べる人が週3日以下の非常勤だけになっていません：' + str(names)
         await s.shot('#shPick .box', 'TriTime_kyoyo_1.png')
         await pg.evaluate("document.querySelector('#shPick .who').click()"); await pg.wait_for_timeout(800)

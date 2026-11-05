@@ -324,7 +324,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-06-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-06-02</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -3107,10 +3107,11 @@ function sharedPick(force){
   var box = document.createElement('div'); box.id = 'shPick';
   box.innerHTML = '<div class="box"><h2 style="margin:0 0 6px">今日この端末を使う人</h2><p class="muted" style="margin:0 0 10px">この端末は共用端末です。今日使う人の名前を押してください。その人の予定だけが出ます。</p>' +
     list.map(function(s){ return '<button type="button" class="btn who" data-id="' + esc(s.id) + '">' + esc(staffLabel(s)) + '</button>'; }).join('') +
-    (force ? '<p style="margin:10px 0 0"><button type="button" class="btn sub" id="shPickClose">やめる</button></p>' : '') + '</div>';
+    '<p style="margin:10px 0 0"><button type="button" class="btn sub" id="shPickClose">' + (force ? 'やめる' : '戻る（名簿・設定へ）') + '</button></p></div>';
   document.body.appendChild(box);
   [].forEach.call(box.querySelectorAll('.who'), function(b){ b.onclick = function(){ sj(SHU_KEY, { id:b.getAttribute('data-id'), date:ymd(new Date()) }); box.remove(); refreshAll(); }; });
-  if($('shPickClose')) $('shPickClose').onclick = function(){ box.remove(); };
+  /* 2026-11-06（宏史さん「戻るはないの？」）：最初の窓にも戻りを付ける。押すと窓を閉じ「名簿・設定」を開く（共用端末をやめて使う人を選び直せる） */
+  $('shPickClose').onclick = function(){ box.remove(); if(!force){ var b = document.querySelector('#tabs button[data-tab=setup]'); if(b) b.click(); } };
 }
 function sharedBar(){
   var el = $('shBar'); if(!el) return; var d = dev();

@@ -197,6 +197,15 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   .ssBody tr.sb th.who{background:#f1f5ef}
   .ssMv{position:fixed;inset:0;z-index:9400;background:rgba(10,20,40,.45);display:flex;align-items:center;justify-content:center;padding:16px}
   .ssMv .card{max-width:500px;width:100%;margin:0;max-height:90vh;overflow:auto}
+  /* 2026-11-05：空の表から組む（手組み） */
+  .hbGrid td{min-height:56px;vertical-align:top;min-width:96px}
+  .hbGrid .hbFuda{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;background:#e6f2ea}
+  .hbPool{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 6px;padding:6px;border:1px dashed var(--paper-deep);border-radius:8px;min-height:36px}
+  .hbPool .hbFuda{display:inline-block;margin:0;background:#eeedfe;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+  .hbPool .hbFuda.sel{outline:3px solid var(--amber);background:#fff6e5}
+  .hbSum{display:block;text-align:right;font-size:11px;color:var(--muted);margin-top:2px}
+  .hbSum.ng{color:var(--red);font-weight:700}
+  .hbPoolWrap{margin-top:6px}
   .avCal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:6px 0;max-width:460px}
   .avCal b{font-size:12px;text-align:center;color:var(--muted)}
   .avCal button{font:inherit;font-size:13px;padding:8px 0;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer}
@@ -309,7 +318,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-04-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-05-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -4793,8 +4802,9 @@ function renderToday(){
   var num = {}; live.forEach(function(v, i){ num[date + '|' + v.no + '|' + v.time + '|' + v.staffId] = ALL ? v._n : i + 1; });
   var mon = mondayOf(parseYmd(date)), wdays = []; for(var di = 0; di < 7; di++) wdays.push(ymd(addDays(mon, di)));
   var wg = D().kind === 'office' ? { empty:'' } : ssGridHTML(wdays, { only:ALL ? null : sid, mark:date, num:num, col:colOf, drag:canSched() });   /* 2026-11-04：本体の表でも札を動かせる（予定を組む人の端末だけ） */
-  $('td_week').innerHTML = wg.empty != null ? wg.empty : '<h3 style="margin:6px 0 4px;font-size:15px">本スケジュール表 <small class="muted" style="font-weight:400">' + esc(jpDate(wdays[0])) + ' 〜 ' + esc(jpDate(wdays[6])) + '</small></h3><div class="ssBody tdWeek">' + wg.html + '</div><p class="muted sm" style="margin:4px 0 0">色の付いた列が選んだ日です。日付を変えると、その日の週の表に変わります。札の丸い番号は地図の番号と同じです。' + (canSched() ? '今日以降の札は、指で押さえたまま別の人・別の日の升へ引っぱると動かせます（動かすときに理由を残せます。点線の札は人情変更）。' : '') + '</p>' + (canSched() ? ptrBtnHTML('ptr_td', 'ptr_tdbox') : '');
+  $('td_week').innerHTML = wg.empty != null ? wg.empty : '<h3 style="margin:6px 0 4px;font-size:15px">本スケジュール表 <small class="muted" style="font-weight:400">' + esc(jpDate(wdays[0])) + ' 〜 ' + esc(jpDate(wdays[6])) + '</small></h3><div class="ssBody tdWeek">' + wg.html + '</div><p class="muted sm" style="margin:4px 0 0">色の付いた列が選んだ日です。日付を変えると、その日の週の表に変わります。札の丸い番号は地図の番号と同じです。' + (canSched() ? '今日以降の札は、指で押さえたまま別の人・別の日の升へ引っぱると動かせます（動かすときに理由を残せます。点線の札は人情変更）。' : '') + '</p>' + (canSched() ? ptrBtnHTML('ptr_td', 'ptr_tdbox') : '') + hbBtnHTML();   /* 2026-11-05：空の表から組む（手組み） */
   if($('ptr_td')) $('ptr_td').onclick = function(){ ptrRun(wdays, 'ptr_tdbox', '#td_week', '本スケジュール表'); };
+  if($('hb_open')) $('hb_open').onclick = hbToggle; if(window.HB && HB.on) hbRender();   /* 最初の描画はこの宣言より前に走る */
   var pts = live.map(function(v, i){ var p = patient(v.no) || {}; return p.lat ? { n:ALL ? v._n : i + 1, sid:v.staffId, lat:+p.lat, lng:+p.lng, t:(ALL ? staffName(v.staffId) + ' ' : '') + v.time + ' ' + dnn(v.no) } : null; }).filter(Boolean);
   if(!pts.length){ $('td_map').style.display = 'none'; if(live.length) $('td_week').insertAdjacentHTML('afterbegin', '<p class="muted">地図に出せる訪問先がありません。利用者登録で住所（番地まで）を入れ、「住所から位置を取る」を押してください。</p>'); return; }
   $('td_map').style.display = '';
@@ -6692,6 +6702,7 @@ var MN_MARKS = [
   ['札の移動・人情変更・H&Nパトリオット・伝票（2026-11-04）', [
     ['本スケジュール表の札', '「予定」の地図の下の本スケジュール表でも、今日以降の札を引っぱって動かせます（予定を組む人の端末だけ）。動かす小窓の「変更の理由」で理由を残せます。'],
     ['人情変更', '変更の理由で「人情変更（相性・体調への配慮・家族の事情・その他）」を選んだ札は点線で出ます。管理者の判断（ワイルドカード）として、H&Nパトリオットは効率だけの条項ではその札を指摘しません。度が過ぎたもの（1日の件数の超過・休みの日の予定・人情変更の割合など）だけを指摘します。'],
+    ['空の表から組む（手組み）', '本スケジュール表の下のボタン（予定を組む人の端末だけ）。職員 × 曜日の空の表に、下に並ぶ利用者の札を引っぱって置き、週の予定をホワイトボードのように組みます。升の端にその曜日の件数と訪問の間の合計が出ます（許容を超えると赤）。「効率バージョンを写す」で今の予定から直すこともでき、「H&Nパトリオットで確かめる」で下書きを確かめ、「この表で確定」で毎週の予定に置き換えます。下書きは閉じても残ります。'],
     ['H&Nパトリオット', '本スケジュール表と仮スケジュール表の下のボタン。表の週の予定を「許容範囲外の条項表」で確かめ、根拠付きの指摘を出します。指摘を押すと表の中の訪問が光ります。「問題なし」とは言わず、見た範囲だけを言います。'],
     ['条項表', 'H&Nパトリオットが使う線です。野木画面の「条項表」で値を変えたり、行を足したり外したりできます（全端末に共有）。'],
     ['事業所の都合', 'キャンセル受付の理由の分類に「事業所の都合（職員の休み・調整）」を足しました。キャンセル料はかからず、利用者の信用度も下がりません。条項表の「事業所の都合による休み・変更」に数えます。'],
@@ -7269,6 +7280,185 @@ function ptrRun(days, boxId, gridSel, label){
 }
 function ptrBtnHTML(id, boxId){ return '<div class="btns" style="margin:6px 0 2px"><button type="button" class="btn sub" id="' + id + '" style="border-color:#993c1d;color:#712b13;font-weight:700">H&amp;Nパトリオット</button><small class="muted">この表の予定を、許容範囲外の条項表で確かめます。</small></div><div id="' + boxId + '"></div>'; }
 function canSched(){ var r = role(); return D().kind === 'visit' && (r.lv === 'all' || r.lv === 'dept' || r.lv === 'office'); }
+
+/* ============================================================
+   2026-11-05：空の表から組む（手組み）——人が組む予定表（宏史さんの11/4の決め「ゼロからの手組み・ホワイトボードの転記」の口）
+   ・本スケジュール表の下の「空の表から組む」を押すと、同じ格子（職員 × 曜日、常勤→非常勤→事務局の順）の空の表が出る。
+   ・表の下に、その部署の利用者の札（契約書番号＋氏名、2名体制は「2名」の印、取り決めの週の回数ぶん）が並び、
+     札を格子へ指で引っぱって置く（タブレット）。札を一度押してから升を押しても置ける。置いた札は別の人・別の曜日へ動かせる。
+   ・置いた時点で、その人のその曜日の件数と、訪問と訪問の間の合計を升の端に出す（許容を超えたら赤）。
+   ・「効率バージョンを写す」＝いまの週間予定（AIが組んだ・今使っている表）をそのまま写して、そこから動かす。「全部消す」。
+   ・「H&Nパトリオットで確かめる」＝確定する前に、この下書きを条項表で確かめる（記録は残さない。確定後の本体の表のボタンは従来どおり記録を残す）。
+   ・「この表で確定」＝この部署の週間予定を、この表の中身に置き換える（理由を残せる。「人情変更」を選べば、変わった札に人情変更の印）。
+   ・下書きは共有の決まりごと（settings.hb・部署ごと）に置くので、途中で閉じても消えず、どの端末で開いても続きから組める。
+   ・ホワイトボードの写真読み込みは、現物の写真が1枚あってから（宏史さん 11/5「今はありません」）。ここに「写真から読む」を足す予定の場所。
+   ============================================================ */
+var HB = window.HB || { sel:null, on:false }; window.HB = HB;
+var HB_DOWS = ['1','2','3','4','5','6','0'];
+function hbRaw(){ var s = lj(K.settings, {}) || {}; return (s.hb && s.hb[D().k]) || { cells:{} }; }
+function hbSave(st){ var cur = lj(K.settings, {}) || {}, hb = Object.assign({}, cur.hb || {}); st.at = nowLocal(); st.by = dev().me || ''; hb[D().k] = st; saveSettings(Object.assign({}, cur, { hb:hb })); }
+function hbRows(){
+  var d = D(), people = deptStaff();
+  return people.filter(function(p){ return !isStandby(p); }).map(function(p){ return { id:p.id, name:p.name, sub:(p.dept && p.dept !== d.name) ? '兼務' : '' }; })
+    .concat(people.filter(isStandby).map(function(p){ return { id:p.id, name:p.name, sub:'待機', sb:true }; }));
+}
+function hbCell(st, sid, dow){ st.cells[sid] = st.cells[sid] || {}; return (st.cells[sid][dow] = st.cells[sid][dow] || []); }
+function hbCount(st){ var n = 0; Object.keys(st.cells).forEach(function(s){ Object.keys(st.cells[s]).forEach(function(d){ n += st.cells[s][d].length; }); }); return n; }
+function hbPlacedOf(st, no){ var n = 0; Object.keys(st.cells).forEach(function(s){ Object.keys(st.cells[s]).forEach(function(d){ st.cells[s][d].forEach(function(x){ if(x.no === no) n++; }); }); }); return n; }
+function hbDayLimit(sid){
+  var rs = ptrRules().filter(function(r){ return r.m === 'dayN' && r.on !== false && ptrEmpOk(r, sid); });
+  if(!rs.length) return workRule().target || 8;
+  return Math.min.apply(null, rs.map(function(r){ return +r.v + (r.op === '以上' ? -1 : 0); }));
+}
+/* 升の中の並びから、件数と「訪問と訪問の間」の合計を出す */
+function hbCellSum(vs, sid){
+  var wr = workRule(), live = vs.filter(function(v){ return !v.cx; }), gap = 0, bad = false;
+  live.sort(function(a, b){ return a.time < b.time ? -1 : 1; });
+  for(var i = 1; i < live.length; i++){ var g = toMin(live[i].time) - (toMin(live[i - 1].time) + (+live[i - 1].min || wr.visit)); gap += Math.max(0, g); if(g < wr.mvMin || g > wr.mvMax) bad = true; }
+  var lim = hbDayLimit(sid), over = live.length > lim;
+  return { n:live.length, gap:gap, over:over, bad:bad, lim:lim };
+}
+/* 置くときの時刻：空なら勤務の始まり、あれば最後の終わり＋ふだんの移動。昼休みにかかれば昼休みの後 */
+function hbNextTime(vs){
+  var wr = workRule(), t;
+  if(!vs.length) t = toMin(wr.start);
+  else { var last = vs.slice().sort(function(a, b){ return a.time < b.time ? -1 : 1; })[vs.length - 1]; t = toMin(last.time) + (+last.min || wr.visit) + wr.mvStd; }
+  var lb = 12 * 60, le = lb + (wr.brk || 0); if(t >= lb && t < le) t = le;
+  return pad(Math.floor(t / 60)) + ':' + pad(t % 60);
+}
+function hbPatients(){ return patients().filter(function(p){ return !p.status || p.status === '利用中'; }); }
+function hbFreq(p){ var f = auFreqInfo(p, 0); return Math.max(1, +(f && f.f) || 1); }
+function hbBtnHTML(){ return canSched() ? '<div class="btns" style="margin:6px 0 2px"><button type="button" class="btn sub" id="hb_open">空の表から組む（手組み）</button><small class="muted">ホワイトボードのように、空の表へ利用者の札を置いて週の予定を組みます。</small></div><div id="hbBox"></div>' : ''; }
+function hbToggle(){ var b = $('hbBox'); if(!b) return; HB.on = !HB.on; HB.sel = null; if(HB.on) hbRender(); else b.innerHTML = ''; }
+function hbRender(){
+  var box = $('hbBox'); if(!box || !HB.on) return;
+  var st = hbRaw(), rows = hbRows(), wr = workRule();
+  var h = '<div class="hbWrap"><h3 style="margin:8px 0 4px;font-size:15px">空の表から組む（手組み） <small class="muted" style="font-weight:400">' + esc(D().name) + '・毎週の予定の下書き' + (st.at ? '・最後に触った ' + esc(st.at.replace('T', ' ')) + (st.by ? '（' + esc(staffName(st.by)) + '）' : '') : '') + '</small></h3>' +
+    '<p class="muted sm" style="margin:0 0 6px">下の札を升へ引っぱって置きます（札を一度押してから升を押しても置けます）。置いた札を押すと時刻を直したり外したりできます。升の右下の数字が、その曜日の件数と「訪問と訪問の間」の合計です（許容を超えると赤）。</p>' +
+    '<div class="btns" style="margin:0 0 6px"><button type="button" class="btn sub" id="hb_copy">効率バージョンを写す</button><button type="button" class="btn sub" id="hb_clear">全部消す</button><button type="button" class="btn sub" id="hb_ptr" style="border-color:#993c1d;color:#712b13;font-weight:700">H&amp;Nパトリオットで確かめる</button><button type="button" class="btn amber" id="hb_commit">この表で確定</button><button type="button" class="btn sub" id="hb_close">閉じる</button></div>' +
+    '<div class="ssBody hbGrid"><table><thead><tr><th class="who">担当</th>' + HB_DOWS.map(function(dw){ return '<th class="' + (dw === '0' || dw === '6' ? 'we' : '') + '">' + DOW[+dw] + '</th>'; }).join('') + '</tr></thead><tbody>';
+  rows.forEach(function(r){
+    var wk = 0; HB_DOWS.forEach(function(dw){ ((st.cells[r.id] || {})[dw] || []).forEach(function(v){ wk++; }); });
+    h += '<tr' + (r.sb ? ' class="sb"' : '') + '><th class="who">' + esc(r.name) + '<small>' + (r.sub ? r.sub + '・' : '') + '週 ' + wk + '件</small></th>';
+    HB_DOWS.forEach(function(dw){
+      var vs = ((st.cells[r.id] || {})[dw] || []).slice().sort(function(a, b){ return a.time < b.time ? -1 : 1; }), sum = hbCellSum(vs, r.id);
+      var offs = (staff().filter(function(x){ return x.id === r.id; })[0] || {}).off || [], isOff = offs.indexOf(dw) >= 0;
+      h += '<td data-hsid="' + esc(r.id) + '" data-hdow="' + dw + '"' + (isOff ? ' class="off"' : '') + '>' + (isOff ? '<span class="ssOff">休</span>' : '') +
+        vs.map(function(v, i){
+          var p = patient(v.no) || {}, prev = vs[i - 1], g = prev ? toMin(v.time) - (toMin(prev.time) + (+prev.min || wr.visit)) : null;
+          return (g != null ? mvGapHTML(g, wr) : '') + '<span class="ssChip hbFuda' + (isOff ? ' warn' : '') + '" data-hb="' + esc(r.id + '|' + dw + '|' + v.no + '|' + v.time) + '" data-pk="' + esc(hbDate(dw) + '|' + v.no + '|' + v.time) + '">' + esc(v.time) + '<br>' + esc(ssShortNo(v.no)) + (nameOf(v.no) ? '<br>' + esc(nameOf(v.no)) : '') + (isTwoP(p) ? '<small style="display:block;color:var(--amber);font-weight:700">2名</small>' : '') + '</span>';
+        }).join('') +
+        (sum.n ? '<span class="hbSum' + (sum.over || sum.bad ? ' ng' : '') + '" title="' + esc('許容 ' + sum.lim + '件まで' + (sum.bad ? '・移動の目安（' + wr.mvMin + '〜' + wr.mvMax + '分）から外れた間があります' : '')) + '">' + sum.n + '件・間 ' + esc(minLabel(sum.gap)) + '</span>' : '') + '</td>';
+    });
+    h += '</tr>';
+  });
+  h += '</tbody></table></div>';
+  /* 利用者の札（取り決めの週の回数ぶん。置いた分を引いた残り） */
+  var pool = hbPatients().map(function(p){ var f = hbFreq(p), left = f - hbPlacedOf(st, p.no); return { p:p, f:f, left:left }; });
+  var rest = pool.filter(function(x){ return x.left > 0; }), done = pool.filter(function(x){ return x.left <= 0; });
+  h += '<div class="hbPoolWrap"><b style="font-size:13px">利用者の札</b> <small class="muted">残り ' + rest.reduce(function(a, x){ return a + x.left; }, 0) + '枚（' + rest.length + '人）・置いた ' + hbCount(st) + '枚</small><div class="hbPool">' +
+    (rest.length ? rest.map(function(x){ return '<span class="ssChip hbFuda pool' + (HB.sel === x.p.no ? ' sel' : '') + '" data-hbp="' + esc(x.p.no) + '" title="' + esc((x.p.area || '') + (x.p.wish ? '・希望 ' + x.p.wish : '') + (x.p.wDays && x.p.wDays.length ? '・希望の曜日 ' + x.p.wDays.map(function(d){ return DOW[+d]; }).join('') : '')) + '">' + esc(ssShortNo(x.p.no)) + ' ' + esc(x.p.name || '') + (isTwoP(x.p) ? ' <b style="color:var(--amber)">2名</b>' : '') + '<small> 残り' + x.left + '</small></span>'; }).join('') : '<span class="muted sm">置ける札はありません（全員ぶん置きました）。</span>') +
+    '</div>' + (done.length ? '<small class="muted">置き終えた利用者：' + esc(done.map(function(x){ return x.p.name || ssShortNo(x.p.no); }).join('・')) + '</small>' : '') + '</div><div id="hb_ptrbox"></div><div id="hb_msg" class="muted sm"></div></div>';
+  box.innerHTML = h;
+  $('hb_close').onclick = function(){ HB.on = false; box.innerHTML = ''; };
+  $('hb_copy').onclick = function(){
+    var st2 = hbRaw(); if(hbCount(st2) && !confirm('いまの下書きを消して、今使っている週間予定を写します。よろしいですか。')) return;
+    st2 = { cells:{} }; var ids = {}; hbRows().forEach(function(r){ ids[r.id] = 1; });
+    weekly().forEach(function(w){ if(!ids[w.staffId]) return; hbCell(st2, w.staffId, String(w.dow)).push({ no:w.no, time:w.time, min:+w.min || wr.visit, withId:w.withId || '' }); });
+    hbSave(st2); hbRender(); $('hb_msg').textContent = '今使っている週間予定（' + hbCount(st2) + '件）を写しました。ここから動かして直せます。';
+  };
+  $('hb_clear').onclick = function(){ if(!confirm('下書きの札を全部外します。よろしいですか。')) return; hbSave({ cells:{} }); hbRender(); };
+  $('hb_ptr').onclick = function(){
+    var st2 = hbRaw(), days = []; for(var i = 0; i < 7; i++) days.push(hbDate(HB_DOWS[i]));
+    var list = ptrEvalPlan(days, hbVisitsOn, ptrRules(), { noHv:true });
+    $('hb_ptrbox').innerHTML = ptrFindingsHTML(list, ptrRules(), '手組みの下書き') + '<small class="muted">下書きに対する確かめです（記録は残りません。確定した後の本体の表の「H&amp;Nパトリオット」は記録を残します）。</small>';
+    ptrWire($('hb_ptrbox'), '#hbBox .hbGrid');
+  };
+  $('hb_commit').onclick = hbCommitAsk;
+  box.querySelectorAll('.hbFuda.pool').forEach(function(c){ c.addEventListener('click', function(){ var no = c.getAttribute('data-hbp'); HB.sel = HB.sel === no ? null : no; hbRender(); if(HB.sel) $('hb_msg').textContent = nameOf(no) + 'さんの札を選びました。置きたい升を押してください。'; }); });
+  box.querySelectorAll('td[data-hsid]').forEach(function(td){ td.addEventListener('click', function(e){ if(e.target.closest('.hbFuda')) return; if(!HB.sel) return; hbPlace(td.getAttribute('data-hsid'), td.getAttribute('data-hdow'), HB.sel, null); }); });
+  box.querySelectorAll('.hbGrid .hbFuda').forEach(function(c){ c.addEventListener('click', function(){ if(HB.moved){ HB.moved = false; return; } hbEditAsk(c.getAttribute('data-hb')); }); });
+}
+/* 下書きの曜日を「今週のその曜日」の日付にする（パトリオットと札の鍵に使う） */
+function hbDate(dw){ var mon = mondayOf(new Date()); return ymd(addDays(mon, (+dw + 6) % 7)); }
+function hbVisitsOn(date){
+  var st = hbRaw(), dw = String(parseYmd(date).getDay()), out = [];
+  Object.keys(st.cells).forEach(function(sid){ (st.cells[sid][dw] || []).forEach(function(v){ var p = patient(v.no) || {}; out.push({ date:date, time:v.time, min:v.min, no:v.no, area:p.area || '', staffId:sid, withId:v.withId || '', cx:null }); }); });
+  return out.sort(function(a, b){ return a.time < b.time ? -1 : 1; });
+}
+function hbPlace(sid, dow, no, from){
+  var st = hbRaw(), wr = workRule();
+  if(from){ var f = from.split('|'), arr = hbCell(st, f[0], f[1]), i = -1; arr.forEach(function(x, j){ if(x.no === f[2] && x.time === f[3]) i = j; }); if(i < 0) return; var it = arr.splice(i, 1)[0]; if(f[0] === sid && f[1] === dow){ arr.push(it); hbSave(st); hbRender(); return; } var cell = hbCell(st, sid, dow); it.time = hbNextTime(cell); cell.push(it); }
+  else { var p = patient(no) || {}; if(hbPlacedOf(st, no) >= hbFreq(p) && !confirm(nameOf(no) + 'さんは取り決めの回数（週' + hbFreq(p) + '回）ぶん置いてあります。さらに置きますか。')) return; var cell2 = hbCell(st, sid, dow); cell2.push({ no:no, time:hbNextTime(cell2), min:+p.vmin || wr.visit, withId:'' }); }
+  HB.sel = null; hbSave(st); hbRender();
+  var s = hbCellSum(hbCell(hbRaw(), sid, dow), sid); $('hb_msg').textContent = nameOf(no) + 'さんを ' + DOW[+dow] + '曜・' + staffName(sid) + 'さんに置きました（' + s.n + '件' + (s.over ? '・許容 ' + s.lim + '件を超えています' : '') + '）。';
+}
+function hbEditAsk(ref){
+  var f = ref.split('|'), box = document.createElement('div'); box.className = 'ssMv'; box.id = 'ssMv';
+  box.innerHTML = '<div class="card"><h2>札を直す</h2><p><b>' + esc(dnn(f[2])) + '</b><br>' + esc(DOW[+f[1]] + '曜 ' + f[3] + '（' + staffName(f[0]) + '）') + '</p>' +
+    '<div class="row"><div><label class="f" for="hb_time">時刻</label><input type="time" id="hb_time" value="' + esc(f[3]) + '"></div></div>' +
+    '<div class="btns"><button class="btn" type="button" id="hb_tok">時刻を直す</button><button class="btn sub" type="button" id="hb_rm">この札を外す</button><button class="btn sub" type="button" id="hb_no">閉じる</button></div></div>';
+  document.body.appendChild(box);
+  $('hb_no').onclick = function(){ box.remove(); };
+  $('hb_rm').onclick = function(){ var st = hbRaw(), arr = hbCell(st, f[0], f[1]), i = -1; arr.forEach(function(x, j){ if(x.no === f[2] && x.time === f[3]) i = j; }); if(i >= 0) arr.splice(i, 1); hbSave(st); box.remove(); hbRender(); };
+  $('hb_tok').onclick = function(){ var t = $('hb_time').value; if(!t) return; var st = hbRaw(), arr = hbCell(st, f[0], f[1]); arr.forEach(function(x){ if(x.no === f[2] && x.time === f[3]) x.time = t; }); hbSave(st); box.remove(); hbRender(); };
+}
+function hbCommitAsk(){
+  var st = hbRaw(), n = hbCount(st), cur = weekly().length;
+  if(!n){ alert('札が1枚も置かれていません。'); return; }
+  var box = document.createElement('div'); box.className = 'ssMv'; box.id = 'ssMv';
+  box.innerHTML = '<div class="card"><h2>この表で確定</h2><p>' + esc(D().name) + 'の毎週の予定（いま ' + cur + '件）を、この表の中身（' + n + '件）に置き換えます。置き換えたあとは、本体の表・仮スケジュール表・モデルコースがこの表で動きます。</p>' +
+    '<div class="row"><div><label class="f" for="hb_why">この組み方の理由</label><select id="hb_why"><option value="">（選ばない）</option>' + hvWhyList().map(function(w){ return '<option value="' + esc(w) + '">' + esc(w) + '</option>'; }).join('') + '</select></div>' +
+    '<div><label class="f" for="hb_note">ひとこと（任意）</label><input type="text" id="hb_note" placeholder="例：ホワイトボードの表を写した"></div></div>' +
+    '<p class="muted sm">「人情変更」を選ぶと、今の予定から変わった札に人情変更の印（点線）が付きます。</p>' +
+    '<div class="btns"><button class="btn amber" type="button" id="hb_ok">置き換える</button><button class="btn sub" type="button" id="hb_no">やめる</button></div></div>';
+  document.body.appendChild(box);
+  $('hb_no').onclick = function(){ box.remove(); };
+  $('hb_ok').onclick = function(){ hbCommitDo($('hb_why').value, $('hb_note').value.trim()); box.remove(); };
+}
+function hbCommitDo(why, note){
+  var st = hbRaw(), all = live('weekly'), me = dev().me || '', now = nowLocal(), hv = hvIs(why), wr = workRule();
+  var old = {}; all.forEach(function(w){ if(inDept(w.no)) old[w.no + '|' + w.dow + '|' + w.staffId + '|' + w.time] = w; });
+  var keep = all.filter(function(w){ return !inDept(w.no); }), added = 0, same = 0;
+  Object.keys(st.cells).forEach(function(sid){ Object.keys(st.cells[sid]).forEach(function(dw){ st.cells[sid][dw].forEach(function(v){
+    var k = v.no + '|' + dw + '|' + sid + '|' + v.time, o = old[k];
+    if(o){ keep.push(o); same++; return; }
+    var w = { id:uid(), dow:dw, time:v.time, min:+v.min || wr.visit, no:v.no, staffId:sid, withId:v.withId || '', src:'hb', by:me, at:now };
+    if(why){ w.why = why; w.note = note; } if(hv){ w.hv = true; w.hvAt = now; w.hvBy = me; }
+    keep.push(w); added++;
+  }); }); });
+  var removed = Object.keys(old).length - same;
+  saveCol('weekly', keep);
+  var ev = events(); ev.push({ id:uid(), type:'hb', at:now, by:me, dept:D().k, n:hbCount(st), added:added, removed:removed, why:why, note:note, hv:hv }); saveEvents(ev);
+  hbSave({ cells:{} }); HB.on = false;
+  refreshAll();
+  var b = $('hbBox'); if(b) b.innerHTML = '<div class="judge free" style="margin:8px 0"><b>この表で確定しました。</b><br>' + esc(D().name) + 'の毎週の予定を置き換えました（新しく入れた ' + added + '件・そのまま ' + same + '件・外した ' + removed + '件）。本体の表に反映しています。</div>';
+}
+/* 札を引っぱる（手組みの表と利用者の札。本体の表の札の引っぱり（SS_V）とは別） */
+var hbDrag = null;
+document.addEventListener('pointerdown', function(e){
+  var c = e.target && e.target.closest && e.target.closest('#hbBox .hbFuda'); if(!c) return;
+  hbDrag = { ref:c.getAttribute('data-hb') || '', no:c.getAttribute('data-hbp') || '', x:e.clientX, y:e.clientY, on:false, el:c, ghost:null, over:null };
+});
+document.addEventListener('pointermove', function(e){
+  if(!hbDrag) return;
+  if(!hbDrag.on){ if(Math.abs(e.clientX - hbDrag.x) + Math.abs(e.clientY - hbDrag.y) < 8) return; hbDrag.on = true; var g = document.createElement('div'); g.className = 'ssGhost'; g.innerHTML = hbDrag.el.innerHTML; document.body.appendChild(g); hbDrag.ghost = g; }
+  e.preventDefault();
+  hbDrag.ghost.style.left = e.clientX + 'px'; hbDrag.ghost.style.top = e.clientY + 'px';
+  var t = document.elementFromPoint(e.clientX, e.clientY), td = t && t.closest ? t.closest('#hbBox td[data-hsid]') : null;
+  if(hbDrag.over && hbDrag.over !== td) hbDrag.over.classList.remove('ssOver');
+  if(td) td.classList.add('ssOver'); hbDrag.over = td;
+}, { passive:false });
+function hbDragEnd(cancel){
+  if(!hbDrag) return; var dg = hbDrag; hbDrag = null;
+  if(dg.ghost) dg.ghost.remove(); if(dg.over) dg.over.classList.remove('ssOver');
+  if(cancel || !dg.on || !dg.over) return;
+  HB.moved = true; setTimeout(function(){ HB.moved = false; }, 300);
+  var sid = dg.over.getAttribute('data-hsid'), dow = dg.over.getAttribute('data-hdow');
+  if(dg.ref){ hbPlace(sid, dow, dg.ref.split('|')[2], dg.ref); } else if(dg.no){ hbPlace(sid, dow, dg.no, null); }
+}
+document.addEventListener('pointerup', function(){ hbDragEnd(false); });
+document.addEventListener('pointercancel', function(){ hbDragEnd(true); });
 
 /* ---- 予定表の比較（人情×効率）＝野木画面の中だけ ---- */
 /* 効率バージョン：いまの利用者・職員で、担当の引き継ぎも曜日の据え置きもせず、効率だけで組み直したもの */

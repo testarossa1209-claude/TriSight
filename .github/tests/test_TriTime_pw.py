@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""トライタイムの「予定表の作り方を選ぶ」の試験（2026-11-05・宏史さんの指示「作り方を選ばせる引き出しが必要」）
+"""トライタイムの「予定表の作り方を選ぶ（二択）」「ベースの自動投入」「管理者の窓の効率バージョンと比べる・パトリオット」「ご要望の枠」の試験（2026-11-05 昼・宏史さんの指示）
 ・本スケジュール表の上にオレンジの「予定表の作り方を選ぶ」が出る（予定を組む人の端末）
-・押すと小窓に「AIが作る」「AIがベースを作って自分で直す」「自分で作る」の三つのボタンが出る
-・「自分で作る」→ 空の手組みの表が開く
-・「AIがベースを作って自分で直す」→ いまの週間予定（11件）が手組みの表に写って開く
-・「AIが作る」→ 自動の振り分けの枠が表示される
-・使い方（右の引き出し）に「予定表の作り方を選ぶ」の説明がある
-・画面の中で誤りが出ない"""
+・押すと小窓に「このままAIの表で使う」「ベースに手を入れて完成させる」の二つのボタン（三択は無い）
+・「ベースに手を入れて完成させる」→ いまの週間予定（11件）が手組みの表に写って開き、表の上に「担当者からのご要望（上申）」の枠（未対応の上申が出る・対応済みにできる）
+・「このままAIの表で使う」→ 週間予定がAIの表に置き換わり、記録に src ai が付く
+・週間予定が空の部署では、本スケジュール表を開くとAIのベースが自動で入り、知らせが出る
+・管理者の窓：「効率バージョンと比べる」で日付ごと・職員ごとの表とアドバイス、「H&Nパトリオット（全体の評価）」で全体の評価が出る
+・使い方に説明がある／画面の中で誤りが出ない"""
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 from tt_helper import Screen, run
@@ -55,31 +55,58 @@ async def test(p):
         await pg.evaluate("var e = document.getElementById('td_staff'); e.value = '*'; e.dispatchEvent(new Event('change'));")
         await pg.wait_for_selector('#td_week .ssChip', state='attached', timeout=15000); await pg.wait_for_timeout(300)
         assert await pg.query_selector('#pw_open'), '「予定表の作り方を選ぶ」のボタンがありません'
+        # 上申を1件入れておく（職員からのご要望の枠に出るか）
+        await pg.evaluate("""(function(){ var ev = JSON.parse(localStorage.getItem('tritime_events') || '[]'); ev.push({ id:'js1', type:'note', kind:'上申', from:'s2', to:['s1'], title:'【上申】相性に問題がある　看-9001 試験 太郎（常勤 二子）', body:'試験の上申です', patientNo:'2010-01-看-9001', jsKind:'相性に問題がある', dept:'nurse', created:'2026-11-05T10:00' }); localStorage.setItem('tritime_events', JSON.stringify(ev)); })()""")
         await tap(pg, '#pw_open'); await pg.wait_for_timeout(300)
-        for i in ['pw_ai', 'pw_mix', 'pw_hand']:
+        for i in ['pw_ai', 'pw_mix']:
             assert await pg.query_selector('#ssMv #' + i), '小窓に ' + i + ' がありません'
+        assert not await pg.query_selector('#ssMv #pw_hand'), '三択の「自分で作る」が残っています'
         txt = await pg.inner_text('#ssMv .card')
-        for w in ['AIが作る', 'AIがベースを作って自分で直す', '自分で作る', '11件']:
+        for w in ['このままAIの表で使う', 'ベースに手を入れて完成させる', '11件']:
             assert w in txt, '小窓に「' + w + '」がありません'
         await s.shot('#ssMv .card', 'TriTime_pw_1.png')
-        # 自分で作る → 空の表
-        await tap(pg, '#pw_hand'); await pg.wait_for_timeout(500)
-        assert not await pg.query_selector('#ssMv'), '小窓が閉じません'
-        assert await pg.evaluate("document.querySelectorAll('#hbBox .hbGrid').length") == 1, '「自分で作る」で手組みの表が開きません'
-        assert await pg.evaluate("document.querySelectorAll('#hbBox .hbGrid .hbFuda').length") == 0, '「自分で作る」なのに札が置かれています'
-        # AIがベース → 写る
-        await tap(pg, '#pw_open'); await pg.wait_for_timeout(300)
+        # ベースに手を入れる → 写る＋ご要望の枠
         await tap(pg, '#pw_mix'); await pg.wait_for_timeout(600)
-        assert await pg.evaluate("document.querySelectorAll('#hbBox .hbGrid .hbFuda').length") == 11, '「AIがベースを作って自分で直す」で週間予定（11件）が写りません'
-        assert '写しました' in await pg.inner_text('#hb_msg')
+        assert not await pg.query_selector('#ssMv'), '小窓が閉じません'
+        assert await pg.evaluate("document.querySelectorAll('#hbBox .hbGrid .hbFuda').length") == 11, '「ベースに手を入れて完成させる」で週間予定（11件）が写りません'
+        yb = await pg.inner_text('#hbBox details.mnCh')
+        assert '担当者からのご要望' in yb and '未対応 1件' in yb and '試験の上申です' in yb and '常勤 二子さん' in yb, 'ご要望の枠に上申が出ません：' + yb[:200]
         await s.shot('#hbBox', 'TriTime_pw_2.png')
-        # AIが作る → 枠へ
+        await tap(pg, '#hbBox [data-jsdone="js1"]'); await pg.wait_for_timeout(400)
+        yb = await pg.inner_text('#hbBox details.mnCh')
+        assert '未対応なし' in yb and '対応済み 1件' in yb, '「対応済みにする」が効きません：' + yb[:120]
+        # このままAIの表で使う → 置き換わる
         await tap(pg, '#pw_open'); await pg.wait_for_timeout(300)
-        await tap(pg, '#pw_ai'); await pg.wait_for_timeout(400)
-        assert await pg.evaluate("getComputedStyle(document.getElementById('cardAuto')).display") != 'none', '「AIが作る」で自動の振り分けの枠が出ません'
+        await tap(pg, '#pw_ai'); await pg.wait_for_timeout(800)
+        wk = await pg.evaluate("JSON.parse(localStorage.getItem('tritime_weekly')).filter(w => !w.del)")
+        assert len(wk) >= 1 and all(w.get('src') == 'ai' for w in wk), 'AIの表に置き換わりません：' + str([(w.get('src'), w.get('no')) for w in wk][:5])
+        assert '2026-11-05' not in '' and (await pg.evaluate("JSON.parse(localStorage.getItem('tritime_settings')).base.nurse.how")) == 'ai', 'ベースの記録（how ai）が残りません'
+        # 管理者の窓：効率バージョンと比べる／パトリオット
+        await tap(pg, '#tabs button[data-tab=admin]'); await pg.wait_for_timeout(500)
+        assert await pg.evaluate("getComputedStyle(document.getElementById('cardEff')).display") != 'none', '管理者の窓に「効率バージョンと比べる」の枠が出ません'
+        assert await pg.evaluate("!!document.getElementById('ef_month').value"), '月が入りません'
+        await tap(pg, '#ef_run'); await pg.wait_for_timeout(1200)
+        out = await pg.inner_text('#ef_out')
+        assert '月の合計' in out and '今の表' in out and '効率版' in out and 'すべての日を見る' in out, '効率バージョンとの比べが出ません：' + out[:200]
+        await s.shot('#cardEff', 'TriTime_pw_3.png')
+        await tap(pg, '#ef_ptr'); await pg.wait_for_timeout(1200)
+        out = await pg.inner_text('#ef_out')
+        assert '全体の評価' in out and '移動に使う時間' in out and ('効率化の余地' in out), 'パトリオットの全体の評価が出ません：' + out[:200]
+        assert '問題なし' not in out and '大丈夫です' not in out, '安全宣言が出ています'
+        await s.shot('#cardEff', 'TriTime_pw_4.png')
+        # ベースの自動投入：週間予定を空にして予定タブを開き直す
+        await pg.evaluate("localStorage.setItem('tritime_weekly', '[]'); var st = JSON.parse(localStorage.getItem('tritime_settings')); delete st.base; localStorage.setItem('tritime_settings', JSON.stringify(st));")
+        await pg.reload(); await pg.wait_for_timeout(1500)
+        await pg.evaluate("window.confirm = function(){ return true; }")
+        await tap(pg, '#tabs button[data-tab=plan]'); await pg.wait_for_timeout(300)
+        await pg.evaluate("var e = document.getElementById('td_staff'); e.value = '*'; e.dispatchEvent(new Event('change'));"); await pg.wait_for_timeout(1500)
+        wk = await pg.evaluate("JSON.parse(localStorage.getItem('tritime_weekly')).filter(w => !w.del)")
+        assert len(wk) >= 1 and all(w.get('src') == 'base' for w in wk), '空の部署にAIのベースが自動で入りません：' + str(len(wk))
+        assert 'AIが' in await pg.inner_text('#td_week') and 'ベース' in await pg.inner_text('#td_week'), 'ベースを入れた知らせが出ません'
+        await s.shot('#td_week', 'TriTime_pw_5.png')
         # 使い方
-        found = await pg.evaluate("Array.from(document.scripts).some(function(sc){ return sc.textContent.indexOf(\"['まず「予定表の作り方を選ぶ」'\") >= 0; })")
-        assert found, '使い方に「予定表の作り方を選ぶ」の説明がありません'
+        found = await pg.evaluate("Array.from(document.scripts).some(function(sc){ return sc.textContent.indexOf(\"['最初はAIのベースが自動で入る'\") >= 0 && sc.textContent.indexOf(\"['効率バージョンと比べる・パトリオット（管理者の窓）'\") >= 0; })")
+        assert found, '使い方に説明がありません'
         assert not s.errs, '画面の中で誤り：' + str(s.errs)
     finally:
         await s.close()

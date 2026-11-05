@@ -321,7 +321,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-05-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-05-05</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -944,6 +944,12 @@ function tsPortalAsk(){
 
 <!-- ===== 管理者の窓 ===== -->
 <section class="tab" id="tab-admin">
+  <div class="card" id="cardEff">
+    <h2>効率バージョンと比べる（AIからのアドバイス）</h2>
+    <p class="lead">いま使っている予定（管理者が手を入れた表）と、AIが効率だけで組み直した表（効率バージョン）を、日付ごと・職員ごとに並べます。「AIなら移動が何分短い」「効率版ならもう1件入る」といった差を出します。評価や採点ではなく、直すときの材料です。</p>
+    <div class="btns"><label class="f" for="ef_month" style="margin:0">月</label><input type="month" id="ef_month" style="max-width:200px"><button class="btn" id="ef_run">効率バージョンと比べる</button><button class="btn" id="ef_ptr" style="border-color:#993c1d;color:#712b13;font-weight:700">H&amp;Nパトリオット（全体の評価）</button></div>
+    <div id="ef_out"></div>
+  </div>
   <div class="card">
     <h2>キャンセルの状況</h2>
     <p class="lead"><span data-t="{client}">患者さん</span>ごとの回数と、先月から変わった点を出します。売上への影響は「名簿・設定」に単価を入れたときだけ計算します。</p>
@@ -2366,6 +2372,8 @@ function renderHidden(){
 }
 function renderAdmin(){
   renderHidden();
+  /* 2026-11-05：効率バージョンと比べる・パトリオット（全体の評価）。予定を組める端末だけ */
+  var ce = $('cardEff'); if(ce){ ce.style.display = canSched() ? '' : 'none'; if(!$('ef_month').value) $('ef_month').value = ($('ad_month').value || ymd(new Date()).slice(0, 7)); $('ef_run').onclick = efRender; $('ef_ptr').onclick = efPatriot; }
   var m = $('ad_month').value; if(!m) return;
   var s = settings(); var price = +s.price || 0, fee = +s.fee || 0;
   var rows = patients().map(function(p){ var a = monthStats(p.no, m), b = monthStats(p.no, prevYm(m)); return { no:p.no, area:p.area, a:a, b:b, f:flagsFor(p.no, m) }; })
@@ -4805,7 +4813,8 @@ function renderToday(){
   var num = {}; live.forEach(function(v, i){ num[date + '|' + v.no + '|' + v.time + '|' + v.staffId] = ALL ? v._n : i + 1; });
   var mon = mondayOf(parseYmd(date)), wdays = []; for(var di = 0; di < 7; di++) wdays.push(ymd(addDays(mon, di)));
   var wg = D().kind === 'office' ? { empty:'' } : ssGridHTML(wdays, { only:ALL ? null : sid, mark:date, num:num, col:colOf, drag:canSched(), dragSelf:canMoveSelf() ? dev().me : '' });   /* 2026-11-04：本体の表でも札を動かせる（予定を組む人の端末）。2026-11-05：一般の職員は自分の担当の札だけ（宏史さんの決め(b)） */
-  $('td_week').innerHTML = wg.empty != null ? wg.empty : pwBtnHTML() + '<h3 style="margin:6px 0 4px;font-size:15px">本スケジュール表 <small class="muted" style="font-weight:400">' + esc(jpDate(wdays[0])) + ' 〜 ' + esc(jpDate(wdays[6])) + '</small></h3><div class="ssBody tdWeek">' + wg.html + '</div><p class="muted sm" style="margin:4px 0 0">色の付いた列が選んだ日です。日付を変えると、その日の週の表に変わります。札の丸い番号は地図の番号と同じです。' + (canSched() ? '今日以降の札は、指で押さえたまま別の人・別の日の升へ引っぱると動かせます（動かすときに理由を残せます。点線の札は人情変更）。' : '') + '</p>' + (canSched() ? ptrBtnHTML('ptr_td', 'ptr_tdbox') : '') + hbBtnHTML() + jsBtnHTML();   /* 2026-11-05：空の表から組む（手組み） */
+  baseEnsure();   /* 2026-11-05：週間予定が空なら、AIが住所で寄せたベースを先に入れる */
+  $('td_week').innerHTML = wg.empty != null ? wg.empty : baseBannerHTML() + pwBtnHTML() + '<h3 style="margin:6px 0 4px;font-size:15px">本スケジュール表 <small class="muted" style="font-weight:400">' + esc(jpDate(wdays[0])) + ' 〜 ' + esc(jpDate(wdays[6])) + '</small></h3><div class="ssBody tdWeek">' + wg.html + '</div><p class="muted sm" style="margin:4px 0 0">色の付いた列が選んだ日です。日付を変えると、その日の週の表に変わります。札の丸い番号は地図の番号と同じです。' + (canSched() ? '今日以降の札は、指で押さえたまま別の人・別の日の升へ引っぱると動かせます（動かすときに理由を残せます。点線の札は人情変更）。' : '') + '</p>' + (canSched() ? ptrBtnHTML('ptr_td', 'ptr_tdbox') : '') + hbBtnHTML() + jsBtnHTML();   /* 2026-11-05：空の表から組む（手組み） */
   if($('ptr_td')) $('ptr_td').onclick = function(){ ptrRun(wdays, 'ptr_tdbox', '#td_week', '本スケジュール表'); };
   if($('hb_open')) $('hb_open').onclick = hbToggle; if(window.HB && HB.on) hbRender();
   if($('pw_open')) $('pw_open').onclick = pwOpen;   /* 2026-11-05：予定表の作り方を選ぶ */
@@ -6751,11 +6760,12 @@ var MN_GUIDE = [
     ['地図の位置', '住所（番地まで）を入れておき、「予定」タブの「1日の予定と地図」で「住所から位置を取る」を押すと、地図に出せるようになります。']
   ]],
   ['4. 週間予定を組む（スケジュール表の作り方）', [
-    ['まず「予定表の作り方を選ぶ」', '「予定」タブの本スケジュール表の上にあるオレンジのボタン「予定表の作り方を選ぶ」を押します（予定を組む人の端末＝事務局・管理者）。三つの道が出ます——①AIが作る ②AIがベースを作って自分で直す ③自分で作る。どの道でも、できた表は本スケジュール表に入り、あとから札を動かして直せます。'],
-    ['①AIが作る', '押すと「週間予定を地区で寄せて組む（自動の振り分け）」の枠へ移ります。「常勤の1日の件数の上限」「非常勤の1日の件数の上限」を確かめて白い「組み方を出す」。出た表と「いまの週間予定から変わる訪問」を見て、よければオレンジの「この組み方を週間予定に入れる」。入れる前の予定は控えに残り「元に戻す」で戻せます。モデルコースの見本の枠のまま当てはめたいときは「モデルコースの見本」タブで表を作り「このコースで患者さんを当てはめる」を押すと、同じ枠に出ます。'],
-    ['②AIがベースを作って自分で直す', '押すと、いま使っている週間予定（AIが組んだもの）が手組みの表（職員 × 曜日）に写って開きます。札を引っぱって別の曜日・別の人へ動かし、升の右下の件数と「訪問と訪問の間」（赤＝許容を超えた）を見ながら直します。直し終えたら「H&Nパトリオットで確かめる」で条項表に当て、「この表で確定」で週間予定を入れ替えます（理由を残せます。「人情変更」を選ぶと変わった札に点線の印）。週間予定がまだ空のときは、先に①で組んでください。'],
-    ['③自分で作る', '押すと空の手組みの表が開きます。下に並ぶ利用者さんの札（契約書番号＋氏名・2名体制は「2名」・週の回数ぶんの残り枚数）を升へ引っぱって置きます（札を一度押してから升を押しても置けます）。時刻は自動（勤務の始まり→前の終わり＋移動15分）で、置いた札を押すと時刻を直したり外したりできます。「効率バージョンを写す」で①の表から始めることも、「全部消す」でやり直すこともできます。最後に「この表で確定」。下書きは閉じても残ります。'],
+    ['最初はAIのベースが自動で入る', '職員と利用者さんを登録すると、毎週の予定が空のうちは、トライタイムがAIで「住所で寄せた」ベースの予定を自動で入れます（本スケジュール表の上に「AIが住所で寄せたベースの予定（◯件）を入れました」と出ます）。仮スケジュール表（右端のつまみ）にも同じ表が出ます。'],
+    ['「予定表の作り方を選ぶ」', '「予定」タブの本スケジュール表の上にあるオレンジのボタン（予定を組む人＝管理者・事務局の端末だけ）。押すと二つの道が出ます——①このままAIの表で使う ②ベースに手を入れて完成させる。'],
+    ['①このままAIの表で使う', 'AIが効率だけで組み直した表（効率バージョン）をそのまま毎週の予定にします。置き換える前の予定は控えに残り、「予定」タブの「週間予定を地区で寄せて組む（自動の振り分け）」の枠の「元に戻す」で戻せます。'],
+    ['②ベースに手を入れて完成させる', 'いまの予定が手組みの表（職員 × 曜日）に写って開きます。表の上の「担当者からのご要望（上申）」に、職員が「管理者へ上申する」で出した内容（相性・出禁など）だけが並ぶので、組むときの材料にします（対応したら「対応済みにする」）。札を引っぱって別の曜日・別の人へ動かし、升の右下の件数と「訪問と訪問の間」（赤＝許容を超えた）を見ながら直します。直し終えたら「H&Nパトリオットで確かめる」で条項表に当て、「この表で確定」で毎週の予定を入れ替えます（理由を残せます。「人情変更」を選ぶと変わった札に点線の印）。空の表から組み直すときは「全部消す」。下書きは閉じても残ります。'],
     ['できたあとの直し方', '本スケジュール表と仮スケジュール表（右端のつまみ）で、今日以降の札を指で押さえたまま別の人・別の日の升へ引っぱると動かせます（小窓で時刻・理由・了承の印）。動かせるのは管理者と事務局の端末だけで、一般の職員は与えられた予定を消化します（伝えたいことは「管理者へ上申する」から）。'],
+    ['効率バージョンと比べる・パトリオット（管理者の窓）', '「管理者の窓」タブのいちばん上の枠。「効率バージョンと比べる」＝今の表とAIの効率版を日付ごと・職員ごとに並べ、「AIなら移動が◯分短い」「効率版ならあと◯件入る」を出します。「H&Nパトリオット（全体の評価）」＝月全体で効率版と比べ、効率化ができているかを移動・空き・件数・許容・条項表で言います。'],
     ['組み方を出す', '「予定」タブの「週間予定を地区で寄せて組む（自動の振り分け）」で「組み方を出す」。町名ごとに寄せ、午前から移動15分で詰めて組みます。今の担当と曜日のまま組めるものは動かしません。'],
     ['週間予定に入れる', '出た表を見て、よければオレンジの「この組み方を週間予定に入れる」。入れる前の予定は控えに残り、「元に戻す」で戻せます。'],
     ['変わる訪問を見る', '組み方を出すと「いまの週間予定から変わる訪問」が、入れた後は「元に戻す」の下に「入れ替える前から変わった訪問」が出ます。'],
@@ -7356,28 +7366,60 @@ function hbBtnHTML(){ return canSched() ? '<div class="btns" style="margin:6px 0
    ・AIがベースを作って自分で直す → いまの週間予定を手組みの表へ写して開く（週間予定が空なら、先にAIに組ませる枠へ）
    ・自分で作る → 空の手組みの表を開く（下書きがあればその続き）
    ============================================================ */
-function pwBtnHTML(){ return canSched() ? '<div class="btns" style="margin:4px 0 8px"><button type="button" class="btn amber" id="pw_open">予定表の作り方を選ぶ</button><small class="muted">AIが作る／AIがベースを作って自分で直す／自分で作る</small></div>' : ''; }
+function pwBtnHTML(){ return canSched() ? '<div class="btns" style="margin:4px 0 8px"><button type="button" class="btn amber" id="pw_open">予定表の作り方を選ぶ</button><small class="muted">このままAIの表で使う／ベースに手を入れて完成させる</small></div>' : ''; }
+/* 2026-11-05 昼（宏史さんの指示「仮スケジュール表に最初からベースを入れてしまってよい。全部AIか、管理者が手を入れて完成させるかの二択にすれば簡素化になる」）：
+   三択（AIが作る／AIがベース／自分で作る）をやめ、ベースは自動で入る前提の二択にする */
 function pwOpen(){
   var box = document.createElement('div'); box.className = 'ssMv'; box.id = 'ssMv';
-  var n = weekly().length;
-  box.innerHTML = '<div class="card"><h2>予定表の作り方を選ぶ</h2><p class="muted sm">' + esc(D().name) + 'の毎週の予定（いま ' + n + '件）。どの道でも、できた表は本スケジュール表に入り、あとから札を動かして直せます。</p>' +
-    '<div class="pwOpt"><button type="button" class="btn" id="pw_ai">AIが作る</button><div>利用者さんを地区で寄せ、職員の出る曜日と1日の件数の上限の中でAIが組みます。出た組み方を見て、よければ週間予定に入れます。<br><small class="muted">モデルコースの見本の枠のまま当てはめる道もあります（「モデルコースの見本」タブ → 「このコースで患者さんを当てはめる」）。</small></div></div>' +
-    '<div class="pwOpt"><button type="button" class="btn" id="pw_mix">AIがベースを作って自分で直す</button><div>いま使っている週間予定（AIが組んだもの）を手組みの表に写し、札を動かして直してから「この表で確定」で入れ替えます。' + (n ? '' : '<br><small style="color:var(--red)">週間予定がまだ空です。先に「AIが作る」で組んでください。</small>') + '</div></div>' +
-    '<div class="pwOpt"><button type="button" class="btn" id="pw_hand">自分で作る</button><div>ホワイトボードのように、空の表へ利用者さんの札を置いて組みます。置いた時点で件数と移動の目安が出ます。</div></div>' +
+  var n = weekly().length, base = baseInfo();
+  box.innerHTML = '<div class="card"><h2>予定表の作り方を選ぶ</h2><p class="muted sm">' + esc(D().name) + 'の毎週の予定（いま ' + n + '件' + (base ? '・' + esc(base.at.slice(0, 10)) + ' にAIが住所で寄せたベースを入れています' : '') + '）。どちらでも、できた表は本スケジュール表と仮スケジュール表に入り、あとから札を動かして直せます。</p>' +
+    '<div class="pwOpt"><button type="button" class="btn" id="pw_ai">このままAIの表で使う</button><div>AIが効率だけで組み直した表（効率バージョン）をそのまま毎週の予定にします。いまの予定に手を入れた分があっても、AIの表に置き換わります（置き換える前の予定は控えに残り、「予定」タブの自動の振り分けの枠の「元に戻す」で戻せます）。</div></div>' +
+    '<div class="pwOpt"><button type="button" class="btn" id="pw_mix">ベースに手を入れて完成させる</button><div>いまの予定（AIのベース、または前に直した表）を手組みの表（職員 × 曜日）に写して開きます。札を動かして直し、升の件数と移動の目安を見ながら、「この表で確定」で入れ替えます。空の表から組み直したいときは、開いた表の「全部消す」。</div></div>' +
     '<div class="btns"><button class="btn sub" type="button" id="pw_no">閉じる</button></div></div>';
   document.body.appendChild(box);
   $('pw_no').onclick = function(){ box.remove(); };
-  $('pw_ai').onclick = function(){ box.remove(); var c = $('cardAuto'); if(c){ c.style.display = ''; if(c.scrollIntoView) c.scrollIntoView({ behavior:'smooth', block:'start' }); } };
+  $('pw_ai').onclick = function(){
+    box.remove();
+    var rows = cmpAiRows(); if(!rows.length){ alert('AIが組める利用者さん・職員がまだ登録されていません。'); return; }
+    if(!confirm('AIが効率だけで組み直した表（' + rows.length + '件）を、' + D().name + 'の毎週の予定にします。よろしいですか。')) return;
+    baseApply(rows, 'ai'); refreshAll();
+    var b = $('hbBox'); if(b) b.innerHTML = '<div class="judge free" style="margin:8px 0"><b>AIの表（' + rows.length + '件）を毎週の予定にしました。</b><br>置き換える前の予定は控えに残しています（自動の振り分けの枠の「元に戻す」）。</div>';
+  };
   $('pw_mix').onclick = function(){
     box.remove();
-    if(!weekly().length){ var c = $('cardAuto'); if(c && c.scrollIntoView) c.scrollIntoView({ behavior:'smooth', block:'start' }); return; }
+    if(!weekly().length){ alert('毎週の予定がまだ空です。利用者さんと職員を登録すると、AIのベースが自動で入ります。'); return; }
     var st = { cells:{} }, ids = {}, wr = workRule(); hbRows().forEach(function(r){ ids[r.id] = 1; });
     weekly().forEach(function(w){ if(!ids[w.staffId]) return; hbCell(st, w.staffId, String(w.dow)).push({ no:w.no, time:w.time, min:+w.min || wr.visit, withId:w.withId || '' }); });
-    var cur = hbRaw(); if(hbCount(cur) && !confirm('手組みの下書きが残っています。消して、いまの週間予定を写しますか。')) { HB.on = true; hbRender(); pwScroll(); return; }
+    var cur = hbRaw(); if(hbCount(cur) && !confirm('手組みの下書きが残っています。消して、いまの予定を写しますか。')) { HB.on = true; hbRender(); pwScroll(); return; }
     hbSave(st); HB.on = true; HB.sel = null; hbRender(); pwScroll();
-    if($('hb_msg')) $('hb_msg').textContent = 'いまの週間予定（' + hbCount(st) + '件）を写しました。札を動かして直し、「この表で確定」で入れ替えます。';
+    if($('hb_msg')) $('hb_msg').textContent = 'いまの予定（' + hbCount(st) + '件）を写しました。札を動かして直し、「この表で確定」で入れ替えます。';
   };
-  $('pw_hand').onclick = function(){ box.remove(); HB.on = true; HB.sel = null; hbRender(); pwScroll(); };
+}
+/* ---- ベース（AIが住所で寄せた予定）の自動投入 ---- */
+function baseInfo(){ var st = lj(K.settings, {}) || {}; return (st.base && st.base[D().k]) || null; }
+function baseApply(rows, how){
+  var all = live('weekly');
+  try{ localStorage.setItem(AU_BAK, JSON.stringify({ at:nowLocal(), rows:all })); }catch(e){}
+  var keep = all.filter(function(v){ return !inDept(v.no); }), inf = {}; weekly().forEach(function(w){ if(!inf[w.no]) inf[w.no] = w.min || 30; });
+  rows.forEach(function(v){ keep.push({ id:uid(), dow:v.dow, time:v.time, min:v.min || inf[v.no] || 30, no:v.no, staffId:v.staffId, withId:v.withId || '', src:how === 'base' ? 'base' : 'ai', by:dev().me || '', at:nowLocal() }); });
+  saveCol('weekly', keep);
+  var cur = lj(K.settings, {}) || {}, b = Object.assign({}, cur.base || {}); b[D().k] = { at:nowLocal(), n:rows.length, how:how }; saveSettings(Object.assign({}, cur, { base:b }));
+}
+function baseEnsure(){
+  if(!canSched() || D().kind !== 'visit') return false;
+  if(weekly().length) return false;
+  if(baseInfo() && baseInfo().how === 'base' && baseInfo().cleared) return false;   /* 一度ベースを入れたあとに空にしたのなら、勝手には入れ直さない */
+  var act = patients().filter(function(p){ return !p.status || p.status === '利用中'; }); if(!act.length) return false;
+  var rows; try{ rows = cmpAiRows(); }catch(e){ rows = []; } if(!rows || !rows.length) return false;
+  baseApply(rows, 'base'); BASE_JUST = rows.length;
+  setTimeout(refreshAll, 0);
+  return true;
+}
+var BASE_JUST = 0;
+function baseBannerHTML(){
+  var b = baseInfo(); if(!b || !canSched()) return '';
+  var fresh = BASE_JUST; BASE_JUST = 0;
+  return '<div class="judge free" style="margin:4px 0 6px"><b>' + (fresh ? 'AIが住所で寄せたベースの予定（' + fresh + '件）を入れました。' : 'この部署の予定は、' + esc(b.at.slice(0, 10)) + ' にAIが' + (b.how === 'ai' ? '効率だけで組んだ表' : '住所で寄せたベース') + '（' + b.n + '件）から始めています。') + '</b><br><small>そのまま使うか、手を入れて完成させるかは、下の「予定表の作り方を選ぶ」から。</small></div>';
 }
 function pwScroll(){ var b = $('hbBox'); if(b && b.scrollIntoView) b.scrollIntoView({ behavior:'smooth', block:'start' }); }
 
@@ -7415,12 +7457,92 @@ function jsOpen(){
     try{ renderBoard(); }catch(e){}
   };
 }
+
+/* ============================================================
+   2026-11-05 昼（宏史さんの指示）：管理者の窓に「効率バージョンと比べる」と「H&Nパトリオット（全体の評価）」を残す。
+   ・効率バージョンと比べる＝AIが効率だけで組み直した表と、管理者が手を入れた今の表を、日付ごと・職員ごとに並べ、
+     「AIなら移動が◯分短い」「効率版ならもう1件入る」のアドバイスを出す（直すための材料。採点ではない）
+   ・H&Nパトリオット（全体の評価）＝月全体で効率版と今の表を比べ、効率化ができているかを数字で言う。条項表の指摘も併記。
+     8/12の決めどおり「問題なし」の安全宣言はしない（見た範囲で言う）
+   ・野木画面の「予定表の比較」（人情×効率の採点＝管理者の評価）はそのまま。こちらは管理者が自分で直すための比べ
+   ============================================================ */
+function efDayStat(vs){
+  var wr = workRule(), lb = 12 * 60, le = lb + (wr.brk || 0), a = vs.filter(function(v){ return !v.cx; }).sort(function(x, y){ return x.time < y.time ? -1 : 1; }), travel = 0, idle = 0;
+  for(var i = 1; i < a.length; i++){ var ga = toMin(a[i - 1].time) + (+a[i - 1].min || wr.visit), gb = toMin(a[i].time), gap = gb - ga - Math.max(0, Math.min(gb, le) - Math.max(ga, lb)); if(gap <= wr.mvMax) travel += Math.max(0, gap); else { travel += wr.mvStd; idle += gap - wr.mvStd; } }
+  return { n:a.length, travel:travel, idle:idle };
+}
+function efRows(m){
+  var vH = visitsOn, rows = cmpAiRows(), vA = cmpVisitsFn(rows), wr = workRule(), out = [], today = ymd(new Date());
+  mdDays(m).forEach(function(date){
+    var byH = {}, byA = {};
+    (vH(date) || []).forEach(function(v){ if(v.cx || offWhy(v.staffId, date)) return; (byH[v.staffId] = byH[v.staffId] || []).push(v); });
+    (vA(date) || []).forEach(function(v){ if(offWhy(v.staffId, date)) return; (byA[v.staffId] = byA[v.staffId] || []).push(v); });
+    var sids = {}; Object.keys(byH).concat(Object.keys(byA)).forEach(function(k){ sids[k] = 1; });
+    deptStaff().forEach(function(st){ if(!sids[st.id]) return;
+      var H = efDayStat(byH[st.id] || []), A = efDayStat(byA[st.id] || []), adv = [];
+      if(!H.n && !A.n) return;
+      var dt = A.travel - H.travel, dn = A.n - H.n;
+      if(dt < 0) adv.push('AIなら移動が' + minLabel(-dt) + '短い'); else if(dt > 0) adv.push('今の表の方が移動が' + minLabel(dt) + '短い');
+      if(dn > 0) adv.push('効率版ならあと' + dn + '件入る'); else if(dn < 0) adv.push('今の表の方が' + (-dn) + '件多い');
+      if(H.idle >= wr.visit + wr.mvStd) adv.push('空きが' + minLabel(H.idle) + '（1件入る余地）');
+      out.push({ date:date, sid:st.id, H:H, A:A, adv:adv, dt:dt, dn:dn });
+    });
+  });
+  return out;
+}
+function efRender(){
+  var m = $('ef_month').value; if(!m){ $('ef_out').innerHTML = '<p class="empty">月を選んでください。</p>'; return; }
+  if(!patients().length){ $('ef_out').innerHTML = '<p class="empty">この部署に利用者さんがまだいません。</p>'; return; }
+  var rows = efRows(m), worse = rows.filter(function(r){ return r.dt > 0 || r.dn > 0; }), tot = { ht:0, at:0, hn:0, an:0 };
+  rows.forEach(function(r){ tot.ht += r.H.travel; tot.at += r.A.travel; tot.hn += r.H.n; tot.an += r.A.n; });
+  var h = '<p class="muted">' + esc(jpMonth(m)) + '・' + esc(D().name) + '。左＝今の表（管理者）、右＝効率バージョン（AI）。差のある日だけ上に、全部は下の「すべての日を見る」に。</p>' +
+    '<div class="judge ' + (tot.at < tot.ht || tot.an > tot.hn ? 'fee' : 'free') + '" style="margin:6px 0"><b>月の合計：</b>移動 ' + esc(minLabel(tot.ht)) + '（効率版 ' + esc(minLabel(tot.at)) + '）・件数 ' + tot.hn + '件（効率版 ' + tot.an + '件）' +
+      (tot.at < tot.ht ? '<br>→ AIの表なら、移動が月に ' + esc(minLabel(tot.ht - tot.at)) + ' 短くなります。' : '') + (tot.an > tot.hn ? '<br>→ 効率版なら、月に ' + (tot.an - tot.hn) + '件多く入ります。' : '') + '</div>';
+  var tbl = function(list){ return '<div class="tbl-scroll"><table><tr><th>日</th><th>職員</th><th>今の表</th><th>効率版</th><th>アドバイス</th></tr>' + list.map(function(r){
+      return '<tr><td>' + esc(jpDate(r.date)) + '</td><td>' + esc(staffName(r.sid)) + '</td><td>' + r.H.n + '件・移動 ' + esc(minLabel(r.H.travel)) + (r.H.idle ? '・空き ' + esc(minLabel(r.H.idle)) : '') + '</td><td>' + r.A.n + '件・移動 ' + esc(minLabel(r.A.travel)) + '</td><td>' + (r.adv.length ? esc(r.adv.join('／')) : '<span class="muted">差なし</span>') + '</td></tr>'; }).join('') + '</table></div>'; };
+  h += (worse.length ? '<h4 class="mnSec">効率版の方がよい日（' + worse.length + '件）</h4>' + tbl(worse) : '<p class="muted">見た範囲では、効率版の方が移動が短い日・件数が多い日はありませんでした。</p>') +
+    '<details style="margin-top:6px"><summary>すべての日を見る（' + rows.length + '行）</summary>' + tbl(rows) + '</details>';
+  $('ef_out').innerHTML = h;
+}
+function efPatriot(){
+  var m = $('ef_month').value; if(!m){ $('ef_out').innerHTML = '<p class="empty">月を選んでください。</p>'; return; }
+  if(!patients().length){ $('ef_out').innerHTML = '<p class="empty">この部署に利用者さんがまだいません。</p>'; return; }
+  var vH = visitsOn, rowsA = cmpAiRows(), vA = cmpVisitsFn(rowsA), rules = ptrRules();
+  var H = cmpScore(m, vH, true), A = cmpScore(m, vA, false), pH = ptrEvalPlan(mdDays(m), vH, rules, { month:m });
+  var pts = [], good = 0, bad = 0;
+  var line = function(ok, t){ (ok ? good++ : bad++); pts.push('<li' + (ok ? '' : ' style="color:var(--red)"') + '>' + t + '</li>'); };
+  line(H.travel <= A.travel, '移動に使う時間：今の表 ' + esc(minLabel(H.travel)) + '／効率版 ' + esc(minLabel(A.travel)) + (H.travel > A.travel ? '（効率版より ' + esc(minLabel(H.travel - A.travel)) + ' 多い）' : '（効率版と同じかそれ以下）'));
+  line(H.idle <= A.idle, '空き時間：今の表 ' + esc(minLabel(H.idle)) + '／効率版 ' + esc(minLabel(A.idle)) + (H.idle > A.idle ? '（効率版より ' + esc(minLabel(H.idle - A.idle)) + ' 多い）' : ''));
+  line(H.avg >= A.avg, '1日あたりの件数：今の表 ' + H.avg + '件／効率版 ' + A.avg + '件');
+  line(H.over <= A.over, '許容範囲を超える日：今の表 ' + H.over + '日／効率版 ' + A.over + '日');
+  var fh = pH.filter(function(f){ return !f.hv; }).length, fhv = pH.length - fh;
+  line(fh === 0, '条項表の指摘（人情変更を除く）：' + fh + '件' + (fhv ? '（人情変更の札で度が過ぎたもの ' + fhv + '件）' : ''));
+  var verdict = bad === 0 ? '見た範囲（移動・空き・件数・許容・条項表）では、効率版と比べて効率化の余地は見当たりませんでした。人情変更の札 ' + H.hv + '件は、思いやりからのものとして目をつぶっています。'
+    : '効率化の余地があります（' + bad + '項目で効率版に及びません）。「効率バージョンと比べる」で、どの日・どの職員かを確かめて直せます。';
+  $('ef_out').innerHTML = '<div class="judge ' + (bad ? 'fee' : 'free') + '" style="margin:6px 0"><b>H&amp;Nパトリオット（' + esc(jpMonth(m)) + '・' + esc(D().name) + '・全体の評価）</b><br>' + verdict + '<ul style="margin:6px 0 0 18px">' + pts.join('') + '</ul></div>' +
+    (pH.length ? ptrFindingsHTML(pH, rules, '今の表') : '<p class="muted">条項表（' + rules.length + '条）で確かめ、引っかかる箇所はありませんでした。</p>') +
+    '<p class="muted sm">人情バージョンと効率バージョンの採点（管理者の評価の材料）は野木画面の「予定表の比較」に残しています。ここは管理者が自分で直すための比べです。</p>';
+  ptrWire($('ef_out'), '#td_week');
+}
+
+/* 2026-11-05（宏史さんの指示）：作成の画面（手組みの表）に、担当者が管理者へ言いたいことだけを並べる「ご要望」の枠。
+   中身は「管理者へ上申する」で出された上申（連絡板の kind 上申・この部署）だけ。対応したら「対応済み」で下へ */
+function jsListHTML(){
+  var done = {}; events().forEach(function(e){ if(e.type === 'jsDone') done[e.noteId] = e.at; });
+  var ns = events().filter(function(e){ return e.type === 'note' && e.kind === '上申' && (!e.dept || e.dept === D().k); }).sort(function(a, b){ return (b.created || '') < (a.created || '') ? -1 : 1; });
+  var open = ns.filter(function(n){ return !done[n.id]; }), closed = ns.filter(function(n){ return done[n.id]; });
+  var row = function(n, isDone){ return '<div class="mnCard" style="' + (isDone ? 'opacity:.6' : '') + '"><b>' + esc(staffName(n.from) || '（職員）') + 'さん</b>　<span class="tag ' + (isDone ? 'gray' : 'red') + '">' + esc(n.jsKind || '上申') + '</span>' + (n.patientNo ? '　' + esc(dnn(n.patientNo)) : '') + '　<small class="muted">' + esc(String(n.created || '').slice(0, 16).replace('T', ' ')) + '</small><p style="margin:4px 0 0;white-space:pre-wrap">' + esc(n.body || '') + '</p>' + (isDone ? '<small class="muted">対応済み ' + esc(String(done[n.id] || '').slice(0, 10)) + '</small>' : '<div class="btns" style="margin-top:4px"><button type="button" class="btn sub" data-jsdone="' + esc(n.id) + '">対応済みにする</button></div>') + '</div>'; };
+  return '<details class="mnCh" ' + (open.length ? 'open' : '') + ' style="margin:0 0 8px"><summary>担当者からのご要望（上申）　' + (open.length ? '<b style="color:var(--red)">未対応 ' + open.length + '件</b>' : '未対応なし') + (closed.length ? '・対応済み ' + closed.length + '件' : '') + '</summary>' +
+    '<p class="muted sm" style="margin:4px 0">職員が「管理者へ上申する」で出した内容だけを並べます（相性・出禁・訪問が難しい事情など）。組むときの材料にし、対応したら「対応済みにする」。</p>' +
+    (open.length ? open.map(function(n){ return row(n, false); }).join('') : '') + (closed.length ? '<details><summary class="muted sm">対応済み（' + closed.length + '件）</summary>' + closed.map(function(n){ return row(n, true); }).join('') + '</details>' : '') + '</details>';
+}
 function hbToggle(){ var b = $('hbBox'); if(!b) return; HB.on = !HB.on; HB.sel = null; if(HB.on) hbRender(); else b.innerHTML = ''; }
 function hbRender(){
   var box = $('hbBox'); if(!box || !HB.on) return;
   var st = hbRaw(), rows = hbRows(), wr = workRule();
   var h = '<div class="hbWrap"><h3 style="margin:8px 0 4px;font-size:15px">空の表から組む（手組み） <small class="muted" style="font-weight:400">' + esc(D().name) + '・毎週の予定の下書き' + (st.at ? '・最後に触った ' + esc(st.at.replace('T', ' ')) + (st.by ? '（' + esc(staffName(st.by)) + '）' : '') : '') + '</small></h3>' +
     '<p class="muted sm" style="margin:0 0 6px">下の札を升へ引っぱって置きます（札を一度押してから升を押しても置けます）。置いた札を押すと時刻を直したり外したりできます。升の右下の数字が、その曜日の件数と「訪問と訪問の間」の合計です（許容を超えると赤）。</p>' +
+    jsListHTML() +
     '<div class="btns" style="margin:0 0 6px"><button type="button" class="btn sub" id="hb_copy">効率バージョンを写す</button><button type="button" class="btn sub" id="hb_clear">全部消す</button><button type="button" class="btn sub" id="hb_ptr" style="border-color:#993c1d;color:#712b13;font-weight:700">H&amp;Nパトリオットで確かめる</button><button type="button" class="btn amber" id="hb_commit">この表で確定</button><button type="button" class="btn sub" id="hb_close">閉じる</button></div>' +
     '<div class="ssBody hbGrid"><table><thead><tr><th class="who">担当</th>' + HB_DOWS.map(function(dw){ return '<th class="' + (dw === '0' || dw === '6' ? 'we' : '') + '">' + DOW[+dw] + '</th>'; }).join('') + '</tr></thead><tbody>';
   rows.forEach(function(r){
@@ -7447,6 +7569,7 @@ function hbRender(){
     '</div>' + (done.length ? '<small class="muted">置き終えた利用者：' + esc(done.map(function(x){ return x.p.name || ssShortNo(x.p.no); }).join('・')) + '</small>' : '') + '</div><div id="hb_ptrbox"></div><div id="hb_msg" class="muted sm"></div></div>';
   box.innerHTML = h;
   $('hb_close').onclick = function(){ HB.on = false; box.innerHTML = ''; };
+  box.querySelectorAll('[data-jsdone]').forEach(function(b){ b.onclick = function(){ var ev = events(); ev.push({ id:uid(), type:'jsDone', noteId:b.getAttribute('data-jsdone'), by:dev().me || '', at:nowLocal() }); saveEvents(ev); hbRender(); }; });
   $('hb_copy').onclick = function(){
     var st2 = hbRaw(); if(hbCount(st2) && !confirm('いまの下書きを消して、今使っている週間予定を写します。よろしいですか。')) return;
     st2 = { cells:{} }; var ids = {}; hbRows().forEach(function(r){ ids[r.id] = 1; });

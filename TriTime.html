@@ -52,6 +52,9 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
 <style>
   html.labLocked body > *:not(#labLock){display:none !important}
   #labLock{position:fixed;inset:0;z-index:999;background:var(--paper,#f4f1ea);display:flex;align-items:center;justify-content:center;padding:16px}
+  #shPick{position:fixed;inset:0;z-index:998;background:var(--paper,#f4f1ea);display:flex;align-items:center;justify-content:center;padding:16px}
+  #shPick .box{background:#fff;border:1px solid #e9e3d6;border-radius:14px;padding:22px;max-width:420px;width:100%;box-shadow:0 8px 28px rgba(16,36,59,.12)}
+  #shPick .who{display:block;width:100%;margin:6px 0;padding:14px 12px;font-size:17px;text-align:left}
   #labLock .box{background:#fff;border:1px solid #e9e3d6;border-radius:14px;padding:22px;max-width:380px;width:100%;box-shadow:0 8px 28px rgba(16,36,59,.12)}
   #labLock input{width:100%;font:inherit;font-size:17px;padding:10px 12px;border:1px solid #cfc6b4;border-radius:10px;margin:8px 0}
   .labBar{background:#2a4866;color:#fff;border-radius:10px;padding:8px 12px;margin:8px 0;font-size:14px}
@@ -321,7 +324,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-05-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-06-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -398,6 +401,7 @@ function tsPortalAsk(){
 <div class="note" id="shareNote"></div>
 <div class="note" id="presBar" style="display:none;background:#eef7f0;border-color:#9fd3ad"></div>
 <div class="note" id="roleNote" style="display:none"></div>
+<div class="note" id="shBar" style="display:none;background:#eef7f0;border-color:#9fd3ad"></div>
 
 <nav class="tabs" id="tabs">
   <button data-tab="plan" class="on">予定</button>
@@ -1254,7 +1258,7 @@ function tsPortalAsk(){
   <div class="card" id="cardDev">
     <h2>この端末と共有</h2>
     <p class="lead">事務局のパソコンと看護師さんの端末で、同じ記録を見るための設定です。この端末を主に使う人を選ぶと、その人が担当する訪問にキャンセルが入ったとき、画面の上に知らせが出ます。</p>
-    <p class="muted">使う人を選ぶまでは、このタブだけが出ます。</p>
+    <p class="muted">使う人を選ぶまでは、このタブだけが出ます。出勤が週3日以下の非常勤の職員が使いまわす会社のタブレットは、「共用端末」を選んでください。開くたびに「今日この端末を使う人」を選ぶ画面が出て、その人の予定だけが出ます（翌日にはもう一度選びます）。</p>
     <div class="row">
       <div><label class="f" for="dv_me">この端末を主に使う人</label><select id="dv_me"></select></div>
       <div><label class="f">&nbsp;</label><label><input type="checkbox" id="dv_share"> 記録を共有する</label></div>
@@ -3086,7 +3090,34 @@ function renderSetup(){
    ============================================================ */
 var GATE_URL = lj('tritime_relay', '') || 'https://trisight-relay.vercel.app/api/gate';
 var syncTimer = null, syncing = false;
-function dev(){ var d = lj(DEV_KEY, {}); return { me: d.me || '', share: !!d.share }; }
+/* 2026-11-06（宏史さんの指示）：出勤が週3日以下の非常勤が使いまわす会社のタブレット＝「共用端末」。主に使う人を '__shared' にし、開くたびに今日使う人を選ぶ（その日だけ有効） */
+var SHU_KEY = 'tritime_shared_user', SHARED_ME = '__shared';
+function devRaw(){ return lj(DEV_KEY, {}); }
+function sharedUser(){ var u = lj(SHU_KEY, null); return (u && u.id && u.date === ymd(new Date())) ? String(u.id) : ''; }
+function dev(){ var d = lj(DEV_KEY, {}); var me = d.me || ''; var shared = (me === SHARED_ME); if(shared) me = sharedUser(); return { me: me, share: !!d.share, shared: shared }; }
+/* 共用端末で選べる人＝この部署の非常勤のうち、出勤が週3日以下（公休の曜日が4日以上）か、不定期・待機の人。該当が無ければ非常勤の全員 */
+function sharedPickList(){
+  var a = deptStaff().filter(function(s){ return !staffOrphan(s) && s.emp === '非常勤' && jobOf(s) !== '事務局'; });
+  var b = a.filter(function(s){ return isIrreg(s) || isStandby(s) || (7 - staffOff(s).length) <= 3; });
+  return b.length ? b : a;
+}
+function sharedPick(force){
+  var d = dev(); if(!d.shared || (!force && d.me) || $('shPick')) return;
+  var list = sharedPickList(); if(!list.length) return;
+  var box = document.createElement('div'); box.id = 'shPick';
+  box.innerHTML = '<div class="box"><h2 style="margin:0 0 6px">今日この端末を使う人</h2><p class="muted" style="margin:0 0 10px">この端末は共用端末です。今日使う人の名前を押してください。その人の予定だけが出ます。</p>' +
+    list.map(function(s){ return '<button type="button" class="btn who" data-id="' + esc(s.id) + '">' + esc(staffLabel(s)) + '</button>'; }).join('') +
+    (force ? '<p style="margin:10px 0 0"><button type="button" class="btn sub" id="shPickClose">やめる</button></p>' : '') + '</div>';
+  document.body.appendChild(box);
+  [].forEach.call(box.querySelectorAll('.who'), function(b){ b.onclick = function(){ sj(SHU_KEY, { id:b.getAttribute('data-id'), date:ymd(new Date()) }); box.remove(); refreshAll(); }; });
+  if($('shPickClose')) $('shPickClose').onclick = function(){ box.remove(); };
+}
+function sharedBar(){
+  var el = $('shBar'); if(!el) return; var d = dev();
+  if(!d.shared || !d.me){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  var s = meStaff(); el.style.display = ''; el.innerHTML = '今日この端末を使う人：<b>' + esc(s ? s.name : d.me) + 'さん</b> <button type="button" class="btn sub small" id="shChange" style="margin-left:10px">使う人を替える</button>';
+  $('shChange').onclick = function(){ sharedPick(true); };
+}
 function tsCode(){
   var c = localStorage.getItem('trisight_access_code');
   if(c && /[^\x21-\x7E]/.test(c)){ localStorage.removeItem('trisight_access_code'); c = null; }
@@ -4284,7 +4315,7 @@ function applyDept(){
   if(document.body.classList.contains('kpOpen')) kpRender(); if(document.body.classList.contains('mnOpen')) mnRender(); if(document.body.classList.contains('nmOpen')) nmRender(); if(document.body.classList.contains('osOpen') && document.activeElement && document.activeElement.id !== 'osTpl') osRender();
   /* 2026-11-01：管理者の合言葉の枠は、管理者の印が付いた人の端末と、管理者の画面が出ている端末だけに出す（職員の端末には出さない） */
   show('cardMgrKey', !((R.lv === 'staff' || R.lv === 'office') && !R.noKey));
-  roleNote(R);
+  roleNote(R); sharedBar(); if(dev().share) sharedPick(false);
 }
 
 /* ---- 見る範囲（2026-10-27・宏史さんの決め）----
@@ -4322,7 +4353,8 @@ function roleFix(){
 function roleNote(R){
   var el = $('roleNote'); if(!el) return;
   var t = '';
-  if(R.lv === 'none' && R.unshared) t = '<b>この端末は「記録を共有する」の印が外れています。</b>合言葉の入っていた端末なので、印を外したままでは中身を出しません。「名簿・設定」タブの「この端末と共有」で印を付けて「保存する」を押してください。';
+  if(R.lv === 'none' && dev().shared && !dev().me) t = '<b>この端末は共用端末です。</b>今日使う人を選ぶと、その人の予定が出ます。';
+  else if(R.lv === 'none' && R.unshared) t = '<b>この端末は「記録を共有する」の印が外れています。</b>合言葉の入っていた端末なので、印を外したままでは中身を出しません。「名簿・設定」タブの「この端末と共有」で印を付けて「保存する」を押してください。';
   else if(R.lv === 'none') t = '<b>この端末を使う人が、まだ選ばれていません。</b>「名簿・設定」タブの「この端末と共有」で、この端末を使う人を選んで「保存する」を押してください。選ぶまでは、このタブだけを出します。';
   /* 2026-11-01（宏史さんの指摘「この画面を見ている職員には、見ている画面以外に別の画面があるんだと思いますよね」）：
      「見える範囲」の帯は出さない。管理者の印が付いた人の端末で、管理者の合言葉がまだ入っていないときだけ、入れ方を出す */
@@ -5090,11 +5122,11 @@ function refreshAll(){
   mgMigrate(); applyDept();
   setShareNote(); renderAlerts(); renderShareWarn(); setTimeout(chgPopup, 0);
   refreshSelects(); nbRefreshForm();
-  fillSelect('dv_me', staff().filter(function(s){ return (!staffOrphan(s) && !staffOut(s)) || s.id === dev().me; }).map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
-  if(!$('dv_me').value && dev().me) $('dv_me').value = dev().me;
+  fillSelect('dv_me', [{ v:SHARED_ME, t:'共用端末（出勤が週3日以下の非常勤が使いまわす・開くたびに使う人を選ぶ）' }].concat(staff().filter(function(s){ return (!staffOrphan(s) && !staffOut(s)) || s.id === dev().me; }).map(function(s){ return { v:s.id, t:staffLabel(s) }; })), '選んでください');
+  if(!$('dv_me').value && devRaw().me) $('dv_me').value = devRaw().me;
   $('dv_share').checked = dev().share;
   /* 2026-11-01：新しい端末では名簿が届く前に「主に使う人」を選べないため、先に共有を始める順番を案内する */
-  if($('dv_hint')) $('dv_hint').style.display = ($('dv_me').options.length <= 1) ? '' : 'none';
+  if($('dv_hint')) $('dv_hint').style.display = ($('dv_me').options.length <= 2) ? '' : 'none';   /* 2026-11-06：「共用端末」の選択肢が1つ増えた */
   renderSetup(); renderPlan(); renderToday(); renderAuto(); renderIntakeList(); renderCourse(); renderReport(); renderAdmin();
   renderMonitor(); renderSummary();
   ptForm(); rdKinds(); renderPtList(); nrRender(); renderReq(); keyStatus(); mkStatus(); if(!hasOwnKey()) purgeOwn(); zRender(); renderMine();

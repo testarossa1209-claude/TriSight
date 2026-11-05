@@ -231,8 +231,12 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   /* 2026-10-29：情報の引き出し（右端のつまみを縦に並べる：仮スケジュール表・対照表・使い方） */
   .sideTabs{position:fixed;right:0;top:30%;z-index:60;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
   .sideTabs .ssTab{position:static}
-  body.ssOpen .sideTabs .ssTab, body.kpOpen .sideTabs .ssTab, body.mnOpen .sideTabs .ssTab, body.nmOpen .sideTabs .ssTab, body.osOpen .sideTabs .ssTab, body.rqOpen .sideTabs .ssTab{display:none}
-  body.kpOpen #kpPanel, body.mnOpen #mnPanel, body.nmOpen #nmPanel, body.osOpen #osPanel, body.rqOpen #rqPanel{transform:none}
+  body.ssOpen .sideTabs .ssTab, body.kpOpen .sideTabs .ssTab, body.mnOpen .sideTabs .ssTab, body.nmOpen .sideTabs .ssTab, body.osOpen .sideTabs .ssTab, body.rqOpen .sideTabs .ssTab, body.jmOpen .sideTabs .ssTab, body.jlOpen .sideTabs .ssTab{display:none}
+  body.kpOpen #kpPanel, body.mnOpen #mnPanel, body.nmOpen #nmPanel, body.osOpen #osPanel, body.rqOpen #rqPanel, body.jmOpen #jmPanel, body.jlOpen #jlPanel{transform:none}
+  /* 2026-11-06（宏史さんの指示）：目次の引き出し（左右）。下にスクロールすると出てくる項目へ、ボタン一押しで飛ぶ */
+  .jmList{display:flex;flex-direction:column;gap:8px;padding:12px}
+  .jmList .btn{text-align:left;font-size:16px;padding:12px 14px}
+  .sideTabs .ssTab.jm{background:#2b4a6f;color:#fff}
   @media (min-width:1240px){ body.kpOpen, body.nmOpen{padding-right:600px} body.mnOpen, body.rqOpen, body.osOpen{padding-left:600px} }   /* 2026-11-03：お知らせも左（宏史さん「お知らせ引き出しは左がいい。左右のバランスが良くなる」） */
   /* 2026-11-03：左の引き出し（使い方・ご要望）。つまみは小さめにし、画面の上の方から並べる（ラップトップで下が切れないように） */
   .sideTabs{top:84px}
@@ -324,11 +328,12 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-06-02</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-06-03</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
 <div class="sideTabs">
+<button type="button" class="ssTab jm" id="jmTab" title="この画面の項目の一覧を右に開きます。押すとその項目へ飛びます" aria-label="目次"><span>目</span><span>次</span></button>
 <button type="button" class="ssTab" id="ssTab" title="仮スケジュール表を右に開きます" aria-label="仮スケジュール表"><span>仮</span><span>ス</span><span>ケ</span><span>ジ</span><span>ュ</span><span class="bar">ー</span><span>ル</span><span>表</span></button>
 <button type="button" class="ssTab" id="kpTab" title="番号と氏名の対照表を右に開きます" aria-label="対照表"><span>対</span><span>照</span><span>表</span></button>
 <button type="button" class="ssTab" id="nmTab" title="2名体制の利用者の一覧を右に開きます" aria-label="2名体制"><span>２</span><span>名</span><span>体</span><span>制</span></button>
@@ -336,6 +341,7 @@ function tsPortalAsk(){
 <!-- 2026-11-03（宏史さん「ラップトップだと横の引き出しの使い方が見えなくなる。左にも引き出しを作っていい。ご要望は職員のトライタイムへの要望が主なので引き出しへ」）：
      左端に「使い方」「ご要望」のつまみを置き、左から開く -->
 <div class="sideTabs lft">
+<button type="button" class="ssTab jm" id="jlTab" title="この画面の項目の一覧を左に開きます。押すとその項目へ飛びます" aria-label="目次"><span>目</span><span>次</span></button>
 <button type="button" class="ssTab" id="mnTab" title="この画面の使い方と、印の意味を左に開きます" aria-label="使い方"><span>使</span><span>い</span><span>方</span></button>
 <button type="button" class="ssTab" id="osTab" title="今日の訪問を、利用者さんへ携帯のメッセージで知らせます" aria-label="お知らせ"><span>お</span><span>知</span><span>ら</span><span>せ</span></button>
 <button type="button" class="ssTab" id="rqTab" title="トライタイムへのご要望を残す画面を左に開きます" aria-label="ご要望"><span>ご</span><span>要</span><span>望</span></button>
@@ -364,6 +370,15 @@ function tsPortalAsk(){
   <div class="ssFoot">「送る」を押すと、携帯のメッセージが宛先と文面の入った状態で開きます。送信を押すと届きます（ほかの利用者さんに番号が見えないよう、1人ずつ送ります）。送ったら「送った」に印が付きます。キャンセルの入った訪問は出しません。</div>
 </aside>
 <!-- 2026-10-29：使い方（右に立ち上がるサブ画面） -->
+<!-- 2026-11-06：目次（左右どちらからでも開ける。中身は同じ） -->
+<aside class="ssPanel" id="jmPanel" aria-label="目次">
+  <div class="ssHead"><h2>目次<small>いま開いている画面の項目。押すとその項目へ飛びます</small></h2><button type="button" class="ssClose" id="jmClose" title="閉じる" aria-label="閉じる">×</button></div>
+  <div class="ssBody jmList" id="jmBody"></div>
+</aside>
+<aside class="ssPanel lft" id="jlPanel" aria-label="目次">
+  <div class="ssHead"><h2>目次<small>いま開いている画面の項目。押すとその項目へ飛びます</small></h2><button type="button" class="ssClose" id="jlClose" title="閉じる" aria-label="閉じる">×</button></div>
+  <div class="ssBody jmList" id="jlBody"></div>
+</aside>
 <aside class="ssPanel lft" id="rqPanel" aria-label="ご要望">
   <div class="ssHead"><h2>ご要望<small>トライタイムへの「こうしてほしい」「ここが使いにくい」</small></h2><button type="button" class="ssClose" id="rqClose" title="閉じる" aria-label="閉じる">×</button></div>
   <div class="ssBody" id="rqBody"></div>
@@ -4310,6 +4325,7 @@ function applyDept(){
   if(stf){ ['cardWk','cardIm','cardRules'].forEach(function(id){ show(id, false); }); }
   var ssHide = (R.lv === 'staff' || R.lv === 'none'); show('ssTab', !ssHide); if(ssHide && document.body.classList.contains('ssOpen')) ssOpen(false);
   show('kpTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('kpOpen')) sideOpen('kp', false);
+  show('jmTab', R.lv !== 'none'); show('jlTab', R.lv !== 'none'); if(R.lv === 'none'){ sideOpen('jm', false); sideOpen('jl', false); }
   show('rqTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('rqOpen')) sideOpen('rq', false);
   show('osTab', R.lv !== 'none' && R.lv !== 'staff'); osBadge(); if((R.lv === 'none' || R.lv === 'staff') && document.body.classList.contains('osOpen')) sideOpen('os', false);   /* 利用者さんへのお知らせは、事務局・管理者が送る */
   show('nmTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('nmOpen')) sideOpen('nm', false);
@@ -6607,9 +6623,9 @@ function ssMoveDo(v, sid, date, weeklyToo){
 /* ---- 情報の引き出し（2026-10-29・宏史さんの発案「画面を変えたり、情報を探したりする必要がなくなる」）----
    右端のつまみから、対照表と使い方を、いまの画面のまま横に開く。 */
 function sideOpen(k, on){
-  if(on){ document.body.classList.remove('ssOpen', 'kpOpen', 'mnOpen', 'nmOpen', 'osOpen', 'rqOpen'); }
+  if(on){ document.body.classList.remove('ssOpen', 'kpOpen', 'mnOpen', 'nmOpen', 'osOpen', 'rqOpen', 'jmOpen', 'jlOpen'); }
   document.body.classList.toggle(k + 'Open', !!on);
-  if(on){ if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else if(k === 'nm') nmRender(); else if(k === 'os') osRender(); else if(k === 'rq') rqOpenPanel(); else mnRender(); }
+  if(on){ if(k === 'jm' || k === 'jl'){ jmRender(k); return; } if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else if(k === 'nm') nmRender(); else if(k === 'os') osRender(); else if(k === 'rq') rqOpenPanel(); else mnRender(); }
 }
 /* 2026-11-03：利用者さんへのお知らせ。選んだ日の訪問（キャンセルを除く）を利用者さんごとに1行にまとめ、その日のいちばん早い時刻で定型文を作る。
    定型文は設定（settings.osText）に持ち、{時刻} をその人の時刻に置き換える。送ったら type "notify" を残す */
@@ -6858,6 +6874,26 @@ $('kpClose').addEventListener('click', function(){ sideOpen('kp', false); });
 $('kpFind').addEventListener('input', kpRender);
 $('kpPrint').addEventListener('click', function(){ ptRosterPrint(); $('kpMsg').textContent = $('pt_rosterMsg').textContent; });
 $('rqTab').addEventListener('click', function(){ sideOpen('rq', true); });
+/* 2026-11-06：目次。いま開いているタブの中で見えている枠（card）の見出し（h2）を並べ、押すとそこへ飛んで引き出しを閉じる */
+function jmItems(){
+  var cur = document.querySelector('#tabs button.on'), pane = cur ? $('tab-' + cur.getAttribute('data-tab')) : null; if(!pane) return [];
+  var out = [];
+  [].forEach.call(pane.querySelectorAll('.card'), function(c){
+    if(c.offsetParent === null) return; var h = c.querySelector('h2'); if(!h) return;
+    var tt = (h.childNodes[0] && h.childNodes[0].nodeType === 3 ? h.childNodes[0].textContent : h.textContent).trim(); if(!tt) return;
+    out.push({ el:c, t:tt });
+  });
+  return out;
+}
+function jmRender(k){
+  var box = $(k === 'jl' ? 'jlBody' : 'jmBody'); if(!box) return; var items = jmItems();
+  box.innerHTML = items.length ? items.map(function(x, i){ return '<button type="button" class="btn sub jmGo" data-i="' + i + '">' + esc(x.t) + '</button>'; }).join('') : '<p class="empty">この画面に飛べる項目はありません。</p>';
+  [].forEach.call(box.querySelectorAll('.jmGo'), function(b){ b.onclick = function(){ var it = items[+b.getAttribute('data-i')]; sideOpen(k, false); if(it && it.el){ try{ it.el.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ it.el.scrollIntoView(); } } }; });
+}
+$('jmTab').addEventListener('click', function(){ sideOpen('jm', true); });
+$('jmClose').addEventListener('click', function(){ sideOpen('jm', false); });
+$('jlTab').addEventListener('click', function(){ sideOpen('jl', true); });
+$('jlClose').addEventListener('click', function(){ sideOpen('jl', false); });
 $('rqClose').addEventListener('click', function(){ sideOpen('rq', false); });
 $('osTab').addEventListener('click', function(){ sideOpen('os', true); });
 $('osClose').addEventListener('click', function(){ sideOpen('os', false); });

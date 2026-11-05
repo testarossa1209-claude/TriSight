@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """トライタイムの「予定表の作り方を選ぶ」の試験（2026-11-05・宏史さんの指示「作り方を選ばせる引き出しが必要」）
 ・本スケジュール表の上にオレンジの「予定表の作り方を選ぶ」が出る（予定を組む人の端末）
-・押すと小窓に「AIが作る」「AIがベースを作って自分で直す」「自分で作る」の三つのボタンが出る
+・押すと小窓に「AIがベースを作って自分で直す」「AIが作る」「自分で作る」の順で三つのボタンが出る（2026-11-06・宏史さんの指示で順序変更）
 ・「自分で作る」→ 空の手組みの表が開く
-・「AIがベースを作って自分で直す」→ いまの週間予定（11件）が手組みの表に写って開く
+・「AIがベースを作って自分で直す」→ AIがその場でベースを組み、手組みの表に写って開く（週間予定はまだ変わらない）
 ・「AIが作る」→ 自動の振り分けの枠が表示される
 ・使い方（右の引き出し）に「予定表の作り方を選ぶ」の説明がある
 ・画面の中で誤りが出ない"""
@@ -70,8 +70,10 @@ async def test(p):
         # AIがベース → 写る
         await tap(pg, '#pw_open'); await pg.wait_for_timeout(300)
         await tap(pg, '#pw_mix'); await pg.wait_for_timeout(600)
-        assert await pg.evaluate("document.querySelectorAll('#hbBox .hbGrid .hbFuda').length") == 11, '「AIがベースを作って自分で直す」で週間予定（11件）が写りません'
-        assert '写しました' in await pg.inner_text('#hb_msg')
+        nf = await pg.evaluate("document.querySelectorAll('#hbBox .hbGrid .hbFuda').length")
+        assert nf >= 1, '「AIがベースを作って自分で直す」でAIのベースが手組みの表に写りません'
+        assert 'AIがベースを組みました' in await pg.inner_text('#hb_msg')
+        assert await pg.evaluate("JSON.parse(localStorage.getItem('tritime_weekly')).length") == 11, '確定していないのに週間予定が変わっています'
         await s.shot('#hbBox', 'TriTime_pw_2.png')
         # AIが作る → 枠へ
         await tap(pg, '#pw_open'); await pg.wait_for_timeout(300)

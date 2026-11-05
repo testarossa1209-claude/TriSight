@@ -107,6 +107,8 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   th{font-size:12.5px;color:var(--muted);font-weight:700}
   td.num,th.num{text-align:right;white-space:nowrap}
   .tbl-scroll{overflow-x:auto}
+  /* 2026-11-06（宏史さん「漢字5文字の人が2行になるのは見にくい」）：職員名簿の呼び名は折り返さない（5文字が1行に収まる幅を確保） */
+  #stList td.stNm{white-space:nowrap;min-width:6.5em}
   .day{border-top:2px solid var(--ink);margin-top:14px;padding-top:6px}
   .day h3{margin:0 0 6px;font-family:"Shippori Mincho",serif;font-size:17px}
   .visit{display:grid;grid-template-columns:64px 1fr auto;gap:8px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--paper-deep)}
@@ -335,7 +337,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-06-07</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-06-08</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -3146,7 +3148,7 @@ function renderSetup(){
   $('st_allBtn').textContent = stAll() ? D().name + 'の職員だけにする' : '全部署の職員を表示する';
   $('stList').innerHTML = st.length ? '<table><tr><th>呼び名</th><th>職種</th><th>所属部門</th><th>兼務する部署</th><th>公休</th><th>雇用形態</th><th>管理者</th><th>連絡先</th><th></th></tr>' + st.map(function(s){
     var sd = staffDept(s);
-    return '<tr' + (staffOrphan(s) ? ' style="background:#fdecea"' : staffOut(s) ? ' style="opacity:.55"' : '') + '><td>' + esc(s.name) + (s.post ? ' <small class="muted">（' + esc(s.post) + '）</small>' : '') + (staffOrphan(s) ? ' <span class="tag red">名簿にいません</span>' : '') + (s.out ? ' <span class="tag gray">' + (staffOut(s) ? '退職' : '退職予定') + ' ' + esc(jpDate(s.out)) + '</span>' : '') + '</td><td>' + esc(jobOf(s) || '未設定') + '</td><td>' + esc(s.dept || (sd ? sd.name + '（職種から）' : '未設定')) + '</td><td>' + esc(staffSub(s).join('・')) + '</td><td>' + esc([1,2,3,4,5,6,0].filter(function(w){ return staffOff(s).indexOf(String(w)) >= 0; }).map(function(w){ return DOW[w]; }).join('・') + (s.holOff ? (staffOff(s).length ? '・' : '') + '祝日' : '')) + '</td><td>' + esc(s.emp || '未設定') + (isIrreg(s) ? '<br><span class="tag gray">不定期</span>' : '') + (isStandby(s) ? '<br><span class="tag gray">待機</span>' : '') + (s.emp === '非常勤' && s.kengyo ? '<br><small class="muted">兼業：' + esc(s.kengyo) + '</small>' : '') + '</td><td>' + (isMgr(s) ? '管理者' : '') + '</td><td class="sm">' + (s.tel ? '<a href="tel:' + esc(s.tel.replace(/-/g, '')) + '">' + esc(s.tel) + '</a>' : '<span class="muted">携帯 なし</span>') + '<br>' + (s.mail ? esc(s.mail) : '<span class="muted">メール なし</span>') + '</td><td><button class="btn small sub" data-stedit="' + esc(s.id) + '">直す</button> <button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
+    return '<tr' + (staffOrphan(s) ? ' style="background:#fdecea"' : staffOut(s) ? ' style="opacity:.55"' : '') + '><td class="stNm"><span class="stNmT">' + esc(s.name) + '</span>' + (s.post ? ' <small class="muted">（' + esc(s.post) + '）</small>' : '') + (staffOrphan(s) ? ' <span class="tag red">名簿にいません</span>' : '') + (s.out ? ' <span class="tag gray">' + (staffOut(s) ? '退職' : '退職予定') + ' ' + esc(jpDate(s.out)) + '</span>' : '') + '</td><td>' + esc(jobOf(s) || '未設定') + '</td><td>' + esc(s.dept || (sd ? sd.name + '（職種から）' : '未設定')) + '</td><td>' + esc(staffSub(s).join('・')) + '</td><td>' + esc([1,2,3,4,5,6,0].filter(function(w){ return staffOff(s).indexOf(String(w)) >= 0; }).map(function(w){ return DOW[w]; }).join('・') + (s.holOff ? (staffOff(s).length ? '・' : '') + '祝日' : '')) + '</td><td>' + esc(s.emp || '未設定') + (isIrreg(s) ? '<br><span class="tag gray">不定期</span>' : '') + (isStandby(s) ? '<br><span class="tag gray">待機</span>' : '') + (s.emp === '非常勤' && s.kengyo ? '<br><small class="muted">兼業：' + esc(s.kengyo) + '</small>' : '') + '</td><td>' + (isMgr(s) ? '管理者' : '') + '</td><td class="sm">' + (s.tel ? '<a href="tel:' + esc(s.tel.replace(/-/g, '')) + '">' + esc(s.tel) + '</a>' : '<span class="muted">携帯 なし</span>') + '<br>' + (s.mail ? esc(s.mail) : '<span class="muted">メール なし</span>') + '</td><td><button class="btn small sub" data-stedit="' + esc(s.id) + '">直す</button> <button class="btn small danger" data-stdel="' + esc(s.id) + '">外す</button></td></tr>';
   }).join('') + '</table>' : '<p class="empty">まだ登録がありません。</p>';
   var wk = weekly().slice().sort(function(a,b){ var da = (+a.dow + 6) % 7, db = (+b.dow + 6) % 7; return da - db || (a.time < b.time ? -1 : 1); });
   $('wkList').innerHTML = wk.length ? '<table><tr><th>曜日</th><th>時刻</th><th>契約書番号</th><th>担当</th><th>同行（2名体制のとき）</th><th></th></tr>' + wk.map(function(v){

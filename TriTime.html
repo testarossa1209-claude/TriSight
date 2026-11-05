@@ -318,7 +318,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-05-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-05-02</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -4801,8 +4801,8 @@ function renderToday(){
   /* 2026-11-03（宏史さん「地図の下に当日の分しか出ていない。本スケジュール表を出すのではなかったか」）：地図の下に、選んだ日を含む1週間の本スケジュール表を出す */
   var num = {}; live.forEach(function(v, i){ num[date + '|' + v.no + '|' + v.time + '|' + v.staffId] = ALL ? v._n : i + 1; });
   var mon = mondayOf(parseYmd(date)), wdays = []; for(var di = 0; di < 7; di++) wdays.push(ymd(addDays(mon, di)));
-  var wg = D().kind === 'office' ? { empty:'' } : ssGridHTML(wdays, { only:ALL ? null : sid, mark:date, num:num, col:colOf, drag:canSched() });   /* 2026-11-04：本体の表でも札を動かせる（予定を組む人の端末だけ） */
-  $('td_week').innerHTML = wg.empty != null ? wg.empty : '<h3 style="margin:6px 0 4px;font-size:15px">本スケジュール表 <small class="muted" style="font-weight:400">' + esc(jpDate(wdays[0])) + ' 〜 ' + esc(jpDate(wdays[6])) + '</small></h3><div class="ssBody tdWeek">' + wg.html + '</div><p class="muted sm" style="margin:4px 0 0">色の付いた列が選んだ日です。日付を変えると、その日の週の表に変わります。札の丸い番号は地図の番号と同じです。' + (canSched() ? '今日以降の札は、指で押さえたまま別の人・別の日の升へ引っぱると動かせます（動かすときに理由を残せます。点線の札は人情変更）。' : '') + '</p>' + (canSched() ? ptrBtnHTML('ptr_td', 'ptr_tdbox') : '') + hbBtnHTML();   /* 2026-11-05：空の表から組む（手組み） */
+  var wg = D().kind === 'office' ? { empty:'' } : ssGridHTML(wdays, { only:ALL ? null : sid, mark:date, num:num, col:colOf, drag:canSched(), dragSelf:canMoveSelf() ? dev().me : '' });   /* 2026-11-04：本体の表でも札を動かせる（予定を組む人の端末）。2026-11-05：一般の職員は自分の担当の札だけ（宏史さんの決め(b)） */
+  $('td_week').innerHTML = wg.empty != null ? wg.empty : '<h3 style="margin:6px 0 4px;font-size:15px">本スケジュール表 <small class="muted" style="font-weight:400">' + esc(jpDate(wdays[0])) + ' 〜 ' + esc(jpDate(wdays[6])) + '</small></h3><div class="ssBody tdWeek">' + wg.html + '</div><p class="muted sm" style="margin:4px 0 0">色の付いた列が選んだ日です。日付を変えると、その日の週の表に変わります。札の丸い番号は地図の番号と同じです。' + (canSched() ? '今日以降の札は、指で押さえたまま別の人・別の日の升へ引っぱると動かせます（動かすときに理由を残せます。点線の札は人情変更）。' : (canMoveSelf() ? '自分の担当の今日以降の札は、指で押さえたまま自分の別の日の升へ引っぱると動かせます（順番の入れ替え・日のずらし）。動かすと事務局に知らせが出ます。ほかの人への付け替えは事務局へ。' : '')) + '</p>' + (canSched() ? ptrBtnHTML('ptr_td', 'ptr_tdbox') : '') + hbBtnHTML();   /* 2026-11-05：空の表から組む（手組み） */
   if($('ptr_td')) $('ptr_td').onclick = function(){ ptrRun(wdays, 'ptr_tdbox', '#td_week', '本スケジュール表'); };
   if($('hb_open')) $('hb_open').onclick = hbToggle; if(window.HB && HB.on) hbRender();   /* 最初の描画はこの宣言より前に走る */
   var pts = live.map(function(v, i){ var p = patient(v.no) || {}; return p.lat ? { n:ALL ? v._n : i + 1, sid:v.staffId, lat:+p.lat, lng:+p.lng, t:(ALL ? staffName(v.staffId) + ' ' : '') + v.time + ' ' + dnn(v.no) } : null; }).filter(Boolean);
@@ -6339,7 +6339,7 @@ function ssGridHTML(days, opt){
           if(!v.cx && prev){ var g = toMin(v.time) - (toMin(prev.time) + (+prev.min || 30)); gap = mvGapHTML(g, wr); }
           if(!v.cx) prev = v;
           var warn = why && !v.cx;
-          var vk = '', mn = opt.num && !v.cx ? opt.num[date + '|' + v.no + '|' + v.time + '|' + v.staffId] : 0; if(opt.drag && !v.cx && !v.asWith && date >= today){ vk = date + '|' + v.no + '|' + v.time; SS_V[vk] = v; }
+          var vk = '', mn = opt.num && !v.cx ? opt.num[date + '|' + v.no + '|' + v.time + '|' + v.staffId] : 0; if((opt.drag || (opt.dragSelf && v.staffId === opt.dragSelf)) && !v.cx && !v.asWith && date >= today){ vk = date + '|' + v.no + '|' + v.time; SS_V[vk] = v; }
           var hv = !v.cx && hvOf(v);   /* 2026-11-04：人情変更の札 */
           return gap + '<span class="ssChip' + (v.cx ? ' cx' : '') + (warn ? ' warn' : '') + (vk ? ' dg' : '') + (hv ? ' hv' : '') + '"' + (vk ? ' data-vk="' + esc(vk) + '"' : '') + ' data-pk="' + esc(date + '|' + v.no + '|' + v.time) + '" title="' + esc(v.time + ' ' + dnn(v.no) + '（' + v.min + '分）' + (v.area ? '・' + v.area : '') + (v.cx ? '・キャンセル' : '') + (warn ? '・休みの日の訪問' : '') + (hv ? '・' + hv.why + (hv.note ? '：' + hv.note : '') : '')) + '">' + (mn ? '<b class="ssNo"' + (opt.col ? ' style="background:' + opt.col(v.staffId) + '"' : '') + '>' + mn + '</b>' : '') + esc(v.time) + '<br>' + (v.asWith ? '<b>同行</b><br>' : '') + esc(ssShortNo(v.no)) + (nameOf(v.no) ? '<br>' + esc(nameOf(v.no)) : '') + (hv ? '<small class="hvL">人情</small>' : '') + (v.asWith ? '<small style="display:block;white-space:normal">担当 ' + esc(staffName(v.staffId)) + '</small>' : (withLabel(v) ? '<small style="display:block;white-space:normal;color:var(--amber);font-weight:700">' + esc(withLabel(v)) + '</small>' : '')) + (warn ? '<br>要調整' : '') + '</span>';
         }).join('') + (live2 ? '<span class="ssCnt' + (live2 >= wr.target ? ' ok' : '') + '">' + live2 + '件</span>' : '') + '</td>';
@@ -6477,6 +6477,7 @@ function ssDragEnd(e, cancel){
   var v = SS_V[dg.vk]; if(!v) return;
   var sid = dg.over.getAttribute('data-sid'), date = dg.over.getAttribute('data-date');
   if(sid === v.staffId && date === v.date) return;
+  if(!canSched()){ if(sid !== dev().me){ alert('自分の担当の升にだけ動かせます。ほかの人へ付け替えるときは事務局へ連絡してください。'); return; } }   /* 2026-11-05：一般の職員は自分の升だけ */
   ssMoveAsk(v, sid, date);
 }
 document.addEventListener('pointerup', function(e){ ssDragEnd(e, false); });
@@ -6492,21 +6493,21 @@ function ssMoveAsk(v, sid, date){
   var box = document.createElement('div'); box.className = 'ssMv'; box.id = 'ssMv';
   var tg = staff().filter(function(x){ return x.id === sid; })[0];
   if(tg && !canSolo(tg)){ ssWithAsk(box, v, tg, date); return; }
-  var why = offWhy(sid, date);
+  var why = offWhy(sid, date), selfOnly = !canSched();   /* 2026-11-05：一般の職員＝人情変更は選べない・この日だけ・事務局へ知らせる */
   box.innerHTML = '<div class="card"><h2>訪問を動かす</h2><p><b>' + esc(dnn(v.no)) + '</b><br>' + esc(jpDate(v.date) + ' ' + v.time + '（' + staffName(v.staffId) + '）') + '<br>→ <b>' + esc(jpDate(date) + '（' + staffName(sid) + '）') + '</b></p>' +
     (why ? '<p style="color:var(--red)">' + esc(staffName(sid)) + 'さんはこの日「' + esc(why) + '」です。動かすと「要調整」の印が付きます。</p>' : '') +
     '<div class="row"><div><label class="f" for="mv_time">時刻</label><input type="time" id="mv_time" value="' + esc(v.time) + '"></div></div>' +
     '<label style="display:block;margin:6px 0"><input type="checkbox" id="mv_ok"> 患者さんの了承を得た（まだなら印を付けずに動かすと「要連絡（了承前）」の札が付きます）</label>' +
     /* 2026-11-04（宏史さんの決め）：変更の理由を残す。「人情変更」は管理者のワイルドカードで、効率だけの物差しでは指摘しない（度が過ぎたものは条項表で指摘） */
-    '<div class="row"><div><label class="f" for="mv_why">変更の理由</label><select id="mv_why"><option value="">（選ばない）</option>' + hvWhyList().map(function(w){ return '<option value="' + esc(w) + '">' + esc(w) + '</option>'; }).join('') + '</select></div>' +
-    '<div><label class="f" for="mv_note">ひとこと（任意）</label><input type="text" id="mv_note" placeholder="例：本人が島さんでないと落ち着かない"></div></div>' +
-    '<p class="muted sm">「人情変更」を選んだ札は点線で出ます。H&amp;Nパトリオットは、効率だけの条項ではその札を指摘しません。</p>' +
-    '<div class="btns"><button class="btn amber" type="button" id="mv_once">この日だけ動かす</button><button class="btn" type="button" id="mv_week">毎週の予定を変える</button><button class="btn sub" type="button" id="mv_no">やめる</button></div>' +
-    '<p class="muted sm">「毎週の予定を変える」は、' + esc(DOW[parseYmd(v.od).getDay()]) + '曜の週間予定を、' + esc(DOW[parseYmd(date).getDay()]) + '曜・' + esc(staffName(sid)) + 'さんに書き換えます。</p><div id="mv_res"></div></div>';
+    '<div class="row"><div><label class="f" for="mv_why">変更の理由</label><select id="mv_why"><option value="">（選ばない）</option>' + hvWhyList().filter(function(w){ return !selfOnly || !hvIs(w); }).map(function(w){ return '<option value="' + esc(w) + '">' + esc(w) + '</option>'; }).join('') + '</select></div>' +
+    '<div><label class="f" for="mv_note">ひとこと（任意）</label><input type="text" id="mv_note" placeholder="' + (selfOnly ? '例：本人の希望で順番を入れ替え' : '例：本人が島さんでないと落ち着かない') + '"></div></div>' +
+    (selfOnly ? '<p class="muted sm">動かすと、事務局の連絡板に知らせが出ます（利用者さんへの連絡が要るときは事務局が行います）。</p>' : '<p class="muted sm">「人情変更」を選んだ札は点線で出ます。H&amp;Nパトリオットは、効率だけの条項ではその札を指摘しません。</p>') +
+    '<div class="btns"><button class="btn amber" type="button" id="mv_once">この日だけ動かす</button>' + (selfOnly ? '' : '<button class="btn" type="button" id="mv_week">毎週の予定を変える</button>') + '<button class="btn sub" type="button" id="mv_no">やめる</button></div>' +
+    (selfOnly ? '' : '<p class="muted sm">「毎週の予定を変える」は、' + esc(DOW[parseYmd(v.od).getDay()]) + '曜の週間予定を、' + esc(DOW[parseYmd(date).getDay()]) + '曜・' + esc(staffName(sid)) + 'さんに書き換えます。</p>') + '<div id="mv_res"></div></div>';
   document.body.appendChild(box);
   $('mv_no').onclick = function(){ box.remove(); };
   $('mv_once').onclick = function(){ ssMoveDo(v, sid, date, false); };
-  $('mv_week').onclick = function(){ ssMoveDo(v, sid, date, true); };
+  if($('mv_week')) $('mv_week').onclick = function(){ ssMoveDo(v, sid, date, true); };
 }
 /* 2026-11-03：看護補助者（単独で訪問できない人）の升へ札を離したときは、動かさずに「同行として付けるか」を聞く。
    同行は週間予定の1件に付ける（同じ日の升へ離したときだけ）。付けた同行は、料金表の看護補助者の加算で数える */
@@ -6553,6 +6554,7 @@ function ssMoveDo(v, sid, date, weeklyToo){
   var head = (weeklyToo ? '【毎週の予定の変更】' : '【予定の組み換え】') + dnn(v.no), what = (weeklyToo ? DOW[parseYmd(v.od).getDay()] + '曜 ' + v.ot + '（' + staffName(from) + '）→ 毎週 ' + DOW[parseYmd(date).getDay()] + '曜 ' + t + '（' + staffName(sid) + '）'
     : jpDate(v.date) + ' ' + v.time + '（' + staffName(from) + '）→ ' + jpDate(date) + ' ' + t + '（' + staffName(sid) + '）');
   var to = [from, sid].filter(function(x, i, a){ return x && a.indexOf(x) === i; }), ev2 = events();
+  if(!canSched()){ var od = DEPTS.filter(function(d){ return d.kind === 'office'; })[0]; if(od) deptStaff(od).forEach(function(x){ if(to.indexOf(x.id) < 0) to.push(x.id); }); }   /* 2026-11-05：一般の職員が動かしたら事務局にも知らせる */
   ev2.push({ id:uid(), type:'note', kind:'予定の組み換え', from:me, to:to, title:head + '　' + what, body:(ok ? '患者さんの了承あり。' : '患者さんの了承はまだです。') + (why ? '　理由：' + why + (note ? '（' + note + '）' : '') : '') + '　' + ssGapText(sid, date) + (from !== sid ? '　' + ssGapText(from, v.date) : ''), mDate:'', mTime:'', created:now, date:ymd(new Date()) });
   saveEvents(ev2);
   /* 携帯・メールの文面には、患者さんの氏名を入れない（11/2の決め）。日時と契約書番号だけ */
@@ -6560,7 +6562,7 @@ function ssMoveDo(v, sid, date, weeklyToo){
   $('mv_res').innerHTML = '<div class="judge free" style="margin-top:8px"><b>動かしました。</b><br>' + esc(what) + '<br><small>移動の間を計算し直しました：' + esc(ssGapText(sid, date)) + (from !== sid || v.date !== date ? '／' + esc(ssGapText(from, v.date)) : '') + '</small><br><small>連絡板に、' + esc(to.map(staffName).join('・')) + 'さんあての知らせを残しました。</small></div>' +
     pnHTML([{ to:to, label:to.map(staffName).join('・') + 'さんへ', subj:'【ノア】訪問の予定が変わりました', text:txt }]) +
     '<div class="btns" style="margin-top:8px"><button class="btn sub" type="button" id="mv_close">閉じる</button></div>';
-  ['mv_once','mv_week'].forEach(function(id){ $(id).disabled = true; });
+  ['mv_once','mv_week'].forEach(function(id){ if($(id)) $(id).disabled = true; });
   $('mv_close').onclick = function(){ var b = $('ssMv'); if(b) b.remove(); };
   refreshAll();
 }
@@ -6702,6 +6704,7 @@ var MN_MARKS = [
   ['札の移動・人情変更・H&Nパトリオット・伝票（2026-11-04）', [
     ['本スケジュール表の札', '「予定」の地図の下の本スケジュール表でも、今日以降の札を引っぱって動かせます（予定を組む人の端末だけ）。動かす小窓の「変更の理由」で理由を残せます。'],
     ['人情変更', '変更の理由で「人情変更（相性・体調への配慮・家族の事情・その他）」を選んだ札は点線で出ます。管理者の判断（ワイルドカード）として、H&Nパトリオットは効率だけの条項ではその札を指摘しません。度が過ぎたもの（1日の件数の超過・休みの日の予定・人情変更の割合など）だけを指摘します。'],
+    ['自分の担当の札を動かす（一般の職員）', '本スケジュール表で、自分の担当の今日以降の札は、指で押さえたまま自分の別の日の升へ引っぱると動かせます（順番の入れ替え・日のずらし）。動かすとき理由を残せ、事務局の連絡板に知らせが出ます。ほかの人への付け替え・毎週の予定の変更・人情変更は事務局と管理者だけです。'],
     ['空の表から組む（手組み）', '本スケジュール表の下のボタン（予定を組む人の端末だけ）。職員 × 曜日の空の表に、下に並ぶ利用者の札を引っぱって置き、週の予定をホワイトボードのように組みます。升の端にその曜日の件数と訪問の間の合計が出ます（許容を超えると赤）。「効率バージョンを写す」で今の予定から直すこともでき、「H&Nパトリオットで確かめる」で下書きを確かめ、「この表で確定」で毎週の予定に置き換えます。下書きは閉じても残ります。'],
     ['H&Nパトリオット', '本スケジュール表と仮スケジュール表の下のボタン。表の週の予定を「許容範囲外の条項表」で確かめ、根拠付きの指摘を出します。指摘を押すと表の中の訪問が光ります。「問題なし」とは言わず、見た範囲だけを言います。'],
     ['条項表', 'H&Nパトリオットが使う線です。野木画面の「条項表」で値を変えたり、行を足したり外したりできます（全端末に共有）。'],
@@ -7280,6 +7283,8 @@ function ptrRun(days, boxId, gridSel, label){
 }
 function ptrBtnHTML(id, boxId){ return '<div class="btns" style="margin:6px 0 2px"><button type="button" class="btn sub" id="' + id + '" style="border-color:#993c1d;color:#712b13;font-weight:700">H&amp;Nパトリオット</button><small class="muted">この表の予定を、許容範囲外の条項表で確かめます。</small></div><div id="' + boxId + '"></div>'; }
 function canSched(){ var r = role(); return D().kind === 'visit' && (r.lv === 'all' || r.lv === 'dept' || r.lv === 'office'); }
+/* 2026-11-05（宏史さんの決め(a)(b)）：一般の職員の端末でも、自分の担当の札だけは動かせる（他の人の札・他の人への付け替えは事務局・管理者だけ） */
+function canMoveSelf(){ var r = role(); return D().kind === 'visit' && r.lv === 'staff' && !!dev().me && !canSched(); }
 
 /* ============================================================
    2026-11-05：空の表から組む（手組み）——人が組む予定表（宏史さんの11/4の決め「ゼロからの手組み・ホワイトボードの転記」の口）

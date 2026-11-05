@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """職員名簿の呼び名は折り返さない（2026-11-06・宏史さん「漢字5文字の人が2行になるのは見にくい」）
-狭い画面幅でも、漢字5文字の呼び名の升が1行（高さが1行分）のまま"""
+狭い画面幅でも、漢字5文字の呼び名の升が1行（高さが1行分）のまま。野木画面の人物情報表の氏名のボタンも折り返さない（white-space:nowrap が付いている）"""
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 from tt_helper import Screen, run
@@ -20,6 +20,9 @@ async def test(p):
         r = await pg.evaluate("(function(){ var sp=[].filter.call(document.querySelectorAll('#stList td.stNm .stNmT'), function(x){ return x.textContent==='野木宏史郎'; })[0]; if(!sp) return null; var td=sp.parentNode, lh=parseFloat(getComputedStyle(td).lineHeight)||20; return { h: sp.getBoundingClientRect().height, lh: lh, ws: getComputedStyle(td).whiteSpace }; })()")
         assert r, '職員名簿に呼び名の升がありません'
         assert r['ws'] == 'nowrap' and r['h'] < r['lh'] * 1.5, '呼び名が2行になっています：' + str(r)
+        # 野木画面の人物情報表（鍵の無い端末では画面は出ないため、作りの中の文字で確かめる）
+        html = open(os.path.join(os.path.dirname(__file__), '..', '..', 'TriTime.html'), encoding='utf-8').read()
+        assert 'data-ngp="\' + esc(s.id) + \'" style="padding:2px 10px;white-space:nowrap"' in html and '#tab-nogi td.ngNm{white-space:nowrap' in html, '野木画面の氏名のボタンが折り返す作りのままです'
         assert not s.errs, '画面の中で誤り：' + str(s.errs)
     finally:
         await s.close()

@@ -109,6 +109,7 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   .tbl-scroll{overflow-x:auto}
   /* 2026-11-06（宏史さん「漢字5文字の人が2行になるのは見にくい」）：職員名簿の呼び名は折り返さない（5文字が1行に収まる幅を確保） */
   #stList td.stNm{white-space:nowrap;min-width:6.5em}
+  #tab-nogi td.ngNm{white-space:nowrap;min-width:7.5em}   /* 野木画面の人物情報表の氏名（ボタン）も折り返さない（2026-11-06・宏史さん「野木画面の方です」） */
   .day{border-top:2px solid var(--ink);margin-top:14px;padding-top:6px}
   .day h3{margin:0 0 6px;font-family:"Shippori Mincho",serif;font-size:17px}
   .visit{display:grid;grid-template-columns:64px 1fr auto;gap:8px;align-items:center;padding:7px 4px;border-bottom:1px solid var(--paper-deep)}
@@ -3788,7 +3789,7 @@ function ngRender(){
     body = '<h2>人物情報表（' + esc(depName) + '・' + ppl.length + '人）</h2><p class="muted">名前を押すと、その人のパーソナルデータを入れる欄が開きます。出勤は「出勤状況」のボタンで見ます。</p>' +
       (ppl.length ? '<div class="tbl-scroll"><table><tr><th>氏名</th><th>役職</th><th>所属</th><th>職種（資格）</th><th>雇用形態</th><th>入職日・勤続</th><th class="num">年齢</th><th>経歴・特記</th></tr>' + ppl.map(function(s){
         var p = ngPerson(s.id), ten = ngYears(p.joined, today), age = ngYears(p.birth, today), dps = ngDeptsOf(s).map(function(d){ return d.name; });
-        return '<tr><td><button type="button" class="btn sub" data-ngp="' + esc(s.id) + '" style="padding:2px 10px">' + esc(s.name) + '</button></td>' +
+        return '<tr><td class="ngNm"><button type="button" class="btn sub" data-ngp="' + esc(s.id) + '" style="padding:2px 10px;white-space:nowrap">' + esc(s.name) + '</button></td>' +
           '<td>' + esc(s.post || '') + (isMgr(s) ? (s.post ? '・' : '') + '管理者' : '') + '</td>' +
           '<td>' + esc(dps[0] || '') + (dps.length > 1 ? '<br><small class="muted">兼務：' + esc(dps.slice(1).join('・')) + '</small>' : '') + '</td>' +
           '<td>' + esc(jobOf(s)) + (p.quals ? '<br><small class="muted">' + esc(p.quals) + '</small>' : '') + '</td>' +

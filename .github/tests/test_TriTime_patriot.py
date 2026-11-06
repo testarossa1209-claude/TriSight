@@ -31,7 +31,7 @@ SEED = """(function(t){
   var up = Date.now();
   var ST = [
     { id:'s1', name:'常勤 一子', emp:'常勤', job:'看護師（正看）', dept:'訪問看護部', off:['4','0'], upd:up },
-    { id:'s2', name:'常勤 二子', emp:'常勤', job:'看護師（正看）', dept:'訪問看護部', off:[], upd:up },
+    { id:'s2', name:'常勤 二子', emp:'常勤', job:'看護師（正看）', dept:'訪問看護部', off:['6','0'], upd:up },
     { id:'s3', name:'非常勤 三子', emp:'非常勤', job:'准看護師', dept:'訪問看護部', off:['1','3','5','6','0'], upd:up },
     { id:'s4', name:'補助 四子', emp:'非常勤', job:'看護補助者', dept:'訪問看護部', off:['6','0'], upd:up } ];
   var P = [
@@ -117,7 +117,8 @@ async def test(p):
         mv = await pg.evaluate("JSON.parse(localStorage.getItem('tritime_events')).filter(e => e.type === 'move').map(e => [e.why, e.hv, e.note])")
         assert mv == [['人情変更（体調への配慮）', True, '試験のひとこと']], '組み換えの記録に理由・人情変更の印が残りません：' + str(mv)
         await pg.evaluate("document.getElementById('mv_close').click()"); await pg.wait_for_timeout(500)
-        assert await pg.evaluate("document.querySelectorAll('#ssBody .ssChip.hv').length") == 2, '動かした札が点線（人情変更）になりません'
+        # 動かす札が2名体制だと同行の札も点線になり、数は曜日で変わる。動かした先（s2・明日）の升に点線の札があるかで見る（2026-11-06）
+        assert await pg.evaluate("document.querySelectorAll('#ssBody td[data-sid=\"s2\"][data-date=\"%s\"] .ssChip.hv').length" % tgt) >= 1, '動かした札が点線（人情変更）になりません'
         # 伝票
         await pg.evaluate("document.querySelector('#tabs button[data-tab=slip]').click()"); await pg.wait_for_timeout(400)
         await pg.set_input_files('#slp_file', csv); await pg.wait_for_timeout(900)

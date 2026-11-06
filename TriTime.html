@@ -338,7 +338,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-06-08</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-06-09</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -6932,8 +6932,8 @@ var MN_GUIDE = [
   ]],
   ['4. 週間予定を組む（スケジュール表の作り方）', [
     ['まず「予定表の作り方を選ぶ」', '「予定」タブの本スケジュール表の上にあるオレンジのボタン「予定表の作り方を選ぶ」を押します（予定を組む人の端末＝事務局・管理者）。三つの道が出ます——①AIが作る ②AIがベースを作って自分で直す ③自分で作る。どの道でも、できた表は本スケジュール表に入り、あとから札を動かして直せます。'],
-    ['①AIが作る', '押すと「週間予定を地区で寄せて組む（自動の振り分け）」の枠へ移ります。「常勤の1日の件数の上限」「非常勤の1日の件数の上限」を確かめて白い「組み方を出す」。出た表と「いまの週間予定から変わる訪問」を見て、よければオレンジの「この組み方を週間予定に入れる」。入れる前の予定は控えに残り「元に戻す」で戻せます。モデルコースの見本の枠のまま当てはめたいときは「モデルコースの見本」タブで表を作り「このコースで患者さんを当てはめる」を押すと、同じ枠に出ます。'],
-    ['②AIがベースを作って自分で直す', '押すと、いま使っている週間予定（AIが組んだもの）が手組みの表（職員 × 曜日）に写って開きます。札を引っぱって別の曜日・別の人へ動かし、升の右下の件数と「訪問と訪問の間」（赤＝許容を超えた）を見ながら直します。直し終えたら「H&Nパトリオットで確かめる」で条項表に当て、「この表で確定」で週間予定を入れ替えます（理由を残せます。「人情変更」を選ぶと変わった札に点線の印）。週間予定がまだ空のときは、先に①で組んでください。'],
+    ['①AIがベースを作って自分で直す（基本の道）', '押すと、AIがその場でベース（地区で寄せた組み方）を作り、手組みの表（職員 × 曜日）に写して開きます。札を引っぱって別の人・別の曜日へ動かし、直し終えたら「この表で確定」で週間予定に入れます。週間予定にはまだ入っていないので、確定するまでは何も変わりません。'],
+    ['②AIが作る', '押すと「週間予定を地区で寄せて組む（自動の振り分け）」の枠へ移ります。「常勤の1日の件数の上限」「非常勤の1日の件数の上限」を確かめて白い「組み方を出す」。出た表と「いまの週間予定から変わる訪問」を見て、よければオレンジの「この組み方を週間予定に入れる」。入れる前の予定は控えに残り「元に戻す」で戻せます。モデルコースの見本の枠のまま当てはめたいときは「モデルコースの見本」タブで表を作り「このコースで患者さんを当てはめる」を押すと、同じ枠に出ます。'],
     ['③自分で作る', '押すと空の手組みの表が開きます。下に並ぶ利用者さんの札（契約書番号＋氏名・2名体制は「2名」・週の回数ぶんの残り枚数）を升へ引っぱって置きます（札を一度押してから升を押しても置けます）。時刻は自動（勤務の始まり→前の終わり＋移動15分）で、置いた札を押すと時刻を直したり外したりできます。「効率バージョンを写す」で①の表から始めることも、「全部消す」でやり直すこともできます。最後に「この表で確定」。下書きは閉じても残ります。'],
     ['できたあとの直し方', '本スケジュール表と仮スケジュール表（右端のつまみ）で、今日以降の札を指で押さえたまま別の人・別の日の升へ引っぱると動かせます（小窓で時刻・理由・了承の印）。動かせるのは管理者と事務局の端末だけで、一般の職員は与えられた予定を消化します（伝えたいことは「管理者へ上申する」から）。'],
     ['組み方を出す', '「予定」タブの「週間予定を地区で寄せて組む（自動の振り分け）」で「組み方を出す」。町名ごとに寄せ、午前から移動15分で詰めて組みます。今の担当と曜日のまま組めるものは動かしません。'],
@@ -7556,13 +7556,14 @@ function hbBtnHTML(){ return canSched() ? '<div class="btns" style="margin:6px 0
    ・AIがベースを作って自分で直す → いまの週間予定を手組みの表へ写して開く（週間予定が空なら、先にAIに組ませる枠へ）
    ・自分で作る → 空の手組みの表を開く（下書きがあればその続き）
    ============================================================ */
-function pwBtnHTML(){ return canSched() ? '<div class="btns" style="margin:4px 0 8px"><button type="button" class="btn amber" id="pw_open">予定表の作り方を選ぶ</button><small class="muted">AIが作る／AIがベースを作って自分で直す／自分で作る</small></div>' : ''; }
+function pwBtnHTML(){ return canSched() ? '<div class="btns" style="margin:4px 0 8px"><button type="button" class="btn amber" id="pw_open">予定表の作り方を選ぶ</button><small class="muted">AIがベースを作って自分で直す／AIが作る／自分で作る</small></div>' : ''; }
 function pwOpen(){
   var box = document.createElement('div'); box.className = 'ssMv'; box.id = 'ssMv';
   var n = weekly().length;
   box.innerHTML = '<div class="card"><h2>予定表の作り方を選ぶ</h2><p class="muted sm">' + esc(D().name) + 'の毎週の予定（いま ' + n + '件）。どの道でも、できた表は本スケジュール表に入り、あとから札を動かして直せます。</p>' +
-    '<div class="pwOpt"><button type="button" class="btn" id="pw_ai">AIが作る</button><div>利用者さんを地区で寄せ、職員の出る曜日と1日の件数の上限の中でAIが組みます。出た組み方を見て、よければ週間予定に入れます。<br><small class="muted">モデルコースの見本の枠のまま当てはめる道もあります（「モデルコースの見本」タブ → 「このコースで患者さんを当てはめる」）。</small></div></div>' +
-    '<div class="pwOpt"><button type="button" class="btn" id="pw_mix">AIがベースを作って自分で直す</button><div>いま使っている週間予定（AIが組んだもの）を手組みの表に写し、札を動かして直してから「この表で確定」で入れ替えます。' + (n ? '' : '<br><small style="color:var(--red)">週間予定がまだ空です。先に「AIが作る」で組んでください。</small>') + '</div></div>' +
+    /* 2026-11-06（宏史さん「ベースはAIが作って自分で直すが基本。順序を変えてほしい」）：①AIがベースを作って自分で直す ②AIが作る ③自分で作る */
+    '<div class="pwOpt"><button type="button" class="btn" id="pw_mix">AIがベースを作って自分で直す</button><div><b>基本の道。</b>AIがその場でベース（地区で寄せた組み方）を作り、手組みの表（職員 × 曜日）に写して開きます。札を動かして直してから「この表で確定」で週間予定に入れます。</div></div>' +
+    '<div class="pwOpt"><button type="button" class="btn" id="pw_ai">AIが作る</button><div>利用者さんを地区で寄せ、職員の出る曜日と1日の件数の上限の中でAIが組みます。出た組み方を見て、よければ週間予定に入れます。<br><small class="muted">モデルコースの見本の枠を使うときはこちら。</small></div></div>' +
     '<div class="pwOpt"><button type="button" class="btn" id="pw_hand">自分で作る</button><div>ホワイトボードのように、空の表へ利用者さんの札を置いて組みます。置いた時点で件数と移動の目安が出ます。</div></div>' +
     '<div class="btns"><button class="btn sub" type="button" id="pw_no">閉じる</button></div></div>';
   document.body.appendChild(box);
@@ -7570,12 +7571,17 @@ function pwOpen(){
   $('pw_ai').onclick = function(){ box.remove(); var c = $('cardAuto'); if(c){ c.style.display = ''; if(c.scrollIntoView) c.scrollIntoView({ behavior:'smooth', block:'start' }); } };
   $('pw_mix').onclick = function(){
     box.remove();
-    if(!weekly().length){ var c = $('cardAuto'); if(c && c.scrollIntoView) c.scrollIntoView({ behavior:'smooth', block:'start' }); return; }
+    /* 2026-11-06（宏史さん「AIがベースを作って自分で直すを押したら、全部組んでしまい直す部分はありませんと出た」）：
+       いまの週間予定を写すのではなく、AIにその場でベースを組ませ（「組み方を出す」と同じ計算）、その組み方を手組みの表へ写して開く。
+       週間予定にはまだ入れない（「この表で確定」で入れる） */
+    var cur = hbRaw(); if(hbCount(cur) && !confirm('手組みの下書きが残っています。消して、AIのベースを写しますか。')) { HB.on = true; hbRender(); pwScroll(); return; }
+    var capF = Math.max(1, +$('au_full').value || 8), capP = Math.max(1, +$('au_part').value || 5);
+    var RR = auCompute({ course:null, capF:capF, capP:capP, keep:true });
+    if(!RR || !RR.rows.length){ alert('AIがベースを組めませんでした（振り分けられる職員か、利用中の利用者さんが名簿にいません）。'); return; }
     var st = { cells:{} }, ids = {}, wr = workRule(); hbRows().forEach(function(r){ ids[r.id] = 1; });
-    weekly().forEach(function(w){ if(!ids[w.staffId]) return; hbCell(st, w.staffId, String(w.dow)).push({ no:w.no, time:w.time, min:+w.min || wr.visit, withId:w.withId || '' }); });
-    var cur = hbRaw(); if(hbCount(cur) && !confirm('手組みの下書きが残っています。消して、いまの週間予定を写しますか。')) { HB.on = true; hbRender(); pwScroll(); return; }
+    RR.rows.forEach(function(w){ if(!ids[w.staffId]) return; hbCell(st, w.staffId, String(w.dow)).push({ no:w.no, time:w.time, min:+w.min || wr.visit, withId:(w.withId && !isTbd(w.withId)) ? w.withId : '' }); });
     hbSave(st); HB.on = true; HB.sel = null; hbRender(); pwScroll();
-    if($('hb_msg')) $('hb_msg').textContent = 'いまの週間予定（' + hbCount(st) + '件）を写しました。札を動かして直し、「この表で確定」で入れ替えます。';
+    if($('hb_msg')) $('hb_msg').textContent = 'AIがベースを組みました（' + hbCount(st) + '件' + (RR.miss.length ? '・入りきらなかった利用者さん ' + RR.miss.length + '人は下の札に残っています' : '') + '）。札を動かして直し、「この表で確定」で週間予定に入れます。';
   };
   $('pw_hand').onclick = function(){ box.remove(); HB.on = true; HB.sel = null; hbRender(); pwScroll(); };
 }

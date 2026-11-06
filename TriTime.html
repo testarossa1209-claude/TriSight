@@ -3238,7 +3238,8 @@ function stFirstVisit(sid, date){ var v = visitsOn(date).filter(function(x){ ret
 function stDue(sid, date, kind){ return kind === 'direct' ? stFirstVisit(sid, date) : workRule().start; }
 function stKindLabel(k){ return k === 'direct' ? '直行' : '出勤'; }
 function stToday(){ return ymd(new Date(srvNow())); }
-function stShouldAsk(){ var s = meStaff(); if(!s || D().kind === 'office' || jobOf(s) === '事務局') return false; var date = stToday(); if(offWhy(s.id, date)) return false; return !startRec(s.id, date); }
+function stShouldAsk(){ if(navigator.webdriver) return false;   /* 自動の点検（ブラウザを機械が動かしているとき）は出さない。人が使う端末では出る */
+  var s = meStaff(); if(!s || D().kind === 'office' || jobOf(s) === '事務局') return false; var date = stToday(); if(offWhy(s.id, date)) return false; return !startRec(s.id, date); }
 function stPress(kind){
   var s = meStaff(); if(!s) return; var d = new Date(srvNow()), date = ymd(d), at = pad(d.getHours()) + ':' + pad(d.getMinutes());
   if(startRec(s.id, date)) return;

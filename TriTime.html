@@ -55,6 +55,10 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   #shPick{position:fixed;inset:0;z-index:998;background:var(--paper,#f4f1ea);display:flex;align-items:center;justify-content:center;padding:16px}
   #shPick .box{background:#fff;border:1px solid #e9e3d6;border-radius:14px;padding:22px;max-width:420px;width:100%;box-shadow:0 8px 28px rgba(16,36,59,.12)}
   #shPick .who{display:block;width:100%;margin:6px 0;padding:14px 12px;font-size:17px;text-align:left}
+  /* 2026-11-06（宏史さんの指示）：出勤日の最初に押す「スタート」の窓（出勤時刻の厳守を促す。押さなくても画面は開く） */
+  #stStart{position:fixed;inset:0;z-index:997;background:rgba(16,36,59,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+  #stStart .box{background:#fff;border:1px solid #e9e3d6;border-radius:14px;padding:22px;max-width:440px;width:100%;box-shadow:0 8px 28px rgba(16,36,59,.2)}
+  #stStart .go{display:block;width:100%;margin:8px 0;padding:16px 12px;font-size:18px;text-align:left}
   #labLock .box{background:#fff;border:1px solid #e9e3d6;border-radius:14px;padding:22px;max-width:380px;width:100%;box-shadow:0 8px 28px rgba(16,36,59,.12)}
   #labLock input{width:100%;font:inherit;font-size:17px;padding:10px 12px;border:1px solid #cfc6b4;border-radius:10px;margin:8px 0}
   .labBar{background:#2a4866;color:#fff;border-radius:10px;padding:8px 12px;margin:8px 0;font-size:14px}
@@ -338,7 +342,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-06-09</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-06-10</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -427,6 +431,7 @@ function tsPortalAsk(){
 <div class="note" id="presBar" style="display:none;background:#eef7f0;border-color:#9fd3ad"></div>
 <div class="note" id="roleNote" style="display:none"></div>
 <div class="note" id="shBar" style="display:none;background:#eef7f0;border-color:#9fd3ad"></div>
+<div class="note" id="stBar" style="display:none;background:#fff4e5;border-color:#f0b35a"></div>
 
 <nav class="tabs" id="tabs">
   <button data-tab="plan" class="on">予定</button>
@@ -3219,6 +3224,63 @@ function sharedBar(){
   var s = meStaff(); el.style.display = ''; el.innerHTML = '今日この端末を使う人：<b>' + esc(s ? s.name : d.me) + 'さん</b> <button type="button" class="btn sub small" id="shChange" style="margin-left:10px">使う人を替える</button>';
   $('shChange').onclick = function(){ sharedPick(true); };
 }
+/* ============================================================
+   2026-11-06（宏史さんの指示）：各職員の出勤日の最初に押す「スタート」ボタン（ルーチン）
+   ・端末を開いたとき、この端末を使う人の今日が出勤日（公休・祝日・休みの届け・申告外でない）で、まだ今日のスタートを押していなければ窓を出す
+   ・「出勤（事務所から）」＝勤務の決まりの出勤時刻までに押す。過ぎていれば遅刻の印
+   ・「直行（利用者さんのお宅へ）」＝その日の最初の訪問の時刻までに押す。過ぎていれば遅刻の印（最初の訪問が無ければ時刻だけ残す）
+   ・押さなくても画面は開く（「あとで押す」）。上に帯が残り、押すまで消えない。押さなかった日は野木画面で「押し忘れ」に数える
+   ・時刻は中継の時計（srvNow）で取る（端末の時計を動かしても変わらない）。記録は events（type "start"）に入り、共有で野木画面へ届く
+   ============================================================ */
+var ST_SKIP = 'tritime_start_skip';
+function startRec(sid, date){ return events().filter(function(e){ return e.type === 'start' && e.staffId === sid && e.date === date; })[0] || null; }
+function stFirstVisit(sid, date){ var v = visitsOn(date).filter(function(x){ return !x.cx && (x.staffId === sid || x.withId === sid) && x.time; }).sort(function(a, b){ return a.time < b.time ? -1 : 1; })[0]; return v ? v.time : ''; }
+function stDue(sid, date, kind){ return kind === 'direct' ? stFirstVisit(sid, date) : workRule().start; }
+function stKindLabel(k){ return k === 'direct' ? '直行' : '出勤'; }
+function stToday(){ return ymd(new Date(srvNow())); }
+function stShouldAsk(){ if(navigator.webdriver) return false;   /* 自動の点検（ブラウザを機械が動かしているとき）は出さない。人が使う端末では出る */
+  var s = meStaff(); if(!s || D().kind === 'office' || jobOf(s) === '事務局') return false; var date = stToday(); if(offWhy(s.id, date)) return false; return !startRec(s.id, date); }
+function stPress(kind){
+  var s = meStaff(); if(!s) return; var d = new Date(srvNow()), date = ymd(d), at = pad(d.getHours()) + ':' + pad(d.getMinutes());
+  if(startRec(s.id, date)) return;
+  var due = stDue(s.id, date, kind), late = !!(due && toMin(at) != null && toMin(due) != null && toMin(at) > toMin(due));
+  var a = events(); a.push({ id:uid(), type:'start', staffId:s.id, date:date, kind:kind, at:at, due:due, late:late, by:s.id, created:nowLocal() });
+  saveEvents(a); var b = $('stStart'); if(b) b.remove();
+  refreshAll(); try{ syncNow(); }catch(e){}
+}
+function stPrompt(){
+  if($('stStart') || $('shPick') || !stShouldAsk()) return;
+  var s = meStaff(), date = stToday(); if(lj(ST_SKIP, '') === date) return;   /* 「あとで押す」を押した日は窓を出さず、上の帯だけ残す */
+  var w = workRule(), fv = stFirstVisit(s.id, date);
+  var box = document.createElement('div'); box.id = 'stStart';
+  box.innerHTML = '<div class="box"><h2 style="margin:0 0 6px">今日のスタート（' + esc(jpDate(date)) + '）</h2>' +
+    '<p class="muted" style="margin:0 0 10px">' + esc(s.name) + 'さん、出勤したら押してください。押した時刻が勤怠の記録になります。出勤時刻 ' + esc(w.start) + (fv ? '・今日の最初の訪問 ' + esc(fv) : '') + '</p>' +
+    '<button type="button" class="btn go" id="stGoOffice">出勤（事務所から）</button>' +
+    '<button type="button" class="btn go amber" id="stGoDirect">直行（利用者さんのお宅へ）</button>' +
+    '<p style="margin:10px 0 0"><button type="button" class="btn sub" id="stLater">あとで押す（上の帯に残ります）</button></p></div>';
+  document.body.appendChild(box);
+  $('stGoOffice').onclick = function(){ stPress('office'); };
+  $('stGoDirect').onclick = function(){ stPress('direct'); };
+  $('stLater').onclick = function(){ sj(ST_SKIP, date); box.remove(); stBar(); };
+}
+function stBar(){
+  var el = $('stBar'); if(!el) return;
+  if(!stShouldAsk()){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  var w = workRule(); el.style.display = '';
+  el.innerHTML = '今日のスタートをまだ押していません（出勤時刻 ' + esc(w.start) + '）。 <button type="button" class="btn small" id="stBarOffice" style="margin-left:6px">出勤</button> <button type="button" class="btn small amber" id="stBarDirect">直行</button>';
+  $('stBarOffice').onclick = function(){ stPress('office'); };
+  $('stBarDirect').onclick = function(){ stPress('direct'); };
+}
+/* 野木画面の勤怠：その月のスタートの記録（出勤・直行・遅刻・押し忘れ）。押し忘れは、スタートの記録が始まった日から今日までの出勤日のうち、記録の無い日 */
+function stMonth(s, m){
+  var all = events().filter(function(e){ return e.type === 'start'; }), first = all.map(function(e){ return e.date; }).sort()[0] || '';
+  var mine = all.filter(function(e){ return e.staffId === s.id && e.date && ym(e.date) === m; }).sort(function(a, b){ return a.date < b.date ? -1 : 1; });
+  var r = { office:0, direct:0, late:0, miss:[], days:mine };
+  mine.forEach(function(e){ if(e.kind === 'direct') r.direct++; else r.office++; if(e.late) r.late++; });
+  if(first){ var y = +m.slice(0, 4), mo = +m.slice(5, 7), today = stToday();
+    for(var d = 1; d <= 31; d++){ var dt = new Date(y, mo - 1, d); if(dt.getMonth() !== mo - 1) break; var date = ymd(dt); if(date < first || date > today) continue; if(offWhy(s.id, date)) continue; if(!mine.some(function(e){ return e.date === date; })) r.miss.push(date); } }
+  return r;
+}
 function tsCode(){
   var c = localStorage.getItem('trisight_access_code');
   if(c && /[^\x21-\x7E]/.test(c)){ localStorage.removeItem('trisight_access_code'); c = null; }
@@ -3800,9 +3862,12 @@ function ngRender(){
       }).join('') + '</table></div>' : '<p class="empty">この部門の職員がいません。</p>');
   } else if(NG.view === 'attend'){
     body = '<h2>出勤状況（' + esc(depName) + '・' + esc(jpMonth(m)) + '）</h2><p class="muted">看護記録のある日を出勤日として数え、予定のある日を下に並べています。所属と兼務のすべての部署の予定を見ます。</p>' +
-      (ppl.length ? '<div class="tbl-scroll"><table><tr><th>氏名</th><th>雇用形態</th><th class="num">出勤日数</th><th class="num">訪問の件数</th><th class="num">サービス時間</th><th>休み</th></tr>' + ppl.map(function(s){
-        var a = ngAttend(s, m);
-        return '<tr><td>' + esc(s.name) + '</td><td>' + esc(s.emp || '') + '</td><td class="num">' + a.recDays + '日<br><small class="muted">予定 ' + a.planDays + '日</small></td><td class="num">' + a.recN + '件<br><small class="muted">予定 ' + a.planN + '件</small></td><td class="num">' + minLabel(a.svc) + '</td><td><small>公休 ' + a.off['公休'] + '・祝日 ' + a.off['祝日'] + '・届け ' + a.off['届け'] + '日</small></td></tr>';
+      (ppl.length ? '<div class="tbl-scroll"><table><tr><th>氏名</th><th>雇用形態</th><th class="num">出勤日数</th><th class="num">訪問の件数</th><th class="num">サービス時間</th><th>休み</th><th>スタート（出勤時刻の厳守）</th></tr>' + ppl.map(function(s){
+        var a = ngAttend(s, m), st = stMonth(s, m);
+        /* 2026-11-06：スタートの記録＝出勤・直行の回数、遅刻の回数、押し忘れの日。日ごとの時刻は「日ごと」を開く */
+        var stCell = '<small>出勤 ' + st.office + '・直行 ' + st.direct + '回' + (st.late ? '・<b class="red">遅刻 ' + st.late + '回</b>' : '') + (st.miss.length ? '・<b class="red">押し忘れ ' + st.miss.length + '日</b>' : '') + '</small>' +
+          ((st.days.length || st.miss.length) ? '<details><summary><small>日ごと</small></summary><small>' + st.days.map(function(e){ return esc(jpDate(e.date)) + ' ' + esc(e.at) + ' ' + stKindLabel(e.kind) + (e.late ? '<b class="red">（遅刻・' + esc(e.due) + 'まで）</b>' : ''); }).concat(st.miss.map(function(d){ return esc(jpDate(d)) + ' <b class="red">押し忘れ</b>'; })).join('<br>') + '</small></details>' : '');
+        return '<tr><td>' + esc(s.name) + '</td><td>' + esc(s.emp || '') + '</td><td class="num">' + a.recDays + '日<br><small class="muted">予定 ' + a.planDays + '日</small></td><td class="num">' + a.recN + '件<br><small class="muted">予定 ' + a.planN + '件</small></td><td class="num">' + minLabel(a.svc) + '</td><td><small>公休 ' + a.off['公休'] + '・祝日 ' + a.off['祝日'] + '・届け ' + a.off['届け'] + '日</small></td><td>' + stCell + '</td></tr>';
       }).join('') + '</table></div>' : '<p class="empty">この部門の職員がいません。</p>');
   } else if(NG.view === 'seval' || NG.view === 'meval'){
     body = '<h2>' + (NG.view === 'meval' ? '管理者評価（管理者を評価する）' : '職員評価（管理者以外の職員を評価する）') + '</h2><p class="muted">会社評価です。評価の基準（区分・項目・重み・クラスの線）は下の「評価の基準」で書き換えます。初めに入っているのは見本です。</p><div id="ngEvSlot"></div>';
@@ -4418,6 +4483,7 @@ function applyDept(){
   /* 2026-11-01：管理者の合言葉の枠は、管理者の印が付いた人の端末と、管理者の画面が出ている端末だけに出す（職員の端末には出さない） */
   show('cardMgrKey', !((R.lv === 'staff' || R.lv === 'office') && !R.noKey));
   roleNote(R); sharedBar(); if(dev().share) sharedPick(false);
+  stBar(); stPrompt();   /* 2026-11-06：出勤日の最初の「スタート」 */
 }
 
 /* ---- 見る範囲（2026-10-27・宏史さんの決め）----
@@ -6921,7 +6987,8 @@ var MN_GUIDE = [
     ['公休・祝日休み', '職員の「公休の曜日」の印と「祝日は休み」の印で、休みの日が決まります。休みの日に訪問があると「要調整」と出ます。'],
     ['休みの届け', '「名簿・設定」の「休みの届け」で、その日だけの休みを入れます（「休みを入れる」）。'],
     ['翌月の予定の申告（非常勤）', '「名簿・設定」の「翌月の予定の申告（非常勤）」で、出られる日に印を付けて「この内容で申告する」。申告した月は、申告の日だけが出勤日になります。'],
-    ['勤務の決まり', '1日の目標件数・移動の目安（最短10分・最長20分）・出勤と退勤の時刻・休憩を決めます。予定は移動15分（最短と最長の真ん中）で組みます。']
+    ['勤務の決まり', '1日の目標件数・移動の目安（最短10分・最長20分）・出勤と退勤の時刻・休憩を決めます。予定は移動15分（最短と最長の真ん中）で組みます。'],
+    ['今日のスタート（毎日の決まり）', '出勤日に端末を開くと「今日のスタート」の窓が出ます。事務所に着いたら「出勤（事務所から）」、利用者さんのお宅へ直接行く日は「直行（利用者さんのお宅へ）」を押します。押した時刻が勤怠の記録になり、出勤時刻（直行はその日の最初の訪問の時刻）を過ぎて押すと遅刻の印が付きます。押さなくても画面は開きますが、上に帯が残り、押さなかった日は野木画面で「押し忘れ」に数えます。']
   ]],
   ['3. 利用者さんの登録（利用者登録）', [
     ['利用者さんを入れる', '「利用者登録」タブで契約書番号・氏名・地区（町名）・住所・本人の携帯などを入れて「この内容で登録する」。地区は町名で入れると、予定が町名で寄ります。'],

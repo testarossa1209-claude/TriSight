@@ -8023,7 +8023,7 @@ function cmpRender(m, opt){
   return h;
 }
 var CMP_LAST = null;
-function cmpMgrRender(m){ var c = $('cardCmpMgr'); if(!c) return; var on = D().kind === 'visit' && canSched() && R.lv !== 'staff' && R.lv !== 'none'; c.style.display = on ? '' : 'none'; if(!on) return; try{ $('cmpMgrBody').innerHTML = cmpRender(m, { mgr:true }); }catch(e){ $('cmpMgrBody').innerHTML = '<p class="empty">対比を出せませんでした。</p>'; } }
+function cmpMgrRender(m){ var c = $('cardCmpMgr'); if(!c) return; var rl = role(), on = D().kind === 'visit' && canSched() && rl.lv !== 'staff' && rl.lv !== 'none'; c.style.display = on ? '' : 'none'; if(!on) return; try{ $('cmpMgrBody').innerHTML = cmpRender(m, { mgr:true }); }catch(e){ $('cmpMgrBody').innerHTML = '<p class="empty">対比を出せませんでした。</p>'; } }
 function cmpHistRender(){
   var box = $('cmp_hist'); if(!box || !hasOwnKey()) return;
   evBoxGet('own:cmp:' + D().k).then(function(d){

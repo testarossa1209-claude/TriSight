@@ -342,7 +342,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-07-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-07-02</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -1038,6 +1038,12 @@ function tsPortalAsk(){
   <div class="card">
     <h2>見直しの時期が来た拒否の記録</h2>
     <div id="adReview"></div>
+  </div>
+  <!-- 2026-11-07（宏史さんの指示）：予定を作れる管理者の端末にも、管理者の表とAIの表の対比を出す。無駄な移動の区間は赤字 -->
+  <div class="card" id="cardCmpMgr" style="display:none">
+    <h2>予定表の対比（管理者の表とAIの表）</h2>
+    <p class="lead">上の「月」で選んだ月の、管理者が組んだ予定（人情バージョン）と、AIが効率だけで組み直した予定（効率バージョン）を並べます。下の「管理者の表の遠回り」の赤字の区間が、行ったり来たりになっているところです。</p>
+    <div id="cmpMgrBody"></div>
   </div>
 </section>
 
@@ -2470,6 +2476,7 @@ function renderHidden(){
 function renderAdmin(){
   renderHidden();
   var m = $('ad_month').value; if(!m) return;
+  cmpMgrRender(m);
   var s = settings(); var price = +s.price || 0, fee = +s.fee || 0;
   var rows = patients().map(function(p){ var a = monthStats(p.no, m), b = monthStats(p.no, prevYm(m)); return { no:p.no, area:p.area, a:a, b:b, f:flagsFor(p.no, m) }; })
     .filter(function(r){ return r.a.n || r.b.n; })
@@ -6965,6 +6972,7 @@ function kpRender(){
 }
 /* 印の意味（印が付く決まりを、画面の作りに合わせて書いたもの） */
 var MN_MARKS = [
+  ['赤字の区間（遠回り）', '管理者の窓の「予定表の対比」と野木画面の比較に出ます。管理者が組んだ1日の回り方を、同じ利用者さんのままAIの道順（事業所から出て、隣町でも近い人を先に回る順）と比べ、AIの道順に無い行ったり来たりの区間を赤字で出します。H&Nパトリオットの条項「道のりの無駄」は、人情変更の札が入った日も数えます。'],
   ['予定に付く印', [
     ['信用度 高・中・低（数字）', '直近90日のキャンセルから出す目安です。100点から、体調・病状によるキャンセルは1回3点、それ以外の理由は1回10点（前日の締め切りを過ぎた連絡なら、さらに5点）を引きます。80点以上が「高」、50点以上が「中」、それより下が「低」です。'],
     ['困難患者', 'その月のキャンセル・変更の回数が決まりの回数（「名簿・設定」の決まりごと。最初は3回）以上になった人、または「利用者登録」の「困難事例」に印を付けた人です。'],
@@ -7440,6 +7448,7 @@ function verCheck(){
 
 /* ---- 条項表（許容範囲外の条項）---- */
 var PTR_M = [
+  { k:'waste', t:'道のりの無駄（AIの道順より余分に走る距離・1人1日）', u:'km', src:'予定' },
   { k:'dayN',      t:'1日の件数（1人の職員）',                         u:'件',   src:'予定',           emp:true },
   { k:'gap',       t:'訪問と訪問の間（前の終わりから次の始まりまで）',   u:'分',   src:'予定' },
   { k:'dayArea',   t:'1日の町名の数（1人の職員）',                       u:'か所', src:'予定' },
@@ -7477,10 +7486,14 @@ function ptrDefaults(){
     { id:'r14', m:'late',      op:'以上', v:10,                       emp:'全員',   hard:true,  on:true },
     { id:'r15', m:'officeCx',  op:'以上', v:1,                        emp:'全員',   hard:true,  on:true },
     { id:'r16', m:'hvShare',   op:'超',   v:30,                       emp:'全員',   hard:true,  on:true },
-    { id:'r17', m:'hvRepeat',  op:'以上', v:3,                        emp:'全員',   hard:true,  on:true }
+    { id:'r17', m:'hvRepeat',  op:'以上', v:3,                        emp:'全員',   hard:true,  on:true },
+    { id:'r18', m:'waste', op:'以上', v:1, emp:'全員', hard:true, on:true }
   ];
 }
-function ptrRules(){ var s = lj(K.settings, {}) || {}; return (s.ptr && Array.isArray(s.ptr.rules)) ? s.ptr.rules : ptrDefaults(); }
+function ptrRules(){ var s = lj(K.settings, {}) || {}; var r = (s.ptr && Array.isArray(s.ptr.rules)) ? s.ptr.rules.slice() : ptrDefaults();
+  /* 2026-11-07：保存済みの条項表にも「道のりの無駄」を足す（人情変更の日も数える＝hard） */
+  if(!r.some(function(x){ return x.m === 'waste'; })) r.push({ id:'r18', m:'waste', op:'以上', v:1, emp:'全員', hard:true, on:true });
+  return r; }
 function ptrSaveRules(rules){ var cur = lj(K.settings, {}) || {}; saveSettings(Object.assign({}, cur, { ptr:Object.assign({}, cur.ptr || {}, { rules:rules, at:nowLocal() }) })); }
 function ptrHit(op, x, v){ x = +x; v = +v; if(isNaN(x) || isNaN(v)) return false; return op === '以上' ? x >= v : op === '超' ? x > v : op === '以下' ? x <= v : x < v; }
 function ptrRuleLabel(r){ var m = ptrMeasure(r.m); if(!m) return ''; return m.t + (r.emp && r.emp !== '全員' ? '（' + r.emp + '）' : '') + ' が ' + r.v + m.u + r.op; }
@@ -7533,6 +7546,8 @@ function ptrEvalPlan(days, vfn, rules, opt){
   Object.keys(byStaffDay).forEach(function(k){
     var g = byStaffDay[k], vs = g.vs.slice().sort(function(a, b){ return a.time < b.time ? -1 : 1; }), hvAll = vs.length && vs.every(function(v){ return !opt.noHv && hvOf(v); });
     var own = vs.filter(function(v){ return v.staffId === g.sid; });
+    /* 2026-11-07（宏史さんの指示）：道のりの無駄。人情変更の札が入った日も数える（人情変更で無駄距離を出しているかは管理者の能力の物差しの一つ） */
+    (byRule.waste || []).forEach(function(r){ if(!ptrEmpOk(r, g.sid)) return; var w = wasteDay(own); if(!w) return; var wv = Math.round(w.waste * 10) / 10; if(ptrHit(r.op, wv, r.v)) add(r, staffName(g.sid) + 'さん：' + jpDate(g.date) + 'は、AIの道順より ' + kmL(w.waste) + ' 余分に走る並びです（この日の道のり ' + kmL(w.h) + '・AIの道順なら ' + kmL(w.a) + '）', wasteText(w), own.map(pk), own.some(function(v){ return !opt.noHv && hvOf(v); })); });
     (byRule.dayN || []).forEach(function(r){ if(ptrEmpOk(r, g.sid) && ptrHit(r.op, own.length, r.v)) add(r, staffName(g.sid) + 'さん：' + jpDate(g.date) + 'は ' + own.length + '件（許容は' + r.v + '件' + r.op + 'で指摘）', own.map(function(v){ return v.time + ' ' + dn(v.no); }).join('、'), own.map(pk), hvAll); });
     (byRule.dayArea || []).forEach(function(r){ var ar = {}; own.forEach(function(v){ if(v.area) ar[v.area] = 1; }); var n = Object.keys(ar).length; if(ptrEmpOk(r, g.sid) && ptrHit(r.op, n, r.v)) add(r, staffName(g.sid) + 'さん：' + jpDate(g.date) + 'は町名が ' + n + 'か所に散っています（' + Object.keys(ar).join('・') + '）', own.length + '件', own.map(pk), hvAll); });
     (byRule.gap || []).forEach(function(r){
@@ -7924,9 +7939,43 @@ function cmpDiff(m, vH, vA){
   Object.keys(kA).forEach(function(k){ if(!kH[k]) rows.push({ no:kA[k].no, date:k.slice(0, 10), h:null, a:kA[k] }); });
   return rows.sort(function(x, y){ return (x.date + x.no) < (y.date + y.no) ? -1 : 1; });
 }
-function cmpRender(m){
+/* 2026-11-07（宏史さんの指示）：道のりの無駄。1人の職員の1日の訪問を、時刻の順（管理者の表）と、同じ顔ぶれをAIの道順（事業所から出て、隣町でも近い人を先に回る順）で並べたときとで比べる。
+   AIの道順で隣り合わない区間（行ったり来たり）を赤字の区間として返す */
+function kmL(x){ return (Math.round((+x || 0) * 10) / 10).toFixed(1) + 'km'; }
+function wasteDay(vs){
+  var pts = vs.filter(function(v){ return !v.cx; }).slice().sort(function(a, b){ return a.time < b.time ? -1 : 1; }).map(function(v){ var p = patient(v.no) || {}; return { v:v, no:v.no, lat:p.lat, lng:p.lng, area:p.area || v.area || '' }; }).filter(function(o){ return auLL(o); });
+  if(pts.length < 2) return null;
+  var off = officeGeo(), OF = '事業所';
+  var len = function(arr){ var sum = 0, prev = off; arr.forEach(function(o){ var ll = auLL(o); if(prev) sum += kmBetween(prev, ll) || 0; prev = ll; }); if(off && prev) sum += kmBetween(prev, off) || 0; return sum; };
+  var ai = auRoute(pts), hK = len(pts), aK = len(ai), waste = Math.max(0, hK - aK);
+  var key = function(a, b){ return [a, b].sort().join('>'); }, adj = {};
+  var chA = (off ? [OF] : []).concat(ai.map(function(o){ return o.no; })).concat(off ? [OF] : []);
+  for(var i = 1; i < chA.length; i++) adj[key(chA[i - 1], chA[i])] = 1;
+  var nodes = (off ? [{ no:OF, ll:off }] : []).concat(pts.map(function(o){ return { no:o.no, ll:auLL(o), t:o.v.time }; })).concat(off ? [{ no:OF, ll:off }] : []), legs = [];
+  for(var j = 1; j < nodes.length; j++){ var a = nodes[j - 1], b = nodes[j]; legs.push({ from:a.no, to:b.no, t:b.t || '', km:kmBetween(a.ll, b.ll) || 0, red:waste >= 0.05 && !adj[key(a.no, b.no)] }); }
+  return { h:hK, a:aK, waste:waste, legs:legs, ai:ai.map(function(o){ return o.no; }) };
+}
+function wasteName(no){ return no === '事業所' ? '事業所' : dnn(no); }
+function wasteText(w){ return '管理者の表：' + w.legs.map(function(l, i){ return (i ? '' : wasteName(l.from)) + ' →' + (l.red ? '【遠回り ' + kmL(l.km) + '】' : '') + ' ' + wasteName(l.to); }).join('') + '／AIの道順：' + w.ai.map(dnn).join(' → '); }
+function wasteHTML(w){
+  return '<div>' + w.legs.map(function(l, i){ return (i ? '' : '<b>' + esc(wasteName(l.from)) + '</b>') + (l.red ? ' <span style="color:var(--red);font-weight:700">→（' + esc(kmL(l.km)) + '・遠回り）→</span> ' : ' <span class="muted">→（' + esc(kmL(l.km)) + '）→</span> ') + '<b' + (l.red ? ' style="color:var(--red)"' : '') + '>' + (l.t ? esc(l.t) + ' ' : '') + esc(wasteName(l.to)) + '</b>'; }).join('') + '</div>' +
+    '<div class="muted sm">AIの道順なら：' + esc((officeGeo() ? '事業所 → ' : '') + w.ai.map(dnn).join(' → ') + (officeGeo() ? ' → 事業所' : '')) + '</div>';
+}
+/* 1か月分：職員×日ごとの無駄距離 */
+function cmpWaste(m, vfn){
+  var out = { km:0, hvKm:0, hvDays:0, days:[] };
+  mdDays(m).forEach(function(date){
+    var by = {}; (vfn(date) || []).forEach(function(v){ if(v.cx) return; (by[v.staffId] = by[v.staffId] || []).push(v); });
+    Object.keys(by).forEach(function(sid){ var w = wasteDay(by[sid]); if(!w || w.waste < 0.05) return; var hv = by[sid].some(function(v){ return hvOf(v); }); out.km += w.waste; if(hv){ out.hvKm += w.waste; out.hvDays++; } out.days.push({ date:date, sid:sid, w:w, hv:hv }); });
+  });
+  out.days.sort(function(a, b){ return b.w.waste - a.w.waste; });
+  return out;
+}
+function cmpRender(m, opt){
+  opt = opt || {};
   var vH = visitsOn, rows = cmpAiRows(), vA = cmpVisitsFn(rows), rules = ptrRules();
   if(!patients().length) return '<p class="empty">この部署に利用者さんがまだいません。</p>';
+  var WH = cmpWaste(m, vH), WA = cmpWaste(m, vA);
   var H = cmpScore(m, vH, true), A = cmpScore(m, vA, false), fH = cmpForecast(m, H), fA = cmpForecast(m, A), df = cmpDiff(m, vH, vA);
   var pH = ptrEvalPlan(mdDays(m), vH, rules, { month:m }), pA = ptrEvalPlan(mdDays(m), vA, rules, { month:m, noHv:true });
   var pct = function(a, b){ return b ? Math.round(a / b * 100) + '%（' + a + '／' + b + '）' : '—'; };
@@ -7942,6 +7991,7 @@ function cmpRender(m){
     tr('移動に使う時間（月の合計）', minLabel(H.travel), minLabel(A.travel), lo, H.travel, A.travel) +
     tr('空き時間（月の合計）', minLabel(H.idle), minLabel(A.idle), lo, H.idle, A.idle) +
     tr('許容範囲を超える日（職員×日）', H.over + '日', A.over + '日', lo, H.over, A.over) +
+    tr('道のりの無駄（AIの道順より余分に走る距離・月の合計）', kmL(WH.km), kmL(WA.km), lo, Math.round(WH.km * 10), Math.round(WA.km * 10)) +
     tr('売上見込み（1か月）', mdYen(H.sales), mdYen(A.sales), hi, H.sales, A.sales) +
     tr('条項表の指摘（人情変更を除く）', pH.filter(function(f){ return !f.hv; }).length + '件', pA.length + '件', lo, pH.filter(function(f){ return !f.hv; }).length, pA.length) +
     '<tr><th colspan="3" style="text-align:left;background:#fbf3e4">人情の目</th></tr>' +
@@ -7950,6 +8000,7 @@ function cmpRender(m){
     tr('信用度「低」の利用者への訪問', H.trustLow + '件', A.trustLow + '件') +
     tr('拒否の申し出のある職員への配置', H.refuseHit + '件', A.refuseHit + '件', lo, H.refuseHit, A.refuseHit) +
     tr('人情変更の札', H.hv + '件', '—') +
+    tr('人情変更の札が入った日の道のりの無駄', WH.hvDays + '日・' + kmL(WH.hvKm), '—') +
     '<tr><th colspan="3" style="text-align:left;background:#eef3f8">この組み方で1か月続けたら</th></tr>' +
     tr('売上（1か月／3か月）', mdYen(fH.sales1) + '／' + mdYen(fH.sales3), mdYen(fA.sales1) + '／' + mdYen(fA.sales3), hi, fH.sales1, fA.sales1) +
     (fH.goal ? tr('目標設定額との差（' + mdYen(fH.goal) + '）', (fH.goalDiff >= 0 ? '+' : '') + mdYen(fH.goalDiff), (fA.goalDiff >= 0 ? '+' : '') + mdYen(fA.goalDiff), hi, fH.goalDiff, fA.goalDiff) : '<tr><th style="text-align:left">目標設定額との差</th><td colspan="2" class="muted">目標設定額が入っていないため出していません（モデルコース）</td></tr>') +
@@ -7958,12 +8009,21 @@ function cmpRender(m){
     '<p class="muted sm">計算の元：件数と移動・空きは各日の訪問の時刻の並びから（移動の目安 ' + workRule().mvMin + '〜' + workRule().mvMax + '分）。売上は料金表（モデルコースと同じ）。希望は利用者登録の「予定の希望」。' + esc(fH.cxNote) + '。</p>';
   h += '<h3 style="margin:12px 0 4px;font-size:15px">違い（' + df.length + '件）</h3>' + (df.length ? '<div class="tbl-scroll" style="max-height:360px;overflow:auto"><table><tr><th>日</th><th>利用者</th><th>人情（管理者）</th><th>効率（AI）</th></tr>' + df.map(function(r){
     return '<tr><td>' + esc(jpDate(r.date)) + '</td><td>' + esc(dnn(r.no)) + '</td><td>' + (r.h ? esc(r.h.time + ' ' + staffName(r.h.staffId)) + (hvOf(r.h) ? ' <span class="tag amber">人情</span>' : '') : '<span class="muted">—</span>') + '</td><td>' + (r.a ? esc(r.a.time + ' ' + staffName(r.a.staffId)) : '<span class="muted">—</span>') + '</td></tr>'; }).join('') + '</table></div>' : '<p class="muted">担当・時刻（15分超）の違う訪問はありません。</p>');
+  /* 2026-11-07（宏史さんの指示）：管理者の表の、無用な移動の区間を赤字で出す（AIの道順と比べて） */
+  var bigW = WH.days.filter(function(x){ return x.w.waste >= 0.5; });
+  h += '<h3 style="margin:12px 0 4px;font-size:15px">管理者の表の遠回り（赤字の区間）<small class="muted" style="font-weight:400">　AIの道順より0.5km以上余分に走る日・' + bigW.length + '件（多い順）</small></h3>' +
+    (bigW.length ? '<div class="tbl-scroll" style="max-height:420px;overflow:auto"><table><tr><th>日</th><th>職員</th><th>余分</th><th>管理者の表の回り方（赤字＝AIの道順に無い行ったり来たり）</th></tr>' + bigW.slice(0, 40).map(function(x){
+      return '<tr><td>' + esc(jpDate(x.date)) + '</td><td>' + esc(staffName(x.sid)) + (x.hv ? '<br><span class="tag amber">人情変更あり</span>' : '') + '</td><td class="num" style="color:var(--red);font-weight:700">＋' + esc(kmL(x.w.waste)) + '</td><td>' + wasteHTML(x.w) + '</td></tr>'; }).join('') + '</table></div>' + (bigW.length > 40 ? '<p class="muted sm">多い順に40件まで出しています。</p>' : '')
+    : '<p class="muted">0.5km以上の遠回りになっている日はありません（位置の取れている利用者さんの分で見ています）。</p>') +
+    '<p class="muted sm">距離は地図上のまっすぐな距離で比べています（道路の距離ではありません）。事業所の位置は「名簿・設定」→「事業所と取引先」の事業所の住所から取ります。</p>';
   h += '<details style="margin-top:10px"><summary>H&amp;Nパトリオットの指摘を見る（左右それぞれ）</summary><div class="row"><div>' + ptrFindingsHTML(pH, rules) + '</div><div>' + ptrFindingsHTML(pA, rules) + '</div></div></details>';
+  if(opt.mgr) return h;   /* 管理者の窓：記録のボタンは野木画面だけ */
   h += '<div class="btns" style="margin-top:10px"><button type="button" class="btn" id="cmp_save">この月の比較を記録する</button><span class="muted sm" id="cmp_msg"></span></div><div id="cmp_hist"></div>';
   CMP_LAST = { m:m, dept:D().k, at:nowLocal(), H:{ n:H.n, avg:H.avg, travel:H.travel, idle:H.idle, over:H.over, sales:H.sales, ptr:pH.filter(function(f){ return !f.hv; }).length, wish:[H.wishOk, H.wishAll], fix:[H.fixOk, H.fixAll], hv:H.hv }, A:{ n:A.n, avg:A.avg, travel:A.travel, idle:A.idle, over:A.over, sales:A.sales, ptr:pA.length, wish:[A.wishOk, A.wishAll], fix:[A.fixOk, A.fixAll] } };
   return h;
 }
 var CMP_LAST = null;
+function cmpMgrRender(m){ var c = $('cardCmpMgr'); if(!c) return; var on = D().kind === 'visit' && canSched() && R.lv !== 'staff' && R.lv !== 'none'; c.style.display = on ? '' : 'none'; if(!on) return; try{ $('cmpMgrBody').innerHTML = cmpRender(m, { mgr:true }); }catch(e){ $('cmpMgrBody').innerHTML = '<p class="empty">対比を出せませんでした。</p>'; } }
 function cmpHistRender(){
   var box = $('cmp_hist'); if(!box || !hasOwnKey()) return;
   evBoxGet('own:cmp:' + D().k).then(function(d){

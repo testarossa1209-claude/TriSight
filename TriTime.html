@@ -5062,7 +5062,8 @@ function renderToday(){
     if(ofc){ ll.push([ofc.lat, ofc.lng]); L.marker([ofc.lat, ofc.lng], { icon:L.divIcon({ className:'tdOffice', html:'<span style="display:inline-block;background:#0f1d3a;color:#fff;border-radius:6px;padding:2px 6px;font-size:12px;font-weight:700;white-space:nowrap">会社</span>', iconSize:[44, 22], iconAnchor:[22, 11] }) }).bindTooltip('会社（スタート・お昼に戻る所）').addTo(tdLayer); }
     who.forEach(function(id){ var h = shown.filter(function(x){ return x.sid === id; }); var l2 = h.map(function(x){ return [x.lat, x.lng]; }); if(ofc && l2.length){ l2.unshift([ofc.lat, ofc.lng]); l2.push([ofc.lat, ofc.lng]); } if(l2.length > 1){ L.polyline(l2, { color:colOf(id), weight:3, opacity:.7, dashArray:'6 6' }).addTo(tdLayer); tdArrows(l2, colOf(id)); } });
     shown.forEach(function(x){
-      L.marker([x.lat, x.lng], { icon:L.divIcon({ className:'tdPin', html:'<span' + (ALL ? ' style="background:' + colOf(x.sid) + ';border-radius:50%"' : '') + '>' + x.n + '</span>', iconSize:[28, 28], iconAnchor:[14, 14] }) }).bindTooltip(esc(x.t)).addTo(tdLayer);
+      /* 2026-11-07（宏史さんの指示）：職員を一人選んだときは、地図の印に番号を出さない（回る順は線の矢印で分かる。誰の家かは印に触れると出る）。「全員」のときは職員ごとの番号を出す */
+      L.marker([x.lat, x.lng], { icon:L.divIcon({ className:'tdPin', html:'<span' + (ALL ? ' style="background:' + colOf(x.sid) + ';border-radius:50%"' : '') + '>' + (ALL ? x.n : '') + '</span>', iconSize:ALL ? [28, 28] : [16, 16], iconAnchor:ALL ? [14, 14] : [8, 8] }) }).bindTooltip(esc(x.t)).addTo(tdLayer);
     });
     if(!ll.length) ll = pts.map(function(x){ return [x.lat, x.lng]; });
     setTimeout(function(){ tdMap.invalidateSize(); if(ll.length > 1) tdMap.fitBounds(ll, { padding:[30, 30] }); else tdMap.setView(ll[0], 16); }, 50);

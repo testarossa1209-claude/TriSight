@@ -45,7 +45,7 @@ async def test(p):
         # 利用者登録の遠方の印
         await pg.evaluate("document.querySelector('#tabs button[data-tab=pt]').click()"); await pg.wait_for_timeout(300)
         await pg.fill('#pt_no', '2010-01-看-9002'); await pg.click('#pt_load'); await pg.wait_for_timeout(300)
-        await pg.evaluate("document.getElementById('pt_far').checked = true"); await pg.click('#pt_add'); await pg.wait_for_timeout(500)
+        await pg.evaluate("document.getElementById('pt_far').checked = true"); await pg.evaluate("document.getElementById('pt_anyTime').checked = true"); await pg.click('#pt_add'); await pg.wait_for_timeout(500)
         pt = await pg.evaluate("JSON.parse(localStorage.getItem('tritime_patients')).filter(function(x){ return x.no==='2010-01-看-9002'; })[0]")
         assert pt['far'] is True, '遠方の印が保存されません'
         await pg.evaluate("var a=JSON.parse(localStorage.getItem('tritime_patients')); a.forEach(function(x){ if(x.no==='2010-01-看-9002') x.far=false; }); localStorage.setItem('tritime_patients', JSON.stringify(a));")

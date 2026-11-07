@@ -3,7 +3,7 @@
 架空の職員・利用者だけで作った記録を試験の中で入れて確かめる（本物の情報は使わない）。
 ・本スケジュール表（「予定」の地図の下）でも、予定を組む人の端末では今日以降の札が動かせる（dg の印）
 ・週間予定の1件に人情変更の印が付いていると、本スケジュール表の札に点線と「人情」が出る
-・「H&Nパトリオット」を押すと、条項表（17条）で確かめた指摘が根拠付きで出る。人情変更の札は、効率だけの条項（訪問の間が短い）では指摘されず、
+・「H&Nパトリオット」を押すと、条項表（18条・2026-11-07に「道のりの無駄」を追加）で確かめた指摘が根拠付きで出る。人情変更の札は、効率だけの条項（訪問の間が短い）では指摘されず、
   度が過ぎた条項（訪問の間が20分超）では「人情変更」の印付きで指摘される。指摘を押すと表の札が光る。押した記録（type patriot）が残る
 ・札を動かす小窓に「変更の理由」が出て、「人情変更（…）」を選んで動かすと、組み換えの記録に why・hv・note が残り、札が点線になる
 ・「伝票」タブ：架空の伝票CSV（Shift-JIS）を読むと見出しから列が当たり、氏名で利用者が合う。保管すると月ごとの記録（type slips）に残り、
@@ -58,10 +58,15 @@ SEED = """(function(t){
 })()"""
 
 async def test(p):
-    today = datetime.date.today(); mon = today - datetime.timedelta(days=today.weekday())
+    # 2026-11-07：この試験は「今日以降の札」を使うため、土日に動かすと札が無く落ちていた。土日は試験の中だけ「今日」を次の水曜日に置き換える（製品の画面は変えない）
+    real = datetime.date.today(); today = real if real.weekday() < 5 else real + datetime.timedelta(days=9 - real.weekday())
+    shift = (today - real).days * 86400000
+    mon = today - datetime.timedelta(days=today.weekday())
     csv = make_csv(mon)
     s = Screen(); pg = await s.open(p, 'TriTime.html', w=1300, h=1000)
     try:
+        if shift:
+            await pg.add_init_script("(function(o){ var D = Date; function F(){ var a = [].slice.call(arguments); if(!(this instanceof F)) return new D(D.now() + o).toString(); return a.length ? new (Function.prototype.bind.apply(D, [null].concat(a)))() : new D(D.now() + o); } F.prototype = D.prototype; F.now = function(){ return D.now() + o; }; F.parse = D.parse; F.UTC = D.UTC; window.Date = F; })(" + str(shift) + ")")
         await pg.evaluate(SEED)
         await pg.reload(); await pg.wait_for_timeout(1200)
         await pg.evaluate("window.confirm = function(){ return true; }")
@@ -80,7 +85,7 @@ async def test(p):
         assert await pg.query_selector('#ptr_td'), '本スケジュール表の下に「H&Nパトリオット」のボタンがありません'
         await pg.evaluate("document.getElementById('ptr_td').click()"); await pg.wait_for_timeout(600)
         out = await pg.inner_text('#ptr_tdbox')
-        assert 'H&Nパトリオットの指摘（条項表の 17条で確かめました）' in out, '指摘の見出しが出ません：' + out[:120]
+        assert 'H&Nパトリオットの指摘（条項表の 18条で確かめました）' in out, '指摘の見出しが出ません：' + out[:120]
         assert '問題なし' not in out and '大丈夫' not in out, '安全宣言が出ています'
         assert '2名体制の指示ですが、同行が組まれていません' in out, '2名体制の同行なしの指摘が出ません'
         assert '訪問できない曜日（火）に入っています' in out, '訪問できない曜日の指摘が出ません'

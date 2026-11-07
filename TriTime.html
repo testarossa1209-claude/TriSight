@@ -5362,12 +5362,24 @@ function auMake(course){
     }).join('');
     return '<tr><th class="who">' + esc(x.s.name) + '<small>' + (x.full ? '常勤' : '非常勤') + (course ? '・コースの枠' : '・1日 ' + x.cap + '件まで') + '</small><small>週 ' + w + '件</small></th>' + cells + '</tr>';
   }).join('');
+  /* 希望の言い方（ご案内の文に使う） */
+  var auWishLabel = function(p){ var d = (p.wDays || []).map(function(x){ return DOW[+x] + '曜'; }).join('・'); return 'ご希望の' + (d ? d + 'の' : '') + (p.wish ? p.wish + 'ごろ' : p.band ? p.band : 'お時間'); };
+  /* 組んだ後に残っている枠から、その人の希望に近い代わりの候補を3つまで（希望の曜日 → 希望の時間帯の順に寄せる） */
+  var auAlt = function(p){ var c = [];
+    ['1','2','3','4','5','6'].forEach(function(d){ if((p.ngDays || []).indexOf(d) >= 0) return; ['am', 'pm'].forEach(function(k){
+      var f = ST.reduce(function(t, x){ if(x.days.indexOf(d) < 0) return t; var hc = fsHalfCap(capOf(x, d)), n = rows.filter(function(r){ return r.staffId === x.s.id && String(r.dow) === d && ((toMin(r.time) < AU_HALF) === (k === 'am')); }).length; return t + Math.max(0, hc[k] - n); }, 0);
+      if(f < 1) return; var sc = ((p.wDays || []).indexOf(d) >= 0 ? 0 : 2) + ((p.band === '午前' && k !== 'am') || (p.band === '午後' && k !== 'pm') || (p.wish && ((toMin(p.wish) < AU_HALF) !== (k === 'am'))) ? 1 : 0);
+      c.push({ s:sc, t:DOW[+d] + '曜の' + (k === 'am' ? '午前' : '午後') }); }); });
+    return c.sort(function(a, b){ return a.s - b.s; }).slice(0, 3).map(function(o){ return o.t; }); };
   var slotsW = course ? ST.reduce(function(t, x){ return t + x.days.reduce(function(u, d){ return u + capOf(x, d); }, 0); }, 0) : 0;
   $('au_out').innerHTML = (course ? '<div class="judge ' + (tot < slotsW ? 'fee' : 'free') + '" style="margin:8px 0"><b style="font-size:15px;color:var(--ink)">目標設定額 ' + esc(mdYenShort(course.goal)) + 'コースの枠（週 ' + slotsW + '件）に、いまの患者さんを当てはめました。埋まったのは週 ' + tot + '件、空きは週 ' + Math.max(0, slotsW - tot) + '件です。</b>' + (tot < slotsW ? '<br>空き（点線の枠）は、新しい患者さんと、いまの患者さんの回数を上げる分で埋めていく枠です。埋め方は「モデルコースの見本」の「選んだコースに届くまでの道のり」と「アプローチの見本」にあります。' : '') + (course.free ? '<br>このコースは、利用者を仮に <b>' + course.users + '人</b>として組んだ見本です（患者さん登録は ' + P.length + '人）。' + (course.users > P.length ? '仮の ' + course.users + '人までは、あと ' + (course.users - P.length) + '人です。' : '') + 'その人数でこのコースに届かせるやり方は、「モデルコースの見本」の「アプローチの見本」にあります。' : '') + '</div>' : '') +
     '<div class="judge ' + (miss.length ? 'fee' : 'free') + '" style="margin:8px 0">利用中の患者さん ' + P.length + '人・週 ' + need + '回のうち、<b>週 ' + tot + '回</b>を振り分けました。' +
-    (miss.length ? '<br><b>入りきらなかった患者さん：' + miss.map(function(p){ return esc(dnn(p.no)) + '（' + esc(p.area) + '・週' + p.f + '回）'; }).join('、') + '</b>。1日の件数の上限を上げるか、手で入れてください。' : '') + '</div>' +
+    (miss.length ? '<br><b>入りきらなかった患者さん：</b>' + miss.map(function(p){ var a = auAlt(p); return '<br>・' + esc(dnn(p.no)) + '（' + esc(p.area) + '・週' + p.f + '回）：' + (a.length ? '代わりに入れられる枠＝<b>' + esc(a.join('、')) + '</b><br>　<small>ご案内（読み上げ用）：「' + esc(auWishLabel(p)) + 'は、あいにく埋まっております。' + esc(a.join('、')) + 'でしたら伺えます。いかがでしょうか。」</small>' : '空いている枠がありません。常勤・非常勤とも上限まで埋まっています（1日の件数の上限か、出勤日の見直しが要ります）'); }).join('') : '') + '</div>' +
     (function(){ var w = P.filter(function(p){ return p.why.length; }), t2 = P.filter(function(p){ return p.team === '2名' && !(info[p.no] && info[p.no].withId); });
-      return (w.length ? '<div class="judge fee" style="margin:8px 0"><b>希望どおりに組めなかった人</b><ul style="margin:4px 0 0 18px">' + w.map(function(p){ return '<li>' + esc(dnn(p.no)) + '：' + esc(p.why.join('／')) + '</li>'; }).join('') + '</ul>希望に合わせるには、担当や曜日を週間予定で手直ししてください。</div>' : '') +
+      /* 2026-11-07（宏史さんの指摘「希望通りに組めなかった人をなぜはじくのか。人気の時間帯は代わりの曜日と時間を出すことで解決すると決めた」）：
+         手直しを頼むのをやめ、組んだ代わりの曜日・時刻と、利用者さんへ読み上げるご案内の文を出す */
+      return (w.length ? '<div class="judge fee" style="margin:8px 0"><b>希望どおりの枠が埋まっていた人（代わりの曜日・時刻で組みました）</b><ul style="margin:4px 0 0 18px">' + w.map(function(p){ var got = rows.filter(function(r){ return r.no === p.no; }).map(function(r){ return DOW[+r.dow] + '曜 ' + r.time; });
+          return '<li>' + esc(dnn(p.no)) + '：' + esc(p.why.join('／')) + '<br><small>ご案内（読み上げ用）：「' + esc(auWishLabel(p)) + 'は、あいにく埋まっております。' + esc(got.join('、')) + 'でしたら伺えます。いかがでしょうか。」</small></li>'; }).join('') + '</ul>ご了承をいただけない方は、「空いている曜日と時間帯を見る」（利用者登録）で、ほかの空きをご案内できます。</div>' : '') +
         ''; })() +
     (function(){ var nos = {}; out.forEach(function(o){ nos[o.p.no] = 1; }); return '<div id="au_pdiff">' + auDiffHTML(auDiff(wk, rows, nos), 'いまの週間予定から変わる訪問', 'いまの週間予定から、曜日と担当の変わる訪問はありません。') + '</div>'; })() +
     (function(){ /* 2026-11-03：週の回数をどこから取ったかを、患者さんごとに出す。取り決めの欄が読めなかった人は先に知らせる */
@@ -7142,7 +7154,7 @@ var MN_MARKS = [
   ]],
   ['自動の振り分け（「予定」の2つ目の枠）の見方', [
     ['希望 ○○（赤字）', '組まれた時刻・時間帯が、本人の希望とずれています。'],
-    ['希望どおりに組めなかった人', '希望の曜日・時刻・時間帯を守れなかった人と、その理由です。週間予定で手直ししてください。'],
+    ['希望どおりの枠が埋まっていた人', '希望の曜日・時刻・時間帯が埋まっていたため、代わりの曜日・時刻で組んだ人です。組んだ枠と、利用者さんへ読み上げるご案内の文が出ます。入りきらなかった人には、残っている枠から代わりの候補が出ます。'],
     ['同行の欄が空の人', '2名体制の希望があるのに、週間予定の同行の欄が空の人です。売上は2名で数えています（週の1回目を看護補助者、2回目以降を看護師の加算）。同行する人か、「2名（看護師・未定）」「2名（准看護師・未定）」「2名（看護補助者・未定）」を、「名簿・設定」の「週間予定」の一覧の同行の欄で選んでください。選ぶとすぐ残ります。'],
     ['点線の「空き ○件」', 'モデルコースの枠のうち、まだ患者さんが入っていない枠です。']
   ]]

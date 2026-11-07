@@ -342,7 +342,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-07-03</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-07-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -5023,7 +5023,7 @@ function renderToday(){
   if($('hb_open')) $('hb_open').onclick = hbToggle; if(window.HB && HB.on) hbRender();
   if($('pw_open')) $('pw_open').onclick = pwOpen;   /* 2026-11-05：予定表の作り方を選ぶ */
   if($('js_open')) $('js_open').onclick = jsOpen;   /* 2026-11-05：管理者へ上申する（一般の職員） */   /* 最初の描画はこの宣言より前に走る */
-  var pts = live.map(function(v, i){ var p = patient(v.no) || {}; return p.lat ? { n:ALL ? v._n : i + 1, sid:v.staffId, lat:+p.lat, lng:+p.lng, t:(ALL ? staffName(v.staffId) + ' ' : '') + v.time + ' ' + dnn(v.no) } : null; }).filter(Boolean);
+  var pts = live.map(function(v, i){ var p = patient(v.no) || {}; return p.lat ? { n:ALL ? v._n : i + 1, sid:v.staffId, tm:v.time, lat:+p.lat, lng:+p.lng, t:(ALL ? staffName(v.staffId) + ' ' : '') + v.time + ' ' + dnn(v.no) } : null; }).filter(Boolean);
   if(!pts.length){ $('td_map').style.display = 'none'; if(live.length) $('td_week').insertAdjacentHTML('afterbegin', '<p class="muted">地図に出せる訪問先がありません。利用者登録で住所（番地まで）を入れ、「住所から位置を取る」を押してください。</p>'); return; }
   $('td_map').style.display = '';
   leafletLoad().then(function(){
@@ -5035,7 +5035,10 @@ function renderToday(){
     tdLayer = L.layerGroup().addTo(tdMap);
     var ll = pts.map(function(x){ return [x.lat, x.lng]; });
     /* 全員のときは、職員ごとに色を分けて、回る順の線と番号を出す */
-    who.forEach(function(id){ var l2 = pts.filter(function(x){ return x.sid === id; }).map(function(x){ return [x.lat, x.lng]; }); if(l2.length > 1) L.polyline(l2, { color:colOf(id), weight:3, opacity:.7, dashArray:'6 6' }).addTo(tdLayer); });
+    /* 2026-11-07（宏史さんの指示）：地図のスタートは会社。お昼にほぼ全員が会社へ戻るので、線は「会社→午前の訪問→会社」「会社→午後の訪問→会社」の二回りで描く。番号は利用者さんだけ */
+    var ofc = officeGeo();
+    if(ofc){ ll.push([ofc.lat, ofc.lng]); L.marker([ofc.lat, ofc.lng], { icon:L.divIcon({ className:'tdOffice', html:'<span style="display:inline-block;background:#0f1d3a;color:#fff;border-radius:6px;padding:2px 6px;font-size:12px;font-weight:700;white-space:nowrap">会社</span>', iconSize:[44, 22], iconAnchor:[22, 11] }) }).bindTooltip('会社（スタート・お昼に戻る所）').addTo(tdLayer); }
+    who.forEach(function(id){ var mine = pts.filter(function(x){ return x.sid === id; }); [mine.filter(function(x){ return toMin(x.tm) < AU_HALF; }), mine.filter(function(x){ return toMin(x.tm) >= AU_HALF; })].forEach(function(h){ var l2 = h.map(function(x){ return [x.lat, x.lng]; }); if(ofc && l2.length){ l2.unshift([ofc.lat, ofc.lng]); l2.push([ofc.lat, ofc.lng]); } if(l2.length > 1) L.polyline(l2, { color:colOf(id), weight:3, opacity:.7, dashArray:'6 6' }).addTo(tdLayer); }); });
     pts.forEach(function(x){
       L.marker([x.lat, x.lng], { icon:L.divIcon({ className:'tdPin', html:'<span' + (ALL ? ' style="background:' + colOf(x.sid) + ';border-radius:50%"' : '') + '>' + x.n + '</span>', iconSize:[28, 28], iconAnchor:[14, 14] }) }).bindTooltip(esc(x.t)).addTo(tdLayer);
     });
@@ -5101,8 +5104,44 @@ function auTidy(tl){
     }
   }
 }
+/* 2026-11-07（宏史さんの指示）：回る順は、午前・午後それぞれを「会社を出て会社に戻る」一回りとし、その中のすべての並び方を比べて一番短いものを選ぶ。
+   同じ長さなら、遠い所から先に回り、会社の近くで終わる向きにする（延長や内勤に戻るときに無理が出にくい）。一回りの件数が8件を超えるときだけ、近い順につなぐ組み方にする */
+/* 端末で覚えた件数の上限。2026-11-07：常勤の基準を9件にしたので、前に覚えた8件（n9の印なし）は9件に読み替える */
+function auCaps(){ var c = lj('tritime_au_caps', {}) || {}; if(+c.f === 8 && !c.n9) c.f = 9; return c; }
+var AU_HALF = 720;   /* 12:00 より前を午前、以後を午後（1日の流れの枠 mhDay の昼休みの始まりと同じ） */
+function auLoop(arr){ var off = officeGeo(), sum = 0, prev = off; arr.forEach(function(o){ var ll = auLL(o); if(prev && ll) sum += kmBetween(prev, ll) || 0; if(ll) prev = ll; }); if(off && prev && arr.length) sum += kmBetween(prev, off) || 0; return sum; }
+function auLastLeg(arr){ var off = officeGeo(); if(!off || !arr.length) return 0; var ll = auLL(arr[arr.length - 1]); return ll ? (kmBetween(ll, off) || 0) : 0; }
+function auPerms(n){ var out = [], a = []; for(var i = 0; i < n; i++) a.push(i); (function rec(k){ if(k === n){ out.push(a.slice()); return; } for(var i = k; i < n; i++){ var t = a[k]; a[k] = a[i]; a[i] = t; rec(k + 1); t = a[k]; a[k] = a[i]; a[i] = t; } })(0); return out; }
+function auBetter(len, last, bLen, bLast){ return len < bLen - 0.05 || (Math.abs(len - bLen) <= 0.05 && last < bLast - 0.01); }
+/* 位置のある点の並びを、一番短い一回りにする */
+function auBestOrder(pts){
+  if(pts.length < 2) return pts.slice();
+  if(pts.length > 8 || !officeGeo()) return auRoute(pts);
+  var best = null, bL = 1e9, bE = 1e9;
+  auPerms(pts.length).forEach(function(pm){ var arr = pm.map(function(i){ return pts[i]; }), L0 = auLoop(arr), E0 = auLastLeg(arr); if(auBetter(L0, E0, bL, bE)){ best = arr; bL = L0; bE = E0; } });
+  return best;
+}
+/* 時刻の割り当て（tl＝{p, t, fix, two}）を、午前・午後それぞれで、希望時刻の人は動かさず、残りの人の時刻を入れ替えて一番短い一回りにする */
+function auBestTimes(tl){
+  [function(o){ return o.t < AU_HALF; }, function(o){ return o.t >= AU_HALF; }].forEach(function(inHalf){
+    var half = tl.filter(inHalf), mv = half.filter(function(o){ return !o.fix && auLL(o.p); });
+    if(mv.length < 2) return;
+    if(mv.length > 8){ auTidy(half); return; }
+    var times = mv.map(function(o){ return o.t; }).sort(function(a, b){ return a - b; }), orig = mv.map(function(o){ return o.p; });
+    var seqOf = function(){ return half.slice().sort(function(a, b){ return a.t - b.t; }).map(function(o){ return o.p; }); };
+    var twoBreaks = function(){ var s = half.slice().sort(function(a, b){ return a.t - b.t; }), n = 0; for(var i = 1; i < s.length; i++) if(s[i].two !== s[i - 1].two) n++; return n; };
+    var best = null, bL = 1e9, bE = 1e9, bB = 1e9;
+    auPerms(mv.length).forEach(function(pm){
+      pm.forEach(function(j, i){ mv[j].t = times[i]; });
+      var sq = seqOf(), L0 = auLoop(sq), E0 = auLastLeg(sq), B0 = twoBreaks();
+      /* 2名体制の続きを崩す並びは選ばない（崩れの少ないものを先に） */
+      if(B0 < bB || (B0 === bB && auBetter(L0, E0, bL, bE))){ best = mv.map(function(o){ return o.t; }); bL = L0; bE = E0; bB = B0; }
+    });
+    if(best) mv.forEach(function(o, i){ o.t = best[i]; });
+  });
+}
 function auCompute(opt){
-  opt = opt || {}; var course = opt.course || null, capF = Math.max(1, +opt.capF || 8), capP = Math.max(1, +opt.capP || 5), kf = opt.keep === false ? 0 : 1;
+  opt = opt || {}; var course = opt.course || null, capF = Math.max(1, +opt.capF || 9), capP = Math.max(1, +opt.capP || 5), kf = opt.keep === false ? 0 : 1;
   var ST = deptStaff().filter(function(s){ return !staffOrphan(s) && !isStandby(s) && NURSE_JOBS.indexOf(jobOf(s)) >= 0; }).map(function(s){
     var off = staffOff(s), days = MD_DOW.filter(function(d){ return off.length ? off.indexOf(d) < 0 : ['1','2','3','4','5'].indexOf(d) >= 0; });
     var x = { s:s, full:s.emp !== '非常勤', days:days, cap:s.emp !== '非常勤' ? capF : capP, load:{}, areas:{} };
@@ -5165,7 +5204,7 @@ function auCompute(opt){
       var a = x.load[d].slice().sort(function(p, q){ return p.area < q.area ? -1 : p.area > q.area ? 1 : 0; });
       /* 2026-11-07（宏史さんの指示）：回る順は事業所を出発点にして近い順につなぐ。同じ町を少しだけ優先し（AU_TOWN_PEN）、別の町でもそれ以上近ければ先に回る */
       var g = a.filter(function(p){ return p.lat != null && p.lat !== ''; });
-      if(g.length > 1) a = auRoute(g).concat(a.filter(function(p){ return !(p.lat != null && p.lat !== ''); }));
+      if(g.length > 1) a = auBestOrder(g).concat(a.filter(function(p){ return !(p.lat != null && p.lat !== ''); }));
       /* 2026-11-07（宏史さんの指示）：2名体制の訪問は同じ日の続いた時間帯に寄せる（合流が1回で済むように） */
       var tw = a.filter(function(p){ return isTwoP(patient(p.no)); });
       if(tw.length > 1){ var at0 = a.indexOf(tw[0]), rest2 = a.filter(function(p){ return tw.indexOf(p) < 0; }); a = rest2.slice(0, at0).concat(tw).concat(rest2.slice(at0)); }
@@ -5182,7 +5221,7 @@ function auCompute(opt){
       });
       var free = slots.map(function(s, i){ return i; }).filter(function(i){ return !taken[i]; }), fi = 0;
       var tl = a.map(function(p, i){ var t = at[p.no] != null ? at[p.no] : (free[fi] != null ? slots[free[fi++]].a : 540 + i * 60); return { p:p, t:t, fix:tgt(p) != null, two:isTwoP(patient(p.no)) }; });
-      auTidy(tl);   /* 2026-11-07：希望時刻の人は動かさず、残りの人どうしで時刻を入れ替えて、事業所→訪問→事業所の道のりを短くする */
+      auBestTimes(tl);   /* 2026-11-07：午前・午後それぞれ会社を出て会社に戻る一回りで、希望時刻の人は動かさず、残りの人の時刻を入れ替えて一番短い並びにする */
       tl.forEach(function(o){ var p = o.p; rows.push({ dow:d, time:hm(o.t), no:p.no, staffId:x.s.id, area:p.area, wish:p.wish || p.band || '', min:p.vmin || 0 }); });
     });
   });
@@ -5248,8 +5287,8 @@ function auCompute(opt){
 }
 function auMake(course){
   if(course && course.type) course = null;
-  var capF = Math.max(1, +$('au_full').value || 8), capP = Math.max(1, +$('au_part').value || 5);
-  try{ localStorage.setItem('tritime_au_caps', JSON.stringify({ f:capF, p:capP })); }catch(e){}
+  var capF = Math.max(1, +$('au_full').value || 9), capP = Math.max(1, +$('au_part').value || 5);
+  try{ localStorage.setItem('tritime_au_caps', JSON.stringify({ f:capF, p:capP, n9:1 })); }catch(e){}
   var RR = auCompute({ course:course, capF:capF, capP:capP, keep:true });
   if(!RR){ $('au_out').innerHTML = '<p class="empty">振り分けられる看護師が名簿にいません。</p>'; return; }
   var rows = RR.rows, miss = RR.miss, out = RR.out, info = RR.info, P = RR.P, ST = RR.ST, wk = RR.wk, capOf = RR.capOf;
@@ -5355,7 +5394,8 @@ function renderAuto(){
   /* 2026-11-03：1日の件数の上限は、常勤8件・非常勤5件まで（宏史さんの指示「常勤者は1日8件までは許容範囲。非常勤者も5件までは許容範囲」）。
      変えた値はこの端末で覚え、次に開いたときもその値にする */
   var cp = {}; try{ cp = JSON.parse(localStorage.getItem('tritime_au_caps') || '{}') || {}; }catch(e){}
-  if(!$('au_full').value) $('au_full').value = cp.f || 8;
+  if(cp.f === 8 && !cp.n9) cp.f = 9;   /* 2026-11-07（宏史さんの指示）：常勤の1日の基準を9件に。前に覚えた8件は9件に読み替える */
+  if(!$('au_full').value) $('au_full').value = cp.f || 9;
   if(!$('au_part').value) $('au_part').value = cp.p || 5;
   auUndoShow();
 }
@@ -5766,7 +5806,7 @@ function workRule(){
      この日より前に保存した移動の目安（最短5分・最長15分のころ）は使わず、10分・20分にする（mv20 の印が付いた保存だけを使う）。
      予定を組むときの移動は、ふだんの目安＝最短と最長の真ん中（15分）で取る */
   var mvOK = w.mv20 === 1, mn = mvOK && w.mvMin != null ? +w.mvMin : 10, mx = mvOK && +w.mvMax ? +w.mvMax : 20;
-  return { target: +w.target || 8, mvMin: mn, mvMax: mx, mvStd: Math.round((mn + mx) / 2), visit: +w.visit || 30, farKm: (+w.farKm > 0 ? +w.farKm : 3),
+  return { target: (+w.target && !(+w.target === 8 && !w.t9) ? +w.target : 9), mvMin: mn, mvMax: mx, mvStd: Math.round((mn + mx) / 2), visit: +w.visit || 30, farKm: (+w.farKm > 0 ? +w.farKm : 3),
     start: w.start || '09:00', end: w.end || '18:00', brk: (w.brk == null ? 60 : +w.brk), inner: (w.inner == null ? 60 : +w.inner) };
 }
 function toMin(t){ var m = String(t || '').match(/^(\d{1,2}):(\d{2})/); return m ? (+m[1]) * 60 + (+m[2]) : null; }
@@ -5864,7 +5904,7 @@ function renderWorkRule(){
 }
 $('wr_save').addEventListener('click', function(){
   var cur = lj(K.settings, {}) || {};
-  var w = { mv20:1, target:Math.max(1, +$('wr_target').value || 8), mvMin:Math.max(0, +$('wr_mvmin').value || 0), mvMax:Math.max(1, +$('wr_mvmax').value || 20), visit:Math.max(10, +$('wr_visit').value || 30), farKm:Math.max(0.5, +$('wr_farkm').value || 3),
+  var w = { mv20:1, t9:1, target:Math.max(1, +$('wr_target').value || 9), mvMin:Math.max(0, +$('wr_mvmin').value || 0), mvMax:Math.max(1, +$('wr_mvmax').value || 20), visit:Math.max(10, +$('wr_visit').value || 30), farKm:Math.max(0.5, +$('wr_farkm').value || 3),
     start:$('wr_start').value || '09:00', end:$('wr_end').value || '18:00', brk:Math.max(0, +$('wr_brk').value || 0), inner:Math.max(0, +$('wr_inner').value || 0) };
   if(w.mvMin > w.mvMax){ $('wr_msg').textContent = '移動の目安は、最短を最長より小さくしてください。'; return; }
   saveSettings(Object.assign({}, cur, { work:w })); $('wr_msg').textContent = '保存しました。'; refreshAll();
@@ -7063,7 +7103,7 @@ var MN_GUIDE = [
     ['組み方を出す', '「予定」タブの「週間予定を地区で寄せて組む（自動の振り分け）」で「組み方を出す」。町名ごとに寄せ、午前から移動15分で詰めて組みます。今の担当と曜日のまま組めるものは動かしません。'],
     ['週間予定に入れる', '出た表を見て、よければオレンジの「この組み方を週間予定に入れる」。入れる前の予定は控えに残り、「元に戻す」で戻せます。'],
     ['変わる訪問を見る', '組み方を出すと「いまの週間予定から変わる訪問」が、入れた後は「元に戻す」の下に「入れ替える前から変わった訪問」が出ます。'],
-    ['1日の件数の上限', '常勤8件・非常勤5件が最初の値です（同じ枠の上の欄で変えられます）。'],
+    ['1日の件数の上限', '常勤9件・非常勤5件が最初の値です（同じ枠の上の欄で変えられます）。'],
     ['同行（2名体制）', '同行が決まっていない2名体制の訪問には、週の1回目に看護補助者、2回目以降に担当とは別の看護師が自動で付きます。2名体制の人の一覧は右端の「２名体制」。'],
     ['手で直す', '「名簿・設定」の「週間予定」の一覧で、行ごとに同行を選んだり「外す」ことができます。新しい行は上の欄で入れて「追加する」。']
   ]],
@@ -7478,9 +7518,9 @@ var PTR_M = [
 var PTR_OPS = ['以上', '超', '以下', '未満'];
 function ptrMeasure(k){ return PTR_M.filter(function(m){ return m.k === k; })[0] || null; }
 function ptrDefaults(){
-  var wr = workRule(), caps = lj('tritime_au_caps', {}) || {};
+  var wr = workRule(), caps = auCaps();
   return [
-    { id:'r1',  m:'dayN',      op:'超',   v:+caps.f || wr.target || 8, emp:'常勤',   hard:true,  on:true },
+    { id:'r1',  m:'dayN',      op:'超',   v:+caps.f || wr.target || 9, emp:'常勤',   hard:true,  on:true },
     { id:'r2',  m:'dayN',      op:'超',   v:+caps.p || 5,             emp:'非常勤', hard:true,  on:true },
     { id:'r3',  m:'gap',       op:'未満', v:wr.mvMin,                 emp:'全員',   hard:false, on:true },
     { id:'r4',  m:'gap',       op:'超',   v:wr.mvMax,                 emp:'全員',   hard:true,  on:true },
@@ -7657,7 +7697,7 @@ function hbCount(st){ var n = 0; Object.keys(st.cells).forEach(function(s){ Obje
 function hbPlacedOf(st, no){ var n = 0; Object.keys(st.cells).forEach(function(s){ Object.keys(st.cells[s]).forEach(function(d){ st.cells[s][d].forEach(function(x){ if(x.no === no) n++; }); }); }); return n; }
 function hbDayLimit(sid){
   var rs = ptrRules().filter(function(r){ return r.m === 'dayN' && r.on !== false && ptrEmpOk(r, sid); });
-  if(!rs.length) return workRule().target || 8;
+  if(!rs.length) return workRule().target || 9;
   return Math.min.apply(null, rs.map(function(r){ return +r.v + (r.op === '以上' ? -1 : 0); }));
 }
 /* 升の中の並びから、件数と「訪問と訪問の間」の合計を出す */
@@ -7706,7 +7746,7 @@ function pwOpen(){
        いまの週間予定を写すのではなく、AIにその場でベースを組ませ（「組み方を出す」と同じ計算）、その組み方を手組みの表へ写して開く。
        週間予定にはまだ入れない（「この表で確定」で入れる） */
     var cur = hbRaw(); if(hbCount(cur) && !confirm('手組みの下書きが残っています。消して、AIのベースを写しますか。')) { HB.on = true; hbRender(); pwScroll(); return; }
-    var capF = Math.max(1, +$('au_full').value || 8), capP = Math.max(1, +$('au_part').value || 5);
+    var capF = Math.max(1, +$('au_full').value || 9), capP = Math.max(1, +$('au_part').value || 5);
     var RR = auCompute({ course:null, capF:capF, capP:capP, keep:true });
     if(!RR || !RR.rows.length){ alert('AIがベースを組めませんでした（振り分けられる職員か、利用中の利用者さんが名簿にいません）。'); return; }
     var st = { cells:{} }, ids = {}, wr = workRule(); hbRows().forEach(function(r){ ids[r.id] = 1; });
@@ -7886,8 +7926,8 @@ document.addEventListener('pointercancel', function(){ hbDragEnd(true); });
 /* ---- 予定表の比較（人情×効率）＝野木画面の中だけ ---- */
 /* 効率バージョン：いまの利用者・職員で、担当の引き継ぎも曜日の据え置きもせず、効率だけで組み直したもの */
 function cmpAiRows(){
-  var caps = lj('tritime_au_caps', {}) || {};
-  var R = auCompute({ capF:+caps.f || workRule().target || 8, capP:+caps.p || 5, keep:false });
+  var caps = auCaps();
+  var R = auCompute({ capF:+caps.f || workRule().target || 9, capP:+caps.p || 5, keep:false });
   return R ? R.rows : [];
 }
 function cmpVisitsFn(rows){
@@ -7898,7 +7938,7 @@ function cmpVisitsFn(rows){
 function cmpScore(m, vfn, isHuman){
   var days = mdDays(m), wr = workRule(), lb = 12 * 60, le = lb + (wr.brk || 0), today = ymd(new Date());
   var o = { n:0, days:0, travel:0, idle:0, over:0, sdays:{}, wishOk:0, wishAll:0, fixOk:0, fixAll:0, trustLow:0, refuseHit:0, hv:0, byP:{} };
-  var caps = lj('tritime_au_caps', {}) || {}, capF = +caps.f || wr.target || 8, capP = +caps.p || 5;
+  var caps = auCaps(), capF = +caps.f || wr.target || 9, capP = +caps.p || 5;
   var refusals = events().filter(function(e){ return e.type === 'refusal' && e.kind === 'staff' && e.status === '有効' && e.staffId; });
   days.forEach(function(date){
     var vs = (vfn(date) || []).filter(function(v){ return !v.cx; }), by = {};
@@ -7955,15 +7995,19 @@ function kmL(x){ return (Math.round((+x || 0) * 10) / 10).toFixed(1) + 'km'; }
 function wasteDay(vs){
   var pts = vs.filter(function(v){ return !v.cx; }).slice().sort(function(a, b){ return a.time < b.time ? -1 : 1; }).map(function(v){ var p = patient(v.no) || {}; return { v:v, no:v.no, lat:p.lat, lng:p.lng, area:p.area || v.area || '' }; }).filter(function(o){ return auLL(o); });
   if(pts.length < 2) return null;
-  var off = officeGeo(), OF = '事業所';
-  var len = function(arr){ var sum = 0, prev = off; arr.forEach(function(o){ var ll = auLL(o); if(prev) sum += kmBetween(prev, ll) || 0; prev = ll; }); if(off && prev) sum += kmBetween(prev, off) || 0; return sum; };
-  var ai = auRoute(pts), hK = len(pts), aK = len(ai), waste = Math.max(0, hK - aK);
-  var key = function(a, b){ return [a, b].sort().join('>'); }, adj = {};
-  var chA = (off ? [OF] : []).concat(ai.map(function(o){ return o.no; })).concat(off ? [OF] : []);
-  for(var i = 1; i < chA.length; i++) adj[key(chA[i - 1], chA[i])] = 1;
-  var nodes = (off ? [{ no:OF, ll:off }] : []).concat(pts.map(function(o){ return { no:o.no, ll:auLL(o), t:o.v.time }; })).concat(off ? [{ no:OF, ll:off }] : []), legs = [];
-  for(var j = 1; j < nodes.length; j++){ var a = nodes[j - 1], b = nodes[j]; legs.push({ from:a.no, to:b.no, t:b.t || '', km:kmBetween(a.ll, b.ll) || 0, red:waste >= 0.05 && !adj[key(a.no, b.no)] }); }
-  return { h:hK, a:aK, waste:waste, legs:legs, ai:ai.map(function(o){ return o.no; }) };
+  /* 2026-11-07：午前と午後は、それぞれ会社を出て会社に戻る一回り（お昼にほぼ全員が会社へ戻るため） */
+  var off = officeGeo(), OF = '事業所', halves = [pts.filter(function(o){ return toMin(o.v.time) < AU_HALF; }), pts.filter(function(o){ return toMin(o.v.time) >= AU_HALF; })].filter(function(h){ return h.length; });
+  var hK = 0, aK = 0, legs = [], aiAll = [], key = function(a, b){ return [a, b].sort().join('>'); };
+  halves.forEach(function(h){
+    var ai = auBestOrder(h); hK += auLoop(h); aK += auLoop(ai); aiAll = aiAll.concat(ai.map(function(o){ return o.no; }));
+    var adj = {}, chA = (off ? [OF] : []).concat(ai.map(function(o){ return o.no; })).concat(off ? [OF] : []);
+    for(var i = 1; i < chA.length; i++) adj[key(chA[i - 1], chA[i])] = 1;
+    var nodes = (off ? [{ no:OF, ll:off }] : []).concat(h.map(function(o){ return { no:o.no, ll:auLL(o), t:o.v.time }; })).concat(off ? [{ no:OF, ll:off }] : []);
+    for(var j = 1; j < nodes.length; j++){ var a = nodes[j - 1], b = nodes[j]; legs.push({ from:a.no, to:b.no, t:b.t || '', km:kmBetween(a.ll, b.ll) || 0, adj:!!adj[key(a.no, b.no)] }); }
+  });
+  var waste = Math.max(0, hK - aK);
+  legs.forEach(function(l){ l.red = waste >= 0.05 && !l.adj; });
+  return { h:hK, a:aK, waste:waste, legs:legs, ai:aiAll };
 }
 function wasteName(no){ return no === '事業所' ? '事業所' : dnn(no); }
 function wasteText(w){ return '管理者の表：' + w.legs.map(function(l, i){ return (i ? '' : wasteName(l.from)) + ' →' + (l.red ? '【遠回り ' + kmL(l.km) + '】' : '') + ' ' + wasteName(l.to); }).join('') + '／AIの道順：' + w.ai.map(dnn).join(' → '); }

@@ -342,7 +342,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-07-07</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-07-08</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -5049,9 +5049,9 @@ function renderToday(){
     var hb = $('td_half');
     if(hb){
       if(anySplit){
-        var nH = function(h){ return pts.filter(function(x){ return splitOf(x.sid) && (h === 'pm' ? toMin(x.tm) >= AU_HALF : toMin(x.tm) < AU_HALF); }).length; };
+        /* 2026-11-07（宏史さんの指示）：ボタンに件数は出さない */
         hb.style.display = '';
-        hb.innerHTML = [['am', '午前の行程'], ['pm', '午後の行程']].map(function(h){ return '<button type="button" class="btn' + (tdHalf === h[0] ? '' : ' sub') + '" data-tdhalf="' + h[0] + '">' + h[1] + '（' + nH(h[0]) + '件）</button>'; }).join('') +
+        hb.innerHTML = [['am', '午前の行程'], ['pm', '午後の行程']].map(function(h){ return '<button type="button" class="btn' + (tdHalf === h[0] ? '' : ' sub') + '" data-tdhalf="' + h[0] + '">' + h[1] + '</button>'; }).join('') +
           '<span class="muted sm">お昼に会社へ戻るので、午前と午後を分けて出します。' + (who.some(function(id){ return !splitOf(id); }) ? '4件以下の非常勤の人は、1日を一回りで出します。' : '') + '</span>';
         [].forEach.call(hb.querySelectorAll('[data-tdhalf]'), function(b){ b.onclick = function(){ tdHalf = b.getAttribute('data-tdhalf'); renderToday(); }; });
       } else { hb.style.display = 'none'; hb.innerHTML = ''; }
@@ -5062,8 +5062,8 @@ function renderToday(){
     if(ofc){ ll.push([ofc.lat, ofc.lng]); L.marker([ofc.lat, ofc.lng], { icon:L.divIcon({ className:'tdOffice', html:'<span style="display:inline-block;background:#0f1d3a;color:#fff;border-radius:6px;padding:2px 6px;font-size:12px;font-weight:700;white-space:nowrap">会社</span>', iconSize:[44, 22], iconAnchor:[22, 11] }) }).bindTooltip('会社（スタート・お昼に戻る所）').addTo(tdLayer); }
     who.forEach(function(id){ var h = shown.filter(function(x){ return x.sid === id; }); var l2 = h.map(function(x){ return [x.lat, x.lng]; }); if(ofc && l2.length){ l2.unshift([ofc.lat, ofc.lng]); l2.push([ofc.lat, ofc.lng]); } if(l2.length > 1){ L.polyline(l2, { color:colOf(id), weight:3, opacity:.7, dashArray:'6 6' }).addTo(tdLayer); tdArrows(l2, colOf(id)); } });
     shown.forEach(function(x){
-      /* 2026-11-07（宏史さんの指示）：職員を一人選んだときは、地図の印に番号を出さない（回る順は線の矢印で分かる。誰の家かは印に触れると出る）。「全員」のときは職員ごとの番号を出す */
-      L.marker([x.lat, x.lng], { icon:L.divIcon({ className:'tdPin', html:'<span' + (ALL ? ' style="background:' + colOf(x.sid) + ';border-radius:50%"' : '') + '>' + (ALL ? x.n : '') + '</span>', iconSize:ALL ? [28, 28] : [16, 16], iconAnchor:ALL ? [14, 14] : [8, 8] }) }).bindTooltip(esc(x.t)).addTo(tdLayer);
+      /* 2026-11-07（宏史さんの指示「個人の行程表には訪問番号を入れてください」）：一人を選んだときも、地図の印に訪問の番号（表の「順」と同じ）を出す */
+      L.marker([x.lat, x.lng], { icon:L.divIcon({ className:'tdPin', html:'<span' + (ALL ? ' style="background:' + colOf(x.sid) + ';border-radius:50%"' : '') + '>' + x.n + '</span>', iconSize:[28, 28], iconAnchor:[14, 14] }) }).bindTooltip(esc(x.t)).addTo(tdLayer);
     });
     if(!ll.length) ll = pts.map(function(x){ return [x.lat, x.lng]; });
     setTimeout(function(){ tdMap.invalidateSize(); if(ll.length > 1) tdMap.fitBounds(ll, { padding:[30, 30] }); else tdMap.setView(ll[0], 16); }, 50);

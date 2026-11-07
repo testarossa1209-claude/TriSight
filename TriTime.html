@@ -342,7 +342,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-07-06</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-07-07</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -470,6 +470,7 @@ function tsPortalAsk(){
     <div class="row">
       <div><label class="f" for="au_full">常勤の1日の件数の上限</label><input type="number" id="au_full" min="1" max="10"></div>
       <div><label class="f" for="au_part">非常勤の1日の件数の上限</label><input type="number" id="au_part" min="1" max="10"></div>
+      <div><label class="f" for="au_mgr">管理者の訪問の割合（一般の職員を100として）</label><input type="number" id="au_mgr" min="10" max="100" step="5"></div>
     </div>
     <div class="btns"><button class="btn" id="au_make">組み方を出す</button><button class="btn amber" id="au_apply" style="display:none">この組み方を週間予定に入れる</button><button class="btn sub" id="au_undo" style="display:none">元に戻す</button><span class="muted" id="au_msg"></span></div>
     <div id="au_diff"></div>
@@ -5061,7 +5062,8 @@ function renderToday(){
     if(ofc){ ll.push([ofc.lat, ofc.lng]); L.marker([ofc.lat, ofc.lng], { icon:L.divIcon({ className:'tdOffice', html:'<span style="display:inline-block;background:#0f1d3a;color:#fff;border-radius:6px;padding:2px 6px;font-size:12px;font-weight:700;white-space:nowrap">会社</span>', iconSize:[44, 22], iconAnchor:[22, 11] }) }).bindTooltip('会社（スタート・お昼に戻る所）').addTo(tdLayer); }
     who.forEach(function(id){ var h = shown.filter(function(x){ return x.sid === id; }); var l2 = h.map(function(x){ return [x.lat, x.lng]; }); if(ofc && l2.length){ l2.unshift([ofc.lat, ofc.lng]); l2.push([ofc.lat, ofc.lng]); } if(l2.length > 1){ L.polyline(l2, { color:colOf(id), weight:3, opacity:.7, dashArray:'6 6' }).addTo(tdLayer); tdArrows(l2, colOf(id)); } });
     shown.forEach(function(x){
-      L.marker([x.lat, x.lng], { icon:L.divIcon({ className:'tdPin', html:'<span' + (ALL ? ' style="background:' + colOf(x.sid) + ';border-radius:50%"' : '') + '>' + x.n + '</span>', iconSize:[28, 28], iconAnchor:[14, 14] }) }).bindTooltip(esc(x.t)).addTo(tdLayer);
+      /* 2026-11-07（宏史さんの指示）：職員を一人選んだときは、地図の印に番号を出さない（回る順は線の矢印で分かる。誰の家かは印に触れると出る）。「全員」のときは職員ごとの番号を出す */
+      L.marker([x.lat, x.lng], { icon:L.divIcon({ className:'tdPin', html:'<span' + (ALL ? ' style="background:' + colOf(x.sid) + ';border-radius:50%"' : '') + '>' + (ALL ? x.n : '') + '</span>', iconSize:ALL ? [28, 28] : [16, 16], iconAnchor:ALL ? [14, 14] : [8, 8] }) }).bindTooltip(esc(x.t)).addTo(tdLayer);
     });
     if(!ll.length) ll = pts.map(function(x){ return [x.lat, x.lng]; });
     setTimeout(function(){ tdMap.invalidateSize(); if(ll.length > 1) tdMap.fitBounds(ll, { padding:[30, 30] }); else tdMap.setView(ll[0], 16); }, 50);
@@ -5129,6 +5131,9 @@ function auTidy(tl){
 /* 2026-11-07（宏史さんの指示）：回る順は、午前・午後それぞれを「会社を出て会社に戻る」一回りとし、その中のすべての並び方を比べて一番短いものを選ぶ。
    同じ長さなら、遠い所から先に回り、会社の近くで終わる向きにする（延長や内勤に戻るときに無理が出にくい）。一回りの件数が8件を超えるときだけ、近い順につなぐ組み方にする */
 /* 端末で覚えた件数の上限。2026-11-07：常勤の基準を9件にしたので、前に覚えた8件（n9の印なし）は9件に読み替える */
+/* 2026-11-07（宏史さんの指示）：管理者はマネジメント・管理にも時間を割くので、直接の訪問は一般の職員を100として70くらいにする（1日の件数の上限に掛ける） */
+function auMgrPct(){ var m = +(auCaps().m); return m >= 10 && m <= 100 ? m : 70; }
+function auMgrCap(s, cap){ return isMgr(s) ? Math.max(1, Math.round(cap * auMgrPct() / 100)) : cap; }
 function auCaps(){ var c = lj('tritime_au_caps', {}) || {}; if(+c.f === 8 && !c.n9) c.f = 9; return c; }
 var AU_HALF = 720;   /* 12:00 より前を午前、以後を午後（1日の流れの枠 mhDay の昼休みの始まりと同じ） */
 function auLoop(arr){ var off = officeGeo(), sum = 0, prev = off; arr.forEach(function(o){ var ll = auLL(o); if(prev && ll) sum += kmBetween(prev, ll) || 0; if(ll) prev = ll; }); if(off && prev && arr.length) sum += kmBetween(prev, off) || 0; return sum; }
@@ -5168,7 +5173,7 @@ function auCompute(opt){
   opt = opt || {}; var course = opt.course || null, capF = Math.max(1, +opt.capF || 9), capP = Math.max(1, +opt.capP || 5), kf = opt.keep === false ? 0 : 1;
   var ST = deptStaff().filter(function(s){ return !staffOrphan(s) && !isStandby(s) && NURSE_JOBS.indexOf(jobOf(s)) >= 0; }).map(function(s){
     var off = staffOff(s), days = MD_DOW.filter(function(d){ return off.length ? off.indexOf(d) < 0 : ['1','2','3','4','5'].indexOf(d) >= 0; });
-    var x = { s:s, full:s.emp !== '非常勤', days:days, cap:s.emp !== '非常勤' ? capF : capP, load:{}, areas:{} };
+    var x = { s:s, full:s.emp !== '非常勤', days:days, cap:auMgrCap(s, s.emp !== '非常勤' ? capF : capP), load:{}, areas:{} };
     if(course){ var pd = course.caps[s.id] || {}; x.capDay = pd; x.days = days.filter(function(d){ return (pd[d] || 0) > 0; }); }
     return x;
   }).filter(function(x){ return x.days.length; });
@@ -5184,11 +5189,16 @@ function auCompute(opt){
   var byArea = {}; P.forEach(function(p){ (byArea[p.area] = byArea[p.area] || []).push(p); });
   var areas = Object.keys(byArea).sort(function(a, b){ return byArea[b].length - byArea[a].length || (a < b ? -1 : 1); });
   var used = function(x, d){ return (x.load[d] || []).length; };
+  var auTier = function(x){ return x.full ? 0 : x.days.length > 3 ? 1 : 2; };
   var capOf = function(x, d){ return x.capDay ? (x.capDay[d] || 0) : x.cap; };
   var out = [], miss = [];
   areas.forEach(function(ar){
     byArea[ar].sort(function(a, b){ return b.f - a.f; }).forEach(function(p){
+      /* 2026-11-07（宏史さんの指示）：割り振りの順番＝常勤（管理者は一般の70）を上限まで先に埋める → 足りない分を週4日以上の非常勤 → 最後に週3日以下の非常勤。
+         週3日以下の非常勤は、ふだんは空きの穴埋め・新しい利用者さんの受け皿にする。件数が増えれば下の段へ自然に回り、減れば非常勤から先に外れる（いまの担当の据え置きより、この順番を先に見る）。
+         これまでの「件数の少ない人へ寄せる」（全員へ均等に配る）は、宏史さんの決めではなく、なぎさが入れていた決まりだったのでやめた */
       var cand = ST.slice().sort(function(a, b){
+        if(auTier(a) !== auTier(b)) return auTier(a) - auTier(b);
         var ka = (a.s.id === p.main ? 100 * kf : 0) + (a.areas[ar] || 0) * 10, kb = (b.s.id === p.main ? 100 * kf : 0) + (b.areas[ar] || 0) * 10;
         var ra = a.days.reduce(function(t, d){ return t + capOf(a, d) - used(a, d); }, 0), rb = b.days.reduce(function(t, d){ return t + capOf(b, d) - used(b, d); }, 0);
         return (kb - ka) || (rb - ra);
@@ -5279,7 +5289,9 @@ function auCompute(opt){
       return rows.some(function(r){ if(r.dow !== d || (r.staffId !== sid && r.withId !== sid)) return false; var x = toMin(r.time), y = x + (+r.min || 30); return x < b && a < y; }); };
     var loadOf = function(sid, d){ return rows.filter(function(r){ return r.dow === d && (r.staffId === sid || r.withId === sid); }).length; };
     var nurse = function(v, mn, job){ var c = ST.filter(function(x){ return x.s.id !== v.staffId && (!job || jobOf(x.s) === job) && x.days.indexOf(v.dow) >= 0 && !busy(x.s.id, v.dow, v.time, mn) && loadOf(x.s.id, v.dow) < capOf(x, v.dow); })
-        .sort(function(a, b){ return loadOf(a.s.id, v.dow) - loadOf(b.s.id, v.dow) || (a.full === b.full ? 0 : a.full ? -1 : 1); }); return c.length ? c[0].s.id : ''; };
+        .sort(function(a, b){ return wTier(a) - wTier(b) || loadOf(a.s.id, v.dow) - loadOf(b.s.id, v.dow); }); return c.length ? c[0].s.id : ''; };
+    /* 2026-11-07（宏史さんの指示）：2名体制の相手（看護師）は、週4日以上の非常勤を先に。いなければ常勤、最後に週3日以下の非常勤（看護補助者の伊藤さんは、上の決まりどおり週1回） */
+    function wTier(x){ return !x.full && x.days.length > 3 ? 0 : x.full ? 1 : 2; }
     var aide = function(v, mn){ var a = aides.filter(function(s){ return dayOK(s, v.dow) && !busy(s.id, v.dow, v.time, mn); })[0]; return a ? a.id : ''; };
     rows.forEach(function(v){ if(!okWith(v.withId)) v.withId = ''; });
     var firstSeen = {}, hojoUsed = {};
@@ -5314,7 +5326,8 @@ function auCompute(opt){
 function auMake(course){
   if(course && course.type) course = null;
   var capF = Math.max(1, +$('au_full').value || 9), capP = Math.max(1, +$('au_part').value || 5);
-  try{ localStorage.setItem('tritime_au_caps', JSON.stringify({ f:capF, p:capP, n9:1 })); }catch(e){}
+  var capM = Math.min(100, Math.max(10, +$('au_mgr').value || 70));
+  try{ localStorage.setItem('tritime_au_caps', JSON.stringify({ f:capF, p:capP, m:capM, n9:1 })); }catch(e){}
   var RR = auCompute({ course:course, capF:capF, capP:capP, keep:true });
   if(!RR){ $('au_out').innerHTML = '<p class="empty">振り分けられる看護師が名簿にいません。</p>'; return; }
   var rows = RR.rows, miss = RR.miss, out = RR.out, info = RR.info, P = RR.P, ST = RR.ST, wk = RR.wk, capOf = RR.capOf;
@@ -5423,6 +5436,7 @@ function renderAuto(){
   if(cp.f === 8 && !cp.n9) cp.f = 9;   /* 2026-11-07（宏史さんの指示）：常勤の1日の基準を9件に。前に覚えた8件は9件に読み替える */
   if(!$('au_full').value) $('au_full').value = cp.f || 9;
   if(!$('au_part').value) $('au_part').value = cp.p || 5;
+  if(!$('au_mgr').value) $('au_mgr').value = (+cp.m >= 10 && +cp.m <= 100) ? cp.m : 70;
   auUndoShow();
 }
 function refreshAll(){
@@ -8173,7 +8187,7 @@ function fsCalc(){
     out[d] = { am:{ free:0, who:[] }, pm:{ free:0, who:[] } };
     ST.forEach(function(s){
       if(staffOff(s).indexOf(String(d)) >= 0) return;
-      var cap = s.emp === '常勤' ? (+caps.f || 9) : (+caps.p || 5), hc = fsHalfCap(cap);
+      var cap = auMgrCap(s, s.emp === '常勤' ? (+caps.f || 9) : (+caps.p || 5)), hc = fsHalfCap(cap);
       var mine = wk.filter(function(w){ return String(w.dow) === String(d) && (w.staffId === s.id || w.withId === s.id); });
       var am = mine.filter(function(w){ return toMin(w.time) < AU_HALF; }).length, pm = mine.length - am;
       [['am', hc.am - am], ['pm', hc.pm - pm]].forEach(function(x){ if(x[1] > 0){ out[d][x[0]].free += x[1]; out[d][x[0]].who.push({ s:s, n:x[1] }); } });

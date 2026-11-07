@@ -342,7 +342,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-07-02</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-07-03</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -461,6 +461,7 @@ function tsPortalAsk(){
     <div id="td_map" style="height:360px;border-radius:10px;border:1px solid var(--paper-deep);margin:6px 0 10px;display:none"></div>
     <div id="td_week"></div>
     <details id="td_dayBox"><summary>この日の回る順と気を付けること（地図の番号の一覧）</summary><div class="tbl-scroll" id="td_list"></div></details>
+    <div id="td_join"></div>
   </div>
   <div class="card" id="cardAuto" style="display:none">
     <h2>週間予定を地区で寄せて組む（自動の振り分け）</h2>
@@ -699,6 +700,9 @@ function tsPortalAsk(){
       </div>
       <label class="f">③ 訪問できない曜日（通院・デイサービス・就労など）</label><div id="pt_ngDays" class="btns" style="margin-top:2px"></div>
       <label class="f" for="pt_ngNote">③ 訪問できない時間・理由（例：火曜の午前は通院）</label><input type="text" id="pt_ngNote" maxlength="200">
+      <label class="f"><input type="checkbox" id="pt_bike"> 2名体制のとき、この家に自転車を置かせてもらえる（担当看護師が利用者さんの了承を得た）</label>
+      <div class="row"><div><label class="f" for="pt_bikeDate">了承を得た日</label><input type="date" id="pt_bikeDate"></div><div><label class="f" for="pt_bikeBy">了承を取った看護師</label><input type="text" id="pt_bikeBy" maxlength="40"></div></div>
+      <p class="muted sm" style="margin:2px 0 8px">その日のうちに回収するなら電池は付けたまま・鍵は掛ける。後日回収なら鍵を掛け、電池は持ち帰る。</p>
       <label class="f" for="pt_wOther">⑦ その他の希望</label><textarea id="pt_wOther" maxlength="800" style="min-height:48px"></textarea>
     </details>
     <details class="ptsec" id="ptsLike" open><summary>好き嫌い・関わり方</summary>
@@ -2528,7 +2532,7 @@ function renderAdmin(){
    何人かで手分けして写すため、書類ごとに「写した日・写した人」を残し、一覧で進み具合を出す。
    特定の職員を嫌がる申し出は、ここに書かせず「経過」の拒否の申し出（本人の言葉・見直し期限つき）へ回す。
    ============================================================ */
-var PT_F = [['pt_name','name'],['pt_kana','kana'],['pt_sex','sex'],['pt_telMobile','telMobile'],['pt_telHome','telHome'],['pt_em1Name','em1Name'],['pt_em1Rel','em1Rel'],['pt_em1Tel','em1Tel'],['pt_em1Live','em1Live'],['pt_em1Main','em1Main'],['pt_em1Addr','em1Addr'],['pt_em1Kind','em1Kind'],['pt_em1Org','em1Org'],['pt_em1TelNote','em1TelNote'],['pt_em1Contact','em1Contact'],['pt_em2Name','em2Name'],['pt_em2Rel','em2Rel'],['pt_em2Tel','em2Tel'],['pt_em2Live','em2Live'],['pt_em2Main','em2Main'],['pt_em2Addr','em2Addr'],['pt_em2Kind','em2Kind'],['pt_em2Org','em2Org'],['pt_em2TelNote','em2TelNote'],['pt_em2Contact','em2Contact'],['pt_em3Name','em3Name'],['pt_em3Rel','em3Rel'],['pt_em3Tel','em3Tel'],['pt_em3Live','em3Live'],['pt_em3Main','em3Main'],['pt_em3Addr','em3Addr'],['pt_em3Kind','em3Kind'],['pt_em3Org','em3Org'],['pt_em3TelNote','em3TelNote'],['pt_em3Contact','em3Contact'],['pt_status','status'],['pt_endWhy','endWhy'],['pt_endDate','endDate'],['pt_hospFrom','hospFrom'],['pt_hospTo','hospTo'],['pt_zanmuNote','zanmuNote'],['pt_ins','ins'],['pt_area','area'],['pt_addr','addr'],['pt_spot','spot'],['pt_wish','wish'],['pt_wBand','wBand'],['pt_vmin','vmin'],['pt_team','team'],['pt_preCall','preCall'],['pt_ngNote','ngNote'],['pt_wOther','wOther'],
+var PT_F = [['pt_bikeDate','bikeDate'],['pt_bikeBy','bikeBy'],['pt_name','name'],['pt_kana','kana'],['pt_sex','sex'],['pt_telMobile','telMobile'],['pt_telHome','telHome'],['pt_em1Name','em1Name'],['pt_em1Rel','em1Rel'],['pt_em1Tel','em1Tel'],['pt_em1Live','em1Live'],['pt_em1Main','em1Main'],['pt_em1Addr','em1Addr'],['pt_em1Kind','em1Kind'],['pt_em1Org','em1Org'],['pt_em1TelNote','em1TelNote'],['pt_em1Contact','em1Contact'],['pt_em2Name','em2Name'],['pt_em2Rel','em2Rel'],['pt_em2Tel','em2Tel'],['pt_em2Live','em2Live'],['pt_em2Main','em2Main'],['pt_em2Addr','em2Addr'],['pt_em2Kind','em2Kind'],['pt_em2Org','em2Org'],['pt_em2TelNote','em2TelNote'],['pt_em2Contact','em2Contact'],['pt_em3Name','em3Name'],['pt_em3Rel','em3Rel'],['pt_em3Tel','em3Tel'],['pt_em3Live','em3Live'],['pt_em3Main','em3Main'],['pt_em3Addr','em3Addr'],['pt_em3Kind','em3Kind'],['pt_em3Org','em3Org'],['pt_em3TelNote','em3TelNote'],['pt_em3Contact','em3Contact'],['pt_status','status'],['pt_endWhy','endWhy'],['pt_endDate','endDate'],['pt_hospFrom','hospFrom'],['pt_hospTo','hospTo'],['pt_zanmuNote','zanmuNote'],['pt_ins','ins'],['pt_area','area'],['pt_addr','addr'],['pt_spot','spot'],['pt_wish','wish'],['pt_wBand','wBand'],['pt_vmin','vmin'],['pt_team','team'],['pt_preCall','preCall'],['pt_ngNote','ngNote'],['pt_wOther','wOther'],
   ['pt_hosp','hosp'],['pt_doc','doc'],['pt_inst','instDate'],['pt_instEnd','instEnd'],['pt_instPoint','instPoint'],['pt_special','special'],['pt_specialEnd','specialEnd'],
   ['pt_asmDate','asmDate'],['pt_asmState','asmState'],['pt_asmLife','asmLife'],['pt_asmFamily','asmFamily'],['pt_asmRisk','asmRisk'],
   ['pt_goal','goal'],['pt_planMade','planMade'],['pt_freq','freq'],
@@ -2690,7 +2694,7 @@ function ptClear(keepLock){
   $('pt_no').value = '';
   PT_F.forEach(function(f){ var el = $(f[0]); if(el) el.value = (el.tagName === 'SELECT') ? el.options[0].value : ''; });
   ['pt_plan','pt_start','pt_pdue'].forEach(function(id){ $(id).value = ''; });
-  if($('pt_zanmuDone')) $('pt_zanmuDone').checked = false; if($('ptEndNote')) $('ptEndNote').style.display = 'none'; if($('pt_far')){ $('pt_far').checked = false; $('pt_farNote').textContent = ''; }
+  if($('pt_zanmuDone')) $('pt_zanmuDone').checked = false; if($('ptEndNote')) $('ptEndNote').style.display = 'none'; if($('pt_far')){ $('pt_far').checked = false; $('pt_farNote').textContent = ''; } if($('pt_bike')) $('pt_bike').checked = false;
   document.querySelectorAll('#pt_hardCats input, #pt_copied input, #pt_wDays input, #pt_ngDays input').forEach(function(c){ c.checked = false; });
   var n = $('pt_copiedNote'); if(n) n.textContent = '';
   emVis();
@@ -2701,7 +2705,7 @@ function ptLoad(no){
   if(!p){ $('pt_msg').textContent = 'この番号はまだ登録されていません。欄を埋めて「この内容で登録する」を押すと登録されます。'; return; }
   ptClear(true); $('pt_no').value = dn(no);
   if($('pt_zanmuDone')) $('pt_zanmuDone').checked = !!p.zanmuDone;
-  if($('pt_far')){ $('pt_far').checked = !!p.far; var fk = ptFarKm(p); $('pt_farNote').textContent = fk != null ? '事業所から約 ' + fk.toFixed(1) + ' km' + (fk > workRule().farKm ? '（徒歩・自転車の範囲を超えるため、印が無くても遠方として扱います）' : '') : ''; }
+  if($('pt_bike')) $('pt_bike').checked = !!p.bike; if($('pt_far')){ $('pt_far').checked = !!p.far; var fk = ptFarKm(p); $('pt_farNote').textContent = fk != null ? '事業所から約 ' + fk.toFixed(1) + ' km' + (fk > workRule().farKm ? '（徒歩・自転車の範囲を超えるため、印が無くても遠方として扱います）' : '') : ''; }
   PT_F.forEach(function(f){ var el = $(f[0]); if(el && p[f[1]] != null) el.value = p[f[1]]; });
   emVis();
   if(D().kind === 'monitor'){ $('pt_cyc').value = p.cyc || 1; $('pt_staff').value = p.staffId || ''; $('pt_plan').value = p.planDue || ''; $('pt_start').value = p.start || ''; }
@@ -2745,7 +2749,7 @@ function ptSave(){
   if(!p){ p = { no:no, created:nowLocal() }; a.push(p); }
   PT_F.forEach(function(f){ var el = $(f[0]); if(el) p[f[1]] = String(el.value || '').trim(); });
   p.zanmuDone = !!($('pt_zanmuDone') && $('pt_zanmuDone').checked);
-  p.far = !!($('pt_far') && $('pt_far').checked);
+  p.far = !!($('pt_far') && $('pt_far').checked); p.bike = !!($('pt_bike') && $('pt_bike').checked);
   ptEndApply(p);
   if(D().kind === 'monitor'){ p.cyc = +$('pt_cyc').value || 1; p.staffId = $('pt_staff').value; p.planDue = $('pt_plan').value; p.start = $('pt_start').value; }
   else p.planDue = $('pt_pdue').value;
@@ -4993,6 +4997,7 @@ function todayFill(){
 }
 function renderToday(){
   if(!$('cardToday')) return;
+  setTimeout(function(){ try{ joinRender(); }catch(e){ if($('td_join')) $('td_join').innerHTML = ''; } }, 0);   /* 2026-11-07：2名体制の合流のしかた */
   todayFill();
   var date = $('td_date').value, sid = $('td_staff').value;
   if(!sid){ $('td_list').innerHTML = ''; $('td_week').innerHTML = '<p class="empty">職員を選ぶと、その人の予定と地図が出ます（「全員」を選ぶと全員の分）。</p>'; $('td_map').style.display = 'none'; return; }
@@ -5090,6 +5095,7 @@ function auTidy(tl){
   for(var round = 0, better = true; better && round < 20; round++){
     better = false;
     for(var i = 0; i < mv.length; i++) for(var j = i + 1; j < mv.length; j++){
+      if(!!mv[i].two !== !!mv[j].two) continue;   /* 2名体制と1名体制の時刻は入れ替えない（2名体制の続きを崩さない） */
       var before = auLen(tl), t = mv[i].t; mv[i].t = mv[j].t; mv[j].t = t;
       if(auLen(tl) < before - 0.05){ better = true; } else { t = mv[i].t; mv[i].t = mv[j].t; mv[j].t = t; }
     }
@@ -5160,6 +5166,9 @@ function auCompute(opt){
       /* 2026-11-07（宏史さんの指示）：回る順は事業所を出発点にして近い順につなぐ。同じ町を少しだけ優先し（AU_TOWN_PEN）、別の町でもそれ以上近ければ先に回る */
       var g = a.filter(function(p){ return p.lat != null && p.lat !== ''; });
       if(g.length > 1) a = auRoute(g).concat(a.filter(function(p){ return !(p.lat != null && p.lat !== ''); }));
+      /* 2026-11-07（宏史さんの指示）：2名体制の訪問は同じ日の続いた時間帯に寄せる（合流が1回で済むように） */
+      var tw = a.filter(function(p){ return isTwoP(patient(p.no)); });
+      if(tw.length > 1){ var at0 = a.indexOf(tw[0]), rest2 = a.filter(function(p){ return tw.indexOf(p) < 0; }); a = rest2.slice(0, at0).concat(tw).concat(rest2.slice(at0)); }
       var hasW = a.some(function(p){ return p.wish || p.band; }), slots = mhDay(hasW ? Math.max(a.length, capOf(x, d)) : a.length).filter(function(s){ return s.k === 'v'; }), taken = {}, at = {};
       /* 2026-10-28：本人の希望の時刻がある人は、希望にいちばん近い枠へ先に当てる */
       var tgt = function(p){ return p.wish ? toMin(p.wish) : p.band === '午前' ? 600 : p.band === '午後' ? 870 : null; };
@@ -5172,7 +5181,7 @@ function auCompute(opt){
           if(why) p.why.push(why); }
       });
       var free = slots.map(function(s, i){ return i; }).filter(function(i){ return !taken[i]; }), fi = 0;
-      var tl = a.map(function(p, i){ var t = at[p.no] != null ? at[p.no] : (free[fi] != null ? slots[free[fi++]].a : 540 + i * 60); return { p:p, t:t, fix:tgt(p) != null }; });
+      var tl = a.map(function(p, i){ var t = at[p.no] != null ? at[p.no] : (free[fi] != null ? slots[free[fi++]].a : 540 + i * 60); return { p:p, t:t, fix:tgt(p) != null, two:isTwoP(patient(p.no)) }; });
       auTidy(tl);   /* 2026-11-07：希望時刻の人は動かさず、残りの人どうしで時刻を入れ替えて、事業所→訪問→事業所の道のりを短くする */
       tl.forEach(function(o){ var p = o.p; rows.push({ dow:d, time:hm(o.t), no:p.no, staffId:x.s.id, area:p.area, wish:p.wish || p.band || '', min:p.vmin || 0 }); });
     });
@@ -7006,6 +7015,7 @@ var MN_MARKS = [
     ['空の表から組む（手組み）', '本スケジュール表の下のボタン（予定を組む人の端末だけ）。職員 × 曜日の空の表に、下に並ぶ利用者の札を引っぱって置き、週の予定をホワイトボードのように組みます。升の端にその曜日の件数と訪問の間の合計が出ます（許容を超えると赤）。「効率バージョンを写す」で今の予定から直すこともでき、「H&Nパトリオットで確かめる」で下書きを確かめ、「この表で確定」で毎週の予定に置き換えます。下書きは閉じても残ります。'],
     ['H&Nパトリオット', '本スケジュール表と仮スケジュール表の下のボタン。表の週の予定を「許容範囲外の条項表」で確かめ、根拠付きの指摘を出します。指摘を押すと表の中の訪問が光ります。「問題なし」とは言わず、見た範囲だけを言います。'],
     ['赤字の区間（遠回り）', '管理者の窓の「予定表の対比」と野木画面の比較に出ます。管理者が組んだ1日の回り方を、同じ利用者さんのままAIの道順（事業所から出て、隣町でも近い人を先に回る順）と比べ、AIの道順に無い行ったり来たりの区間を赤字で出します。H&Nパトリオットの条項「道のりの無駄」は、人情変更の札が入った日も数えます。'],
+    ['2名体制の合流のしかた', '「予定」タブの1日の予定の下に出ます。1名体制から2名体制に日の途中で変わるとき、事務所で合流・現地で合流（それぞれ移動）・1件目の家に自転車を置いて車で回る（その日のうちに回収／次の訪問で回収）を、2人分の移動の時間（目安）で比べ、少ない案に◎を付けます。自転車の案は、利用者登録で「自転車を置かせてもらえる」に印がある家だけです。了承は担当看護師が取ります。その日のうちに回収するなら電池は付けたまま・鍵は掛ける、後日回収なら鍵を掛け電池は持ち帰ります。'],
     ['条項表', 'H&Nパトリオットが使う線です。野木画面の「条項表」で値を変えたり、行を足したり外したりできます（全端末に共有）。'],
     ['事業所の都合', 'キャンセル受付の理由の分類に「事業所の都合（職員の休み・調整）」を足しました。キャンセル料はかからず、利用者の信用度も下がりません。条項表の「事業所の都合による休み・変更」に数えます。'],
     ['伝票', '「伝票」タブで、カイポケの実績（伝票）のCSVを読み込んで月ごとに保管し、予定・看護記録・伝票の三つを突き合わせます。元のCSVは保管フォルダの slips／年-月 に残ります。']
@@ -7971,11 +7981,83 @@ function cmpWaste(m, vfn){
   out.days.sort(function(a, b){ return b.w.waste - a.w.waste; });
   return out;
 }
+/* 2026-11-07（宏史さんの指示）：2名体制の合流のしかた。1名体制から2名体制に日の途中で変わるとき、
+   ①事務所で合流 ②現地で合流（別々に移動） ③1件目の利用者宅に自転車を置かせてもらい車で回る（当日回収／後日回収）を、
+   2人分の移動の時間（目安）で比べ、少ないものに印を付ける。自転車を置けるのは、利用者登録で了承の印がある家だけ。
+   決まり：了承は担当看護師が取る。当日回収なら電池は付けたまま・鍵は掛ける。後日回収なら鍵を掛け、電池は持ち帰る */
+var JN_MIN = { car:3, bike:5, walk:15, bus:6 };   /* 1kmあたりの分（目安：車 時速20km・自転車 時速12km・徒歩 時速4km・バス電車 時速10km） */
+function jnMode(s){ if(canDrive(s)) return 'car'; var m = (s && s.move) || '徒歩'; return m === '自転車' ? 'bike' : m === 'バス電車' ? 'bus' : 'walk'; }
+function jnModeName(k){ return { car:'車', bike:'自転車', walk:'徒歩', bus:'バス・電車' }[k] || k; }
+function jnLL(no){ return no === 'OF' ? officeGeo() : auLL(patient(no) || {}); }
+function jnKm(a, b){ var A = jnLL(a), B = jnLL(b); if(!A || !B) return null; return kmBetween(A, B) || 0; }
+/* 道のり（場所の並び）を、手段ごとの区間に分けて km と分を足す */
+function jnPath(legs){ var km = 0, min = 0, ok = true; legs.forEach(function(l){ var k = jnKm(l[0], l[1]); if(k == null){ ok = false; return; } km += k; min += k * JN_MIN[l[2]]; }); return ok ? { km:km, min:min } : null; }
+function jnChain(nos, mode){ var out = []; for(var i = 1; i < nos.length; i++) out.push([nos[i - 1], nos[i], mode]); return out; }
+/* その日の、2人が一緒に回る続きの訪問（ひとかたまり）を探す */
+function jnRuns(vs){
+  var live = vs.filter(function(v){ return !v.cx; }).slice().sort(function(a, b){ return a.time < b.time ? -1 : 1; }), runs = [];
+  live.forEach(function(v){ if(!v.withId || isTbd(v.withId)) return; var key = [v.staffId, v.withId].sort().join('|'), last = runs[runs.length - 1];
+    var mineA = live.filter(function(x){ return x.staffId === v.staffId || x.withId === v.staffId; }), mineB = live.filter(function(x){ return x.staffId === v.withId || x.withId === v.withId; });
+    if(last && last.key === key){ var lv = last.vs[last.vs.length - 1]; var gapA = mineA.filter(function(x){ return x.time > lv.time && x.time < v.time; }).length, gapB = mineB.filter(function(x){ return x.time > lv.time && x.time < v.time; }).length; if(!gapA && !gapB){ last.vs.push(v); return; } }
+    runs.push({ key:key, a:v.staffId, b:v.withId, vs:[v], live:live }); });
+  return runs;
+}
+function jnPrevNext(run, sid){
+  var mine = run.live.filter(function(x){ return (x.staffId === sid || x.withId === sid) && run.vs.indexOf(x) < 0; }), t0 = run.vs[0].time, t1 = run.vs[run.vs.length - 1].time;
+  var pv = mine.filter(function(x){ return x.time < t0; }).pop(), nx = mine.filter(function(x){ return x.time > t1; })[0];
+  return { prev:pv ? pv.no : 'OF', next:nx ? nx.no : 'OF', hasNext:!!nx };
+}
+function jnPlan(run){
+  var sa = staff().filter(function(x){ return x.id === run.a; })[0], sb = staff().filter(function(x){ return x.id === run.b; })[0];
+  if(!sa || !sb) return null;
+  var D = canDrive(sa) ? sa : canDrive(sb) ? sb : null, O = D === sa ? sb : sa; if(!D){ D = sa; O = sb; }
+  var md = jnMode(D), mo = jnMode(O), J = run.vs.map(function(v){ return v.no; }), J1 = J[0], Jk = J[J.length - 1];
+  var pd = jnPrevNext(run, D.id), po = jnPrevNext(run, O.id), opts = [], car = md === 'car';
+  var add = function(key, name, dl, ol, note){ var a = jnPath(dl), b = jnPath(ol); if(a && b) opts.push({ key:key, name:name, km:a.km + b.km, min:a.min + b.min, note:note || '' }); };
+  /* ② 現地で合流（別々に移動） */
+  add('sep', '現地で合流（それぞれ移動）', [[pd.prev, J1, md]].concat(jnChain(J, md)).concat([[Jk, pd.next, md]]), [[po.prev, J1, mo]].concat(jnChain(J, mo)).concat([[Jk, po.next, mo]]),
+    J.length > 1 ? jnModeName(mo) + 'の人は、2名体制の家から家へも' + jnModeName(mo) + 'で移動します' : '');
+  if(car){
+    /* ① 事務所で合流 */
+    add('office', '事務所で合流（車で一緒に回る）', [[pd.prev, 'OF', md], ['OF', J1, md]].concat(jnChain(J, md)).concat([[Jk, 'OF', md], ['OF', pd.next, md]]),
+      [[po.prev, 'OF', mo], ['OF', J1, 'car']].concat(jnChain(J, 'car')).concat([[Jk, 'OF', 'car'], ['OF', po.next, mo]]), '事務所へ戻る時間と距離が足されます');
+    var bikeOk = mo === 'bike' && J.length > 1 && !!(patient(J1) || {}).bike;
+    if(bikeOk){
+      /* ③-a 自転車を置いて車で回る・当日回収 */
+      add('bikeDay', '1件目の家に自転車を置いて車で回る・その日のうちに回収', [[pd.prev, J1, md]].concat(jnChain(J, md)).concat([[Jk, J1, md], [J1, pd.next, md]]),
+        [[po.prev, J1, mo]].concat(jnChain(J, 'car')).concat([[Jk, J1, 'car'], [J1, po.next, mo]]), '電池は付けたまま・鍵は掛ける');
+      /* ③-b 後日回収（自転車の人に、この後の訪問が無い日だけ） */
+      if(!po.hasNext) add('bikeLater', '1件目の家に自転車を置いて車で回る・次の訪問のときに回収', [[pd.prev, J1, md]].concat(jnChain(J, md)).concat([[Jk, 'OF', md], ['OF', pd.next, md]]),
+        [[po.prev, J1, mo]].concat(jnChain(J, 'car')).concat([[Jk, 'OF', 'car']]), '鍵を掛け、電池は持ち帰る。次にこの家を訪問するときに回収');
+    }
+  }
+  if(!opts.length) return { run:run, D:D, O:O, J:J, opts:[], best:null, why:'地図の位置が取れていない訪問先があり、比べられません' };
+  var best = opts.slice().sort(function(x, y){ return x.min - y.min; })[0];
+  return { run:run, D:D, O:O, J:J, opts:opts, best:best, bikeAsk:mo === 'bike' && J.length > 1 && car && !(patient(J1) || {}).bike };
+}
+function jnHTML(pl){
+  var h = '<div style="border:1px solid var(--paper-deep);border-radius:8px;padding:8px 10px;margin:8px 0"><b>' + esc(staffName(pl.D.id)) + 'さん（' + esc(jnModeName(jnMode(pl.D))) + '）と ' + esc(staffName(pl.O.id)) + 'さん（' + esc(jnModeName(jnMode(pl.O))) + '）</b>　2名体制：' + pl.run.vs.map(function(v){ return esc(v.time) + ' ' + esc(dnn(v.no)); }).join(' → ');
+  if(!pl.opts.length) return h + '<p class="muted">' + esc(pl.why) + '</p></div>';
+  h += '<table style="margin-top:4px"><tr><th>合流のしかた</th><th class="num">2人分の移動（目安）</th><th>気を付けること</th></tr>' + pl.opts.map(function(o){ var b = o === pl.best;
+    return '<tr' + (b ? ' style="background:#eef6ee"' : '') + '><td>' + (b ? '<b>◎ ' : '') + esc(o.name) + (b ? '</b>' : '') + '</td><td class="num">' + Math.round(o.min) + '分・' + esc(kmL(o.km)) + '</td><td><small>' + esc(o.note) + '</small></td></tr>'; }).join('') + '</table>';
+  if(pl.bikeAsk) h += '<p class="muted sm">1件目の家（' + esc(dnn(pl.J[0])) + '）に自転車を置かせてもらえれば、「自転車を置いて車で回る」も比べられます。了承は担当看護師が取り、「利用者登録」の「自転車を置かせてもらえる」に印を付けてください。</p>';
+  return h + '</div>';
+}
+function joinRender(){
+  var box = $('td_join'); if(!box) return; var date = $('td_date').value, sid = $('td_staff').value;
+  if(!date || !sid){ box.innerHTML = ''; return; }
+  var runs = jnRuns(visitsOn(date)).filter(function(r){ return sid === '*' || r.a === sid || r.b === sid; });
+  if(!runs.length){ box.innerHTML = ''; return; }
+  box.innerHTML = '<details open><summary>2名体制の合流のしかた（' + runs.length + 'か所・◎が移動の少ない案）</summary>' + runs.map(function(r){ return jnHTML(jnPlan(r) || { run:r, D:{ id:r.a }, O:{ id:r.b }, opts:[], why:'職員名簿にいない職員がいます' }); }).join('') +
+    '<p class="muted sm">移動の時間は、地図上のまっすぐな距離を、車 時速20km・自転車 時速12km・徒歩 時速4km・バス電車 時速10km として出した目安です。運転は免許のある人（職員名簿の「免許あり」）です。</p></details>';
+}
+/* 1か月分：最も移動の少ない合流のしかたで回ったときの、2人分の移動の合計 */
+function cmpJoin(m, vfn){ var out = { n:0, km:0, min:0 }; mdDays(m).forEach(function(date){ jnRuns(vfn(date) || []).forEach(function(r){ var pl = jnPlan(r); if(pl && pl.best){ out.n++; out.km += pl.best.km; out.min += pl.best.min; } }); }); return out; }
 function cmpRender(m, opt){
   opt = opt || {};
   var vH = visitsOn, rows = cmpAiRows(), vA = cmpVisitsFn(rows), rules = ptrRules();
   if(!patients().length) return '<p class="empty">この部署に利用者さんがまだいません。</p>';
-  var WH = cmpWaste(m, vH), WA = cmpWaste(m, vA);
+  var WH = cmpWaste(m, vH), WA = cmpWaste(m, vA), JH = cmpJoin(m, vH), JA = cmpJoin(m, vA);
   var H = cmpScore(m, vH, true), A = cmpScore(m, vA, false), fH = cmpForecast(m, H), fA = cmpForecast(m, A), df = cmpDiff(m, vH, vA);
   var pH = ptrEvalPlan(mdDays(m), vH, rules, { month:m }), pA = ptrEvalPlan(mdDays(m), vA, rules, { month:m, noHv:true });
   var pct = function(a, b){ return b ? Math.round(a / b * 100) + '%（' + a + '／' + b + '）' : '—'; };
@@ -7992,6 +8074,7 @@ function cmpRender(m, opt){
     tr('空き時間（月の合計）', minLabel(H.idle), minLabel(A.idle), lo, H.idle, A.idle) +
     tr('許容範囲を超える日（職員×日）', H.over + '日', A.over + '日', lo, H.over, A.over) +
     tr('道のりの無駄（AIの道順より余分に走る距離・月の合計）', kmL(WH.km), kmL(WA.km), lo, Math.round(WH.km * 10), Math.round(WA.km * 10)) +
+    tr('2名体制の合流にかかる移動（最も少ない合流のしかたで・2人分・月の合計）', JH.n + 'か所・' + Math.round(JH.min) + '分', JA.n + 'か所・' + Math.round(JA.min) + '分', lo, Math.round(JH.min), Math.round(JA.min)) +
     tr('売上見込み（1か月）', mdYen(H.sales), mdYen(A.sales), hi, H.sales, A.sales) +
     tr('条項表の指摘（人情変更を除く）', pH.filter(function(f){ return !f.hv; }).length + '件', pA.length + '件', lo, pH.filter(function(f){ return !f.hv; }).length, pA.length) +
     '<tr><th colspan="3" style="text-align:left;background:#fbf3e4">人情の目</th></tr>' +

@@ -342,7 +342,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-07-05</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-07-06</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -5133,7 +5133,9 @@ function auBestTimes(tl){
     if(mv.length > 8){ auTidy(half); return; }
     var times = mv.map(function(o){ return o.t; }).sort(function(a, b){ return a - b; }), orig = mv.map(function(o){ return o.p; });
     var seqOf = function(){ return half.slice().sort(function(a, b){ return a.t - b.t; }).map(function(o){ return o.p; }); };
-    var twoBreaks = function(){ var s = half.slice().sort(function(a, b){ return a.t - b.t; }), n = 0; for(var i = 1; i < s.length; i++) if(s[i].two !== s[i - 1].two) n++; return n; };
+    /* 2026-11-07 改め（宏史さんの指摘・廣瀬さんの11/7）：続けて回すのは「同じ人と組む2名体制」だけ。組む相手が違う2名体制どうしは、続けても合流は減らないので道のりで決める。
+       数えるのは、同じ相手の2名体制が何回に分かれたか（分かれた回数＝余分な合流の回数） */
+    var twoBreaks = function(){ var s = half.slice().sort(function(a, b){ return a.t - b.t; }), n = 0; for(var i = 0; i < s.length; i++){ if(!s[i].two) continue; for(var j = i - 1; j >= 0 && s[j].two !== s[i].two; j--); if(j >= 0 && j !== i - 1) n++; } return n; };
     var best = null, bL = 1e9, bE = 1e9, bB = 1e9;
     auPerms(mv.length).forEach(function(pm){
       pm.forEach(function(j, i){ mv[j].t = times[i]; });
@@ -5224,7 +5226,9 @@ function auCompute(opt){
           if(why) p.why.push(why); }
       });
       var free = slots.map(function(s, i){ return i; }).filter(function(i){ return !taken[i]; }), fi = 0;
-      var tl = a.map(function(p, i){ var t = at[p.no] != null ? at[p.no] : (free[fi] != null ? slots[free[fi++]].a : 540 + i * 60); return { p:p, t:t, fix:tgt(p) != null, two:isTwoP(patient(p.no)) }; });
+      var tl = a.map(function(p, i){ var t = at[p.no] != null ? at[p.no] : (free[fi] != null ? slots[free[fi++]].a : 540 + i * 60); return { p:p, t:t, fix:tgt(p) != null, two:auPartner(p.no, d) }; });
+      /* 2名体制の組む相手（その曜日に組んでいる人。分からない2名体制は、その人だけの印にして、ほかと続ける必要がないものとして扱う） */
+      function auPartner(no, dw){ if(!isTwoP(patient(no))) return ''; var I = info[no] || {}, w = (I.ws || []).filter(function(z){ return z.dow === String(dw); })[0]; return (w && w.w) || I.withId || ('?' + no); }
       auBestTimes(tl);   /* 2026-11-07：午前・午後それぞれ会社を出て会社に戻る一回りで、希望時刻の人は動かさず、残りの人の時刻を入れ替えて一番短い並びにする */
       tl.forEach(function(o){ var p = o.p; rows.push({ dow:d, time:hm(o.t), no:p.no, staffId:x.s.id, area:p.area, wish:p.wish || p.band || '', min:p.vmin || 0 }); });
     });

@@ -1213,7 +1213,7 @@ function tsPortalAsk(){
       <div id="st_moveBox" style="margin-top:6px">
         <label class="f" for="st_move">移動の手段（免許の無い人）</label>
         <select id="st_move"><option value="徒歩">徒歩</option><option value="自転車">自転車</option><option value="徒歩・バス電車">徒歩（バス・電車も使える）</option><option value="自転車・バス電車">自転車（バス・電車も使える）</option></select>
-        <p class="muted" style="margin:4px 0 0">遠方（勤務の決まりの「徒歩・自転車で行ける距離」より遠い利用者）は、免許のある人と2名体制（運転手つき）でだけ組みます。</p>
+        <p class="muted" style="margin:4px 0 0">遠方（勤務の決まりの「徒歩・自転車で行ける距離」より遠い利用者）も、ほかの利用者さんと同じ順で割り振ります。2名体制は同行の職員が運転します。免許の無い人が遠方へ一人で行く訪問だけ、運転手（看護補助者を先に）を同行に付けます。</p>
       </div>
     </div>
     <div style="margin-top:8px"><label class="f">兼務する部署（所属部門のほかに横断して入る部署に印を付けます）</label><div id="st_sub" class="btns" style="margin-top:2px"></div></div>
@@ -5212,11 +5212,12 @@ function auCompute(opt){
       /* 2026-11-06（宏史さんの指示）：遠方の利用者は、免許のある職員を先に当てる。免許のある人に入らなければ免許の無い人にも当て、あとで運転手（免許のある人）を同行に付ける */
       var far = ptFar(patient(p.no)); p.far = far;
       var done = false, pass = p.wDays.length ? 2 : 1;
-      for(var fp = 0; fp < (far ? 2 : 1) && !done; fp++)
+      /* 2026-11-07 改め（宏史さんの指示「河野も茂木も自転車で移動できるので、他の職員と同様の配置行程で問題ない」）：遠方でも免許のある人を先に当てる決まり（11/6）はやめ、ほかの利用者さんと同じ順で割り振る。
+         2名体制は同行の職員が運転し、免許の無い人の遠方の単独訪問だけ、あとで運転手（伊藤さんなど看護補助者を先に）を同行に付ける */
+      for(var fp = 0; fp < 1 && !done; fp++)
       for(var ps = 0; ps < pass && !done; ps++)
       for(var i = 0; i < cand.length && !done; i++){
         var x = cand[i], best = null, bs = -1e9;
-        if(far && fp === 0 && !canDrive(x.s)) continue;
         var okDays = x.days.filter(function(d){ return p.ngDays.indexOf(d) < 0 && (ps > 0 || !p.wDays.length || p.wDays.indexOf(d) >= 0); });
         auCombos(okDays, Math.min(p.f, okDays.length)).forEach(function(c){
           if(c.length < p.f) return;
@@ -5324,7 +5325,7 @@ function auCompute(opt){
       if(v.withId && !isTbd(v.withId) && drvOf(v.withId)){ v.farDrv = true; return; }
       var w = driver(v, v.min || p.vmin || 30);
       if(w){ v.withId = w; v.autoWith = true; v.farDrv = true; } else { v.needDrv = true; }
-      var P1 = P.filter(function(q){ return q.no === v.no; })[0]; if(P1 && P1.why.indexOf('遠方（運転手つきの2名体制）') < 0) P1.why.push(w ? '遠方（運転手つきの2名体制）' : '遠方・運転手なし（要調整）');
+      /* 2026-11-07：運転手のことは「希望どおりに組めなかった人」には入れない（希望の話ではないため）。付けられなかった訪問だけ、別の枠で知らせる */
     });
   })();
   return { rows:rows, miss:miss, out:out, info:info, P:P, ST:ST, wk:wk, capOf:capOf };
@@ -5375,6 +5376,7 @@ function auMake(course){
   $('au_out').innerHTML = (course ? '<div class="judge ' + (tot < slotsW ? 'fee' : 'free') + '" style="margin:8px 0"><b style="font-size:15px;color:var(--ink)">目標設定額 ' + esc(mdYenShort(course.goal)) + 'コースの枠（週 ' + slotsW + '件）に、いまの患者さんを当てはめました。埋まったのは週 ' + tot + '件、空きは週 ' + Math.max(0, slotsW - tot) + '件です。</b>' + (tot < slotsW ? '<br>空き（点線の枠）は、新しい患者さんと、いまの患者さんの回数を上げる分で埋めていく枠です。埋め方は「モデルコースの見本」の「選んだコースに届くまでの道のり」と「アプローチの見本」にあります。' : '') + (course.free ? '<br>このコースは、利用者を仮に <b>' + course.users + '人</b>として組んだ見本です（患者さん登録は ' + P.length + '人）。' + (course.users > P.length ? '仮の ' + course.users + '人までは、あと ' + (course.users - P.length) + '人です。' : '') + 'その人数でこのコースに届かせるやり方は、「モデルコースの見本」の「アプローチの見本」にあります。' : '') + '</div>' : '') +
     '<div class="judge ' + (miss.length ? 'fee' : 'free') + '" style="margin:8px 0">利用中の患者さん ' + P.length + '人・週 ' + need + '回のうち、<b>週 ' + tot + '回</b>を振り分けました。' +
     (miss.length ? '<br><b>入りきらなかった患者さん：</b>' + miss.map(function(p){ var a = auAlt(p); return '<br>・' + esc(dnn(p.no)) + '（' + esc(p.area) + '・週' + p.f + '回）：' + (a.length ? '代わりに入れられる枠＝<b>' + esc(a.join('、')) + '</b><br>　<small>ご案内（読み上げ用）：「' + esc(auWishLabel(p)) + 'は、あいにく埋まっております。' + esc(a.join('、')) + 'でしたら伺えます。いかがでしょうか。」</small>' : '空いている枠がありません。常勤・非常勤とも上限まで埋まっています（1日の件数の上限か、出勤日の見直しが要ります）'); }).join('') : '') + '</div>' +
+    (function(){ var nd = rows.filter(function(r){ return r.needDrv; }); return nd.length ? '<div class="judge fee" style="margin:8px 0"><b>運転手を付けられなかった訪問</b>（担当が免許の無い人で、遠方の単独訪問。その時刻に運転できる人が空いていません）：' + nd.map(function(r){ return esc(dnn(r.no)) + '（' + DOW[+r.dow] + '曜 ' + esc(r.time) + '・' + esc(staffName(r.staffId)) + 'さん）'; }).join('、') + '</div>' : ''; })() +
     (function(){ var w = P.filter(function(p){ return p.why.length; }), t2 = P.filter(function(p){ return p.team === '2名' && !(info[p.no] && info[p.no].withId); });
       /* 2026-11-07（宏史さんの指摘「希望通りに組めなかった人をなぜはじくのか。人気の時間帯は代わりの曜日と時間を出すことで解決すると決めた」）：
          手直しを頼むのをやめ、組んだ代わりの曜日・時刻と、利用者さんへ読み上げるご案内の文を出す */

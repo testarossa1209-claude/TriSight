@@ -342,7 +342,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-07-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-07-05</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -690,10 +690,12 @@ function tsPortalAsk(){
     </details>
     <details class="ptsec" id="ptsWish" open><summary>予定の希望（予定を組むときの条件）</summary>
       <p class="muted">本人・家族から聞いた、訪問の日と時刻の希望です。自動の振り分けは、「訪問できない曜日」は必ず外し、希望の曜日・時刻・時間帯・訪問時間・体制をできるかぎり守って組みます。守れなかった人は、組み方の下に理由付きで出ます。担当の看護師についての希望（「男性は嫌」など）はここに書かず、「経過」の「拒否の申し出」に本人の言葉で残してください。</p>
+      <p class="muted sm" style="margin:2px 0 6px"><b>② は必ず入れます。</b>希望の時刻か時間帯のどちらかを入れるか、希望が無い人は「何時でも可」に印を付けてください（2026-11-07の決め）。</p>
+      <div class="btns" style="margin:0 0 6px"><button type="button" class="btn sub" id="pt_avBtn">空いている曜日と時間帯を見る</button></div><div id="pt_avBox"></div>
       <label class="f">① 希望の曜日（無ければ印を付けない）</label><div id="pt_wDays" class="btns" style="margin-top:2px"></div>
       <div class="row">
         <div><label class="f" for="pt_wish">② 希望の時刻</label><input type="time" id="pt_wish"></div>
-        <div><label class="f" for="pt_wBand">② 希望の時間帯</label><select id="pt_wBand"><option value="">指定なし</option><option>午前</option><option>午後</option></select></div>
+        <div><label class="f" for="pt_wBand">② 希望の時間帯</label><select id="pt_wBand"><option value="">指定なし</option><option>午前</option><option>午後</option></select><label class="f" style="margin-top:4px"><input type="checkbox" id="pt_anyTime"> 何時でも可</label></div>
         <div><label class="f" for="pt_vmin">④ 1回の訪問時間</label><select id="pt_vmin"><option value="">決まりのとおり</option><option value="30">30分</option><option value="60">60分</option><option value="90">90分</option></select></div>
         <div><label class="f" for="pt_team">⑤ 体制</label><select id="pt_team"><option value="">1名</option><option>2名</option></select></div>
         <div><label class="f" for="pt_preCall">⑥ 訪問前の連絡</label><select id="pt_preCall"><option value="">不要</option><option>要（電話）</option><option>要（その他）</option></select></div>
@@ -2694,7 +2696,7 @@ function ptClear(keepLock){
   $('pt_no').value = '';
   PT_F.forEach(function(f){ var el = $(f[0]); if(el) el.value = (el.tagName === 'SELECT') ? el.options[0].value : ''; });
   ['pt_plan','pt_start','pt_pdue'].forEach(function(id){ $(id).value = ''; });
-  if($('pt_zanmuDone')) $('pt_zanmuDone').checked = false; if($('ptEndNote')) $('ptEndNote').style.display = 'none'; if($('pt_far')){ $('pt_far').checked = false; $('pt_farNote').textContent = ''; } if($('pt_bike')) $('pt_bike').checked = false;
+  if($('pt_zanmuDone')) $('pt_zanmuDone').checked = false; if($('ptEndNote')) $('ptEndNote').style.display = 'none'; if($('pt_far')){ $('pt_far').checked = false; $('pt_farNote').textContent = ''; } if($('pt_bike')) $('pt_bike').checked = false; if($('pt_anyTime')) $('pt_anyTime').checked = false; if($('pt_avBox')) $('pt_avBox').innerHTML = '';
   document.querySelectorAll('#pt_hardCats input, #pt_copied input, #pt_wDays input, #pt_ngDays input').forEach(function(c){ c.checked = false; });
   var n = $('pt_copiedNote'); if(n) n.textContent = '';
   emVis();
@@ -2705,7 +2707,7 @@ function ptLoad(no){
   if(!p){ $('pt_msg').textContent = 'この番号はまだ登録されていません。欄を埋めて「この内容で登録する」を押すと登録されます。'; return; }
   ptClear(true); $('pt_no').value = dn(no);
   if($('pt_zanmuDone')) $('pt_zanmuDone').checked = !!p.zanmuDone;
-  if($('pt_bike')) $('pt_bike').checked = !!p.bike; if($('pt_far')){ $('pt_far').checked = !!p.far; var fk = ptFarKm(p); $('pt_farNote').textContent = fk != null ? '事業所から約 ' + fk.toFixed(1) + ' km' + (fk > workRule().farKm ? '（徒歩・自転車の範囲を超えるため、印が無くても遠方として扱います）' : '') : ''; }
+  if($('pt_bike')) $('pt_bike').checked = !!p.bike; if($('pt_anyTime')) $('pt_anyTime').checked = !!p.anyTime; if($('pt_far')){ $('pt_far').checked = !!p.far; var fk = ptFarKm(p); $('pt_farNote').textContent = fk != null ? '事業所から約 ' + fk.toFixed(1) + ' km' + (fk > workRule().farKm ? '（徒歩・自転車の範囲を超えるため、印が無くても遠方として扱います）' : '') : ''; }
   PT_F.forEach(function(f){ var el = $(f[0]); if(el && p[f[1]] != null) el.value = p[f[1]]; });
   emVis();
   if(D().kind === 'monitor'){ $('pt_cyc').value = p.cyc || 1; $('pt_staff').value = p.staffId || ''; $('pt_plan').value = p.planDue || ''; $('pt_start').value = p.start || ''; }
@@ -2745,11 +2747,13 @@ function prSave(){
 function ptSave(){
   var no = keyNo($('pt_no').value); if(!no){ alert('契約書番号を入れてください。'); $('pt_no').focus(); return; }
   if(!$('pt_area').value.trim()){ alert('地区（町名）を入れてください。予定を地区ごとにまとめるのに使います。'); $('pt_area').focus(); return; }
+  /* 2026-11-07（宏史さんの指示）：希望の時間帯は必ず入れる。希望の時刻・時間帯・「何時でも可」のどれか。契約終了・休止の登録のときは問わない */
+  if(D().kind === 'visit' && !($('pt_endWhy') && $('pt_endWhy').value) && !$('pt_wish').value && !$('pt_wBand').value && !($('pt_anyTime') && $('pt_anyTime').checked)){ alert('「予定の希望」の②（希望の時刻か希望の時間帯）を入れてください。希望が無い人は「何時でも可」に印を付けてください。'); var ws = $('ptsWish'); if(ws) ws.open = true; $('pt_wBand').focus(); return; }
   var a = allPatients(), p = a.filter(function(x){ return x.no === no; })[0], isNew = !p;
   if(!p){ p = { no:no, created:nowLocal() }; a.push(p); }
   PT_F.forEach(function(f){ var el = $(f[0]); if(el) p[f[1]] = String(el.value || '').trim(); });
   p.zanmuDone = !!($('pt_zanmuDone') && $('pt_zanmuDone').checked);
-  p.far = !!($('pt_far') && $('pt_far').checked); p.bike = !!($('pt_bike') && $('pt_bike').checked);
+  p.far = !!($('pt_far') && $('pt_far').checked); p.bike = !!($('pt_bike') && $('pt_bike').checked); p.anyTime = !!($('pt_anyTime') && $('pt_anyTime').checked);
   ptEndApply(p);
   if(D().kind === 'monitor'){ p.cyc = +$('pt_cyc').value || 1; p.staffId = $('pt_staff').value; p.planDue = $('pt_plan').value; p.start = $('pt_start').value; }
   else p.planDue = $('pt_pdue').value;
@@ -5038,7 +5042,7 @@ function renderToday(){
     /* 2026-11-07（宏史さんの指示）：地図のスタートは会社。お昼にほぼ全員が会社へ戻るので、線は「会社→午前の訪問→会社」「会社→午後の訪問→会社」の二回りで描く。番号は利用者さんだけ */
     var ofc = officeGeo();
     if(ofc){ ll.push([ofc.lat, ofc.lng]); L.marker([ofc.lat, ofc.lng], { icon:L.divIcon({ className:'tdOffice', html:'<span style="display:inline-block;background:#0f1d3a;color:#fff;border-radius:6px;padding:2px 6px;font-size:12px;font-weight:700;white-space:nowrap">会社</span>', iconSize:[44, 22], iconAnchor:[22, 11] }) }).bindTooltip('会社（スタート・お昼に戻る所）').addTo(tdLayer); }
-    who.forEach(function(id){ var mine = pts.filter(function(x){ return x.sid === id; }); [mine.filter(function(x){ return toMin(x.tm) < AU_HALF; }), mine.filter(function(x){ return toMin(x.tm) >= AU_HALF; })].forEach(function(h){ var l2 = h.map(function(x){ return [x.lat, x.lng]; }); if(ofc && l2.length){ l2.unshift([ofc.lat, ofc.lng]); l2.push([ofc.lat, ofc.lng]); } if(l2.length > 1) L.polyline(l2, { color:colOf(id), weight:3, opacity:.7, dashArray:'6 6' }).addTo(tdLayer); }); });
+    who.forEach(function(id){ var mine = pts.filter(function(x){ return x.sid === id; }); [mine.filter(function(x){ return toMin(x.tm) < AU_HALF; }), mine.filter(function(x){ return toMin(x.tm) >= AU_HALF; })].forEach(function(h){ var l2 = h.map(function(x){ return [x.lat, x.lng]; }); if(ofc && l2.length){ l2.unshift([ofc.lat, ofc.lng]); l2.push([ofc.lat, ofc.lng]); } if(l2.length > 1){ L.polyline(l2, { color:colOf(id), weight:3, opacity:.7, dashArray:'6 6' }).addTo(tdLayer); tdArrows(l2, colOf(id)); } }); });
     pts.forEach(function(x){
       L.marker([x.lat, x.lng], { icon:L.divIcon({ className:'tdPin', html:'<span' + (ALL ? ' style="background:' + colOf(x.sid) + ';border-radius:50%"' : '') + '>' + x.n + '</span>', iconSize:[28, 28], iconAnchor:[14, 14] }) }).bindTooltip(esc(x.t)).addTo(tdLayer);
     });
@@ -6816,13 +6820,41 @@ document.addEventListener('pointermove', function(e){
   if(ssDrag.over && ssDrag.over !== td) ssDrag.over.classList.remove('ssOver');
   if(td) td.classList.add('ssOver'); ssDrag.over = td;
 }, { passive:false });
+/* 2026-11-07（宏史さんの指示）：同じ升の中で札を上下に動かしたら、その並びの位置の時刻へ自動で書き換える。
+   時刻は、いまその升に入っている時刻の枠を、並んだ順に上から付け直す（1日の流れの枠は崩さない）。
+   小窓では、この日だけか毎週か、変更の理由、了承の印だけを聞く。動かした後の道のりを出し直し、遠回りなら赤字で出す */
+function ssReorder(v, td, y){
+  var chips = [].slice.call(td.querySelectorAll('.ssChip[data-vk]')).map(function(c){ return { c:c, v:SS_V[c.getAttribute('data-vk')] }; }).filter(function(o){ return o.v && !o.v.cx && o.v.staffId === v.staffId && o.v.date === v.date; });
+  if(chips.length < 2) return;
+  var rest = chips.filter(function(o){ return o.v !== v; }), at = rest.length;
+  for(var i = 0; i < rest.length; i++){ var r = rest[i].c.getBoundingClientRect(); if(y < r.top + r.height / 2){ at = i; break; } }
+  var order = rest.map(function(o){ return o.v; }); order.splice(at, 0, v);
+  var times = chips.map(function(o){ return o.v.time; }).sort(), ch = [];
+  order.forEach(function(x, i){ if(x.time !== times[i]) ch.push({ v:x, t:times[i] }); });
+  if(!ch.length) return;
+  var before = wasteDay(chips.map(function(o){ return o.v; })), after = wasteDay(order.map(function(x, i){ return Object.assign({}, x, { time:times[i] }); }));
+  var box = document.createElement('div'); box.className = 'ssMv'; box.id = 'ssMv';
+  box.innerHTML = '<div class="card"><h2>順番を入れ替える</h2><p class="muted sm">' + esc(staffName(v.staffId)) + 'さん・' + esc(jpDate(v.date)) + '</p>' +
+    '<ul>' + ch.map(function(o){ return '<li>' + esc(dnn(o.v.no)) + '：' + esc(o.v.time) + ' → <b>' + esc(o.t) + '</b></li>'; }).join('') + '</ul>' +
+    (before && after ? '<p class="sm">道のり（会社を出て会社に戻る）：' + esc(kmL(before.h)) + ' → <b' + (after.h > before.h + 0.05 ? ' style="color:var(--red)"' : '') + '>' + esc(kmL(after.h)) + '</b>' + (after.h > before.h + 0.05 ? '<span style="color:var(--red);font-weight:700">（＋' + esc(kmL(after.h - before.h)) + ' 遠回り）</span>' : '') + '</p>' : '') +
+    '<label class="f"><input type="checkbox" id="mv_ok"> 患者さんの了承を得た（まだなら印を付けずに動かすと「要連絡（了承前）」の札が付きます）</label>' +
+    '<label class="f" for="mv_why">変更の理由</label><select id="mv_why"><option value="">（選ばない）</option>' + hvWhyList().filter(function(w){ return canSched() || !hvIs(w); }).map(function(w){ return '<option>' + esc(w) + '</option>'; }).join('') + '</select>' +
+    '<label class="f" for="mv_note">ひとこと（任意）</label><input type="text" id="mv_note" maxlength="100"><input type="hidden" id="mv_time">' +
+    '<div class="btns" style="margin-top:8px"><button type="button" class="btn" id="mv_once">この日だけ入れ替える</button>' + (canSched() ? '<button type="button" class="btn sub" id="mv_week">毎週の予定を変える</button>' : '') + '<button type="button" class="btn sub" id="mv_no">やめる</button></div><div id="mv_res"></div></div>';
+  document.body.appendChild(box);
+  var go = function(weekly){ ch.forEach(function(o){ $('mv_time').value = o.t; ssMoveDo(o.v, o.v.staffId, o.v.date, weekly); }); };
+  $('mv_no').onclick = function(){ box.remove(); };
+  $('mv_once').onclick = function(){ go(false); };
+  if($('mv_week')) $('mv_week').onclick = function(){ go(true); };
+}
+document.addEventListener('click', function(e){ if(e.target && e.target.id === 'pt_avBtn') fsRender(); });
 function ssDragEnd(e, cancel){
   if(!ssDrag) return; var dg = ssDrag; ssDrag = null;
   if(dg.ghost) dg.ghost.remove(); if(dg.over) dg.over.classList.remove('ssOver');
   if(cancel || !dg.on || !dg.over) return;
   var v = SS_V[dg.vk]; if(!v) return;
   var sid = dg.over.getAttribute('data-sid'), date = dg.over.getAttribute('data-date');
-  if(sid === v.staffId && date === v.date) return;
+  if(sid === v.staffId && date === v.date){ if(date >= ymd(new Date())) ssReorder(v, dg.over, e.clientY); return; }   /* 2026-11-07：同じ升の中は順番の入れ替え */
   if(!canSched()){ if(sid !== dev().me){ alert('自分の担当の升にだけ動かせます。ほかの人へ付け替えるときは事務局へ連絡してください。'); return; } }   /* 2026-11-05：一般の職員は自分の升だけ */
   ssMoveAsk(v, sid, date);
 }
@@ -7056,6 +7088,8 @@ var MN_MARKS = [
     ['H&Nパトリオット', '本スケジュール表と仮スケジュール表の下のボタン。表の週の予定を「許容範囲外の条項表」で確かめ、根拠付きの指摘を出します。指摘を押すと表の中の訪問が光ります。「問題なし」とは言わず、見た範囲だけを言います。'],
     ['赤字の区間（遠回り）', '管理者の窓の「予定表の対比」と野木画面の比較に出ます。管理者が組んだ1日の回り方を、同じ利用者さんのままAIの道順（事業所から出て、隣町でも近い人を先に回る順）と比べ、AIの道順に無い行ったり来たりの区間を赤字で出します。H&Nパトリオットの条項「道のりの無駄」は、人情変更の札が入った日も数えます。'],
     ['2名体制の合流のしかた', '「予定」タブの1日の予定の下に出ます。1名体制から2名体制に日の途中で変わるとき、事務所で合流・現地で合流（それぞれ移動）・1件目の家に自転車を置いて車で回る（その日のうちに回収／次の訪問で回収）を、2人分の移動の時間（目安）で比べ、少ない案に◎を付けます。自転車の案は、利用者登録で「自転車を置かせてもらえる」に印がある家だけです。了承は担当看護師が取ります。その日のうちに回収するなら電池は付けたまま・鍵は掛ける、後日回収なら鍵を掛け電池は持ち帰ります。'],
+    ['同じ升の中で順番を入れ替える', '本スケジュール表の札を、同じ人・同じ日の升の中で上下に引っぱり、別の札の上（または下）で離すと、その並びの位置の時刻に自動で書き換わります。時刻は、その升に入っている時刻の枠を上から付け直すので、1日の流れは崩れません。小窓で「この日だけ入れ替える」か「毎週の予定を変える」かを選びます。遠回りになるときは赤字で出ます。'],
+    ['空いている曜日と時間帯', '利用者登録の「予定の希望」の「空いている曜日と時間帯を見る」を押すと、月〜土の午前・午後ごとに「入れます／少し空き／埋まっています」と、空いている看護師が出ます。「人気」は、いまの利用者さんの希望が集まっている時間帯です。希望の曜日・時間帯を入れてから押すと、そこが太枠になり、埋まっているときは新しい利用者さんへのご案内の文（読み上げ用）が出ます。'],
     ['条項表', 'H&Nパトリオットが使う線です。野木画面の「条項表」で値を変えたり、行を足したり外したりできます（全端末に共有）。'],
     ['事業所の都合', 'キャンセル受付の理由の分類に「事業所の都合（職員の休み・調整）」を足しました。キャンセル料はかからず、利用者の信用度も下がりません。条項表の「事業所の都合による休み・変更」に数えます。'],
     ['伝票', '「伝票」タブで、カイポケの実績（伝票）のCSVを読み込んで月ごとに保管し、予定・看護記録・伝票の三つを突き合わせます。元のCSVは保管フォルダの slips／年-月 に残ります。']
@@ -7108,7 +7142,7 @@ var MN_GUIDE = [
     ['手で直す', '「名簿・設定」の「週間予定」の一覧で、行ごとに同行を選んだり「外す」ことができます。新しい行は上の欄で入れて「追加する」。']
   ]],
   ['5. 毎日の予定を見る', [
-    ['1日の予定と地図', '「予定」タブのいちばん上。職員を選ぶとその人の予定と地図、「全員」を選ぶと全員の分が職員ごとの色で出ます。地図の下には、選んだ日を含む1週間の本スケジュール表（職員 × 曜日）が出て、札の丸い番号が地図の番号です。'],
+    ['1日の予定と地図', '「予定」タブのいちばん上。職員を選ぶとその人の予定と地図、「全員」を選ぶと全員の分が職員ごとの色で出ます。地図の下には、選んだ日を含む1週間の本スケジュール表（職員 × 曜日）が出て、札の丸い番号が地図の番号です。地図の線は「会社→午前の訪問→会社」「会社→午後の訪問→会社」の二回りで、線の上の三角の矢印が回る向きです。番号は表の「順」（時刻の早い順）と同じなので、線は必ず ① → ② → ③ … の順に進みます。'],
     ['今週の訪問予定', '「予定」タブの「今週の訪問予定」で、週の訪問を日ごとに並べます。担当の横に同行が出ます。'],
     ['仮スケジュール表', '右端の「仮スケジュール表」。職員×日付の表で、訪問と訪問の間に「移動 15分」などが出ます。今日以降の札は引っぱって、別の人・別の日へ動かせます。'],
     ['祝日に出た日の付け替え', '仮スケジュール表の下の「この日の訪問を、まとめて担当・同行に付け替える（祝日に出た日など）」で、日・担当・同行を選んで「この日の訪問を付け替える」。町名で寄せて時刻を組み直し、二人とも出勤の扱いになります。']
@@ -8087,6 +8121,14 @@ function jnHTML(pl){
   if(pl.bikeAsk) h += '<p class="muted sm">1件目の家（' + esc(dnn(pl.J[0])) + '）に自転車を置かせてもらえれば、「自転車を置いて車で回る」も比べられます。了承は担当看護師が取り、「利用者登録」の「自転車を置かせてもらえる」に印を付けてください。</p>';
   return h + '</div>';
 }
+/* 2026-11-07（宏史さんの指示「回る順がわかりやすいように、行程の→をルート上に」）：線の一区間ごとに、真ん中へ進む向きの矢印を置く */
+function tdArrows(l2, col){
+  for(var i = 0; i + 1 < l2.length; i++){
+    var a = l2[i], b = l2[i + 1]; if(a[0] === b[0] && a[1] === b[1]) continue;
+    var dx = (b[1] - a[1]) * Math.cos(a[0] * Math.PI / 180), dy = b[0] - a[0], deg = Math.atan2(-dy, dx) * 180 / Math.PI;
+    L.marker([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], { interactive:false, keyboard:false, icon:L.divIcon({ className:'tdArrow', html:'<svg width="30" height="30" viewBox="0 0 24 24" style="display:block;transform:rotate(' + deg.toFixed(1) + 'deg)"><path d="M4 5 L21 12 L4 19 L8 12 Z" fill="' + col + '" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>', iconSize:[30, 30], iconAnchor:[15, 15] }) }).addTo(tdLayer);
+  }
+}
 function joinRender(){
   var box = $('td_join'); if(!box) return; var date = $('td_date').value, sid = $('td_staff').value;
   if(!date || !sid){ box.innerHTML = ''; return; }
@@ -8097,6 +8139,53 @@ function joinRender(){
 }
 /* 1か月分：最も移動の少ない合流のしかたで回ったときの、2人分の移動の合計 */
 function cmpJoin(m, vfn){ var out = { n:0, km:0, min:0 }; mdDays(m).forEach(function(date){ jnRuns(vfn(date) || []).forEach(function(r){ var pl = jnPlan(r); if(pl && pl.best){ out.n++; out.km += pl.best.km; out.min += pl.best.min; } }); }); return out; }
+/* 2026-11-07（宏史さんの指示）：新しい利用者さんの相談を受けたその場で「この曜日のこの時間帯なら伺えます」と答えるための、空いている曜日と時間帯の一覧。
+   中身は、看護師の出る曜日（名簿の公休）、1日の件数の上限（常勤9件・非常勤5件。午前・午後の枠は1日の流れの枠と同じ割り方）、いまの週間予定から数えたおおよその空き。
+   人気の時間帯＝いまの利用者さんの希望（希望の曜日×午前・午後）が集まっているところ。埋まっているときに読み上げる案内の文も出す */
+function fsDows(){ return [1, 2, 3, 4, 5, 6]; }   /* 名前の頭は fs（空き＝free slot）。av は非常勤の出勤の申告で使っている */
+function fsHalfCap(cap){ var sl = mhDay(cap).filter(function(x){ return x.k === 'v'; }); var am = sl.filter(function(x){ return x.a < AU_HALF; }).length; return { am:am, pm:sl.length - am }; }
+function fsCalc(){
+  var caps = auCaps(), wk = weekly(), out = {};
+  var ST = deptStaff().filter(function(s){ return canSolo(s) && !isStandby(s) && !staffOrphan(s); });
+  fsDows().forEach(function(d){
+    out[d] = { am:{ free:0, who:[] }, pm:{ free:0, who:[] } };
+    ST.forEach(function(s){
+      if(staffOff(s).indexOf(String(d)) >= 0) return;
+      var cap = s.emp === '常勤' ? (+caps.f || 9) : (+caps.p || 5), hc = fsHalfCap(cap);
+      var mine = wk.filter(function(w){ return String(w.dow) === String(d) && (w.staffId === s.id || w.withId === s.id); });
+      var am = mine.filter(function(w){ return toMin(w.time) < AU_HALF; }).length, pm = mine.length - am;
+      [['am', hc.am - am], ['pm', hc.pm - pm]].forEach(function(x){ if(x[1] > 0){ out[d][x[0]].free += x[1]; out[d][x[0]].who.push({ s:s, n:x[1] }); } });
+    });
+  });
+  /* 人気：利用中の利用者さんの希望の曜日 × 希望の時間帯（または希望の時刻の午前・午後） */
+  var pop = {};
+  patients().filter(function(p){ return !p.status || p.status === '利用中'; }).forEach(function(p){
+    var half = p.wBand === '午前' ? 'am' : p.wBand === '午後' ? 'pm' : p.wish ? (toMin(p.wish) < AU_HALF ? 'am' : 'pm') : '';
+    if(!half) return; (p.wDays || []).forEach(function(d){ var k = d + half; pop[k] = (pop[k] || 0) + 1; });
+  });
+  var cnts = Object.keys(pop).map(function(k){ return pop[k]; }).sort(function(a, b){ return b - a; }), th = Math.max(2, cnts[2] || 2);
+  return { out:out, pop:pop, popTh:th };
+}
+function fsState(f){ return f >= 3 ? ['入れます', 'free'] : f >= 1 ? ['少し空き', 'fee'] : ['埋まっています', 'ng']; }
+function fsRender(){
+  var box = $('pt_avBox'); if(!box) return;
+  var R = fsCalc(), DN = ['日', '月', '火', '水', '木', '金', '土'], HN = { am:'午前', pm:'午後' };
+  var want = [].map.call(document.querySelectorAll('#pt_wDays input:checked'), function(c){ return String(c.value); });
+  var wantH = $('pt_wBand').value === '午前' ? 'am' : $('pt_wBand').value === '午後' ? 'pm' : $('pt_wish').value ? (toMin($('pt_wish').value) < AU_HALF ? 'am' : 'pm') : '';
+  var h = '<table style="margin-top:6px"><tr><th>曜日</th><th>午前（9時〜12時）</th><th>午後（13時〜）</th></tr>' + fsDows().map(function(d){
+    return '<tr><td><b>' + DN[d] + '</b></td>' + ['am', 'pm'].map(function(k){ var o = R.out[d][k], st = fsState(o.free), pp = (R.pop[d + k] || 0) >= R.popTh;
+      var mark = want.indexOf(String(d)) >= 0 && (!wantH || wantH === k) ? ' style="outline:2px solid var(--navy)"' : '';
+      return '<td' + mark + '><span class="tag ' + (st[1] === 'free' ? 'green' : st[1] === 'fee' ? 'amber' : 'gray') + '">' + st[0] + '</span>' + (pp ? ' <span class="tag red">人気</span>' : '') +
+        (o.who.length ? '<br><small class="muted">' + o.who.map(function(w){ return esc(staffName(w.s.id)) + ' あと' + w.n; }).join('・') + '</small>' : '') + '</td>'; }).join('') + '</tr>'; }).join('') + '</table>';
+  /* 案内の文：希望の曜日・時間帯が埋まっているとき、空いている近い候補を読み上げられる文で出す */
+  var full = [], alt = [];
+  want.forEach(function(d){ ['am', 'pm'].forEach(function(k){ if(wantH && wantH !== k) return; if(+d && R.out[d] && R.out[d][k].free < 1) full.push(DN[d] + '曜の' + HN[k]); }); });
+  fsDows().forEach(function(d){ ['am', 'pm'].forEach(function(k){ if(R.out[d][k].free >= 1 && alt.length < 3 && !(want.indexOf(String(d)) >= 0 && (!wantH || wantH === k))) alt.push(DN[d] + '曜の' + HN[k]); }); });
+  if(full.length) h += '<div class="judge fee" style="margin-top:8px"><b>新しい利用者さんへのご案内（読み上げ用）</b><br>「ご希望の' + esc(full.join('・')) + 'は、あいにく埋まっております。' + (alt.length ? esc(alt.join('、')) + 'でしたら伺えます。' : '空きが出ましたら、こちらからご連絡いたします。') + 'いかがでしょうか。」</div>';
+  else if(want.length) h += '<p class="muted sm" style="margin-top:6px">ご希望の曜日・時間帯には空きがあります（太枠のところ）。</p>';
+  h += '<p class="muted sm">空きは、いまの週間予定と1日の件数の上限（常勤' + (+auCaps().f || 9) + '件・非常勤' + (+auCaps().p || 5) + '件）から数えたおおよその数です。「人気」は、いまの利用者さんの希望が集まっている時間帯です。</p>';
+  box.innerHTML = h;
+}
 function cmpRender(m, opt){
   opt = opt || {};
   var vH = visitsOn, rows = cmpAiRows(), vA = cmpVisitsFn(rows), rules = ptrRules();

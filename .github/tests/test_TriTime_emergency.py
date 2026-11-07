@@ -24,7 +24,7 @@ async def test(p):
         await pg.select_option('#pt_em2Kind', '家族・親族'); await pg.fill('#pt_em2Name', '試験 一郎'); await pg.fill('#pt_em2Rel', '兄')
         await pg.select_option('#pt_em2Contact', '関わりを拒んでいる（連絡しない）'); await pg.select_option('#pt_em2Main', '主介護者ではない')
         await pg.fill('#pt_no', 'T-0901'); await pg.fill('#pt_name', '試験 花子'); await pg.fill('#pt_area', '青葉町一丁目')
-        await pg.click('#pt_add'); await pg.wait_for_timeout(600)
+        await pg.evaluate("document.getElementById('pt_anyTime').checked = true"); await pg.click('#pt_add'); await pg.wait_for_timeout(600)
         await pg.click('#pt_clear'); await pg.wait_for_timeout(200)
         await pg.fill('#pt_no', 'T-0901'); await pg.click('#pt_load'); await pg.wait_for_timeout(400)
         got = await pg.evaluate("['pt_em1Kind','pt_em1Org','pt_em1Name','pt_em1Rel','pt_em1TelNote','pt_em1Contact','pt_em2Kind','pt_em2Contact','pt_em2Main'].map(i=>document.getElementById(i).value)")

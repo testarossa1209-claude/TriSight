@@ -42,7 +42,7 @@ async def test(p):
         await pg.evaluate("document.querySelector('#tabs button[data-tab=pt]').click()"); await pg.wait_for_timeout(400)
         # 先に「既存 花子」をふつうの登録画面で入れておく
         await pg.fill('#pt_no', 'T-0001'); await pg.fill('#pt_name', '既存 花子'); await pg.fill('#pt_area', '青葉町一丁目')
-        await pg.click('#pt_add'); await pg.wait_for_timeout(500)
+        await pg.evaluate("document.getElementById('pt_anyTime').checked = true"); await pg.click('#pt_add'); await pg.wait_for_timeout(500)
         assert 'T-0001' in await pg.inner_text('#ptList'), '前置きの登録（既存 花子）ができません'
 
         await pg.set_input_files('#kpi_file', csv); await pg.wait_for_timeout(800)

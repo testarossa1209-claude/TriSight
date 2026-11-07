@@ -2,8 +2,8 @@
 """トライタイムの「免許の無い職員の移動と遠方の利用者」（2026-11-06・宏史さんの指示）の試験
 ・職員登録に「車の運転免許あり」の印。印が無いと「移動の手段」（徒歩／自転車／バス電車）が出て保存される
 ・利用者登録に「遠方」の印が保存される
-・自動の振り分け：遠方の利用者は免許のある看護師（二子）に当たる
-・免許のある看護師が出られない週は、免許の無い看護師（一子）に当て、同行に運転手（免許のある看護補助者＝四子）が付く。「希望どおりに組めなかった人」に理由が出る
+・自動の振り分け（2026-11-07 改め・宏史さんの指示）：遠方の利用者もほかの利用者と同じ順で割り振る。免許の無い人（一子）が一人で行く訪問になったら、同行に運転手（免許のある看護補助者＝四子）が付く
+・運転手の話は「希望どおりに組めなかった人」の一覧に出さない
 ・画面の中で誤りが出ない"""
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
@@ -50,10 +50,10 @@ async def test(p):
         assert pt['far'] is True, '遠方の印が保存されません'
         await pg.evaluate("var a=JSON.parse(localStorage.getItem('tritime_patients')); a.forEach(function(x){ if(x.no==='2010-01-看-9002') x.far=false; }); localStorage.setItem('tritime_patients', JSON.stringify(a));")
         await pg.reload(); await pg.wait_for_timeout(1200)
-        # 振り分け①：遠方は免許のある二子へ
+        # 振り分け①：遠方も同じ順で割り振る。免許の無い人に当たったら運転手が同行に付く
         rows = await rowsOf(pg)
-        far = [r for r in rows if '9001' in r and '同行' not in r]
-        assert far and all('二子' in r for r in [await pg.evaluate("(function(){ var o=null; document.querySelectorAll('#au_out tr').forEach(function(tr){ if(tr.textContent.indexOf('9001')>=0 && tr.textContent.indexOf('同行')<0) o=tr.querySelector('th.who').textContent; }); return o||''; })()")]), '遠方の利用者が免許のある人に当たりません：' + str(rows)
+        who = await pg.evaluate("(function(){ var o=''; document.querySelectorAll('#au_out tr').forEach(function(tr){ if(tr.textContent.indexOf('9001')>=0 && tr.querySelector('th.who')) o += tr.querySelector('th.who').textContent + '|' + tr.textContent.replace(/\\s+/g,' ') + '\\n'; }); return o; })()")
+        assert '二子' in who or ('一子' in who and '同行' in who and '四子' in who), '遠方の利用者に、免許のある人か運転手の同行が付きません：' + who[:300]
         await s.shot('#au_out', 'TriTime_idou_1.png')
         # 振り分け②：二子が出られない週 → 一子＋運転手（四子）
         await pg.evaluate(seed("['1','2','3','4','5','6','0']")); await pg.reload(); await pg.wait_for_timeout(1500)
@@ -61,7 +61,7 @@ async def test(p):
         who = await pg.evaluate("(function(){ var o=''; document.querySelectorAll('#au_out tr').forEach(function(tr){ if(tr.textContent.indexOf('9001')>=0 && tr.querySelector('th.who')) o += tr.querySelector('th.who').textContent + '|' + tr.textContent.replace(/\\s+/g,' ') + '\\n'; }); return o; })()")
         assert '一子' in who and '同行' in who and '四子' in who, '免許の無い人に運転手の同行が付きません：' + who[:300]
         judge = await pg.inner_text('#au_out')
-        assert '遠方（運転手つきの2名体制）' in judge, '理由が出ません'
+        assert '遠方（運転手つきの2名体制）' not in judge, '運転手の話が「希望どおりに組めなかった人」に出ています'
         await s.shot('#au_out', 'TriTime_idou_2.png')
         assert not s.errs, '画面の中で誤り：' + str(s.errs)
     finally:

@@ -342,7 +342,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-07-05</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-07-06</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -458,6 +458,7 @@ function tsPortalAsk(){
       <div><label class="f">&nbsp;</label><button class="btn sub" id="td_geo">住所から位置を取る</button></div>
     </div>
     <p class="muted" id="td_msg"></p>
+    <div id="td_half" class="btns" style="margin:6px 0 0;display:none"></div>
     <div id="td_map" style="height:360px;border-radius:10px;border:1px solid var(--paper-deep);margin:6px 0 10px;display:none"></div>
     <div id="td_week"></div>
     <details id="td_dayBox"><summary>この日の回る順と気を付けること（地図の番号の一覧）</summary><div class="tbl-scroll" id="td_list"></div></details>
@@ -4977,6 +4978,7 @@ function geoFillAll(){
 }
 /* ---- 1日の予定と地図 ---- */
 var tdMap = null, tdLayer = null, leafletP = null;
+var tdHalf = new Date().getHours() >= 12 ? 'pm' : 'am';   /* 2026-11-07：地図の行程の「午前」「午後」の切り替え。開いたときは、いまの時刻の方 */
 function leafletLoad(){
   if(window.L) return Promise.resolve();
   if(leafletP) return leafletP;
@@ -5004,7 +5006,7 @@ function renderToday(){
   setTimeout(function(){ try{ joinRender(); }catch(e){ if($('td_join')) $('td_join').innerHTML = ''; } }, 0);   /* 2026-11-07：2名体制の合流のしかた */
   todayFill();
   var date = $('td_date').value, sid = $('td_staff').value;
-  if(!sid){ $('td_list').innerHTML = ''; $('td_week').innerHTML = '<p class="empty">職員を選ぶと、その人の予定と地図が出ます（「全員」を選ぶと全員の分）。</p>'; $('td_map').style.display = 'none'; return; }
+  if(!sid){ $('td_list').innerHTML = ''; $('td_week').innerHTML = '<p class="empty">職員を選ぶと、その人の予定と地図が出ます（「全員」を選ぶと全員の分）。</p>'; $('td_map').style.display = 'none'; if($('td_half')) $('td_half').style.display = 'none'; return; }
   var ALL = sid === '*', COL = ['#1f4e79', '#c0392b', '#2e7d32', '#8e44ad', '#d35400', '#00838f', '#6d4c41', '#c2185b', '#455a64', '#7cb342'];
   var vs = visitsOn(date).filter(function(v){ return ALL || v.staffId === sid || v.withId === sid; });
   if(ALL) vs.sort(function(a, b){ return (staffName(a.staffId) < staffName(b.staffId) ? -1 : staffName(a.staffId) > staffName(b.staffId) ? 1 : 0) || (a.time < b.time ? -1 : 1); });
@@ -5028,7 +5030,7 @@ function renderToday(){
   if($('pw_open')) $('pw_open').onclick = pwOpen;   /* 2026-11-05：予定表の作り方を選ぶ */
   if($('js_open')) $('js_open').onclick = jsOpen;   /* 2026-11-05：管理者へ上申する（一般の職員） */   /* 最初の描画はこの宣言より前に走る */
   var pts = live.map(function(v, i){ var p = patient(v.no) || {}; return p.lat ? { n:ALL ? v._n : i + 1, sid:v.staffId, tm:v.time, lat:+p.lat, lng:+p.lng, t:(ALL ? staffName(v.staffId) + ' ' : '') + v.time + ' ' + dnn(v.no) } : null; }).filter(Boolean);
-  if(!pts.length){ $('td_map').style.display = 'none'; if(live.length) $('td_week').insertAdjacentHTML('afterbegin', '<p class="muted">地図に出せる訪問先がありません。利用者登録で住所（番地まで）を入れ、「住所から位置を取る」を押してください。</p>'); return; }
+  if(!pts.length){ $('td_map').style.display = 'none'; if($('td_half')) $('td_half').style.display = 'none'; if(live.length) $('td_week').insertAdjacentHTML('afterbegin', '<p class="muted">地図に出せる訪問先がありません。利用者登録で住所（番地まで）を入れ、「住所から位置を取る」を押してください。</p>'); return; }
   $('td_map').style.display = '';
   leafletLoad().then(function(){
     if(!tdMap){
@@ -5037,15 +5039,31 @@ function renderToday(){
     }
     if(tdLayer) tdLayer.remove();
     tdLayer = L.layerGroup().addTo(tdMap);
-    var ll = pts.map(function(x){ return [x.lat, x.lng]; });
+    /* 2026-11-07（宏史さんの指示）：お昼に会社へ戻るので、地図の行程は一人の職員について「午前の行程」「午後の行程」を分けて出す（上のボタンで切り替え）。
+       非常勤で、その日の訪問が4件以下の人は時間で出勤するので、1日を一回り（会社→訪問→会社）で出す。5件以上の非常勤（河野さん・望月さんなど）は常勤と同じく分ける */
+    var cntOf = {}; live.forEach(function(v){ cntOf[v.staffId] = (cntOf[v.staffId] || 0) + 1; });
+    var splitOf = function(id){ var s0 = raw('staff').filter(function(z){ return z.id === id; })[0]; return !(s0 && s0.emp === '非常勤' && (cntOf[id] || 0) <= 4); };
+    var anySplit = who.some(splitOf), inH = function(x){ return tdHalf === 'pm' ? toMin(x.tm) >= AU_HALF : toMin(x.tm) < AU_HALF; };
+    var shown = pts.filter(function(x){ return !splitOf(x.sid) || inH(x); });
+    var hb = $('td_half');
+    if(hb){
+      if(anySplit){
+        var nH = function(h){ return pts.filter(function(x){ return splitOf(x.sid) && (h === 'pm' ? toMin(x.tm) >= AU_HALF : toMin(x.tm) < AU_HALF); }).length; };
+        hb.style.display = '';
+        hb.innerHTML = [['am', '午前の行程'], ['pm', '午後の行程']].map(function(h){ return '<button type="button" class="btn' + (tdHalf === h[0] ? '' : ' sub') + '" data-tdhalf="' + h[0] + '">' + h[1] + '（' + nH(h[0]) + '件）</button>'; }).join('') +
+          '<span class="muted sm">お昼に会社へ戻るので、午前と午後を分けて出します。' + (who.some(function(id){ return !splitOf(id); }) ? '4件以下の非常勤の人は、1日を一回りで出します。' : '') + '</span>';
+        [].forEach.call(hb.querySelectorAll('[data-tdhalf]'), function(b){ b.onclick = function(){ tdHalf = b.getAttribute('data-tdhalf'); renderToday(); }; });
+      } else { hb.style.display = 'none'; hb.innerHTML = ''; }
+    }
+    var ll = shown.map(function(x){ return [x.lat, x.lng]; });
     /* 全員のときは、職員ごとに色を分けて、回る順の線と番号を出す */
-    /* 2026-11-07（宏史さんの指示）：地図のスタートは会社。お昼にほぼ全員が会社へ戻るので、線は「会社→午前の訪問→会社」「会社→午後の訪問→会社」の二回りで描く。番号は利用者さんだけ */
     var ofc = officeGeo();
     if(ofc){ ll.push([ofc.lat, ofc.lng]); L.marker([ofc.lat, ofc.lng], { icon:L.divIcon({ className:'tdOffice', html:'<span style="display:inline-block;background:#0f1d3a;color:#fff;border-radius:6px;padding:2px 6px;font-size:12px;font-weight:700;white-space:nowrap">会社</span>', iconSize:[44, 22], iconAnchor:[22, 11] }) }).bindTooltip('会社（スタート・お昼に戻る所）').addTo(tdLayer); }
-    who.forEach(function(id){ var mine = pts.filter(function(x){ return x.sid === id; }); [mine.filter(function(x){ return toMin(x.tm) < AU_HALF; }), mine.filter(function(x){ return toMin(x.tm) >= AU_HALF; })].forEach(function(h){ var l2 = h.map(function(x){ return [x.lat, x.lng]; }); if(ofc && l2.length){ l2.unshift([ofc.lat, ofc.lng]); l2.push([ofc.lat, ofc.lng]); } if(l2.length > 1){ L.polyline(l2, { color:colOf(id), weight:3, opacity:.7, dashArray:'6 6' }).addTo(tdLayer); tdArrows(l2, colOf(id)); } }); });
-    pts.forEach(function(x){
+    who.forEach(function(id){ var h = shown.filter(function(x){ return x.sid === id; }); var l2 = h.map(function(x){ return [x.lat, x.lng]; }); if(ofc && l2.length){ l2.unshift([ofc.lat, ofc.lng]); l2.push([ofc.lat, ofc.lng]); } if(l2.length > 1){ L.polyline(l2, { color:colOf(id), weight:3, opacity:.7, dashArray:'6 6' }).addTo(tdLayer); tdArrows(l2, colOf(id)); } });
+    shown.forEach(function(x){
       L.marker([x.lat, x.lng], { icon:L.divIcon({ className:'tdPin', html:'<span' + (ALL ? ' style="background:' + colOf(x.sid) + ';border-radius:50%"' : '') + '>' + x.n + '</span>', iconSize:[28, 28], iconAnchor:[14, 14] }) }).bindTooltip(esc(x.t)).addTo(tdLayer);
     });
+    if(!ll.length) ll = pts.map(function(x){ return [x.lat, x.lng]; });
     setTimeout(function(){ tdMap.invalidateSize(); if(ll.length > 1) tdMap.fitBounds(ll, { padding:[30, 30] }); else tdMap.setView(ll[0], 16); }, 50);
   }).catch(function(e){ $('td_map').innerHTML = '<p class="muted" style="padding:10px">' + esc(e.message) + '。通信を確かめて、もう一度開いてください。</p>'; });
 }
@@ -5133,7 +5151,9 @@ function auBestTimes(tl){
     if(mv.length > 8){ auTidy(half); return; }
     var times = mv.map(function(o){ return o.t; }).sort(function(a, b){ return a - b; }), orig = mv.map(function(o){ return o.p; });
     var seqOf = function(){ return half.slice().sort(function(a, b){ return a.t - b.t; }).map(function(o){ return o.p; }); };
-    var twoBreaks = function(){ var s = half.slice().sort(function(a, b){ return a.t - b.t; }), n = 0; for(var i = 1; i < s.length; i++) if(s[i].two !== s[i - 1].two) n++; return n; };
+    /* 2026-11-07 改め（宏史さんの指摘・廣瀬さんの11/7）：続けて回すのは「同じ人と組む2名体制」だけ。組む相手が違う2名体制どうしは、続けても合流は減らないので道のりで決める。
+       数えるのは、同じ相手の2名体制が何回に分かれたか（分かれた回数＝余分な合流の回数） */
+    var twoBreaks = function(){ var s = half.slice().sort(function(a, b){ return a.t - b.t; }), n = 0; for(var i = 0; i < s.length; i++){ if(!s[i].two) continue; for(var j = i - 1; j >= 0 && s[j].two !== s[i].two; j--); if(j >= 0 && j !== i - 1) n++; } return n; };
     var best = null, bL = 1e9, bE = 1e9, bB = 1e9;
     auPerms(mv.length).forEach(function(pm){
       pm.forEach(function(j, i){ mv[j].t = times[i]; });
@@ -5224,7 +5244,9 @@ function auCompute(opt){
           if(why) p.why.push(why); }
       });
       var free = slots.map(function(s, i){ return i; }).filter(function(i){ return !taken[i]; }), fi = 0;
-      var tl = a.map(function(p, i){ var t = at[p.no] != null ? at[p.no] : (free[fi] != null ? slots[free[fi++]].a : 540 + i * 60); return { p:p, t:t, fix:tgt(p) != null, two:isTwoP(patient(p.no)) }; });
+      var tl = a.map(function(p, i){ var t = at[p.no] != null ? at[p.no] : (free[fi] != null ? slots[free[fi++]].a : 540 + i * 60); return { p:p, t:t, fix:tgt(p) != null, two:auPartner(p.no, d) }; });
+      /* 2名体制の組む相手（その曜日に組んでいる人。分からない2名体制は、その人だけの印にして、ほかと続ける必要がないものとして扱う） */
+      function auPartner(no, dw){ if(!isTwoP(patient(no))) return ''; var I = info[no] || {}, w = (I.ws || []).filter(function(z){ return z.dow === String(dw); })[0]; return (w && w.w) || I.withId || ('?' + no); }
       auBestTimes(tl);   /* 2026-11-07：午前・午後それぞれ会社を出て会社に戻る一回りで、希望時刻の人は動かさず、残りの人の時刻を入れ替えて一番短い並びにする */
       tl.forEach(function(o){ var p = o.p; rows.push({ dow:d, time:hm(o.t), no:p.no, staffId:x.s.id, area:p.area, wish:p.wish || p.band || '', min:p.vmin || 0 }); });
     });
@@ -7142,7 +7164,7 @@ var MN_GUIDE = [
     ['手で直す', '「名簿・設定」の「週間予定」の一覧で、行ごとに同行を選んだり「外す」ことができます。新しい行は上の欄で入れて「追加する」。']
   ]],
   ['5. 毎日の予定を見る', [
-    ['1日の予定と地図', '「予定」タブのいちばん上。職員を選ぶとその人の予定と地図、「全員」を選ぶと全員の分が職員ごとの色で出ます。地図の下には、選んだ日を含む1週間の本スケジュール表（職員 × 曜日）が出て、札の丸い番号が地図の番号です。地図の線は「会社→午前の訪問→会社」「会社→午後の訪問→会社」の二回りで、線の上の三角の矢印が回る向きです。番号は表の「順」（時刻の早い順）と同じなので、線は必ず ① → ② → ③ … の順に進みます。'],
+    ['1日の予定と地図', '「予定」タブのいちばん上。職員を選ぶとその人の予定と地図、「全員」を選ぶと全員の分が職員ごとの色で出ます。地図の下には、選んだ日を含む1週間の本スケジュール表（職員 × 曜日）が出て、札の丸い番号が地図の番号です。お昼に会社へ戻るので、地図の上の「午前の行程」「午後の行程」のボタンで、午前と午後の回り方を分けて出します（開いたときは、いまの時刻の方）。それぞれ「会社→訪問→会社」の一回りで、線の上の三角の矢印が回る向きです。非常勤で、その日の訪問が4件以下の人は、1日を一回りで出します（5件以上の非常勤は常勤と同じく分けます）。番号は表の「順」（時刻の早い順）と同じなので、線は必ず ① → ② → ③ … の順に進みます。'],
     ['今週の訪問予定', '「予定」タブの「今週の訪問予定」で、週の訪問を日ごとに並べます。担当の横に同行が出ます。'],
     ['仮スケジュール表', '右端の「仮スケジュール表」。職員×日付の表で、訪問と訪問の間に「移動 15分」などが出ます。今日以降の札は引っぱって、別の人・別の日へ動かせます。'],
     ['祝日に出た日の付け替え', '仮スケジュール表の下の「この日の訪問を、まとめて担当・同行に付け替える（祝日に出た日など）」で、日・担当・同行を選んで「この日の訪問を付け替える」。町名で寄せて時刻を組み直し、二人とも出勤の扱いになります。']

@@ -342,7 +342,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-07-08</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-07-09</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -1786,14 +1786,20 @@ function cancelOf(no, date, time){
 }
 /* 予定の組み換え（2026-10-27）：キャンセルで空いた時間に、同じ日の後の訪問を前倒しした記録（type "move"）。
    週間予定は書き換えず、その日だけ時刻と担当を置き換える。取り消しは move の記録を消すだけ。 */
-function movesOn(date){ return events().filter(function(e){ return e.type === 'move' && e.date === date; }); }
+/* 2026-11-07（宏史さんの指示「残るのはいいですが、確定行程だけを表示するように」）：「この組み方を週間予定に入れる」で入れ替えた利用者さんについて、
+   入れる前に作った、明日以降の日付の「この日だけ」の組み換え記録は、消さずに残したまま、予定には使わない（新しい週間予定＝確定行程だけを出す）。
+   入れた日・過ぎた日の記録（実際に回った記録）はそのまま使う。「元に戻す」を押すと、前の扱いに戻る */
+var AU_APPLIED = 'tritime_au_applied';
+function moveStale(e){ var a = (lj(AU_APPLIED, {}) || {})[e.patientNo]; if(!a) return false; var d = e.toDate || e.date; return d > a.day && String(e.created || '') < a.at; }
+function liveMove(e){ return e.type === 'move' && !moveStale(e); }
+function movesOn(date){ return events().filter(function(e){ return liveMove(e) && e.date === date; }); }
 /* 2026-11-03：仮スケジュール表で別の日へ動かした訪問（move に toDate が付いたもの）は、元の日から外し、動かした先の日に出す。
    どの訪問からも、元の週間予定の1件（od＝元の日・ot＝元の時刻・wid＝週間予定の番号）をたどれるようにする */
 function visitsOn(date){
   var d = parseYmd(date); var w = d.getDay(), mv = movesOn(date), wk = weekly();
   /* 2026-11-03（宏史さん「祭日に島さんと佐野さんが全部2人で回った」）：「この日の訪問をまとめて付け替える」で残した今日・過ぎた日の記録（rec）がある日は、
      その記録だけでその日の訪問を出す。あとで週間予定を組み直しても（時刻や曜日が変わっても）、その日の実際の訪問は動かない */
-  var recs = events().filter(function(e){ return e.type === 'move' && e.rec && e.bulk && (e.toDate || e.date) === date; });
+  var recs = events().filter(function(e){ return liveMove(e) && e.rec && e.bulk && (e.toDate || e.date) === date; });
   if(recs.length) return recs.map(function(m){ var p = patient(m.patientNo) || {};
     return { date:date, time:m.toTime, min:m.min || 30, no:m.patientNo, area:p.area || '', staffId:m.toStaff, withId:m.toWith || '', cx:cancelOf(m.patientNo, date, m.toTime), moved:{ id:m.id, from:m.fromTime, fromStaff:m.fromStaff || '' }, od:m.date, ot:m.fromTime, wid:m.wid || '' };
   }).sort(function(a, b){ return a.time < b.time ? -1 : 1; });
@@ -1803,7 +1809,7 @@ function visitsOn(date){
     var t = m ? m.toTime : v.time, sid = m ? (m.toStaff || v.staffId) : v.staffId;
     return { date:date, time:t, min:v.min, no:v.no, area:p.area || '', staffId:sid, withId:(m && m.toWith != null) ? m.toWith : (v.withId || ''), cx:cancelOf(v.no, date, t), moved:m ? { id:m.id, from:v.time, fromStaff:v.staffId } : null, od:date, ot:v.time, wid:v.id };
   }).filter(Boolean);
-  events().filter(function(e){ return e.type === 'move' && e.toDate === date && e.date !== date; }).forEach(function(m){
+  events().filter(function(e){ return liveMove(e) && e.toDate === date && e.date !== date; }).forEach(function(m){
     var ow = (parseYmd(m.date) || new Date(0)).getDay(), v = wk.filter(function(x){ return +x.dow === ow && x.no === m.patientNo && x.time === m.fromTime; })[0];
     if(!v) return; var p = patient(v.no) || {}, sid = m.toStaff || v.staffId;
     out.push({ date:date, time:m.toTime, min:v.min, no:v.no, area:p.area || '', staffId:sid, withId:m.toWith != null ? m.toWith : (v.withId || ''), cx:cancelOf(v.no, date, m.toTime), moved:{ id:m.id, from:jpDate(m.date) + ' ' + v.time, fromStaff:v.staffId }, od:m.date, ot:v.time, wid:v.id });
@@ -5406,9 +5412,13 @@ function auDiffHTML(df, title, none){
 }
 function auApply(){
   if(!auPlan || !auPlan.rows.length) return;
-  if(!confirm('いまの週間予定のうち、振り分けた患者さん ' + auPlan.nos.length + '人の分を、この組み方に入れ替えます。入れ替える前の週間予定は控えに残し、「元に戻す」で戻せます。入れ替えますか。')) return;
+  var tdy = ymd(new Date()), nowA = nowLocal(), setN = {}; auPlan.nos.forEach(function(n){ setN[n] = 1; });
+  var nOld = events().filter(function(e){ return e.type === 'move' && setN[e.patientNo] && (e.toDate || e.date) > tdy && !moveStale(e); }).length;
+  if(!confirm((nOld ? '明日以降に「この日だけ」組み換えた記録が ' + nOld + '件あります。記録は残しますが、予定には新しい週間予定（確定行程）だけを出します。\n\n' : '') + 'いまの週間予定のうち、振り分けた患者さん ' + auPlan.nos.length + '人の分を、この組み方に入れ替えます。入れ替える前の週間予定は控えに残し、「元に戻す」で戻せます。入れ替えますか。')) return;
   var all = live('weekly');
-  try{ localStorage.setItem(AU_BAK, JSON.stringify({ at:nowLocal(), rows:all })); }catch(e){}
+  var apPrev = lj(AU_APPLIED, {}) || {}, apNew = JSON.parse(JSON.stringify(apPrev));
+  auPlan.nos.forEach(function(n){ apNew[n] = { at:nowA, day:tdy }; });
+  try{ localStorage.setItem(AU_BAK, JSON.stringify({ at:nowLocal(), rows:all, applied:apPrev })); localStorage.setItem(AU_APPLIED, JSON.stringify(apNew)); }catch(e){}
   var set = {}; auPlan.nos.forEach(function(n){ set[n] = 1; });
   var keep = all.filter(function(v){ return !set[v.no]; });
   auPlan.rows.forEach(function(v){ var inf = auPlan.info[v.no] || {}, w = v.withId || '';
@@ -5424,7 +5434,7 @@ function auUndoShow(){ var b = lj(AU_BAK, null); $('au_undo').style.display = b 
 function auUndo(){
   var b = lj(AU_BAK, null); if(!b) return;
   if(!confirm(b.at + 'に入れ替える前の週間予定に戻します。戻しますか。')) return;
-  saveCol('weekly', b.rows); try{ localStorage.removeItem(AU_BAK); }catch(e){}
+  saveCol('weekly', b.rows); try{ if(b.applied) localStorage.setItem(AU_APPLIED, JSON.stringify(b.applied)); else localStorage.removeItem(AU_APPLIED); localStorage.removeItem(AU_BAK); }catch(e){}
   $('au_msg').textContent = '入れ替える前の週間予定に戻しました。'; refreshAll(); auUndoShow();
 }
 function renderAuto(){

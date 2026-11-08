@@ -354,7 +354,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-08-05</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-08-06</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -439,7 +439,7 @@ function tsPortalAsk(){
 </aside>
 <aside class="ssPanel" id="ssPanel" aria-label="仮スケジュール表">
   <div class="ssHead"><h2 id="ssTitle">仮スケジュール表</h2><button type="button" class="ssClose" id="ssClose" title="閉じる" aria-label="閉じる">×</button></div>
-  <div class="ssNav"><b id="ssWeek"></b><button type="button" class="btn sub small" id="ssPrev">前の週</button><button type="button" class="btn sub small" id="ssThis">今週</button><button type="button" class="btn sub small" id="ssNext">次の週</button></div>
+  <div class="ssNav"><b id="ssWeek"></b><input type="date" id="ssFrom" title="表の始まりの日（この日から7日分を出します）" style="font:inherit;font-size:13px;padding:3px 6px"><button type="button" class="btn sub small" id="ssPrev">前の週</button><button type="button" class="btn sub small" id="ssThis">今日から</button><button type="button" class="btn sub small" id="ssNext">次の週</button></div>
   <div class="ssBody" id="ssBody"><div id="ssGrid"></div>
     <!-- 2026-11-08：AIのベース（地区で寄せる組み方）は、仮スケジュール表の中で組み直す（自動組みの引き出しはやめた） -->
     <details class="ssAi" id="ssAi"><summary>AIのベースで組み直す（地区で寄せて組む）</summary><div id="ssAiBody"><div class="card" id="cardAuto" style="display:none">
@@ -5146,7 +5146,13 @@ function renderToday(){
   if($('pw_open')) $('pw_open').onclick = pwOpen;   /* 2026-11-05：予定表の作り方を選ぶ */
   if($('js_open')) $('js_open').onclick = jsOpen;   /* 2026-11-05：管理者へ上申する（一般の職員） */   /* 最初の描画はこの宣言より前に走る */
   var pts = live.map(function(v, i){ var p = patient(v.no) || {}; return p.lat ? { n:ALL ? v._n : i + 1, sid:v.staffId, tm:v.time, lat:+p.lat, lng:+p.lng, t:(ALL ? staffName(v.staffId) + ' ' : '') + v.time + ' ' + dnn(v.no) } : null; }).filter(Boolean);
-  if(!pts.length){ $('td_map').style.display = 'none'; if($('td_half')) $('td_half').style.display = 'none'; if(live.length) $('td_week').insertAdjacentHTML('afterbegin', '<p class="muted">地図に出せる訪問先がありません。利用者登録で住所（番地まで）を入れ、「住所から位置を取る」を押してください。</p>'); return; }
+  if(!pts.length){ $('td_map').style.display = 'none'; if($('td_half')) $('td_half').style.display = 'none';
+    if(live.length){ $('td_week').insertAdjacentHTML('afterbegin', '<p class="muted">地図に出せる訪問先がありません。利用者登録で住所（番地まで）を入れ、「住所から位置を取る」を押してください。</p>'); return; }
+    /* 2026-11-08（宏史さん「地図がでていません」）：訪問が無い日は、地図が壊れたのか訪問が無いのか見分けがつかないので、地図の場所に知らせを出し、次に訪問のある日へ一押しで移れるようにする */
+    var nx = ''; for(var k = 1; k <= 14 && !nx; k++){ var dk = ymd(addDays(parseYmd(date), k)); if(visitsOn(dk).some(function(v){ return !v.cx && (ALL || v.staffId === sid || v.withId === sid); })) nx = dk; }
+    $('td_week').insertAdjacentHTML('afterbegin', '<div class="judge free" style="margin:6px 0 10px"><b>' + esc(jpDate(date)) + 'の訪問はありません。</b>そのため地図は出していません。' + (nx ? '<br><button type="button" class="btn" id="td_next" style="margin-top:6px">' + esc(jpDate(nx)) + 'の予定と地図を出す</button>' : '<br>この先2週間にも訪問がありません。') + '</div>');
+    if($('td_next')) $('td_next').onclick = function(){ $('td_date').value = nx; renderToday(); };
+    return; }
   $('td_map').style.display = '';
   leafletLoad().then(function(){
     if(!tdMap){
@@ -6817,7 +6823,7 @@ function ssOpen(on){
   if(on){ document.body.classList.remove('kpOpen', 'mnOpen', 'nmOpen', 'osOpen', 'rqOpen', 'plOpen', 'jmOpen', 'jlOpen'); }
   document.body.classList.toggle('ssOpen', !!on);
   try{ localStorage.setItem(SS_KEY, on ? '1' : '0'); }catch(e){}
-  if(on){ if(!ssStart) ssStart = parseYmd($('planWeek').value) || mondayOf(new Date()); ssRender(); }
+  if(on){ if(!ssStart) ssStart = parseYmd(ymd(new Date()));   /* 2026-11-08（宏史さん「なんで開いた時点の日付で予定表を表示させないの？」）：開いた日から7日分を出す */ ssRender(); }
 }
 /* 表の中では契約書番号の末尾（部門と利用者番号。例 看-0061）だけを出す。全部の番号は印の上に出る説明（title）に入れる */
 function ssShortNo(no){ var t = dn(no), m = t.match(/([^-]+-[^-]+)(-重)?$/); return m && t.split('-').length >= 4 ? m[1] : t; }
@@ -6872,10 +6878,10 @@ function ssGridHTML(days, opt){
 }
 function ssRender(){
   if(!document.body.classList.contains('ssOpen')) return;
-  var d = D(); if(!ssStart) ssStart = mondayOf(new Date());
+  var d = D(); if(!ssStart) ssStart = parseYmd(ymd(new Date()));
   $('ssTitle').innerHTML = '仮スケジュール表<small>' + esc(d.name) + '・1週間の見渡し</small>';
   var days = []; for(var i = 0; i < 7; i++) days.push(ymd(addDays(ssStart, i)));
-  $('ssWeek').textContent = jpDate(days[0]) + ' 〜 ' + jpDate(days[6]);
+  $('ssWeek').textContent = jpDate(days[0]) + ' 〜 ' + jpDate(days[6]); if($('ssFrom')) $('ssFrom').value = days[0];
   /* 2026-11-03（各部統一）：経営企画事務職で開いたときは、訪問のある部署の表を部署ごとに並べる（見るだけ。札を動かすのは、その部署を選んで行う） */
   if(d.kind === 'office'){
     var hs = acrossDepts(function(x){ var g0 = ssGridHTML(days, {}); return g0.html ? ['<h3 style="margin:10px 0 4px;font-size:15px">' + esc(x.name) + '</h3>' + g0.html] : []; });
@@ -7434,7 +7440,8 @@ setInterval(osBadge, 60000);   /* 日付が変わったり、ほかの端末で�
 $('ssClose').addEventListener('click', function(){ ssOpen(false); });
 $('ssPrev').addEventListener('click', function(){ ssStart = addDays(ssStart || mondayOf(new Date()), -7); ssRender(); });
 $('ssNext').addEventListener('click', function(){ ssStart = addDays(ssStart || mondayOf(new Date()), 7); ssRender(); });
-$('ssThis').addEventListener('click', function(){ ssStart = mondayOf(new Date()); ssRender(); });
+$('ssThis').addEventListener('click', function(){ ssStart = parseYmd(ymd(new Date())); ssRender(); });
+$('ssFrom').addEventListener('change', function(){ ssStart = parseYmd(this.value) || parseYmd(ymd(new Date())); ssRender(); });   /* 2026-11-08：表の始まりの日を選ぶ */   /* 2026-11-08：今日から7日分に戻る */
 var refreshAll0 = refreshAll;
 /* ---- 翌月の予定の申告（2026-11-03・宏史さんの指示）----
    非常勤の人の、ある月の出られる日を type "avail" で持つ（同じ人・同じ月は新しいものを使う）。

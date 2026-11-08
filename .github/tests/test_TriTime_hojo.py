@@ -52,7 +52,7 @@ async def test(p):
           localStorage.setItem('tritime_weekly', JSON.stringify([{ id:'w1', dow:'1', time:'09:15', min:30, no:'2010-01-看-9001', staffId:sid, withId:'', upd:t }])); }""", sid1)
         await pg.evaluate("document.querySelector('#tabs button[data-tab=plan]').click()"); await pg.wait_for_timeout(300)
         await pg.evaluate("document.getElementById('ssTab').click()"); await pg.wait_for_timeout(400)
-        await pg.click('#ssNext'); await pg.wait_for_timeout(400)
+        await pg.evaluate("(d) => { var e = document.getElementById('ssFrom'); e.value = d; e.dispatchEvent(new Event('change')); }", mon.isoformat()); await pg.wait_for_timeout(400)   # 2026-11-08：表は開いた日から7日分。来週の月曜から出す
         await drag(pg, '#ssBody .ssChip.dg[data-vk="%s|2010-01-看-9001|09:15"]' % mon.isoformat(), '#ssBody td[data-sid="%s"][data-date="%s"]' % (sid2, mon.isoformat()))
         t = await pg.inner_text('#ssMv')
         assert '単独では訪問できません' in t, '看護補助者の升へ離しても「単独では訪問できません」が出ません'

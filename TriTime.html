@@ -346,7 +346,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-08-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-08-02</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -3286,6 +3286,7 @@ function stDue(sid, date, kind){ return kind === 'direct' ? stFirstVisit(sid, da
 function stKindLabel(k){ return k === 'direct' ? '直行' : '出勤'; }
 function stToday(){ return ymd(new Date(srvNow())); }
 function stShouldAsk(){ if(navigator.webdriver) return false;   /* 自動の点検（ブラウザを機械が動かしているとき）は出さない。人が使う端末では出る */
+  if(zIsReg()) return false;   /* 2026-11-08（宏史さんの指示「ラップトップの出退勤は必要ない」）：野木画面を開ける端末として登録した2台（トライサイトPC・ラップトップ）には、今日のスタートの窓も上の帯も出さない */
   var s = meStaff(); if(!s || D().kind === 'office' || jobOf(s) === '事務局') return false; var date = stToday(); if(offWhy(s.id, date)) return false; return !startRec(s.id, date); }
 function stPress(kind){
   var s = meStaff(); if(!s) return; var d = new Date(srvNow()), date = ymd(d), at = pad(d.getHours()) + ':' + pad(d.getMinutes());
@@ -7205,7 +7206,7 @@ var MN_GUIDE = [
     ['休みの届け', '「名簿・設定」の「休みの届け」で、その日だけの休みを入れます（「休みを入れる」）。'],
     ['翌月の予定の申告（非常勤）', '「名簿・設定」の「翌月の予定の申告（非常勤）」で、出られる日に印を付けて「この内容で申告する」。申告した月は、申告の日だけが出勤日になります。'],
     ['勤務の決まり', '1日の目標件数・移動の目安（最短10分・最長20分）・出勤と退勤の時刻・休憩を決めます。予定は移動15分（最短と最長の真ん中）で組みます。'],
-    ['今日のスタート（毎日の決まり）', '出勤日に端末を開くと「今日のスタート」の窓が出ます。事務所に着いたら「出勤（事務所から）」、利用者さんのお宅へ直接行く日は「直行（利用者さんのお宅へ）」を押します。押した時刻が勤怠の記録になり、出勤時刻（直行はその日の最初の訪問の時刻）を過ぎて押すと遅刻の印が付きます。押さなくても画面は開きますが、上に帯が残り、押さなかった日は野木画面で「押し忘れ」に数えます。']
+    ['今日のスタート（毎日の決まり）', '出勤日に端末を開くと「今日のスタート」の窓が出ます（野木画面を開ける端末として登録した2台には出ません）。事務所に着いたら「出勤（事務所から）」、利用者さんのお宅へ直接行く日は「直行（利用者さんのお宅へ）」を押します。押した時刻が勤怠の記録になり、出勤時刻（直行はその日の最初の訪問の時刻）を過ぎて押すと遅刻の印が付きます。押さなくても画面は開きますが、上に帯が残り、押さなかった日は野木画面で「押し忘れ」に数えます。']
   ]],
   ['3. 利用者さんの登録（利用者登録）', [
     ['利用者さんを入れる', '「利用者登録」タブで契約書番号・氏名・地区（町名）・住所・本人の携帯などを入れて「この内容で登録する」。地区は町名で入れると、予定が町名で寄ります。'],

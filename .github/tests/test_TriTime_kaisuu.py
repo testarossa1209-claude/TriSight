@@ -31,11 +31,11 @@ async def test(p):
           localStorage.setItem('tritime_weekly', JSON.stringify([ { id:'w1', dow:'2', time:'09:15', min:30, no:'2010-01-看-9001', staffId:sid, withId:'', upd:t } ])); })()""")
         # 画面は記録を毎回 localStorage から読むので、開き直さずにそのまま使う
         await pg.evaluate("document.querySelector('#tabs button[data-tab=plan]').click()"); await pg.wait_for_timeout(400)
-        await pg.evaluate("sideOpen('au', true)"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
+        await pg.evaluate("document.getElementById('auTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
         await pg.wait_for_selector('#au_make', state='visible', timeout=15000)
         caps = await pg.evaluate("[document.getElementById('au_full').value, document.getElementById('au_part').value]")
         assert caps == ['9', '5'], '1日の件数の上限の初めの値が、常勤9件・非常勤5件になりません：' + str(caps)
-        await pg.evaluate("sideOpen('au', true)"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
+        await pg.evaluate("document.getElementById('auTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
         await pg.click('#au_make'); await pg.wait_for_timeout(800)
         if not await pg.is_visible('#au_apply'):
             info = await pg.evaluate("[document.getElementById('au_out').innerText.slice(0,200), localStorage.getItem('tritime_patients'), (localStorage.getItem('tritime_staff')||'').slice(0,300)]")

@@ -27,9 +27,9 @@ async def test(p):
             { no:'2010-01-看-9103', name:'試験 月', area:'東町', status:'利用中', freq:'月12回', upd:t } ]));
           localStorage.setItem('tritime_weekly', '[]'); localStorage.removeItem('tritime_weekly_backup'); })()""")
         await pg.evaluate("document.querySelector('#tabs button[data-tab=plan]').click()"); await pg.wait_for_timeout(400)
-        await pg.evaluate("sideOpen('au', true)"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
+        await pg.evaluate("document.getElementById('auTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
         await pg.wait_for_selector('#au_make', state='visible', timeout=15000)
-        await pg.evaluate("sideOpen('au', true)"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
+        await pg.evaluate("document.getElementById('auTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
         await pg.click('#au_make'); await pg.wait_for_timeout(800)
         out = await pg.inner_text('#au_out')
         assert '週 6回' in out, '「週二回」「2回（読めない→週1回）」「月12回（週3回）」で、合わせて週6回になりません：' + out[:200]

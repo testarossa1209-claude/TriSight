@@ -83,7 +83,7 @@ async def test(p):
 
         # 自動の振り分けに待機の人が入らない
         await pg.evaluate("document.querySelector('#tabs button[data-tab=plan]').click()"); await pg.wait_for_timeout(300)
-        await pg.evaluate("sideOpen('au', true)"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
+        await pg.evaluate("document.getElementById('auTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
         await pg.click('#au_make'); await pg.wait_for_timeout(600)
         out = await pg.inner_text('#au_out')
         assert '待機 三子' not in out and '常勤 一子' in out, '自動の振り分けの表に待機の人が入っています'

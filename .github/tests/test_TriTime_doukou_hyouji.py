@@ -42,9 +42,9 @@ async def test(p):
         await s.shot('#ssBody', 'TriTime_doukou_karisuke.png')
         await pg.evaluate("document.body.classList.remove('ssOpen')")
         # 自動の振り分けの表
-        await pg.evaluate("sideOpen('au', true)"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
+        await pg.evaluate("document.getElementById('auTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
         await pg.wait_for_selector('#au_make', state='visible', timeout=15000)
-        await pg.evaluate("sideOpen('au', true)"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
+        await pg.evaluate("document.getElementById('auTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
         await pg.click('#au_make'); await pg.wait_for_timeout(800)
         au = await pg.inner_text('#au_out')
         # 2026-11-03-20 から、職種だけの同行（看護師・未定）と、体制2名で同行が空の訪問にも、自動の振り分けで人が付く

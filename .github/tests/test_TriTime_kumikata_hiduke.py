@@ -30,9 +30,9 @@ async def test(p):
           localStorage.setItem('tritime_events', JSON.stringify([{ id:'lv1', type:'leave', staffId:a, date:wd, kind:'有給', upd:t }]));
           return [(mon.getMonth() + 1) + '/' + mon.getDate(), (wed.getMonth() + 1) + '/' + wed.getDate(), wd, a]; })()""")
         await pg.evaluate("document.querySelector('#tabs button[data-tab=plan]').click()"); await pg.wait_for_timeout(400)
-        await pg.evaluate("sideOpen('au', true)"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
+        await pg.evaluate("document.getElementById('auTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
         await pg.wait_for_selector('#au_make', state='visible', timeout=15000)
-        await pg.evaluate("sideOpen('au', true)"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
+        await pg.evaluate("document.getElementById('auTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
         await pg.click('#au_make'); await pg.wait_for_timeout(800)
         th = await pg.inner_text('#au_out table tr')
         assert info[0] in th and info[1] in th, '自動の振り分けの表の見出しに、今週の日付が出ません：' + th
@@ -43,7 +43,7 @@ async def test(p):
         await pg.evaluate("""(a) => { var ev = JSON.parse(localStorage.getItem('tritime_events'));
           ev.push({ id:'m1', type:'move', patientNo:'2010-01-看-9601', date:a[2], fromTime:'09:15', toTime:'09:15', toStaff:a[3], toWith:'', rec:true, bulk:'b1', upd:Date.now() });
           localStorage.setItem('tritime_events', JSON.stringify(ev)); }""", info)
-        await pg.evaluate("sideOpen('au', true)"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
+        await pg.evaluate("document.getElementById('auTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
         await pg.click('#au_make'); await pg.wait_for_timeout(800)
         tb2 = await pg.inner_text('#au_out table')
         assert '付け替え済み' in tb2 and '要調整' not in tb2, '付け替えた日が「付け替え済み」にならず、要調整が残ります：' + tb2[:300]

@@ -8291,7 +8291,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-11-09-01';
+  const TRIGATE_VERSION = '2026-11-09-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -9235,10 +9235,11 @@ if(window.TriSheetSync) TriSheetSync.init({ notify:false });
 <!-- 獲得スケジュールの引き出し（2026-11-09・宏史さんの指示「取りに行くと決めたら自動的にトライタイムに獲得スケジュールが出来、それをトライゲイトにもサイド引き出しを付けて、そこを押せば獲得スケジュールを見る事ができる様に」）
      ・取りに行くと決めた制度＝「トライタスクへ送る」を押した制度（受け渡し箱 tritask_inbox）。トライタイムの助成金タブと同じ箱を読む
      ・書類をそろえ終える日・最終確認の日の日数と入金の見込みの月数は、この端末にトライタイム（経営企画事務職の管理者）があれば、そこで決めた値を使う。無ければ14日前・7日前とし、入金の見込みは出さない
-     ・入金の見込みは目安であり確定ではない（支給の時期は行政側で決まる）。書類を作る時期の目安を出すためのもの -->
+     ・入金の見込みは目安であり確定ではない（支給の時期は行政側で決まる）。書類を作る時期の目安を出すためのもの
+     ・2026-11-09-02：右上の「いまの状況」の枠（重なり順9998）が引き出しの「閉じる」を覆って閉じられなかったため、引き出しを最前面（10001）へ上げた -->
 <style>
-  #tgSchTab{position:fixed;right:0;top:42%;z-index:900;writing-mode:vertical-rl;background:var(--ink);color:#fff;border:none;border-radius:10px 0 0 10px;padding:14px 8px;font:inherit;font-size:13px;letter-spacing:.1em;cursor:pointer;box-shadow:var(--shadow)}
-  #tgSch{position:fixed;top:0;right:0;bottom:0;width:min(560px,94vw);background:var(--surface);z-index:901;box-shadow:-6px 0 24px rgba(22,33,58,.18);transform:translateX(105%);transition:transform .2s;display:flex;flex-direction:column}
+  #tgSchTab{position:fixed;right:0;top:42%;z-index:9997;writing-mode:vertical-rl;background:var(--ink);color:#fff;border:none;border-radius:10px 0 0 10px;padding:14px 8px;font:inherit;font-size:13px;letter-spacing:.1em;cursor:pointer;box-shadow:var(--shadow)}
+  #tgSch{position:fixed;top:0;right:0;bottom:0;width:min(560px,94vw);background:var(--surface);z-index:10001;box-shadow:-6px 0 24px rgba(22,33,58,.18);transform:translateX(105%);transition:transform .2s;display:flex;flex-direction:column}
   #tgSch.open{transform:none}
   #tgSch header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
   #tgSch header b{font-size:15px;color:var(--ink)}

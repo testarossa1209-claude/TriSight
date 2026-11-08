@@ -8291,7 +8291,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-11-06-01';
+  const TRIGATE_VERSION = '2026-11-09-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -9230,6 +9230,85 @@ if(window.TriSheetSync) TriSheetSync.init({ notify:false });
     },function(){go.disabled=false;msg.style.color="#b42318";msg.textContent="中継につながりませんでした。通信を確かめて、もう一度押してください。";});
   };
   setTimeout(function(){inp.focus();},50);
+})();
+</script>
+<!-- 獲得スケジュールの引き出し（2026-11-09・宏史さんの指示「取りに行くと決めたら自動的にトライタイムに獲得スケジュールが出来、それをトライゲイトにもサイド引き出しを付けて、そこを押せば獲得スケジュールを見る事ができる様に」）
+     ・取りに行くと決めた制度＝「トライタスクへ送る」を押した制度（受け渡し箱 tritask_inbox）。トライタイムの助成金タブと同じ箱を読む
+     ・書類をそろえ終える日・最終確認の日の日数と入金の見込みの月数は、この端末にトライタイム（経営企画事務職の管理者）があれば、そこで決めた値を使う。無ければ14日前・7日前とし、入金の見込みは出さない
+     ・入金の見込みは目安であり確定ではない（支給の時期は行政側で決まる）。書類を作る時期の目安を出すためのもの -->
+<style>
+  #tgSchTab{position:fixed;right:0;top:42%;z-index:900;writing-mode:vertical-rl;background:var(--ink);color:#fff;border:none;border-radius:10px 0 0 10px;padding:14px 8px;font:inherit;font-size:13px;letter-spacing:.1em;cursor:pointer;box-shadow:var(--shadow)}
+  #tgSch{position:fixed;top:0;right:0;bottom:0;width:min(560px,94vw);background:var(--surface);z-index:901;box-shadow:-6px 0 24px rgba(22,33,58,.18);transform:translateX(105%);transition:transform .2s;display:flex;flex-direction:column}
+  #tgSch.open{transform:none}
+  #tgSch header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
+  #tgSch header b{font-size:15px;color:var(--ink)}
+  #tgSch header button{font:inherit;font-size:13px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:4px 14px;cursor:pointer}
+  #tgSchBody{overflow:auto;padding:12px 16px;font-size:13px;color:var(--ink)}
+  #tgSchBody .it{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0 0 10px}
+  #tgSchBody .it h4{margin:0 0 6px;font-size:14px}
+  #tgSchBody table{border-collapse:collapse;width:100%}
+  #tgSchBody td{padding:3px 4px;border-bottom:1px dotted var(--line);vertical-align:top}
+  #tgSchBody td:first-child{white-space:nowrap;width:9.5em}
+  #tgSchBody .over{color:var(--fix);font-weight:bold}
+  #tgSchBody .note{color:var(--muted);font-size:12px;line-height:1.6}
+</style>
+<button type="button" id="tgSchTab" aria-controls="tgSch">獲得スケジュール</button>
+<aside id="tgSch" aria-label="獲得スケジュール"><header><b>獲得スケジュール</b><button type="button" id="tgSchClose">閉じる</button></header><div id="tgSchBody"></div></aside>
+<script>
+(function(){
+  function lj(k, d){ try{ var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; }catch(e){ return d; } }
+  function pad(n){ return (n < 10 ? '0' : '') + n; }
+  function ymd(d){ return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function esc(t){ return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function parseDue(s){
+    var t = String(s || '').replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }), m, y, mo, d;
+    if((m = t.match(/(20\d{2})\s*[-\/年.]\s*(\d{1,2})\s*[-\/月.]\s*(\d{1,2})/))){ y = +m[1]; mo = +m[2]; d = +m[3]; }
+    else if((m = t.match(/令和\s*(元|\d{1,2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/))){ y = 2018 + (m[1] === '元' ? 1 : +m[1]); mo = +m[2]; d = +m[3]; }
+    else return null;
+    if(!(mo >= 1 && mo <= 12 && d >= 1 && d <= 31)) return null;
+    return new Date(y, mo - 1, d);
+  }
+  function addDays(d, n){ var x = new Date(d.getTime()); x.setDate(x.getDate() + n); return x; }
+  function addMon(d, n){ var x = new Date(d.getFullYear(), d.getMonth() + n, 1), last = new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate(); x.setDate(Math.min(d.getDate(), last)); return x; }
+  function jd(d){ return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日'; }
+  /* トライタイムの助成金タブで決めた日数・月数（この端末にあれば） */
+  function ttCfg(){
+    var mg = lj('tritime_mgmt', []), j = Array.isArray(mg) ? mg.filter(function(x){ return x && x.id === 'josei' && !x.del; })[0] : null;
+    var c = (j && j.cfg) || {};
+    return { found:!!j, docs:(c.tgDocs == null ? 14 : +c.tgDocs), fin:(c.tgFinal == null ? 7 : +c.tgFinal), pay:(j && j.tgPay) || {} };
+  }
+  function cases(){
+    var code = ''; try{ code = localStorage.getItem('trisight_access_code') || ''; }catch(e){}
+    var a = [].concat(lj('tritask_inbox', []) || [], lj('tritask_grants', []) || []), ids = {}, out = [];
+    a.forEach(function(g){
+      if(!g || !g.id || ids[g.id]) return; ids[g.id] = 1;
+      if(!/TriGate|トライゲイト/.test(String(g.source_product || ''))) return;
+      var ac = String(g.auth_code || ''); if(ac && code && ac !== code) return;
+      var c = []; (g.reverse_tasks || []).forEach(function(t){ if(t && t.due_text) c.push(t.due_text); }); (g.deadlines || []).forEach(function(d){ c.push(d); });
+      var due = null; c.forEach(function(x){ var d = parseDue(x); if(d && (!due || d < due)) due = d; });
+      out.push({ id:String(g.id), name:g.program_name || '（名称不明）', company:g.company_name || '', due:due, dueText:c[0] ? String(c[0]) : '', status:g.status || '未着手', done:+g.steps_done || 0, total:+g.steps_total || 0 });
+    });
+    out.sort(function(p, q){ return (p.status === '完了') - (q.status === '完了') || ((p.due ? p.due.getTime() : 9e15) - (q.due ? q.due.getTime() : 9e15)); });
+    return out;
+  }
+  function render(){
+    var cfg = ttCfg(), list = cases(), t0 = ymd(new Date()), box = document.getElementById('tgSchBody');
+    var row = function(lbl, d, todo){ var o = todo && ymd(d) < t0; return '<tr><td>' + esc(lbl) + '</td><td' + (o ? ' class="over"' : '') + '>' + esc(jd(d)) + (o ? '（過ぎています）' : '') + '</td></tr>'; };
+    box.innerHTML = (list.length ? list.map(function(g){
+      var open = g.status !== '完了', h = '<div class="it"' + (open ? '' : ' style="opacity:.55"') + '><h4>' + esc(g.name) + '</h4>' + (g.company ? '<div class="note">' + esc(g.company) + '</div>' : '');
+      if(!g.due) return h + '<div class="over">締切が日付で読めません' + (g.dueText ? '（' + esc(g.dueText) + '）' : '') + '</div></div>';
+      var pm = cfg.pay[g.id], pe = (pm === '' || pm == null || isNaN(+pm)) ? null : addMon(g.due, +pm);
+      return h + '<table>' + (cfg.docs ? row('書類をそろえ終える', addDays(g.due, -cfg.docs), open) : '') + (cfg.fin ? row('申請書を最終確認', addDays(g.due, -cfg.fin), open) : '') + row('申請締切', g.due, open) +
+        '<tr><td>入金の見込み</td><td>' + (pe ? esc(pe.getFullYear() + '年' + (pe.getMonth() + 1) + '月ごろ（見込み）') : '<span class="note">トライタイムの助成金タブで「入金まで（締切から何か月）」を入れると出ます</span>') + '</td></tr>' +
+        '<tr><td>進み</td><td>' + esc(g.status) + (g.total ? '（' + g.done + '/' + g.total + '工程）' : '') + '</td></tr></table></div>';
+    }).join('') : '<p>取りに行くと決めた制度はまだありません。掘った制度の「トライタスクへ送る」を押すと、ここに獲得スケジュールが出ます。</p>') +
+      '<p class="note">入金の見込みは、入れた月数から出した目安です。支給の時期は審査をする行政側で決まるため、確定ではありません。このスケジュールは、書類を作る時期の目安を出すためのものです。' +
+      (cfg.found ? '' : '<br>この端末にはトライタイムの助成金タブの設定が無いため、書類をそろえ終える日は締切の14日前、最終確認は7日前で出しています。') + '</p>';
+  }
+  var tab = document.getElementById('tgSchTab'), pn = document.getElementById('tgSch');
+  tab.addEventListener('click', function(){ render(); pn.classList.add('open'); tab.style.display = 'none'; });
+  document.getElementById('tgSchClose').addEventListener('click', function(){ pn.classList.remove('open'); tab.style.display = ''; });
+  window.addEventListener('storage', function(e){ if(pn.classList.contains('open') && /^(tritask_inbox|tritask_grants|tritime_mgmt)$/.test(e.key || '')) render(); });
 })();
 </script>
 </body>

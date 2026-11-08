@@ -90,7 +90,7 @@ async def test(p):
 
         # 仮スケジュール表：来週を出す
         await pg.evaluate("document.getElementById('ssTab').click()"); await pg.wait_for_timeout(400)
-        await pg.click('#ssNext'); await pg.wait_for_timeout(400)
+        await pg.evaluate("(d) => { var e = document.getElementById('ssFrom'); e.value = d; e.dispatchEvent(new Event('change')); }", mon.isoformat()); await pg.wait_for_timeout(400)   # 2026-11-08：表は開いた日から7日分。来週の月曜から出す
         rows = await pg.evaluate("[].slice.call(document.querySelectorAll('#ssGrid > table tbody th.who')).map(function(t){ return t.firstChild.textContent; })")
         assert rows[-1] == '待機 三子', '待機の人が表のいちばん下に来ません：' + '、'.join(rows)
         cell_tue = await pg.inner_text('#ssBody td[data-sid="%s"][data-date="%s"]' % (sid2, tue.isoformat()))

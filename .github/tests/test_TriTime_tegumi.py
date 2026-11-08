@@ -57,9 +57,12 @@ async def test(p):
         await pg.wait_for_selector('#td_staff option[value="*"]', state='attached', timeout=15000)
         await pg.evaluate("var e = document.getElementById('td_staff'); e.value = '*'; e.dispatchEvent(new Event('change'));")
         await pg.wait_for_selector('#td_week .ssChip', state='attached', timeout=15000); await pg.wait_for_timeout(300)
-        assert await pg.query_selector('#hb_open'), '本スケジュール表の下に「空の表から組む（手組み）」のボタンがありません'
-        assert '空の表から組む' in await pg.inner_text('#hb_open')
-        await tap(pg, '#hb_open'); await pg.wait_for_timeout(400)
+        # 2026-11-08：手組みは本スケジュール表の下のボタンから、右端の「手組み」の引き出しへ移した
+        assert not await pg.query_selector('#hb_open'), '本スケジュール表の下に「空の表から組む」のボタンが残っています（引き出しへ移したはず）'
+        assert await pg.evaluate("getComputedStyle(document.getElementById('hbTab')).display") != 'none', '右端に「手組み」のつまみが出ません'
+        assert '空の表から組む' in await pg.inner_text('#hbPanel .ssHead')
+        await tap(pg, '#hbTab'); await pg.wait_for_timeout(400)
+        assert await pg.evaluate("document.body.classList.contains('hbOpen')"), '「手組み」のつまみを押しても引き出しが開きません'
         assert await pg.evaluate("document.querySelectorAll('#hbBox .hbGrid thead th').length") == 8, '手組みの表の列（担当＋月〜日）が8になりません'
         assert await pg.evaluate("document.querySelectorAll('#hbBox .hbGrid tbody tr').length") == 4, '職員の行が4になりません'
         assert await pg.evaluate("document.querySelectorAll('#hbBox .hbGrid .hbFuda').length") == 0, '最初から札が置かれています'
@@ -94,7 +97,7 @@ async def test(p):
         # 閉じても残る
         await tap(pg, '#hb_close'); await pg.wait_for_timeout(200)
         assert await pg.evaluate("JSON.parse(localStorage.getItem('tritime_settings')).hb.nurse.cells.s1['2'].length") == 2, '下書きが決まりごとに残りません'
-        await tap(pg, '#hb_open'); await pg.wait_for_timeout(400)
+        await tap(pg, '#hbTab'); await pg.wait_for_timeout(400)
         assert await pg.evaluate("document.querySelectorAll('#hbBox .hbGrid .hbFuda').length") == 3, '開き直すと下書きが戻りません'
         await s.shot('#hbBox', 'TriTime_tegumi_1.png')
         # 効率バージョンを写す

@@ -358,7 +358,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-08-06</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-09-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -499,6 +499,7 @@ function tsPortalAsk(){
   <button data-tab="model">モデルコース</button>
   <button data-tab="mihon">モデルコースの見本</button>
   <button data-tab="req">ご要望</button>
+  <button data-tab="josei">助成金</button>
   <button data-tab="setup">名簿・設定</button>
 </nav>
 
@@ -527,6 +528,11 @@ function tsPortalAsk(){
     <h2>各部署のようす</h2>
     <p class="lead">部署ごとの、今週の訪問・今週のキャンセル・期限の過ぎたモニタリングの件数です。中身を見るときは、上の「使う部署」で部署を選んでください。</p>
     <div class="tbl-scroll" id="sumBody"></div>
+  </div>
+  <div class="card" id="cardJsSoon" style="display:none">
+    <h2>助成金・補助金の期限（今日から60日）</h2>
+    <p class="lead">「助成金」タブに入れた予定と、トライゲイトから送られた制度の逆算の日程のうち、今日から60日以内のものと、期限を過ぎて片付いていないものを日付の順に出します。</p>
+    <div class="tbl-scroll" id="jsSoon"></div>
   </div>
   <div class="card" id="cardMonitor" style="display:none">
     <h2>モニタリングの予定</h2>
@@ -1219,6 +1225,70 @@ function tsPortalAsk(){
 </section>
 
 <!-- ===== 名簿・設定 ===== -->
+<!-- ===== 助成金・補助金の予定（2026-11-09・宏史さんの指示。経営企画事務職の管理者だけ） ===== -->
+<section class="tab" id="tab-josei">
+  <div class="card">
+    <h2>キャリアアップ助成金（正社員化コース）の予定</h2>
+    <p class="lead">有期で雇った職員を正社員にするまでの流れを、一人ずつ日付で持ちます。入職日と正社員にする日（転換日）を入れると、半年たつ日・計画を出す期限・転換後6か月の賃金の期間・申請できる期間を出します。転換前と転換後の6か月の賃金を入れると、3%以上上がっているかを判定します。</p>
+    <details><summary>給与の締め日と支給日（申請期間の計算に使います）</summary>
+      <div class="row">
+        <div><label class="f" for="js_close">締め日</label><select id="js_close"><option value="0">末日</option><option value="10">10日</option><option value="15">15日</option><option value="20">20日</option><option value="25">25日</option></select></div>
+        <div><label class="f" for="js_payM">支給する月</label><select id="js_payM"><option value="0">締めた月（当月払い）</option><option value="1">締めた翌月</option></select></div>
+        <div><label class="f" for="js_payD">支給日</label><select id="js_payD"></select></div>
+        <div><label class="f">&nbsp;</label><button class="btn sub" id="js_cfgSave">締めと支給日を残す</button></div>
+      </div>
+      <p class="muted" id="js_cfgMsg"></p>
+    </details>
+    <div class="row">
+      <div><label class="f" for="js_staff">職員</label><select id="js_staff"></select></div>
+      <div><label class="f" for="js_name">名簿にいない人の名前</label><input type="text" id="js_name" placeholder="職員を選んだときは空のまま"></div>
+      <div><label class="f" for="js_join">入職日（有期で雇った日）</label><input type="date" id="js_join"></div>
+      <div><label class="f" for="js_conv">正社員にする日（転換日）</label><input type="date" id="js_conv"></div>
+      <div><label class="f" for="js_plan">キャリアアップ計画を出した日</label><input type="date" id="js_plan"></div>
+      <div><label class="f" for="js_st">いまの段階</label><select id="js_st"><option>計画中</option><option>計画を提出した</option><option>正社員にした</option><option>第1期を申請した</option><option>第2期を申請した</option><option>支給が決まった</option><option>取り下げ・不支給</option></select></div>
+      <div><label class="f" for="js_pay6">転換後6か月分の賃金の支給日（分かれば）</label><input type="date" id="js_pay6"></div>
+      <div><label class="f">&nbsp;</label><label style="font-size:13px"><input type="checkbox" id="js_k2"> 第2期も申請する</label></div>
+    </div>
+    <p class="muted">賃金は、基本給と毎月決まって出る手当の月額を入れます（賞与・残業代・通勤手当は入れません）。</p>
+    <div class="tbl-scroll"><table><tr><th></th><th>1か月目</th><th>2か月目</th><th>3か月目</th><th>4か月目</th><th>5か月目</th><th>6か月目</th></tr>
+      <tr><th>転換前の6か月</th><td><input type="number" class="js_w0" min="0"></td><td><input type="number" class="js_w0" min="0"></td><td><input type="number" class="js_w0" min="0"></td><td><input type="number" class="js_w0" min="0"></td><td><input type="number" class="js_w0" min="0"></td><td><input type="number" class="js_w0" min="0"></td></tr>
+      <tr><th>転換後の6か月</th><td><input type="number" class="js_w1" min="0"></td><td><input type="number" class="js_w1" min="0"></td><td><input type="number" class="js_w1" min="0"></td><td><input type="number" class="js_w1" min="0"></td><td><input type="number" class="js_w1" min="0"></td><td><input type="number" class="js_w1" min="0"></td></tr>
+    </table></div>
+    <p id="js_judge" class="muted"></p>
+    <label class="f" for="js_memo">メモ</label><input type="text" id="js_memo" maxlength="500">
+    <input type="hidden" id="js_id">
+    <div class="btns"><button class="btn" id="js_save">残す</button><button class="btn sub" id="js_clear">入れ直す</button><span class="muted" id="js_msg"></span></div>
+    <div class="tbl-scroll" id="jsCuList"></div>
+    <p class="muted">出所：厚生労働省「キャリアアップ助成金（正社員化コース）支給申請チェックリスト」（mhlw.go.jp/content/11910500/001638027.pdf）＝正社員化前の雇用期間6か月以上、第1期は正社員化後6か月分の賃金支払日の翌日から2か月以内、第2期は次の6か月分の賃金支払日の翌日から2か月以内。沖縄労働局の同チェックリスト（令和7年4月1日以降の取組用）＝正社員化後6か月の賃金が正社員化前6か月より3%以上増額、正社員化後の6か月は勤務日数11日以上の月で数える。令和8年度の3%の比べ方と計画を転換の前日までに出す点は、業務計算ツールのページ（gyomu-keisan.jp）で見たもので、厚労省の原本は未確認です。締めの途中で転換した月の数え方を含め、申請の前に管轄の労働局で確かめてください。（2026年11月9日に確認）</p>
+  </div>
+  <div class="card">
+    <h2>トライゲイトで掘った制度の獲得スケジュール</h2>
+    <p class="lead">トライゲイトで掘って「トライタスクへ送る」を押した制度（取りに行くと決めた制度）を、この画面を開くたびに自動で読み込みます。締切から逆算した日程を、予定タブの「助成金・補助金の期限」に組み込みます。進み具合はトライタスクで付けた印をそのまま出し、トライタスクで完了になった制度は予定から外れます。</p>
+    <div class="row">
+      <div><label class="f" for="jt_docs">書類をそろえ終える日（締切の何日前）</label><input type="number" id="jt_docs" min="0" max="90"></div>
+      <div><label class="f" for="jt_final">申請書を最終確認する日（締切の何日前）</label><input type="number" id="jt_final" min="0" max="60"></div>
+      <div><label class="f">&nbsp;</label><button class="btn sub" id="jt_save">日数を残す</button></div>
+    </div>
+    <p class="muted" id="jt_msg"></p>
+    <div class="tbl-scroll" id="jsTgList"></div>
+  </div>
+  <div class="card">
+    <h2>そのほかの助成金・補助金の予定</h2>
+    <p class="lead">キャリアアップ助成金以外の制度の、受付の始まりと締切を残します。締切の近いものから並びます。</p>
+    <div class="row">
+      <div><label class="f" for="je_name">制度の名前</label><input type="text" id="je_name" placeholder="例：東京都正規雇用転換安定化支援助成金"></div>
+      <div><label class="f" for="je_kind">区分</label><select id="je_kind"><option>助成金</option><option>補助金</option><option>加算・届出</option><option>その他</option></select></div>
+      <div><label class="f" for="je_from">受付の始まり</label><input type="date" id="je_from"></div>
+      <div><label class="f" for="je_to">締切</label><input type="date" id="je_to"></div>
+      <div><label class="f" for="je_to2">提出先</label><input type="text" id="je_to2" placeholder="例：東京労働局"></div>
+      <div><label class="f" for="je_st">いまの段階</label><select id="je_st"><option>準備中</option><option>申請した</option><option>支給が決まった</option><option>見送り・不支給</option></select></div>
+    </div>
+    <label class="f" for="je_memo">メモ（出所や対象の職員など）</label><input type="text" id="je_memo" maxlength="500">
+    <input type="hidden" id="je_id">
+    <div class="btns"><button class="btn" id="je_save">残す</button><button class="btn sub" id="je_clear">入れ直す</button><span class="muted" id="je_msg"></span></div>
+    <div class="tbl-scroll" id="jsEtcList"></div>
+  </div>
+</section>
 <section class="tab" id="tab-setup">
   <div class="card" id="cardStaff">
     <h2>職員</h2>
@@ -4570,15 +4640,16 @@ function applyDept(){
     d.kind === 'monitor' ? 'モニタリングの予定・面談の記録・' + d.client + 'の経過を、時間の流れで持つ（' + d.name + '）' :
     '各部署の予定のようすと、事務局からの連絡（' + d.name + '）';
   var show = function(id, on){ var el = $(id); if(el) el.style.display = on ? '' : 'none'; };
-  var tabOn = { plan:true, pt: d.kind !== 'office', intake: d.kind === 'visit', course: d.kind !== 'office', report: !!d.report, admin: d.kind === 'visit', slip: d.kind === 'visit' && canSched(), model: d.kind === 'visit', mihon: d.kind === 'visit', req:false, setup:true, nogi: !!R.zeus };   /* 2026-11-04：伝票は予定を組む人の端末だけ */   /* 2026-11-03：ご要望は左の引き出しへ移した */
+  var tabOn = { plan:true, pt: d.kind !== 'office', intake: d.kind === 'visit', course: d.kind !== 'office', report: !!d.report, admin: d.kind === 'visit', slip: d.kind === 'visit' && canSched(), model: d.kind === 'visit', mihon: d.kind === 'visit', req:false, setup:true, nogi: !!R.zeus, josei: d.kind === 'office' };   /* 2026-11-04：伝票は予定を組む人の端末だけ */   /* 2026-11-03：ご要望は左の引き出しへ移した */
   /* 見る範囲（2026-10-27）：職員には管理者の窓とモデルコースを出さない。モデルコース（売上・評価）は管理者の端末だけ */
   if(R.lv === 'none') Object.keys(tabOn).forEach(function(k){ tabOn[k] = (k === 'setup'); });
   if(R.lv === 'staff') tabOn.admin = false;
   if(!canMoney(d)) tabOn.model = false;
+  if(!canMoney(d)) tabOn.josei = false;   /* 2026-11-09：助成金の予定（賃金の数字を含む）は経営企画事務職の、売上を見られる人だけ */
   document.querySelectorAll('#tabs button').forEach(function(b){ b.style.display = tabOn[b.getAttribute('data-tab')] ? '' : 'none'; });
   var cur = document.querySelector('#tabs button.on');
   if(cur && !tabOn[cur.getAttribute('data-tab')]){ var first = [].filter.call(document.querySelectorAll('#tabs button'), function(b){ return tabOn[b.getAttribute('data-tab')]; })[0]; if(first) first.click(); }
-  show('cardSummary', d.kind === 'office'); show('cardMonitor', d.kind === 'monitor'); show('cardPlan', d.kind === 'visit'); show('plTab', d.kind === 'visit'); if(d.kind !== 'visit' && document.body.classList.contains('plOpen')) sideOpen('pl', false);
+  show('cardSummary', d.kind === 'office'); show('cardJsSoon', d.kind === 'office' && canMoney(d)); show('cardMonitor', d.kind === 'monitor'); show('cardPlan', d.kind === 'visit'); show('plTab', d.kind === 'visit'); if(d.kind !== 'visit' && document.body.classList.contains('plOpen')) sideOpen('pl', false);
   show('cardAdDoctor', !!d.doctor); show('cardPt', d.kind !== 'office'); show('ptInstWrap', !!d.doctor); show('ptMon', d.kind === 'monitor');
   show('ptsInst', !!d.doctor); show('ptsRep', !!d.report); show('ptsPlan', d.kind === 'visit'); show('cardHard', d.kind === 'visit');
   show('cardWk', d.kind === 'visit'); show('cardIm', d.kind === 'visit'); show('cardRules', d.kind === 'visit');
@@ -5600,7 +5671,222 @@ function refreshAll(){
   if(typeof renderModel === 'function' && canMoney()) renderModel();
   var ngs = $('tab-nogi'); if(ngs && ngs.classList.contains('on')) ngRender();
   slpRender();   /* 2026-11-04：伝票タブが開いているときだけ描く */
+  if(typeof jsRender === 'function') jsRender();   /* 2026-11-09：助成金の予定 */
 }
+
+/* ============================================================
+   助成金・補助金の予定（2026-11-09・宏史さんの指示「トライタイムの経営企画部に助成金補助金スケジュールを入れましょう」）
+   ・経営企画事務職の画面で、売上を見られる人（管理者の合言葉が入った経営企画事務職の管理者・野木画面）だけに出す
+   ・中身は mgmt の 'josei'（1件）に置く。mgmt は共有のとき管理者の合言葉で鍵がかかるので、賃金の数字は職員の端末へ読める形で届かない
+   ・キャリアアップ助成金（正社員化コース）：入職日＋6か月＝転換できる最も早い日／計画は転換の前に出す／
+     転換後6か月（第1期）・次の6か月（第2期）の賃金の支給日の翌日から2か月以内が申請期間／転換前後6か月の賃金を比べて3%以上
+   ============================================================ */
+function jsAll(){ var g = mgOf('josei'), c = Object.assign({ close:0, payM:1, payD:25, tgDocs:14, tgFinal:7 }, g.cfg || {}); return { cfg:c, cu:g.cu || [], etc:g.etc || [], tg:g.tg || [] }; }
+/* トライゲイトで掘った制度（2026-11-09・宏史さんの指示「トライゲイトで発掘した助成金補助金情報の獲得スケジュールも自動でトライタイムと連動して、その取得のスケジュールを予定表に組み込む」）
+   ・読む先＝トライゲイトが「トライタスクへ送る」で入れる受け渡し箱（tritask_inbox と旧キー tritask_grants）。同じ場所の画面なので端末の中で読める
+   ・送った案件だけを読む＝取りに行くと決めた案件だけが予定に入る（2026-10-12の「起案者が承認したものだけ」に沿う）
+   ・他社の認証コードの案件は読まない（トライタスクと同じ線）
+   ・読んだ中身は mgmt の josei.tg に写し、経営企画事務職の管理者のほかの端末にも届ける。この端末の箱に無い案件は消さずに残す（ほかの端末で送った案件のため）
+   ・締切の日付の読み方はトライタスクの parseDate と同じ（「2026-09-30」「令和8年9月30日」） */
+function jsParseDue(s){
+  var t = String(s || '').replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }), m, y, mo, d;
+  if((m = t.match(/(20\d{2})\s*[-\/年.]\s*(\d{1,2})\s*[-\/月.]\s*(\d{1,2})/))){ y = +m[1]; mo = +m[2]; d = +m[3]; }
+  else if((m = t.match(/令和\s*(元|\d{1,2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/))){ y = 2018 + (m[1] === '元' ? 1 : +m[1]); mo = +m[2]; d = +m[3]; }
+  else return null;
+  if(!(mo >= 1 && mo <= 12 && d >= 1 && d <= 31)) return null;
+  return y + '-' + pad(mo) + '-' + pad(d);
+}
+function jsTgRead(){
+  var a = [], ids = {}, code = '';
+  try{ code = localStorage.getItem('trisight_access_code') || ''; }catch(e){}
+  ['tritask_inbox', 'tritask_grants'].forEach(function(k){ var x = []; try{ x = JSON.parse(localStorage.getItem(k) || '[]'); }catch(e){} if(Array.isArray(x)) a = a.concat(x); });
+  var out = [];
+  a.forEach(function(g){
+    if(!g || !g.id || ids[g.id]) return; ids[g.id] = 1;
+    if(!/TriGate|トライゲイト/.test(String(g.source_product || ''))) return;
+    var ac = String(g.auth_code || ''); if(ac && code && ac !== code) return;
+    var c = []; (g.reverse_tasks || []).forEach(function(t){ if(t && t.due_text) c.push(t.due_text); }); (g.deadlines || []).forEach(function(d){ c.push(d); });
+    var due = ''; c.forEach(function(x){ var d = jsParseDue(x); if(d && (!due || d < due)) due = d; });
+    out.push({ id:String(g.id), name:g.program_name || '（名称不明）', company:g.company_name || '', issuer:g.issuer || '', due:due, dueText:c[0] ? String(c[0]) : '', status:g.status || '未着手', done:+g.steps_done || 0, total:+g.steps_total || 0 });
+  });
+  return out;
+}
+function jsTgSync(){
+  var loc = jsTgRead(); if(!loc.length) return;
+  var cur = jsAll().tg, m = {}, ch = false;
+  cur.forEach(function(x){ m[x.id] = x; });
+  loc.forEach(function(x){ if(JSON.stringify(m[x.id] || null) !== JSON.stringify(x)){ m[x.id] = x; ch = true; } });
+  if(!ch) return;
+  var next = cur.map(function(x){ return m[x.id]; }); loc.forEach(function(x){ if(!cur.some(function(y){ return y.id === x.id; })) next.push(x); });
+  jsPut({ tg:next });
+}
+function jsPut(patch){ mgPut('josei', patch); }
+function jsLastDay(y, m){ return new Date(y, m + 1, 0).getDate(); }
+function jsAddMon(d, n){ var y = d.getFullYear(), m = d.getMonth() + n, dd = d.getDate(); var x = new Date(y, m, 1); x.setDate(Math.min(dd, jsLastDay(x.getFullYear(), x.getMonth()))); return x; }
+/* 締め日 c（0＝末日）の賃金の期間：その日を含む期間の初日 */
+function jsPerStart(d, c){
+  if(!c) return new Date(d.getFullYear(), d.getMonth(), 1);
+  return d.getDate() > c ? new Date(d.getFullYear(), d.getMonth(), c + 1) : new Date(d.getFullYear(), d.getMonth() - 1, c + 1);
+}
+function jsPerEnd(st, c){ return addDays(jsAddMon(st, 1), -1); }
+/* 期間の終わり（締めた日）に対する支給日 */
+function jsPayDay(end, cfg){ var m = new Date(end.getFullYear(), end.getMonth() + (+cfg.payM || 0), 1); var dd = +cfg.payD || 0; m.setDate(dd ? Math.min(dd, jsLastDay(m.getFullYear(), m.getMonth())) : jsLastDay(m.getFullYear(), m.getMonth())); return m; }
+/* 転換日から n 期間目（1から）の支給日。転換日が期間の途中なら、次の期間から数える */
+function jsNthPay(conv, n, cfg){
+  var c = +cfg.close || 0, st = jsPerStart(conv, c);
+  if(ymd(st) !== ymd(conv)) st = jsAddMon(st, 1);
+  var s2 = jsAddMon(st, n - 1);
+  return { st:st, mid:ymd(jsPerStart(conv, c)) !== ymd(conv), pay:jsPayDay(jsPerEnd(s2, c), cfg) };
+}
+function jsWin(pay){ var a = addDays(pay, 1); return { from:a, to:addDays(jsAddMon(a, 2), -1) }; }
+function jsAvg(a){ var v = (a || []).map(function(x){ return +x; }).filter(function(x){ return x > 0; }); return v.length ? v.reduce(function(p, q){ return p + q; }, 0) / v.length : 0; }
+function jsRate(w0, w1){ var a = jsAvg(w0), b = jsAvg(w1); return (a && b) ? Math.floor((b - a) / a * 10000) / 100 : null; }   /* 小数第2位までで判定（切り捨て） */
+function jsWho(r){ var s = staff().filter(function(x){ return x.id === r.sid; })[0]; return s ? s.name : (r.name || '（名前なし）'); }
+function jsCalc(r, cfg){
+  var j = parseYmd(r.join), cv = parseYmd(r.conv), o = { six: j ? jsAddMon(j, 6) : null };
+  if(cv){
+    var p1 = jsNthPay(cv, 6, cfg), p2 = jsNthPay(cv, 12, cfg);
+    o.mid = p1.mid; o.st = p1.st; o.end6 = addDays(jsAddMon(p1.st, 6), -1);
+    o.pay1 = parseYmd(r.pay6) || p1.pay; o.w1 = jsWin(o.pay1);
+    o.pay2 = p2.pay; o.w2 = jsWin(o.pay2);
+    o.planBy = addDays(cv, -1);
+    o.early = !!(o.six && cv < o.six);
+    o.planLate = !!(r.plan && r.plan >= r.conv);
+  }
+  o.rate = jsRate(r.w0, r.w1);
+  return o;
+}
+function jsD(d){ return d ? (d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate()) : '—'; }
+var JS_DONE1 = ['第1期を申請した', '第2期を申請した', '支給が決まった', '取り下げ・不支給'];
+/* 期限の一覧（予定タブのカードと、一覧の赤字に使う） */
+function jsEvents(){
+  var A = jsAll(), out = [], today = ymd(new Date());
+  A.cu.forEach(function(r){
+    var c = jsCalc(r, A.cfg), who = jsWho(r), st = r.st || '計画中';
+    if(st === '取り下げ・不支給') return;
+    if(c.six && !r.conv) out.push({ d:ymd(c.six), t:'入職から6か月（正社員にできる最も早い日）', who:who });
+    if(r.conv){
+      if(!r.plan) out.push({ d:ymd(c.planBy), t:'キャリアアップ計画の提出期限（転換の前日まで）', who:who, todo:true });
+      if(st === '計画中' || st === '計画を提出した') out.push({ d:r.conv, t:'正社員にする日（転換日）', who:who });
+      if(JS_DONE1.indexOf(st) < 0){ out.push({ d:ymd(c.w1.from), t:'第1期の申請受付が始まる', who:who }); out.push({ d:ymd(c.w1.to), t:'第1期の申請締切', who:who, todo:true }); }
+      if(r.k2 && ['第2期を申請した', '支給が決まった'].indexOf(st) < 0){ out.push({ d:ymd(c.w2.from), t:'第2期の申請受付が始まる', who:who }); out.push({ d:ymd(c.w2.to), t:'第2期の申請締切', who:who, todo:true }); }
+    }
+  });
+  A.tg.forEach(function(g){
+    if(g.status === '完了' || !g.due) return;
+    var due = parseYmd(g.due), who = g.name + (g.company ? '（' + g.company + '）' : '');
+    if(+A.cfg.tgDocs) out.push({ d:ymd(addDays(due, -A.cfg.tgDocs)), t:'書類をそろえ終える（トライゲイト）', who:who });
+    if(+A.cfg.tgFinal) out.push({ d:ymd(addDays(due, -A.cfg.tgFinal)), t:'申請書を最終確認する（トライゲイト）', who:who });
+    out.push({ d:g.due, t:'申請締切（トライゲイト）', who:who, todo:true });
+  });
+  A.etc.forEach(function(e){
+    if(e.st !== '準備中') return;
+    if(e.from) out.push({ d:e.from, t:'受付が始まる', who:e.name });
+    if(e.to) out.push({ d:e.to, t:'締切', who:e.name, todo:true });
+  });
+  out.sort(function(a, b){ return a.d < b.d ? -1 : a.d > b.d ? 1 : 0; });
+  out.forEach(function(x){ x.over = x.d < today; });
+  return out;
+}
+function jsSoonRender(){
+  var box = $('jsSoon'); if(!box) return;
+  var today = new Date(), lim = ymd(addDays(today, 60)), t0 = ymd(today);
+  var ev = jsEvents().filter(function(x){ return x.d <= lim && (x.d >= t0 || x.todo); });
+  box.innerHTML = ev.length ? '<table><tr><th>日付</th><th>中身</th><th>職員・制度</th></tr>' + ev.map(function(x){
+    var red = x.over ? ' style="color:var(--red);font-weight:bold"' : '';
+    return '<tr><td' + red + '>' + esc(jpDate(x.d)) + (x.over ? '（過ぎています）' : '') + '</td><td>' + esc(x.t) + '</td><td>' + esc(x.who) + '</td></tr>';
+  }).join('') + '</table>' : '<p class="empty">60日以内の期限はありません。</p>';
+}
+function jsFormRead(){
+  return { id:$('js_id').value || uid(), sid:$('js_staff').value || '', name:$('js_name').value.trim(), join:$('js_join').value, conv:$('js_conv').value, plan:$('js_plan').value,
+    st:$('js_st').value, pay6:$('js_pay6').value, k2:$('js_k2').checked, memo:$('js_memo').value.trim(),
+    w0:[].map.call(document.querySelectorAll('.js_w0'), function(e){ return e.value; }), w1:[].map.call(document.querySelectorAll('.js_w1'), function(e){ return e.value; }) };
+}
+function jsJudge(){
+  var r = jsFormRead(), a = jsAvg(r.w0), b = jsAvg(r.w1), rt = jsRate(r.w0, r.w1), el = $('js_judge'); if(!el) return;
+  if(!a){ el.innerHTML = '転換前の賃金を入れると、3%上げるのに要る転換後の月額を出します。'; return; }
+  var need = Math.ceil(a * 1.03);
+  el.innerHTML = '転換前の平均 ' + Math.round(a).toLocaleString() + '円 → 3%以上にするには、転換後の平均が <b>' + need.toLocaleString() + '円以上</b>。' +
+    (rt == null ? '' : '　転換後の平均 ' + Math.round(b).toLocaleString() + '円・上がり幅 <b style="color:' + (rt >= 3 ? 'var(--green,#1a7f37)' : 'var(--red)') + '">' + rt.toFixed(2) + '%（' + (rt >= 3 ? '3%以上' : '3%に届いていません') + '）</b>');
+}
+function jsFormFill(r){
+  r = r || {};
+  $('js_id').value = r.id || ''; $('js_staff').value = r.sid || ''; $('js_name').value = r.name || ''; $('js_join').value = r.join || ''; $('js_conv').value = r.conv || '';
+  $('js_plan').value = r.plan || ''; $('js_st').value = r.st || '計画中'; $('js_pay6').value = r.pay6 || ''; $('js_k2').checked = !!r.k2; $('js_memo').value = r.memo || '';
+  document.querySelectorAll('.js_w0').forEach(function(e, i){ e.value = (r.w0 || [])[i] || ''; });
+  document.querySelectorAll('.js_w1').forEach(function(e, i){ e.value = (r.w1 || [])[i] || ''; });
+  $('js_msg').textContent = ''; jsJudge();
+}
+function jsRender(){
+  if(!$('tab-josei')) return;
+  if(D().kind === 'office' && canMoney()) jsTgSync();
+  jsSoonRender();
+  if(!$('tab-josei').classList.contains('on')) return;
+  var A = jsAll(), cfg = A.cfg;
+  if(!$('js_payD').options.length) $('js_payD').innerHTML = Array.apply(null, Array(28)).map(function(_, i){ return '<option value="' + (i + 1) + '">' + (i + 1) + '日</option>'; }).join('') + '<option value="0">末日</option>';
+  $('js_close').value = String(cfg.close || 0); $('js_payM').value = String(cfg.payM || 0); $('js_payD').value = String(cfg.payD == null ? 25 : cfg.payD);
+  $('js_cfgMsg').textContent = '今の設定：' + (cfg.close ? cfg.close + '日' : '末日') + '締め・' + (+cfg.payM ? '翌月' : '当月') + (+cfg.payD ? cfg.payD + '日' : '末日') + '払い';
+  fillSelect('js_staff', staff().filter(function(s){ return !staffOut(s); }).map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '名簿にいない人（右の欄に名前）');
+  var today = ymd(new Date());
+  var red = function(d, on){ return on ? '<b style="color:var(--red)">' + d + '</b>' : d; };
+  $('jsCuList').innerHTML = A.cu.length ? '<table><tr><th>職員</th><th>段階</th><th>入職日<br><small>6か月たつ日</small></th><th>転換日<br><small>計画の期限</small></th><th>転換後6か月の賃金の期間</th><th>第1期の申請期間</th><th>第2期の申請期間</th><th>賃金の上がり幅</th><th></th></tr>' + A.cu.map(function(r){
+    var c = jsCalc(r, cfg), st = r.st || '計画中', w1Open = JS_DONE1.indexOf(st) < 0, k2Open = r.k2 && ['第2期を申請した', '支給が決まった', '取り下げ・不支給'].indexOf(st) < 0;
+    var notes = [];
+    if(c.early) notes.push('入職から6か月たつ前に転換しようとしています');
+    if(c.planLate) notes.push('計画を出した日が転換日より後です');
+    if(r.conv && !r.plan && ymd(c.planBy) < today && (st === '計画中')) notes.push('計画の期限を過ぎています');
+    if(c.mid) notes.push('締めの途中で転換するため、次の締めの期間から6か月を数えています');
+    return '<tr><td>' + esc(jsWho(r)) + (r.memo ? '<br><small class="muted">' + esc(r.memo) + '</small>' : '') + (notes.length ? '<br><small style="color:var(--red)">' + notes.map(esc).join('<br>') + '</small>' : '') + '</td>' +
+      '<td>' + esc(st) + '</td>' +
+      '<td>' + jsD(parseYmd(r.join)) + '<br><small>' + jsD(c.six) + '</small></td>' +
+      '<td>' + jsD(parseYmd(r.conv)) + (r.conv ? '<br><small>' + (r.plan ? '提出 ' + jsD(parseYmd(r.plan)) : red(jsD(c.planBy) + 'まで', ymd(c.planBy) < today)) + '</small>' : '') + '</td>' +
+      '<td>' + (r.conv ? jsD(c.st) + '〜' + jsD(c.end6) + '<br><small>6か月目の支給日 ' + jsD(c.pay1) + (r.pay6 ? '（手入力）' : '') + '</small>' : '—') + '</td>' +
+      '<td>' + (r.conv ? red(jsD(c.w1.from) + '〜' + jsD(c.w1.to), w1Open && ymd(c.w1.to) < today) : '—') + '</td>' +
+      '<td>' + (r.conv && r.k2 ? red(jsD(c.w2.from) + '〜' + jsD(c.w2.to), k2Open && ymd(c.w2.to) < today) : '<small class="muted">申請しない</small>') + '</td>' +
+      '<td>' + (c.rate == null ? '<small class="muted">賃金が未入力</small>' : '<b style="color:' + (c.rate >= 3 ? 'var(--green,#1a7f37)' : 'var(--red)') + '">' + c.rate.toFixed(2) + '%</b>') + '</td>' +
+      '<td><button class="btn small sub" data-jsed="' + esc(r.id) + '">直す</button> <button class="btn small sub" data-jsdel="' + esc(r.id) + '">消す</button></td></tr>';
+  }).join('') + '</table>' : '<p class="empty">まだ入っていません。</p>';
+  $('jsCuList').querySelectorAll('[data-jsed]').forEach(function(b){ b.onclick = function(){ jsFormFill(jsAll().cu.filter(function(x){ return x.id === b.getAttribute('data-jsed'); })[0]); $('tab-josei').scrollIntoView({ behavior:'smooth', block:'start' }); }; });
+  $('jsCuList').querySelectorAll('[data-jsdel]').forEach(function(b){ b.onclick = function(){ var A2 = jsAll(), r = A2.cu.filter(function(x){ return x.id === b.getAttribute('data-jsdel'); })[0]; if(!r || !confirm(jsWho(r) + 'さんの予定を消します。よろしいですか？')) return; jsPut({ cu:A2.cu.filter(function(x){ return x !== r; }) }); jsRender(); }; });
+  $('jt_docs').value = A.cfg.tgDocs; $('jt_final').value = A.cfg.tgFinal;
+  var tg = A.tg.slice().sort(function(a, b){ return (a.status === '完了') - (b.status === '完了') || ((a.due || '9') < (b.due || '9') ? -1 : 1); });
+  $('jsTgList').innerHTML = tg.length ? '<table><tr><th>制度</th><th>会社</th><th>締切</th><th>書類をそろえ終える</th><th>最終確認</th><th>トライタスクの進み</th></tr>' + tg.map(function(g){
+    var due = parseYmd(g.due), open = g.status !== '完了';
+    var dd = function(n){ return (due && +n) ? red(jsD(addDays(due, -n)), open && ymd(addDays(due, -n)) < today) : '—'; };
+    return '<tr' + (open ? '' : ' style="opacity:.55"') + '><td>' + esc(g.name) + (g.issuer ? '<br><small class="muted">' + esc(g.issuer) + '</small>' : '') + '</td><td>' + esc(g.company || '') + '</td>' +
+      '<td>' + (due ? red(jsD(due), open && g.due < today) : '<small style="color:var(--red)">締切が日付で読めません' + (g.dueText ? '（' + esc(g.dueText) + '）' : '') + '</small>') + '</td>' +
+      '<td>' + dd(A.cfg.tgDocs) + '</td><td>' + dd(A.cfg.tgFinal) + '</td>' +
+      '<td>' + esc(g.status) + (g.total ? '（' + g.done + '/' + g.total + '工程）' : '') + '</td></tr>';
+  }).join('') + '</table>' : '<p class="empty">トライゲイトから送られた制度はまだありません。トライゲイトで掘った制度の「トライタスクへ送る」を押すと、ここに入ります。</p>';
+  var etc = A.etc.slice().sort(function(a, b){ return (a.to || '9') < (b.to || '9') ? -1 : 1; });
+  $('jsEtcList').innerHTML = etc.length ? '<table><tr><th>制度</th><th>区分</th><th>受付の始まり</th><th>締切</th><th>提出先</th><th>段階</th><th></th></tr>' + etc.map(function(e){
+    return '<tr><td>' + esc(e.name) + (e.memo ? '<br><small class="muted">' + esc(e.memo) + '</small>' : '') + '</td><td>' + esc(e.kind) + '</td><td>' + jsD(parseYmd(e.from)) + '</td><td>' + red(jsD(parseYmd(e.to)), e.st === '準備中' && e.to && e.to < today) + '</td><td>' + esc(e.dest || '') + '</td><td>' + esc(e.st) + '</td>' +
+      '<td><button class="btn small sub" data-jeed="' + esc(e.id) + '">直す</button> <button class="btn small sub" data-jedel="' + esc(e.id) + '">消す</button></td></tr>';
+  }).join('') + '</table>' : '<p class="empty">まだ入っていません。</p>';
+  $('jsEtcList').querySelectorAll('[data-jeed]').forEach(function(b){ b.onclick = function(){ var e = jsAll().etc.filter(function(x){ return x.id === b.getAttribute('data-jeed'); })[0] || {}; $('je_id').value = e.id || ''; $('je_name').value = e.name || ''; $('je_kind').value = e.kind || '助成金'; $('je_from').value = e.from || ''; $('je_to').value = e.to || ''; $('je_to2').value = e.dest || ''; $('je_st').value = e.st || '準備中'; $('je_memo').value = e.memo || ''; $('je_msg').textContent = ''; }; });
+  $('jsEtcList').querySelectorAll('[data-jedel]').forEach(function(b){ b.onclick = function(){ var A2 = jsAll(), e = A2.etc.filter(function(x){ return x.id === b.getAttribute('data-jedel'); })[0]; if(!e || !confirm(e.name + 'の予定を消します。よろしいですか？')) return; jsPut({ etc:A2.etc.filter(function(x){ return x !== e; }) }); jsRender(); }; });
+}
+(function(){
+  if(!$('tab-josei')) return;
+  $('js_cfgSave').onclick = function(){ var c0 = jsAll().cfg; jsPut({ cfg:Object.assign(c0, { close:+$('js_close').value, payM:+$('js_payM').value, payD:+$('js_payD').value }) }); jsRender(); $('js_cfgMsg').textContent += '（残しました）'; };
+  $('js_save').onclick = function(){
+    var r = jsFormRead();
+    if(!r.sid && !r.name){ $('js_msg').textContent = '職員を選ぶか、名前を入れてください。'; return; }
+    if(!r.join && !r.conv){ $('js_msg').textContent = '入職日か転換日のどちらかを入れてください。'; return; }
+    var A = jsAll(), cu = A.cu.filter(function(x){ return x.id !== r.id; }); cu.push(r);
+    jsPut({ cu:cu }); jsFormFill(null); $('js_msg').textContent = jsWho(r) + 'さんの予定を残しました。'; jsRender();
+  };
+  $('js_clear').onclick = function(){ jsFormFill(null); };
+  $('jt_save').onclick = function(){ var c = jsAll().cfg; c.tgDocs = Math.max(0, +$('jt_docs').value || 0); c.tgFinal = Math.max(0, +$('jt_final').value || 0); jsPut({ cfg:c }); $('jt_msg').textContent = '残しました。'; jsRender(); };
+  document.querySelectorAll('.js_w0,.js_w1').forEach(function(e){ e.addEventListener('input', jsJudge); });
+  $('je_save').onclick = function(){
+    var e = { id:$('je_id').value || uid(), name:$('je_name').value.trim(), kind:$('je_kind').value, from:$('je_from').value, to:$('je_to').value, dest:$('je_to2').value.trim(), st:$('je_st').value, memo:$('je_memo').value.trim() };
+    if(!e.name){ $('je_msg').textContent = '制度の名前を入れてください。'; return; }
+    var A = jsAll(), etc = A.etc.filter(function(x){ return x.id !== e.id; }); etc.push(e);
+    jsPut({ etc:etc }); ['je_id','je_name','je_from','je_to','je_to2','je_memo'].forEach(function(id){ $(id).value = ''; }); $('je_st').value = '準備中'; $('je_msg').textContent = e.name + 'を残しました。'; jsRender();
+  };
+  $('je_clear').onclick = function(){ ['je_id','je_name','je_from','je_to','je_to2','je_memo'].forEach(function(id){ $(id).value = ''; }); $('je_st').value = '準備中'; $('je_msg').textContent = ''; };
+})();
 
 /* ---- 配線 ---- */
 document.querySelectorAll('#tabs button').forEach(function(b){
@@ -5619,6 +5905,7 @@ document.querySelectorAll('#tabs button').forEach(function(b){
     if(t === 'mihon') mhRender();
     if(t === 'pt'){ nrScanLocal(); renderPtList(); nrRender(); tcRender(); }
     if(t === 'req') renderReq();
+    if(t === 'josei') jsRender();
   });
 });
 

@@ -54,7 +54,7 @@ async def test(p):
         yb = sorted(d for n, d in wk if n == '2010-01-看-9003')
         assert yb == ['1', '5'], '回数の欄が空で希望の曜日（月・金）に印のある人が、月・金の2回で組まれません：' + '、'.join(yb)
         await pg.evaluate("document.getElementById('ssTab').click()"); await pg.wait_for_timeout(500)
-        chips = await pg.evaluate("[].slice.call(document.querySelectorAll('#ssBody .ssChip')).filter(function(e){ return e.textContent.indexOf('看-9001') >= 0; }).length")
+        chips = await pg.evaluate("[].slice.call(document.querySelectorAll('#ssGrid .ssChip')).filter(function(e){ return e.textContent.indexOf('看-9001') >= 0; }).length")
         assert chips == 2, '仮スケジュール表に週2回の2件が出ません：' + str(chips)
         await s.shot('#ssBody', 'TriTime_kaisuu_karisuke.png')
         assert not s.errs, '画面の中で誤りが出ました：' + s.errs[0]

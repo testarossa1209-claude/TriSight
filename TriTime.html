@@ -5551,7 +5551,8 @@ function auApply(){
   $('au_msg').textContent = '下書きに入れました（' + auPlan.rows.length + '件）。上の表で直してから「本体に反映する」を押します。';
   auPlan = null; $('au_apply').style.display = 'none'; var pd = $('au_pdiff'); if(pd) pd.remove(); refreshAll(); auUndoShow();   /* 入れた後は「いまの週間予定から変わる訪問」は古くなるので消す。違いは上の控えとの比べで出る */
 }
-function auUndoShow(){ var b = null; $('au_undo').style.display = 'none';   /* 2026-11-08：戻すのは仮スケジュール表の「下書きを捨てて本体に戻す」に一本化 */ if(b) $('au_undo').textContent = '元に戻す（' + b.at + 'の週間予定）';
+function auUndoShow(){ ssdLoad(); var b = (SSD && SSD.bak) ? SSD.bak : lj(AU_BAK, null); $('au_undo').style.display = 'none';   /* 2026-11-08：戻すのは仮スケジュール表の「下書きを捨てて本体に戻す」に一本化。違いは下書き（あれば）と入れる前の控えで出す */
+  if(SSD && !ssdOn()) return ssdWith(auUndoShow); if(b) $('au_undo').textContent = '元に戻す（' + b.at + 'の週間予定）';
   /* 2026-11-03：控え（入れ替える前）と今の週間予定の違いを、いつでも見られるようにする */
   var el = $('au_diff'); if(!el) return;
   el.innerHTML = b ? auDiffHTML(auDiff(b.rows || [], live('weekly')), String(b.at).replace('T', ' ') + 'に入れ替える前の週間予定から、今の週間予定で変わった訪問', String(b.at).replace('T', ' ') + 'に入れ替える前の週間予定と、今の週間予定で、曜日と担当の変わった訪問はありません。') : ''; }
@@ -6998,7 +6999,7 @@ $('ssTab').addEventListener('click', function(){ ssOpen(true); });
    この日だけの動きは、11/1の「スケジュールが変わりました」の小窓と赤い番号の仕組みにそのまま乗る。 */
 var SS_V = {}, ssDrag = null;
 document.addEventListener('pointerdown', function(e){
-  var c = e.target && e.target.closest && e.target.closest('.ssBody .ssChip.dg'); if(!c) return;
+  var c = e.target && e.target.closest && e.target.closest('#ssGrid .ssChip.dg'); if(!c) return;   /* 2026-11-08：動かせるのは仮スケジュール表（下書き）の札だけ */
   ssDrag = { vk:c.getAttribute('data-vk'), x:e.clientX, y:e.clientY, on:false, el:c, ghost:null, over:null, pid:e.pointerId };
 });
 document.addEventListener('pointermove', function(e){
@@ -7007,7 +7008,7 @@ document.addEventListener('pointermove', function(e){
     ssDrag.on = true; var g = document.createElement('div'); g.className = 'ssGhost'; g.innerHTML = ssDrag.el.innerHTML; document.body.appendChild(g); ssDrag.ghost = g; }
   e.preventDefault();
   ssDrag.ghost.style.left = e.clientX + 'px'; ssDrag.ghost.style.top = e.clientY + 'px';
-  var t = document.elementFromPoint(e.clientX, e.clientY), td = t && t.closest ? t.closest('.ssBody td[data-sid]') : null;
+  var t = document.elementFromPoint(e.clientX, e.clientY), td = t && t.closest ? t.closest('#ssGrid td[data-sid]') : null;
   if(ssDrag.over && ssDrag.over !== td) ssDrag.over.classList.remove('ssOver');
   if(td) td.classList.add('ssOver'); ssDrag.over = td;
 }, { passive:false });

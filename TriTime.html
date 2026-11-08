@@ -97,6 +97,10 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   textarea{min-height:70px;resize:vertical}
   .ai-filled{background:#fff3df !important;border-color:var(--amber) !important}
   .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+  /* 2026-11-08（宏史さん「1日の予定と地図の日付と職員の窓がかぶってますよ」）：iPadのSafariでは日付・時刻の欄が自分の幅を持ち、升からはみ出して隣の欄に重なる。
+     見た目の部品を外して升の幅に合わせ、升の中身が升より広がらないようにする */
+  .row > *{min-width:0}
+  input[type=date],input[type=time],input[type=month],input[type=datetime-local]{-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;display:block;min-height:40px}
   .btn{font:inherit;font-size:14px;font-weight:700;border:1px solid var(--ink);background:var(--ink);color:var(--white);padding:9px 16px;border-radius:10px;cursor:pointer}
   .btn.sub{background:var(--white);color:var(--ink)}
   .btn.amber{background:var(--amber);border-color:var(--amber)}

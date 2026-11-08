@@ -58,6 +58,7 @@ async def test(p):
         assert '単独では訪問できません' in t, '看護補助者の升へ離しても「単独では訪問できません」が出ません'
         assert not await pg.query_selector('#mv_once'), '看護補助者の升へ離したのに、単独で動かすボタンが出ています'
         await pg.click('#mv_with'); await pg.wait_for_timeout(300)
+        await pg.evaluate("window.confirm = function(){ return true; }; var b = document.getElementById('ssd_commit'); if(b && !b.disabled) b.click();"); await pg.wait_for_timeout(500)   # 2026-11-08：仮スケジュール表の下書きを本体に反映する
         await s.shot('#ssMv .card', 'TriTime_hojo_with.png')
         await pg.click('#mv_close'); await pg.wait_for_timeout(300)
         wk = await pg.evaluate("JSON.parse(localStorage.getItem('tritime_weekly')).filter(function(v){ return !v.del; })")

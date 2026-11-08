@@ -77,7 +77,7 @@ async def test(p):
         await pg.wait_for_selector('#td_week .ssChip', state='attached', timeout=15000); await pg.wait_for_timeout(300)
         n_chip = await pg.evaluate("document.querySelectorAll('#td_week .ssChip').length")
         assert n_chip >= 10, '本スケジュール表に札が出ません：' + str(n_chip)
-        assert await pg.evaluate("document.querySelectorAll('#td_week .ssChip.dg').length") >= 1, '本スケジュール表の札が動かせる印（dg）になっていません'
+        assert await pg.evaluate("document.querySelectorAll('#td_week .ssChip.dg').length") == 0, '本スケジュール表の札が動かせる印（dg）になっています（2026-11-08：動かすのは仮スケジュール表の下書きだけ）'
         assert await pg.evaluate("document.querySelectorAll('#td_week .ssChip.hv').length") == 1, '週間予定の人情変更の札が点線（hv）で出ません'
         assert '人情' in await pg.inner_text('#td_week .ssChip.hv'), '人情変更の札に「人情」の印が出ません'
         assert await pg.evaluate("document.querySelectorAll('#td_week .ssChip[data-pk]').length") == n_chip, '札に鍵（data-pk）が付いていません'
@@ -119,6 +119,9 @@ async def test(p):
         await pg.select_option('#mv_why', '人情変更（体調への配慮）'); await pg.fill('#mv_note', '試験のひとこと'); await pg.check('#mv_ok')
         await s.shot('#ssMv .card', 'TriTime_patriot_mv.png')
         await pg.evaluate("document.getElementById('mv_once').click()"); await pg.wait_for_timeout(500)
+        assert await pg.evaluate("JSON.parse(localStorage.getItem('tritime_events')).filter(e => e.type === 'move').length") == 0, '仮スケジュール表で動かしただけで、本体の記録が変わっています（反映するまで変わらないはず）'
+        assert '本体から変えた所が' in await pg.inner_text('#ssGrid .ssdBar'), '下書きの帯に、変えた所の件数が出ません'
+        await pg.evaluate("window.confirm = function(){ return true; }; var b = document.getElementById('ssd_commit'); if(b && !b.disabled) b.click();"); await pg.wait_for_timeout(500)   # 2026-11-08：仮スケジュール表の下書きを本体に反映する
         mv = await pg.evaluate("JSON.parse(localStorage.getItem('tritime_events')).filter(e => e.type === 'move').map(e => [e.why, e.hv, e.note])")
         assert mv == [['人情変更（体調への配慮）', True, '試験のひとこと']], '組み換えの記録に理由・人情変更の印が残りません：' + str(mv)
         await pg.evaluate("document.getElementById('mv_close').click()"); await pg.wait_for_timeout(500)

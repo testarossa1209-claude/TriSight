@@ -31,11 +31,11 @@ async def test(p):
           localStorage.setItem('tritime_weekly', JSON.stringify([ { id:'w1', dow:'2', time:'09:15', min:30, no:'2010-01-看-9001', staffId:sid, withId:'', upd:t } ])); })()""")
         # 画面は記録を毎回 localStorage から読むので、開き直さずにそのまま使う
         await pg.evaluate("document.querySelector('#tabs button[data-tab=plan]').click()"); await pg.wait_for_timeout(400)
-        await pg.evaluate("document.getElementById('auTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
+        await pg.evaluate("document.getElementById('ssTab').click(); document.getElementById('ssAi').open = true"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
         await pg.wait_for_selector('#au_make', state='visible', timeout=15000)
         caps = await pg.evaluate("[document.getElementById('au_full').value, document.getElementById('au_part').value]")
         assert caps == ['9', '5'], '1日の件数の上限の初めの値が、常勤9件・非常勤5件になりません：' + str(caps)
-        await pg.evaluate("document.getElementById('auTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
+        await pg.evaluate("document.getElementById('ssTab').click(); document.getElementById('ssAi').open = true"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
         await pg.click('#au_make'); await pg.wait_for_timeout(800)
         if not await pg.is_visible('#au_apply'):
             info = await pg.evaluate("[document.getElementById('au_out').innerText.slice(0,200), localStorage.getItem('tritime_patients'), (localStorage.getItem('tritime_staff')||'').slice(0,300)]")
@@ -45,6 +45,7 @@ async def test(p):
         await s.shot('#cardAuto', 'TriTime_kaisuu_kumikata.png')
         await pg.evaluate("window.confirm = function(){ return true; }")
         await pg.click('#au_apply', timeout=15000); await pg.wait_for_timeout(400)
+        await pg.evaluate("window.confirm = function(){ return true; }; var b = document.getElementById('ssd_commit'); if(b && !b.disabled) b.click();"); await pg.wait_for_timeout(500)   # 2026-11-08：仮スケジュール表の下書きを本体に反映する
         wk = await pg.evaluate("JSON.parse(localStorage.getItem('tritime_weekly')).filter(function(v){ return !v.del; }).map(function(v){ return [v.no, String(v.dow)]; })")
         two = sorted(d for n, d in wk if n == '2010-01-看-9001'); one = [d for n, d in wk if n == '2010-01-看-9002']
         assert len(two) == 2, '「週2回」と登録した人が、週間予定の1件に引っぱられて週' + str(len(two)) + '回で組まれます'
@@ -53,7 +54,7 @@ async def test(p):
         yb = sorted(d for n, d in wk if n == '2010-01-看-9003')
         assert yb == ['1', '5'], '回数の欄が空で希望の曜日（月・金）に印のある人が、月・金の2回で組まれません：' + '、'.join(yb)
         await pg.evaluate("document.getElementById('ssTab').click()"); await pg.wait_for_timeout(500)
-        chips = await pg.evaluate("[].slice.call(document.querySelectorAll('#ssBody .ssChip')).filter(function(e){ return e.textContent.indexOf('看-9001') >= 0; }).length")
+        chips = await pg.evaluate("[].slice.call(document.querySelectorAll('#ssGrid .ssChip')).filter(function(e){ return e.textContent.indexOf('看-9001') >= 0; }).length")
         assert chips == 2, '仮スケジュール表に週2回の2件が出ません：' + str(chips)
         await s.shot('#ssBody', 'TriTime_kaisuu_karisuke.png')
         assert not s.errs, '画面の中で誤りが出ました：' + s.errs[0]

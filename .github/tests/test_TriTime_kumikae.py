@@ -32,14 +32,15 @@ async def test(p):
           W.push({ id:'w2', dow:'5', time:'09:15', min:30, no:'2010-01-看-9006', staffId:a, withId:'', upd:t });
           localStorage.setItem('tritime_patients', JSON.stringify(P)); localStorage.setItem('tritime_weekly', JSON.stringify(W)); localStorage.removeItem('tritime_weekly_backup'); })()""")
         await pg.evaluate("document.querySelector('#tabs button[data-tab=plan]').click()"); await pg.wait_for_timeout(400)
-        await pg.evaluate("document.getElementById('auTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
+        await pg.evaluate("document.getElementById('ssTab').click(); document.getElementById('ssAi').open = true"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
         await pg.wait_for_selector('#au_make', state='visible', timeout=15000)
-        await pg.evaluate("document.getElementById('auTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
+        await pg.evaluate("document.getElementById('ssTab').click(); document.getElementById('ssAi').open = true"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
         await pg.click('#au_make'); await pg.wait_for_timeout(800)
         out = await pg.inner_text('#au_out')
         assert 'いまの週間予定から変わる訪問' in out, '組み方を出しても、いまの週間予定から変わる訪問が出ません'
         await pg.evaluate("window.confirm = function(){ return true; }")
         await pg.click('#au_apply'); await pg.wait_for_timeout(500)
+        await pg.evaluate("window.confirm = function(){ return true; }; var b = document.getElementById('ssd_commit'); if(b && !b.disabled) b.click();"); await pg.wait_for_timeout(500)   # 2026-11-08：仮スケジュール表の下書きを本体に反映する
         wk = await pg.evaluate("""(function(){ var st = JSON.parse(localStorage.getItem('tritime_staff')); var nm = function(id){ return st.filter(function(s){ return s.id === id; })[0].name; };
           return JSON.parse(localStorage.getItem('tritime_weekly')).filter(function(v){ return !v.del; }).map(function(v){ return [v.no, String(v.dow), nm(v.staffId)]; }); })()""")
         assert ['2010-01-看-9001', '3', '常勤 二子'] in wk, 'いまと同じ職員・同じ曜日（二子・水曜）で組める1番が、組み直しで動きました：' + str([w for w in wk if w[0] == '2010-01-看-9001'])
@@ -49,7 +50,7 @@ async def test(p):
         assert '入れ替える前の週間予定から、今の週間予定で変わった訪問' in df and '週 ' in df, '入れた後に、控えと今の週間予定の違いが出ません：' + df[:200]
         await pg.click('#au_diff summary'); await pg.wait_for_timeout(200)
         await s.shot('#cardAuto', 'TriTime_kumikae_sa.png')
-        await pg.evaluate("document.getElementById('auTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
+        await pg.evaluate("document.getElementById('ssTab').click(); document.getElementById('ssAi').open = true"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
         await pg.click('#au_make'); await pg.wait_for_timeout(800)
         out2 = await pg.inner_text('#au_out')
         assert 'いまの週間予定から、曜日と担当の変わる訪問はありません' in out2, '入れた直後に組み方を出し直すと、訪問がずれます：' + out2[:300]

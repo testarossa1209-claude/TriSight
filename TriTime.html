@@ -244,7 +244,12 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   body.ssOpen .sideTabs .ssTab, body.kpOpen .sideTabs .ssTab, body.mnOpen .sideTabs .ssTab, body.nmOpen .sideTabs .ssTab, body.osOpen .sideTabs .ssTab, body.rqOpen .sideTabs .ssTab, body.jmOpen .sideTabs .ssTab, body.jlOpen .sideTabs .ssTab, body.hbOpen .sideTabs .ssTab, body.auOpen .sideTabs .ssTab, body.plOpen .sideTabs .ssTab{display:none}
   body.kpOpen #kpPanel, body.mnOpen #mnPanel, body.nmOpen #nmPanel, body.osOpen #osPanel, body.rqOpen #rqPanel, body.jmOpen #jmPanel, body.jlOpen #jlPanel, body.hbOpen #hbPanel, body.auOpen #auPanel, body.plOpen #plPanel{transform:none}
   /* 2026-11-08：引き出しに入れた枠は、枠の飾りを外して引き出しの中にそのまま並べる。手組みの表は曜日が7列あるので広めに開く */
-  #auPanel .card, #plPanel .card{box-shadow:none;border:0;padding:6px 0;margin:0}
+  #ssAi .card, #plPanel .card{box-shadow:none;border:0;padding:6px 0;margin:0}
+  /* 2026-11-08：仮スケジュール表の下書きの帯 */
+  .ssdBar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:2px 0 10px;padding:10px 12px;border-radius:10px;background:#fff6e5;border:1px solid #f0d9a8}
+  .ssdBar b{font-size:15px}
+  .ssAi{margin:12px 0 4px;border-top:1px solid var(--paper-deep);padding-top:8px}
+  .ssAi summary{cursor:pointer;font-weight:700}
   .ssPanel.wide{width:min(960px,100vw)}
   @media (min-width:1240px){ body.auOpen{padding-right:600px} body.plOpen{padding-left:600px} }
   /* 2026-11-06（宏史さんの指示）：目次の引き出し（左右）。下にスクロールすると出てくる項目へ、ボタン一押しで飛ぶ */
@@ -349,7 +354,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-08-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-08-05</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -359,8 +364,6 @@ function tsPortalAsk(){
 <button type="button" class="ssTab" id="kpTab" title="番号と氏名の対照表を右に開きます" aria-label="対照表"><span>対</span><span>照</span><span>表</span></button>
 <button type="button" class="ssTab" id="nmTab" title="2名体制の利用者の一覧を右に開きます" aria-label="2名体制"><span>２</span><span>名</span><span>体</span><span>制</span></button>
 <!-- 2026-11-08（宏史さんの指示「ゼロから作る下書きならば引き出しへ」「自動の振り分けも、今週の訪問予定も引き出し情報でいい」）：予定タブの下の大きな表を引き出しへ移し、スクロールを減らす -->
-<button type="button" class="ssTab" id="hbTab" title="空の表から組む（手組み）の下書きを右に開きます" aria-label="手組み"><span>手</span><span>組</span><span>み</span></button>
-<button type="button" class="ssTab" id="auTab" title="週間予定を地区で寄せて組む（自動の振り分け）を右に開きます" aria-label="自動の振り分け"><span>自</span><span>動</span><span>組</span><span>み</span></button>
 </div>
 <!-- 2026-11-03（宏史さん「ラップトップだと横の引き出しの使い方が見えなくなる。左にも引き出しを作っていい。ご要望は職員のトライタイムへの要望が主なので引き出しへ」）：
      左端に「使い方」「ご要望」のつまみを置き、左から開く -->
@@ -372,29 +375,7 @@ function tsPortalAsk(){
 <button type="button" class="ssTab" id="plTab" title="今週の訪問予定を左に開きます" aria-label="今週の訪問予定"><span>今</span><span>週</span><span>の</span><span>予</span><span>定</span></button>
 </div>
 <!-- 2026-11-08：手組み・自動の振り分け・今週の訪問予定の引き出し -->
-<aside class="ssPanel wide" id="hbPanel" aria-label="空の表から組む（手組み）">
-  <div class="ssHead"><h2>空の表から組む（手組み）<small>ゼロから作り直す、毎週の予定の下書き。「この表で確定」を押すまで、いまの予定は変わりません</small></h2><button type="button" class="ssClose" id="hbClose" title="閉じる" aria-label="閉じる">×</button></div>
-  <div class="ssBody"><div id="hbBox"></div></div>
-</aside>
-<aside class="ssPanel" id="auPanel" aria-label="週間予定を地区で寄せて組む（自動の振り分け）">
-  <div class="ssHead"><h2>週間予定を地区で寄せて組む<small>自動の振り分け。「この組み方を週間予定に入れる」を押すまで、いまの予定は変わりません</small></h2><button type="button" class="ssClose" id="auClose" title="閉じる" aria-label="閉じる">×</button></div>
-  <div class="ssBody">
-  <div class="card" id="cardAuto" style="display:none">
-        <p class="lead">利用中の患者さんを地区ごとにまとめ、看護師の出る曜日（名簿の公休）と1日の件数の上限の中で、週間予定の組み方を自動で出します。件数の上限は決まった数（常勤9件・非常勤5件）で組むので、ふだんは「組み方を出す」を押すだけです。出た組み方を見て、よければ「この組み方を週間予定に入れる」を押します。</p>
-    <!-- 2026-11-08（宏史さんの指摘「地区で寄せるのが基本ベース。件数の上限や管理者の割合を取り立てて入力する必要はない」）：ふだんは決まった数で組むので、入力欄は閉じておく -->
-    <details id="au_caps"><summary>1日の件数の上限・管理者の訪問の割合を変える（ふだんは開かなくてかまいません）</summary>
-    <div class="row">
-      <div><label class="f" for="au_full">常勤の1日の件数の上限</label><input type="number" id="au_full" min="1" max="10"></div>
-      <div><label class="f" for="au_part">非常勤の1日の件数の上限</label><input type="number" id="au_part" min="1" max="10"></div>
-      <div><label class="f" for="au_mgr">管理者の訪問の割合（一般の職員を100として）</label><input type="number" id="au_mgr" min="10" max="100" step="5"></div>
-    </div>
-    </details>
-    <div class="btns"><button class="btn" id="au_make">組み方を出す</button><button class="btn amber" id="au_apply" style="display:none">この組み方を週間予定に入れる</button><button class="btn sub" id="au_undo" style="display:none">元に戻す</button><span class="muted" id="au_msg"></span></div>
-    <div id="au_diff"></div>
-    <div id="au_out"></div>
-  </div>
-  </div>
-</aside>
+
 <aside class="ssPanel lft" id="plPanel" aria-label="今週の訪問予定">
   <div class="ssHead"><h2>今週の訪問予定<small>週間予定をもとに、その週の訪問を日ごとに並べます</small></h2><button type="button" class="ssClose" id="plClose" title="閉じる" aria-label="閉じる">×</button></div>
   <div class="ssBody">
@@ -459,8 +440,25 @@ function tsPortalAsk(){
 <aside class="ssPanel" id="ssPanel" aria-label="仮スケジュール表">
   <div class="ssHead"><h2 id="ssTitle">仮スケジュール表</h2><button type="button" class="ssClose" id="ssClose" title="閉じる" aria-label="閉じる">×</button></div>
   <div class="ssNav"><b id="ssWeek"></b><button type="button" class="btn sub small" id="ssPrev">前の週</button><button type="button" class="btn sub small" id="ssThis">今週</button><button type="button" class="btn sub small" id="ssNext">次の週</button></div>
-  <div class="ssBody" id="ssBody"></div>
-  <div class="ssFoot">週間予定をもとに、職員ごと・曜日ごとに並べた仮の表です。キャンセルの入った訪問は赤の取り消し線、休みの升は灰色の斜線、休みの日の訪問は赤枠の「要調整」で出ます。訪問の間が移動の目安より短いと赤字で、長いと「空き」で出ます。升の右下は、その日の件数です（目標に届くと緑）。週間予定を入れたり直したりすると、その場でこの表に映ります。</div>
+  <div class="ssBody" id="ssBody"><div id="ssGrid"></div>
+    <!-- 2026-11-08：AIのベース（地区で寄せる組み方）は、仮スケジュール表の中で組み直す（自動組みの引き出しはやめた） -->
+    <details class="ssAi" id="ssAi"><summary>AIのベースで組み直す（地区で寄せて組む）</summary><div id="ssAiBody"><div class="card" id="cardAuto" style="display:none">
+        <p class="lead">利用中の患者さんを地区ごとにまとめ、看護師の出る曜日（名簿の公休）と1日の件数の上限の中で、AIがベースの組み方を出します。件数の上限は決まった数（常勤9件・非常勤5件）で組むので、ふだんは「組み方を出す」を押すだけです。よければ「この組み方を下書きに入れる」を押し、上の表で札を動かして直してから「本体に反映する」を押します。</p>
+    <!-- 2026-11-08（宏史さんの指摘「地区で寄せるのが基本ベース。件数の上限や管理者の割合を取り立てて入力する必要はない」）：ふだんは決まった数で組むので、入力欄は閉じておく -->
+    <details id="au_caps"><summary>1日の件数の上限・管理者の訪問の割合を変える（ふだんは開かなくてかまいません）</summary>
+    <div class="row">
+      <div><label class="f" for="au_full">常勤の1日の件数の上限</label><input type="number" id="au_full" min="1" max="10"></div>
+      <div><label class="f" for="au_part">非常勤の1日の件数の上限</label><input type="number" id="au_part" min="1" max="10"></div>
+      <div><label class="f" for="au_mgr">管理者の訪問の割合（一般の職員を100として）</label><input type="number" id="au_mgr" min="10" max="100" step="5"></div>
+    </div>
+    </details>
+    <div class="btns"><button class="btn" id="au_make">組み方を出す</button><button class="btn amber" id="au_apply" style="display:none">この組み方を下書きに入れる</button><button class="btn sub" id="au_undo" style="display:none">元に戻す</button><span class="muted" id="au_msg"></span></div>
+    <div id="au_diff"></div>
+    <div id="au_out"></div>
+  </div>
+  </div></details>
+  </div>
+  <div class="ssFoot">仮の表（下書き）です。ここで札を動かしても、本体の予定は変わりません。「本体に反映する」を押したときだけ本体へ入ります。キャンセルの入った訪問は赤の取り消し線、休みの升は灰色の斜線、休みの日の訪問は赤枠の「要調整」で出ます。訪問の間が移動の目安より短いと赤字で、長いと「空き」で出ます。升の右下は、その日の件数です（目標に届くと緑）。</div>
 </aside>
 
 <div id="verNotice"></div>
@@ -1458,11 +1456,70 @@ var SYNC_KEY = 'tritime_sync', DEV_KEY = 'tritime_device', ALERT_KEY = 'tritime_
 /* 2026-10-31：中継の時刻とのずれ・開いている人・利用者ごとの鍵（中身は下の「開いている人と利用者ごとの鍵」） */
 var SRV_OFF = 0, PRES = { list:[], locks:[], off:false, sig:'' }, PT_LOCK = null, PT_BASE = {}, PRES_TTL = 120000;
 function srvNow(){ return Date.now() + (+SRV_OFF || 0); }
-function raw(col){ var a = lj(K[col], []); return Array.isArray(a) ? a : []; }
+/* ============================================================
+   2026-11-08（宏史さんの指示「仮スケジュールはあくまでも仮のスケジュール。あれこれ検討して反映ボタンを押して本体へもっていく」
+   「ベースはAIが作る。最小限の非効率を管理者裁量で認める。完全手組みも完全自動もいらない」）：
+   仮スケジュール表を下書きにする。下書きは週間予定（weekly）と記録（events）の写しを持ち、仮スケジュール表の中での組み換えは写しにだけ入る。
+   「本体に反映する」を押したときだけ、写しと始めたときの違い（変えた・足した・外した分）を本体へ入れる。
+   下書きの間に本体のほうで変わった分（ほかの端末のキャンセルの記録など）は、下書きで触っていなければ、表を出すたびに取り込む。
+   ============================================================ */
+var SSD = null, SSD_CTX = 0, SSD_PNQ = 0, SSD_KEY = 'tritime_ss_draft';
+function ssdOn(){ if(!SSD) return false; if(SSD_CTX > 0) return true; var m = document.getElementById('ssMv'); return !!(m && m.getAttribute('data-draft') === '1'); }
+function ssdWith(fn){ SSD_CTX++; try{ return fn(); } finally { SSD_CTX--; } }
+function ssdSave(){ try{ if(SSD) localStorage.setItem(SSD_KEY, JSON.stringify(SSD)); else localStorage.removeItem(SSD_KEY); }catch(e){} }
+function ssdLoad(){ if(SSD) return SSD; try{ var x = JSON.parse(localStorage.getItem(SSD_KEY)); if(x && x.weekly && x.events && x.base) SSD = x; }catch(e){} return SSD; }
+function ssdReal(col){ var a = lj(K[col], []); return (Array.isArray(a) ? a : []).filter(function(x){ return x && !x.del; }); }
+function ssdClone(x){ return JSON.parse(JSON.stringify(x)); }
+function ssdStart(){
+  var b = { weekly:{}, events:{} };
+  var w = ssdClone(ssdReal('weekly')), e = ssdClone(ssdReal('events'));
+  w.forEach(function(x){ b.weekly[x.id] = strip(x); }); e.forEach(function(x){ b.events[x.id] = strip(x); });
+  SSD = { at:nowLocal(), weekly:w, events:e, base:b, applied:null, bak:null, pn:[] }; ssdSave();
+}
+/* 下書きで触っていない分は、本体の新しい中身を取り込む */
+function ssdRebase(){
+  if(!SSD) return;
+  ['weekly', 'events'].forEach(function(col){
+    var kf = KEYF[col], base = SSD.base[col], cur = SSD[col], cm = {}, real = ssdReal(col), rm = {};
+    cur.forEach(function(x, i){ cm[x[kf]] = i; });
+    real.forEach(function(r){ var k = r[kf], st = strip(r); rm[k] = 1; if(base[k] === st) return;
+      if(cm[k] == null){ if(base[k] === undefined){ cur.push(ssdClone(r)); base[k] = st; } return; }
+      if(strip(cur[cm[k]]) === base[k]){ cur[cm[k]] = ssdClone(r); base[k] = st; } });
+    Object.keys(base).forEach(function(k){ if(rm[k]) return; var i = cm[k]; if(i != null && strip(cur[i]) === base[k]){ cur[i] = null; delete base[k]; } });
+    SSD[col] = cur.filter(Boolean);
+  });
+  ssdSave();
+}
+function ssdDiff(){
+  var out = {};
+  ['weekly', 'events'].forEach(function(col){
+    var kf = KEYF[col], base = SSD.base[col], seen = {}, ch = [], rmv = [];
+    SSD[col].forEach(function(x){ var k = x[kf]; seen[k] = 1; if(base[k] !== strip(x)) ch.push(x); });
+    Object.keys(base).forEach(function(k){ if(!seen[k]) rmv.push(k); });
+    out[col] = { ch:ch, rm:rmv };
+  });
+  return out;
+}
+/* 本体で数える変更の件数（週間予定の変更と、組み換え・付け替えの記録） */
+function ssdCount(){ if(!SSD) return 0; var d = ssdDiff(); return d.weekly.ch.length + d.weekly.rm.length + d.events.ch.filter(function(e){ return e.type === 'move' || e.type === 'work'; }).length + d.events.rm.length; }
+function ssdCommit(){
+  if(!SSD) return null; var d = ssdDiff(), dr = SSD; SSD = null; ssdSave();
+  ['weekly', 'events'].forEach(function(col){
+    var kf = KEYF[col], chm = {}, rmm = {}, out = [], seen = {};
+    d[col].ch.forEach(function(x){ chm[x[kf]] = x; }); d[col].rm.forEach(function(k){ rmm[k] = 1; });
+    ssdReal(col).forEach(function(r){ var k = r[kf]; if(rmm[k]) return; seen[k] = 1; out.push(chm[k] ? ssdClone(chm[k]) : r); });
+    d[col].ch.forEach(function(x){ if(!seen[x[kf]]) out.push(ssdClone(x)); });
+    saveCol(col, out);
+  });
+  try{ if(dr.applied) localStorage.setItem(AU_APPLIED, JSON.stringify(dr.applied)); if(dr.bak) localStorage.setItem(AU_BAK, JSON.stringify(dr.bak)); }catch(e){}
+  return { n:d.weekly.ch.length + d.weekly.rm.length + d.events.ch.filter(function(e){ return e.type === 'move' || e.type === 'work'; }).length + d.events.rm.length, pn:dr.pn || [] };
+}
+function raw(col){ if((col === 'weekly' || col === 'events') && ssdOn()) return SSD[col]; var a = lj(K[col], []); return Array.isArray(a) ? a : []; }
 function live(col){ return raw(col).filter(function(x){ return x && !x.del; }); }
 function strip(o){ var c = {}; Object.keys(o || {}).forEach(function(k){ if(k !== 'upd' && k !== 'srv' && k !== 'del') c[k] = o[k]; }); return JSON.stringify(c); }
 function markDirty(col, id){ var s = lj(SYNC_KEY, {}); s.dirty = s.dirty || {}; (s.dirty[col] = s.dirty[col] || {})[id] = 1; sj(SYNC_KEY, s); }
 function saveCol(col, liveArr){
+  if((col === 'weekly' || col === 'events') && ssdOn()){ SSD[col] = ssdClone(liveArr.filter(function(x){ return x && !x.del; })); ssdSave(); return; }   /* 2026-11-08：下書きの間は写しにだけ入れる */
   var kf = KEYF[col], now = srvNow(), old = raw(col), om = {}, seen = {}, out = [];   /* 2026-10-31：後先は中継の時刻に合わせて決める（時計のずれた端末が勝たないように） */
   old.forEach(function(o){ if(o && o[kf] != null) om[o[kf]] = o; });
   liveArr.forEach(function(it){
@@ -1573,6 +1630,9 @@ function pnMail(mails, subj, text){ var q = 'subject=' + encodeURIComponent(subj
   return mails.length === 1 ? 'mailto:' + mails[0] + '?' + q : 'mailto:?bcc=' + mails.join(',') + '&' + q; }
 /* items：[{ to:[職員の番号], subj:件名, text:本文, label:誰あてか }] */
 function pnHTML(items){
+  /* 2026-11-08：下書きの中での組み換えでは、携帯・メールの一押しを出さずに取っておき、「本体に反映する」を押したあとにまとめて出す */
+  var dm = document.getElementById('ssMv');
+  if(SSD && ((dm && dm.getAttribute('data-draft') === '1') || SSD_PNQ > 0)){ (SSD.pn = SSD.pn || []); items.forEach(function(it){ if(!SSD.pn.some(function(x){ return x.text === it.text && String(x.to) === String(it.to); })) SSD.pn.push(it); }); ssdSave(); return '<p class="muted sm" style="margin:6px 0">担当者への携帯・メールの知らせは、「本体に反映する」を押したあとに出ます。</p>'; }
   var all = staff(), h = '';
   items.forEach(function(it){
     var ps = (it.to || []).filter(function(x, i, a){ return x && a.indexOf(x) === i; }).map(function(id){ return all.filter(function(s){ return s.id === id; })[0]; }).filter(Boolean);
@@ -1817,7 +1877,7 @@ function cancelOf(no, date, time){
    入れる前に作った、明日以降の日付の「この日だけ」の組み換え記録は、消さずに残したまま、予定には使わない（新しい週間予定＝確定行程だけを出す）。
    入れた日・過ぎた日の記録（実際に回った記録）はそのまま使う。「元に戻す」を押すと、前の扱いに戻る */
 var AU_APPLIED = 'tritime_au_applied';
-function moveStale(e){ var a = (lj(AU_APPLIED, {}) || {})[e.patientNo]; if(!a) return false; var d = e.toDate || e.date; return d > a.day && String(e.created || '') < a.at; }
+function moveStale(e){ var a = ((ssdOn() && SSD.applied) ? SSD.applied : (lj(AU_APPLIED, {}) || {}))[e.patientNo]; if(!a) return false; var d = e.toDate || e.date; return d > a.day && String(e.created || '') < a.at; }
 function liveMove(e){ return e.type === 'move' && !moveStale(e); }
 function movesOn(date){ return events().filter(function(e){ return liveMove(e) && e.date === date; }); }
 /* 2026-11-03：仮スケジュール表で別の日へ動かした訪問（move に toDate が付いたもの）は、元の日から外し、動かした先の日に出す。
@@ -4528,7 +4588,7 @@ function applyDept(){
   labRender();
   if(stf){ ['cardWk','cardIm','cardRules'].forEach(function(id){ show(id, false); }); }
   var ssHide = (R.lv === 'staff' || R.lv === 'none'); show('ssTab', !ssHide);
-  var hbOk = canSched(); show('hbTab', hbOk); show('auTab', hbOk); if(!hbOk){ if(document.body.classList.contains('hbOpen')) sideOpen('hb', false); if(document.body.classList.contains('auOpen')) sideOpen('au', false); }   /* 2026-11-08：手組み・自動の振り分けのつまみは予定を組む人の端末だけ */ if(ssHide && document.body.classList.contains('ssOpen')) ssOpen(false);
+ if(ssHide && document.body.classList.contains('ssOpen')) ssOpen(false);
   show('kpTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('kpOpen')) sideOpen('kp', false);
   show('jmTab', R.lv !== 'none'); show('jlTab', R.lv !== 'none'); if(R.lv === 'none'){ sideOpen('jm', false); sideOpen('jl', false); }
   show('rqTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('rqOpen')) sideOpen('rq', false);
@@ -4730,8 +4790,8 @@ var mhLast = null;
 function mhUse(){
   if(!mhLast) return;
   var t = document.querySelector('#tabs button[data-tab=plan]'); if(t) t.click();
-  auMake(mhLast);
-  sideOpen('au', true);
+  ssOpen(true); if($('ssAi')) $('ssAi').open = true;   /* 2026-11-08：AIのベースは仮スケジュール表の中 */
+  ssdLoad(); ssdWith(function(){ auMake(mhLast); });
 }
 function mhRender(){
   var pr = mhPrice();
@@ -5079,8 +5139,8 @@ function renderToday(){
   /* 2026-11-03（宏史さん「地図の下に当日の分しか出ていない。本スケジュール表を出すのではなかったか」）：地図の下に、選んだ日を含む1週間の本スケジュール表を出す */
   var num = {}; live.forEach(function(v, i){ num[date + '|' + v.no + '|' + v.time + '|' + v.staffId] = ALL ? v._n : i + 1; });
   var mon = mondayOf(parseYmd(date)), wdays = []; for(var di = 0; di < 7; di++) wdays.push(ymd(addDays(mon, di)));
-  var wg = D().kind === 'office' ? { empty:'' } : ssGridHTML(wdays, { only:ALL ? null : sid, mark:date, num:num, col:colOf, drag:canSched(), dragSelf:canMoveSelf() ? dev().me : '' });   /* 2026-11-04：本体の表でも札を動かせる（予定を組む人の端末）。2026-11-05：一般の職員は自分の担当の札だけ（宏史さんの決め(b)） */
-  $('td_week').innerHTML = wg.empty != null ? wg.empty : pwBtnHTML() + '<h3 style="margin:6px 0 4px;font-size:15px">本スケジュール表 <small class="muted" style="font-weight:400">' + esc(jpDate(wdays[0])) + ' 〜 ' + esc(jpDate(wdays[6])) + '</small></h3><div class="ssBody tdWeek">' + wg.html + '</div><p class="muted sm" style="margin:4px 0 0">色の付いた列が選んだ日です。日付を変えると、その日の週の表に変わります。札の丸い番号は地図の番号と同じです。' + (canSched() ? '今日以降の札は、指で押さえたまま別の人・別の日の升へ引っぱると動かせます（動かすときに理由を残せます。点線の札は人情変更）。' : '') + '</p>' + (canSched() ? ptrBtnHTML('ptr_td', 'ptr_tdbox') : '') + hbBtnHTML() + jsBtnHTML();   /* 2026-11-05：空の表から組む（手組み） */
+  var wg = D().kind === 'office' ? { empty:'' } : ssGridHTML(wdays, { only:ALL ? null : sid, mark:date, num:num, col:colOf });   /* 2026-11-08：本体の表は見る表。札を動かすのは仮スケジュール表（下書き）だけ */   /* 2026-11-04：本体の表でも札を動かせる（予定を組む人の端末）。2026-11-05：一般の職員は自分の担当の札だけ（宏史さんの決め(b)） */
+  $('td_week').innerHTML = wg.empty != null ? wg.empty : '<h3 style="margin:6px 0 4px;font-size:15px">本スケジュール表 <small class="muted" style="font-weight:400">' + esc(jpDate(wdays[0])) + ' 〜 ' + esc(jpDate(wdays[6])) + '</small></h3><div class="ssBody tdWeek">' + wg.html + '</div><p class="muted sm" style="margin:4px 0 0">色の付いた列が選んだ日です。日付を変えると、その日の週の表に変わります。札の丸い番号は地図の番号と同じです。' + (canSched() ? '予定を変えるときは、右端の「仮スケジュール表」で札を動かし、「本体に反映する」を押します。点線の札は人情変更です。' : '') + '</p>' + (canSched() ? ptrBtnHTML('ptr_td', 'ptr_tdbox') : '') + hbBtnHTML() + jsBtnHTML();   /* 2026-11-05：空の表から組む（手組み） */
   if($('ptr_td')) $('ptr_td').onclick = function(){ ptrRun(wdays, 'ptr_tdbox', '#td_week', '本スケジュール表'); };
   if($('hb_open')) $('hb_open').onclick = hbToggle; if(window.HB && HB.on) hbRender();
   if($('pw_open')) $('pw_open').onclick = pwOpen;   /* 2026-11-05：予定表の作り方を選ぶ */
@@ -5477,20 +5537,22 @@ function auApply(){
   if(!auPlan || !auPlan.rows.length) return;
   var tdy = ymd(new Date()), nowA = nowLocal(), setN = {}; auPlan.nos.forEach(function(n){ setN[n] = 1; });
   var nOld = events().filter(function(e){ return e.type === 'move' && setN[e.patientNo] && (e.toDate || e.date) > tdy && !moveStale(e); }).length;
-  if(!confirm((nOld ? '明日以降に「この日だけ」組み換えた記録が ' + nOld + '件あります。記録は残しますが、予定には新しい週間予定（確定行程）だけを出します。\n\n' : '') + 'いまの週間予定のうち、振り分けた患者さん ' + auPlan.nos.length + '人の分を、この組み方に入れ替えます。入れ替える前の週間予定は控えに残し、「元に戻す」で戻せます。入れ替えますか。')) return;
+  if(!confirm((nOld ? '明日以降に「この日だけ」組み換えた記録が ' + nOld + '件あります。記録は残しますが、予定には新しい週間予定（確定行程）だけを出します。\n\n' : '') + '下書きの週間予定のうち、振り分けた患者さん ' + auPlan.nos.length + '人の分を、この組み方に入れ替えます。本体は「本体に反映する」を押すまで変わりません。入れ替えますか。')) return;
   var all = live('weekly');
   var apPrev = lj(AU_APPLIED, {}) || {}, apNew = JSON.parse(JSON.stringify(apPrev));
   auPlan.nos.forEach(function(n){ apNew[n] = { at:nowA, day:tdy }; });
-  try{ localStorage.setItem(AU_BAK, JSON.stringify({ at:nowLocal(), rows:all, applied:apPrev })); localStorage.setItem(AU_APPLIED, JSON.stringify(apNew)); }catch(e){}
+  if(ssdOn()){ SSD.bak = { at:nowLocal(), rows:all, applied:apPrev }; SSD.applied = apNew; ssdSave(); }   /* 2026-11-08：控えと入れた印は、反映したときに本体へ入れる */
+  else { try{ localStorage.setItem(AU_BAK, JSON.stringify({ at:nowLocal(), rows:all, applied:apPrev })); localStorage.setItem(AU_APPLIED, JSON.stringify(apNew)); }catch(e){} }
   var set = {}; auPlan.nos.forEach(function(n){ set[n] = 1; });
   var keep = all.filter(function(v){ return !set[v.no]; });
   auPlan.rows.forEach(function(v){ var inf = auPlan.info[v.no] || {}, w = v.withId || '';
     keep.push({ id:uid(), dow:v.dow, time:v.time, min:v.min || inf.min || 30, no:v.no, staffId:v.staffId, withId:w }); });
   saveCol('weekly', keep);
-  $('au_msg').textContent = '週間予定に入れました（' + auPlan.rows.length + '件）。入れ替える前の予定は控えに残しています。';
+  $('au_msg').textContent = '下書きに入れました（' + auPlan.rows.length + '件）。上の表で直してから「本体に反映する」を押します。';
   auPlan = null; $('au_apply').style.display = 'none'; var pd = $('au_pdiff'); if(pd) pd.remove(); refreshAll(); auUndoShow();   /* 入れた後は「いまの週間予定から変わる訪問」は古くなるので消す。違いは上の控えとの比べで出る */
 }
-function auUndoShow(){ var b = lj(AU_BAK, null); $('au_undo').style.display = b ? '' : 'none'; if(b) $('au_undo').textContent = '元に戻す（' + b.at + 'の週間予定）';
+function auUndoShow(){ ssdLoad(); var b = (SSD && SSD.bak) ? SSD.bak : lj(AU_BAK, null); $('au_undo').style.display = 'none';   /* 2026-11-08：戻すのは仮スケジュール表の「下書きを捨てて本体に戻す」に一本化。違いは下書き（あれば）と入れる前の控えで出す */
+  if(SSD && !ssdOn()) return ssdWith(auUndoShow); if(b) $('au_undo').textContent = '元に戻す（' + b.at + 'の週間予定）';
   /* 2026-11-03：控え（入れ替える前）と今の週間予定の違いを、いつでも見られるようにする */
   var el = $('au_diff'); if(!el) return;
   el.innerHTML = b ? auDiffHTML(auDiff(b.rows || [], live('weekly')), String(b.at).replace('T', ' ') + 'に入れ替える前の週間予定から、今の週間予定で変わった訪問', String(b.at).replace('T', ' ') + 'に入れ替える前の週間予定と、今の週間予定で、曜日と担当の変わった訪問はありません。') : ''; }
@@ -5513,6 +5575,7 @@ function renderAuto(){
   auUndoShow();
 }
 function refreshAll(){
+  if(SSD && ssdOn()){ ssRender(); return; }   /* 2026-11-08：下書きの小窓から呼ばれたときは、仮スケジュール表だけを描き直す（本体の表は変わらない） */
   mgMigrate(); applyDept();
   setShareNote(); renderAlerts(); renderShareWarn(); setTimeout(chgPopup, 0);
   refreshSelects(); nbRefreshForm();
@@ -5636,8 +5699,8 @@ if(!$('pr_date').value) $('pr_date').value = ymd(new Date());
 prRender();
 ['td_date','td_staff'].forEach(function(id){ $(id).addEventListener('change', renderToday); });
 $('td_geo').addEventListener('click', geoFillAll);
-$('au_make').addEventListener('click', auMake);
-$('au_apply').addEventListener('click', auApply);
+$('au_make').addEventListener('click', function(){ ssdLoad(); if(SSD) ssdWith(function(){ auMake(); }); else auMake(); });
+$('au_apply').addEventListener('click', function(){ ssdLoad(); if(!SSD) ssdStart(); ssdWith(auApply); });   /* 2026-11-08：AIのベースは下書きに入れる */
 $('au_undo').addEventListener('click', auUndo);
 $('pt_load').addEventListener('click', function(){ ptLoad(keyNo($('pt_no').value)); });
 $('pt_no').addEventListener('change', function(){ var no = keyNo($('pt_no').value); if(no && patient(no)) ptLoad(no); else { if(no) PT_BASE[no] = null; ptClaim(no); } });
@@ -6751,7 +6814,7 @@ $('sr_out').addEventListener('click', function(){
 var SS_KEY = 'tritime_ss_open';
 var ssStart = null;
 function ssOpen(on){
-  if(on){ document.body.classList.remove('kpOpen', 'mnOpen', 'nmOpen', 'osOpen', 'rqOpen', 'hbOpen', 'auOpen', 'plOpen'); if(window.HB){ HB.on = false; } }
+  if(on){ document.body.classList.remove('kpOpen', 'mnOpen', 'nmOpen', 'osOpen', 'rqOpen', 'plOpen', 'jmOpen', 'jlOpen'); }
   document.body.classList.toggle('ssOpen', !!on);
   try{ localStorage.setItem(SS_KEY, on ? '1' : '0'); }catch(e){}
   if(on){ if(!ssStart) ssStart = parseYmd($('planWeek').value) || mondayOf(new Date()); ssRender(); }
@@ -6817,15 +6880,33 @@ function ssRender(){
   if(d.kind === 'office'){
     var hs = acrossDepts(function(x){ var g0 = ssGridHTML(days, {}); return g0.html ? ['<h3 style="margin:10px 0 4px;font-size:15px">' + esc(x.name) + '</h3>' + g0.html] : []; });
     $('ssTitle').innerHTML = '仮スケジュール表<small>訪問のある全部署・1週間の見渡し</small>';
-    $('ssBody').innerHTML = hs.length ? hs.join('') + '<p class="muted sm" style="margin:6px 0 0">ここでは見るだけです。札を動かすときは、上の「使う部署」でその部署を選んでください。</p>' : '<p class="empty">訪問のある部署に、まだ職員がいません。</p>';
+    $('ssGrid').innerHTML = hs.length ? hs.join('') + '<p class="muted sm" style="margin:6px 0 0">ここでは見るだけです。札を動かすときは、上の「使う部署」でその部署を選んでください。</p>' : '<p class="empty">訪問のある部署に、まだ職員がいません。</p>';
     return;
   }
-  var g = ssGridHTML(days, { drag:true });
-  if(g.empty){ $('ssBody').innerHTML = g.empty; return; }
-  var h = g.html;
-  $('ssBody').innerHTML = h + '<p class="muted sm" style="margin:6px 0 0">今日以降の訪問の札は、指で押さえたまま別の人の升・別の曜日の升へ引っぱると動かせます。点線の札は人情変更です。</p>' + ptrBtnHTML('ptr_ss', 'ptr_ssbox') + ssBulkHTML(days) + ssStandbyHTML(days);
-  ssWireStandby(); ssWireBulk();
-  $('ptr_ss').onclick = function(){ ptrRun(days, 'ptr_ssbox', '#ssBody', '仮スケジュール表'); };   /* 2026-11-04 */
+  /* 2026-11-08：ここからは下書き。開いたときに下書きが無ければ、いまの本体の予定（AIのベースを管理者が直したもの）を写して始める */
+  ssdLoad(); if(!SSD) ssdStart(); else ssdRebase();
+  ssdWith(function(){
+    var g = ssGridHTML(days, { drag:true });
+    var n = ssdCount(), wkEmpty = !weekly().length;
+    var bar = '<div class="ssdBar"><b>下書き</b><span>' + (n ? '本体から変えた所が <b>' + n + '件</b> あります。' : '本体と同じ中身です。') + '</span>' +
+      '<button type="button" class="btn amber" id="ssd_commit"' + (n ? '' : ' disabled') + '>本体に反映する</button>' +
+      '<button type="button" class="btn sub small" id="ssd_reset"' + (n ? '' : ' disabled') + '>下書きを捨てて本体に戻す</button>' +
+      '<small class="muted" style="flex-basis:100%">ここで札を動かしても本体は変わりません。' + (wkEmpty ? 'まだ予定が入っていないので、下の「AIのベースで組み直す」でAIにベースを組ませてください。' : '直し終えたら「本体に反映する」を押します。') + '</small></div>';
+    if(g.empty){ $('ssGrid').innerHTML = bar + g.empty; }
+    else {
+      $('ssGrid').innerHTML = bar + g.html + '<p class="muted sm" style="margin:6px 0 0">今日以降の訪問の札は、指で押さえたまま別の人の升・別の曜日の升へ引っぱると動かせます。同じ升の中で上下に動かすと順番が入れ替わります。点線の札は人情変更です。</p>' + ptrBtnHTML('ptr_ss', 'ptr_ssbox') + ssBulkHTML(days) + ssStandbyHTML(days);
+      ssWireStandby(); ssWireBulk();
+      $('ptr_ss').onclick = function(){ ssdWith(function(){ ptrRun(days, 'ptr_ssbox', '#ssBody', '仮スケジュール表（下書き）'); }); };   /* 2026-11-04 */
+    }
+    if(wkEmpty && $('ssAi')) $('ssAi').open = true;
+  });
+  $('ssd_commit').onclick = function(){
+    var n = ssdCount(); if(!n) return;
+    if(!confirm('下書きで変えた ' + n + '件を本体の予定に反映します。反映すると、担当者の画面の予定が変わります。反映しますか。')) return;
+    var r = ssdCommit(); refreshAll();
+    $('ssGrid').insertAdjacentHTML('afterbegin', '<div class="judge free" style="margin:0 0 10px"><b>本体に反映しました（' + r.n + '件）。</b><br>連絡板の知らせも本体に入りました。' + (r.pn.length ? '担当者へ携帯・メールで知らせるときは、下のボタンを押してください。' : '') + '</div>' + (r.pn.length ? pnHTML(r.pn) : ''));
+  };
+  $('ssd_reset').onclick = function(){ if(!confirm('下書きで変えた所を捨てて、本体の予定に戻します。よろしいですか。')) return; SSD = null; ssdSave(); ssRender(); };
 }
 /* 2026-11-03：その日の訪問を、まとめて担当・同行に付け替える（宏史さん「本日（祭日）は全部の利用者を島さんと佐野（夫）さんが回った。全部複数名。要確認の直し方は」）。
    その日の訪問（キャンセルを除く）ごとに組み換え（move）を残し、担当と同行を替える。担当と同行の人には、その日の「出勤」（type "work"）を付けて、公休・祝日の要調整を消す。
@@ -6848,7 +6929,8 @@ function ssBulkHTML(days){
 function ssWireBulk(){
   var bx = $('ssBulk'); if(!bx) return;
   bx.addEventListener('toggle', function(){ SS_BULK_OPEN = bx.open; });
-  $('sb_go').onclick = function(){
+  $('sb_go').onclick = function(){ SSD_PNQ++; try{ ssdWith(ssBulkGo); } finally { SSD_PNQ--; } };   /* 2026-11-08：下書きの中で付け替える */
+  var ssBulkGo = function(){
     var date = $('sb_date').value, sid = $('sb_staff').value, wid = $('sb_with').value;
     if(!sid){ $('sb_msg').textContent = '担当を選んでください。'; return; }
     if(wid === sid){ $('sb_msg').textContent = '担当と同行が同じ人です。'; return; }
@@ -6879,7 +6961,8 @@ function ssWireBulk(){
     SS_BULK_OPEN = true; refreshAll();
     var m = $('sb_msg'); if(m) m.textContent = jpDate(date) + 'の訪問 ' + vs.length + '件を付け替えました。';
   };
-  if($('sb_undo')) $('sb_undo').onclick = function(){
+  if($('sb_undo')) $('sb_undo').onclick = function(){ ssdWith(ssBulkUndo); };   /* 2026-11-08：取り消しも下書きの中で */
+  var ssBulkUndo = function(){
     var date = $('sb_date').value;
     if(!confirm(jpDate(date) + 'に、この枠で付け替えた訪問と「出勤」を取り消して、元の予定に戻します。よろしいですか。')) return;
     saveEvents(events().filter(function(e){ return !(e.bulk && (e.type === 'work' ? e.date === date : (e.toDate || e.date) === date)); }));
@@ -6916,7 +6999,7 @@ $('ssTab').addEventListener('click', function(){ ssOpen(true); });
    この日だけの動きは、11/1の「スケジュールが変わりました」の小窓と赤い番号の仕組みにそのまま乗る。 */
 var SS_V = {}, ssDrag = null;
 document.addEventListener('pointerdown', function(e){
-  var c = e.target && e.target.closest && e.target.closest('.ssBody .ssChip.dg'); if(!c) return;
+  var c = e.target && e.target.closest && e.target.closest('#ssGrid .ssChip.dg'); if(!c) return;   /* 2026-11-08：動かせるのは仮スケジュール表（下書き）の札だけ */
   ssDrag = { vk:c.getAttribute('data-vk'), x:e.clientX, y:e.clientY, on:false, el:c, ghost:null, over:null, pid:e.pointerId };
 });
 document.addEventListener('pointermove', function(e){
@@ -6925,7 +7008,7 @@ document.addEventListener('pointermove', function(e){
     ssDrag.on = true; var g = document.createElement('div'); g.className = 'ssGhost'; g.innerHTML = ssDrag.el.innerHTML; document.body.appendChild(g); ssDrag.ghost = g; }
   e.preventDefault();
   ssDrag.ghost.style.left = e.clientX + 'px'; ssDrag.ghost.style.top = e.clientY + 'px';
-  var t = document.elementFromPoint(e.clientX, e.clientY), td = t && t.closest ? t.closest('.ssBody td[data-sid]') : null;
+  var t = document.elementFromPoint(e.clientX, e.clientY), td = t && t.closest ? t.closest('#ssGrid td[data-sid]') : null;
   if(ssDrag.over && ssDrag.over !== td) ssDrag.over.classList.remove('ssOver');
   if(td) td.classList.add('ssOver'); ssDrag.over = td;
 }, { passive:false });
@@ -6942,7 +7025,7 @@ function ssReorder(v, td, y){
   order.forEach(function(x, i){ if(x.time !== times[i]) ch.push({ v:x, t:times[i] }); });
   if(!ch.length) return;
   var before = wasteDay(chips.map(function(o){ return o.v; })), after = wasteDay(order.map(function(x, i){ return Object.assign({}, x, { time:times[i] }); }));
-  var box = document.createElement('div'); box.className = 'ssMv'; box.id = 'ssMv';
+  var box = document.createElement('div'); box.className = 'ssMv'; box.id = 'ssMv'; box.setAttribute('data-draft', ssdOn() ? '1' : '0');   /* 2026-11-08：下書きの小窓 */
   box.innerHTML = '<div class="card"><h2>順番を入れ替える</h2><p class="muted sm">' + esc(staffName(v.staffId)) + 'さん・' + esc(jpDate(v.date)) + '</p>' +
     '<ul>' + ch.map(function(o){ return '<li>' + esc(dnn(o.v.no)) + '：' + esc(o.v.time) + ' → <b>' + esc(o.t) + '</b></li>'; }).join('') + '</ul>' +
     (before && after ? '<p class="sm">道のり（会社を出て会社に戻る）：' + esc(kmL(before.h)) + ' → <b' + (after.h > before.h + 0.05 ? ' style="color:var(--red)"' : '') + '>' + esc(kmL(after.h)) + '</b>' + (after.h > before.h + 0.05 ? '<span style="color:var(--red);font-weight:700">（＋' + esc(kmL(after.h - before.h)) + ' 遠回り）</span>' : '') + '</p>' : '') +
@@ -6963,9 +7046,11 @@ function ssDragEnd(e, cancel){
   if(cancel || !dg.on || !dg.over) return;
   var v = SS_V[dg.vk]; if(!v) return;
   var sid = dg.over.getAttribute('data-sid'), date = dg.over.getAttribute('data-date');
-  if(sid === v.staffId && date === v.date){ if(date >= ymd(new Date())) ssReorder(v, dg.over, e.clientY); return; }   /* 2026-11-07：同じ升の中は順番の入れ替え */
-  if(!canSched()){ if(sid !== dev().me){ alert('自分の担当の升にだけ動かせます。ほかの人へ付け替えるときは事務局へ連絡してください。'); return; } }   /* 2026-11-05：一般の職員は自分の升だけ */
-  ssMoveAsk(v, sid, date);
+  if(!canSched()) return;   /* 2026-11-08：予定を動かせるのは予定を組む人だけ。動かすのは仮スケジュール表（下書き）の中だけ */
+  ssdWith(function(){
+    if(sid === v.staffId && date === v.date){ if(date >= ymd(new Date())) ssReorder(v, dg.over, e.clientY); return; }   /* 2026-11-07：同じ升の中は順番の入れ替え */
+    ssMoveAsk(v, sid, date);
+  });
 }
 document.addEventListener('pointerup', function(e){ ssDragEnd(e, false); });
 document.addEventListener('pointercancel', function(e){ ssDragEnd(e, true); });
@@ -6977,7 +7062,7 @@ function ssGapText(sid, date){
   return vs.length ? staffName(sid) + 'さんの ' + jpDate(date) + '：' + vs.length + '件' + (out.length ? '（' + out.join('、') + '）' : '') : staffName(sid) + 'さんの ' + jpDate(date) + '：訪問なし';
 }
 function ssMoveAsk(v, sid, date){
-  var box = document.createElement('div'); box.className = 'ssMv'; box.id = 'ssMv';
+  var box = document.createElement('div'); box.className = 'ssMv'; box.id = 'ssMv'; box.setAttribute('data-draft', ssdOn() ? '1' : '0');   /* 2026-11-08：下書きの小窓 */
   var tg = staff().filter(function(x){ return x.id === sid; })[0];
   if(tg && !canSolo(tg)){ ssWithAsk(box, v, tg, date); return; }
   var why = offWhy(sid, date), selfOnly = !canSched();   /* 2026-11-05：一般の職員＝人情変更は選べない・この日だけ・事務局へ知らせる */
@@ -7046,7 +7131,7 @@ function ssMoveDo(v, sid, date, weeklyToo){
   saveEvents(ev2);
   /* 携帯・メールの文面には、患者さんの氏名を入れない（11/2の決め）。日時と契約書番号だけ */
   var txt = (weeklyToo ? '毎週の訪問の予定が変わりました。' : '訪問の予定が変わりました。') + '\n' + dn(v.no) + '：' + (weeklyToo ? DOW[parseYmd(v.od).getDay()] + '曜 ' + v.ot + ' → ' + DOW[parseYmd(date).getDay()] + '曜 ' + t : jpDate(v.date) + ' ' + v.time + ' → ' + jpDate(date) + ' ' + t) + '\n担当：' + staffName(sid) + '\nトライタイムで確認し、事務所へ連絡をお願いします。';
-  $('mv_res').innerHTML = '<div class="judge free" style="margin-top:8px"><b>動かしました。</b><br>' + esc(what) + '<br><small>移動の間を計算し直しました：' + esc(ssGapText(sid, date)) + (from !== sid || v.date !== date ? '／' + esc(ssGapText(from, v.date)) : '') + '</small><br><small>連絡板に、' + esc(to.map(staffName).join('・')) + 'さんあての知らせを残しました。</small></div>' +
+  $('mv_res').innerHTML = '<div class="judge free" style="margin-top:8px"><b>' + (ssdOn() ? '下書きに入れました（本体はまだ変わっていません）。' : '動かしました。') + '</b><br>' + esc(what) + '<br><small>移動の間を計算し直しました：' + esc(ssGapText(sid, date)) + (from !== sid || v.date !== date ? '／' + esc(ssGapText(from, v.date)) : '') + '</small><br><small>連絡板に、' + esc(to.map(staffName).join('・')) + 'さんあての知らせを残しました。</small></div>' +
     pnHTML([{ to:to, label:to.map(staffName).join('・') + 'さんへ', subj:'【ノア】訪問の予定が変わりました', text:txt }]) +
     '<div class="btns" style="margin-top:8px"><button class="btn sub" type="button" id="mv_close">閉じる</button></div>';
   ['mv_once','mv_week'].forEach(function(id){ if($(id)) $(id).disabled = true; });
@@ -7059,7 +7144,7 @@ function sideOpen(k, on){
   if(on){ document.body.classList.remove('ssOpen', 'kpOpen', 'mnOpen', 'nmOpen', 'osOpen', 'rqOpen', 'jmOpen', 'jlOpen', 'hbOpen', 'auOpen', 'plOpen'); }
   if(!on && k === 'hb' && window.HB){ HB.on = false; HB.sel = null; }   /* 2026-11-08：手組みの引き出しを閉じたら下書きの表もしまう（下書きの中身は残る） */
   document.body.classList.toggle(k + 'Open', !!on);
-  if(on){ if(k === 'jm' || k === 'jl'){ jmRender(k); return; } if(k === 'hb'){ HB.on = true; hbRender(); return; } if(k === 'au'){ var ca = $('cardAuto'); if(ca) ca.style.display = ''; return; } if(k === 'pl'){ return; } if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else if(k === 'nm') nmRender(); else if(k === 'os') osRender(); else if(k === 'rq') rqOpenPanel(); else mnRender(); }
+  if(on){ if(k === 'jm' || k === 'jl'){ jmRender(k); return; } if(k === 'pl'){ return; } if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else if(k === 'nm') nmRender(); else if(k === 'os') osRender(); else if(k === 'rq') rqOpenPanel(); else mnRender(); }
 }
 /* 2026-11-03：利用者さんへのお知らせ。選んだ日の訪問（キャンセルを除く）を利用者さんごとに1行にまとめ、その日のいちばん早い時刻で定型文を作る。
    定型文は設定（settings.osText）に持ち、{時刻} をその人の時刻に置き換える。送ったら type "notify" を残す */
@@ -7190,11 +7275,8 @@ var MN_MARKS = [
     ['待機・待機者リスト', '名簿で「待機」に印を付けた非常勤の人は、表のいちばん下にまとめて出ます。モデルコースと自動の振り分けには入りません。調整が難しいときは、札をこの人の升へ動かし、待機者リストの「お願いの連絡」で頼みます。']
   ]],
   ['札の移動・人情変更・H&Nパトリオット・伝票（2026-11-04）', [
-    ['本スケジュール表の札', '「予定」の地図の下の本スケジュール表でも、今日以降の札を引っぱって動かせます（予定を組む人の端末だけ）。動かす小窓の「変更の理由」で理由を残せます。'],
     ['人情変更', '変更の理由で「人情変更（相性・体調への配慮・家族の事情・その他）」を選んだ札は点線で出ます。管理者の判断（ワイルドカード）として、H&Nパトリオットは効率だけの条項ではその札を指摘しません。度が過ぎたもの（1日の件数の超過・休みの日の予定・人情変更の割合など）だけを指摘します。'],
-    ['予定表の作り方を選ぶ', '「予定」タブの本スケジュール表の上にあるオレンジのボタン（予定を組む人の端末だけ）。押すと「AIが作る」「AIがベースを作って自分で直す」「自分で作る」の三つの道が出ます。AIが作る＝右端の「自動組み」の引き出しが開く。AIがベース＝AIが作ったベースを右端の「手組み」の引き出しの表に写して直す。自分で作る＝「手組み」の引き出しの空の表に札を置いて組む。'],
     ['管理者へ上申する（一般の職員）', '予定を変えられるのは管理者と事務局だけです。職員の画面では、本スケジュール表の下のオレンジの「管理者へ上申する」から、利用者さん・上申の種類（相性に問題がある／利用者側から「来ないでほしい」と言われた／訪問が難しい事情がある／その他）・内容を入れて「上申する」と、部門の管理者の連絡板に届きます（担当の変更や拒否の記録への反映は管理者が決めます）。'],
-    ['空の表から組む（手組み）', '右端の「手組み」の引き出し（予定を組む人の端末だけ）。ゼロから作り直す下書きの表で、「この表で確定」を押すまでいまの予定は変わりません。職員 × 曜日の空の表に、下に並ぶ利用者の札を引っぱって置き、週の予定をホワイトボードのように組みます。升の端にその曜日の件数と訪問の間の合計が出ます（許容を超えると赤）。「効率バージョンを写す」で今の予定から直すこともでき、「H&Nパトリオットで確かめる」で下書きを確かめ、「この表で確定」で毎週の予定に置き換えます。下書きは閉じても残ります。'],
     ['H&Nパトリオット', '本スケジュール表と仮スケジュール表の下のボタン。表の週の予定を「許容範囲外の条項表」で確かめ、根拠付きの指摘を出します。指摘を押すと表の中の訪問が光ります。「問題なし」とは言わず、見た範囲だけを言います。'],
     ['赤字の区間（遠回り）', '管理者の窓の「予定表の対比」に出ます。管理者が組んだ1日の回り方を、同じ利用者さんのままAIの道順（事業所から出て、隣町でも近い人を先に回る順）と比べ、AIの道順に無い行ったり来たりの区間を赤字で出します。H&Nパトリオットの条項「道のりの無駄」は、人情変更の札が入った日も数えます。'],
     ['2名体制の合流のしかた', '「予定」タブの1日の予定の下に出ます。1名体制から2名体制に日の途中で変わるとき、事務所で合流・現地で合流（それぞれ移動）・1件目の家に自転車を置いて車で回る（その日のうちに回収／次の訪問で回収）を、2人分の移動の時間（目安）で比べ、少ない案に◎を付けます。自転車の案は、利用者登録で「自転車を置かせてもらえる」に印がある家だけです。了承は担当看護師が取ります。その日のうちに回収するなら電池は付けたまま・鍵は掛ける、後日回収なら鍵を掛け電池は持ち帰ります。'],
@@ -7216,7 +7298,7 @@ var MN_MARKS = [
    各項目は［見出し, どの画面のどこで, 何をするか］。画面の名前・ボタンの名前は画面の文字のまま */
 var MN_GUIDE = [
   ['1. はじめに（使い始めの順番）', [
-    ['登録の順番', '①「名簿・設定」で職員を入れる →②「名簿・設定」の「勤務の決まり」を確かめる →③「利用者登録」で利用者さんを入れる →④「予定」タブの「組み方を出す」で週間予定を組む →⑤毎日は「予定」タブと右端の「仮スケジュール表」で見る。'],
+    ['登録の順番', '①「名簿・設定」で職員を入れる →②「名簿・設定」の「勤務の決まり」を確かめる →③「利用者登録」で利用者さんを入れる →④右端の「仮スケジュール表」でAIのベースを入れて直し、「本体に反映する」で週間予定にする →⑤毎日は「予定」タブで見る。'],
     ['画面の行き来', '上に並ぶタブ（予定・利用者登録・キャンセル受付 …）で画面を切り替えます。右端の縦長のつまみ（仮スケジュール表・対照表・２名体制）と左端のつまみ（使い方・お知らせ・ご要望）は、いまの画面のまま横に開く引き出しです。'],
     ['使う部署', 'いちばん上の「使う部署」のボタンで、訪問看護部・訪問介護部などを切り替えます。部署ごとに利用者さん・予定・記録が分かれます。'],
     ['新しい版にする', '画面の上の「版 ◯◯」の右にある「最新の版に更新」を押します。新しい版が出ると、上に「新しい版が公開されています」と出ます。']
@@ -7239,14 +7321,14 @@ var MN_GUIDE = [
     ['地図の位置', '住所（番地まで）を入れておき、「予定」タブの「1日の予定と地図」で「住所から位置を取る」を押すと、地図に出せるようになります。']
   ]],
   ['4. 週間予定を組む（スケジュール表の作り方）', [
-    ['まず「予定表の作り方を選ぶ」', '「予定」タブの本スケジュール表の上にあるオレンジのボタン「予定表の作り方を選ぶ」を押します（予定を組む人の端末＝事務局・管理者）。三つの道が出ます——①AIが作る ②AIがベースを作って自分で直す ③自分で作る。どの道でも、できた表は本スケジュール表に入り、あとから札を動かして直せます。'],
-    ['①AIがベースを作って自分で直す（基本の道）', '押すと、AIがその場でベース（地区で寄せた組み方）を作り、手組みの表（職員 × 曜日）に写して開きます。札を引っぱって別の人・別の曜日へ動かし、直し終えたら「この表で確定」で週間予定に入れます。週間予定にはまだ入っていないので、確定するまでは何も変わりません。'],
-    ['②AIが作る', '押すと右端の「自動組み」の引き出し（週間予定を地区で寄せて組む）が開きます。件数の上限は決まった数（常勤9件・非常勤5件）で組むので、そのまま白い「組み方を出す」を押します（数を変えるときだけ「1日の件数の上限・管理者の訪問の割合を変える」を開きます）。出た表と「いまの週間予定から変わる訪問」を見て、よければオレンジの「この組み方を週間予定に入れる」。入れる前の予定は控えに残り「元に戻す」で戻せます。モデルコースの見本の枠のまま当てはめたいときは「モデルコースの見本」タブで表を作り「このコースで患者さんを当てはめる」を押すと、同じ引き出しに出ます。'],
-    ['③自分で作る', '押すと右端の「手組み」の引き出しに空の表が開きます。下に並ぶ利用者さんの札（契約書番号＋氏名・2名体制は「2名」・週の回数ぶんの残り枚数）を升へ引っぱって置きます（札を一度押してから升を押しても置けます）。時刻は自動（勤務の始まり→前の終わり＋移動15分）で、置いた札を押すと時刻を直したり外したりできます。「効率バージョンを写す」で①の表から始めることも、「全部消す」でやり直すこともできます。最後に「この表で確定」。下書きは閉じても残ります。'],
-    ['できたあとの直し方', '本スケジュール表と仮スケジュール表（右端のつまみ）で、今日以降の札を指で押さえたまま別の人・別の日の升へ引っぱると動かせます（小窓で時刻・理由・了承の印）。動かせるのは管理者と事務局の端末だけで、一般の職員は与えられた予定を消化します（伝えたいことは「管理者へ上申する」から）。'],
-    ['組み方を出す', '右端の「自動組み」の引き出し（週間予定を地区で寄せて組む）で「組み方を出す」。町名ごとに寄せ、午前から移動15分で詰めて組みます。今の担当と曜日のまま組めるものは動かしません。'],
-    ['週間予定に入れる', '出た表を見て、よければオレンジの「この組み方を週間予定に入れる」。入れる前の予定は控えに残り、「元に戻す」で戻せます。'],
-    ['変わる訪問を見る', '組み方を出すと「いまの週間予定から変わる訪問」が、入れた後は「元に戻す」の下に「入れ替える前から変わった訪問」が出ます。'],
+    ['予定の組み方（仮スケジュール表で組む）', '予定は右端の「仮スケジュール表」で組みます（予定を組む人の端末＝事務局・管理者）。仮スケジュール表は下書きで、札を動かしても本体の予定は変わりません。直し終えたら、表の上の「本体に反映する」を押したときだけ本体に入ります。ベースは必ずAIが作ります（地区で寄せる組み方）。管理者は、そのベースに最小限の手直し（人情変更）を入れます。'],
+    ['AIのベースを入れる', '仮スケジュール表のいちばん下の「AIのベースで組み直す（地区で寄せて組む）」を開き、白い「組み方を出す」を押します。件数の上限は決まった数（常勤9件・非常勤5件）で組むので、数を変えるときだけ「1日の件数の上限・管理者の訪問の割合を変える」を開きます。出た組み方を見て、よければオレンジの「この組み方を下書きに入れる」。まだ本体は変わりません。'],
+    ['下書きを直す', '仮スケジュール表で、今日以降の札を指で押さえたまま別の人・別の日の升へ引っぱると動かせます（小窓で時刻・理由・了承の印。「この日だけ」か「毎週の予定を変える」かを選びます）。同じ升の中で上下に動かすと順番が入れ替わります。直した札は下書きにだけ入ります。'],
+    ['本体に反映する／下書きを捨てる', '表の上の帯に、本体から変えた所の件数が出ます。オレンジの「本体に反映する」を押すと本体の予定が変わり、連絡板の知らせが届きます。担当者へ携帯・メールで知らせるボタンは、反映したあとに出ます。やめるときは「下書きを捨てて本体に戻す」。下書きは閉じても残ります。'],
+    ['本スケジュール表', '「予定」の地図の下の本スケジュール表は、決まった予定を見る表です。札は動かせません。予定を変えるときは、仮スケジュール表で動かして反映します。一般の職員は与えられた予定を消化します（伝えたいことは「管理者へ上申する」から）。'],
+    ['組み方を出す', '仮スケジュール表の「AIのベースで組み直す」で「組み方を出す」。町名ごとに寄せ、午前から移動15分で詰めて組みます。今の担当と曜日のまま組めるものは動かしません。'],
+    ['下書きに入れる', '出た表を見て、よければオレンジの「この組み方を下書きに入れる」。本体に入れるのは、仮スケジュール表の「本体に反映する」です。'],
+    ['変わる訪問を見る', '組み方を出すと「いまの週間予定から変わる訪問」が出ます。'],
     ['1日の件数の上限', '常勤9件・非常勤5件が最初の値です（同じ枠の上の欄で変えられます）。'],
     ['同行（2名体制）', '同行が決まっていない2名体制の訪問には、週の1回目に看護補助者、2回目以降に担当とは別の看護師が自動で付きます。2名体制の人の一覧は右端の「２名体制」。'],
     ['手で直す', '「名簿・設定」の「週間予定」の一覧で、行ごとに同行を選んだり「外す」ことができます。新しい行は上の欄で入れて「追加する」。']
@@ -7254,8 +7336,8 @@ var MN_GUIDE = [
   ['5. 毎日の予定を見る', [
     ['1日の予定と地図', '「予定」タブのいちばん上。職員を選ぶとその人の予定と地図、「全員」を選ぶと全員の分が職員ごとの色で出ます。地図の下には、選んだ日を含む1週間の本スケジュール表（職員 × 曜日）が出て、札の丸い番号が地図の番号です。お昼に会社へ戻るので、地図の上の「午前の行程」「午後の行程」のボタンで、午前と午後の回り方を分けて出します（開いたときは、いまの時刻の方）。それぞれ「会社→訪問→会社」の一回りで、線の上の三角の矢印が回る向きです。非常勤で、その日の訪問が4件以下の人は、1日を一回りで出します（5件以上の非常勤は常勤と同じく分けます）。番号は表の「順」（時刻の早い順）と同じなので、線は必ず ① → ② → ③ … の順に進みます。'],
     ['今週の訪問予定', '左端の「今週の予定」の引き出しで、週の訪問を日ごとに並べます。担当の横に同行が出ます。'],
-    ['仮スケジュール表', '右端の「仮スケジュール表」。職員×日付の表で、訪問と訪問の間に「移動 15分」などが出ます。今日以降の札は引っぱって、別の人・別の日へ動かせます。'],
-    ['祝日に出た日の付け替え', '仮スケジュール表の下の「この日の訪問を、まとめて担当・同行に付け替える（祝日に出た日など）」で、日・担当・同行を選んで「この日の訪問を付け替える」。町名で寄せて時刻を組み直し、二人とも出勤の扱いになります。']
+    ['仮スケジュール表', '右端の「仮スケジュール表」。職員×日付の表（下書き）で、訪問と訪問の間に「移動 15分」などが出ます。今日以降の札は引っぱって、別の人・別の日へ動かせます。動かした分は「本体に反映する」を押すまで本体に入りません。'],
+    ['祝日に出た日の付け替え', '仮スケジュール表の下の「この日の訪問を、まとめて担当・同行に付け替える（祝日に出た日など）」で、日・担当・同行を選んで「この日の訪問を付け替える」。町名で寄せて時刻を組み直し、二人とも出勤の扱いになります（下書きに入り、「本体に反映する」で本体に入ります）。']
   ]],
   ['6. キャンセルのとき', [
     ['キャンセルを受ける', '「キャンセル受付」タブで、利用者さん・日時・理由を入れて「この内容で記録する」。'],
@@ -7330,10 +7412,6 @@ function jmRender(k){
   [].forEach.call(box.querySelectorAll('.jmGo'), function(b){ b.onclick = function(){ var it = items[+b.getAttribute('data-i')]; sideOpen(k, false); if(it && it.el){ try{ it.el.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ it.el.scrollIntoView(); } } }; });
 }
 $('jmTab').addEventListener('click', function(){ sideOpen('jm', true); });
-$('hbTab').addEventListener('click', function(){ sideOpen('hb', true); });
-$('hbClose').addEventListener('click', function(){ sideOpen('hb', false); });
-$('auTab').addEventListener('click', function(){ sideOpen('au', true); });
-$('auClose').addEventListener('click', function(){ sideOpen('au', false); });
 $('plTab').addEventListener('click', function(){ sideOpen('pl', true); });
 $('plClose').addEventListener('click', function(){ sideOpen('pl', false); });
 $('jmClose').addEventListener('click', function(){ sideOpen('jm', false); });

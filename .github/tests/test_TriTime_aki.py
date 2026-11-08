@@ -47,6 +47,7 @@ async def test(p):
         await pg.select_option('#sb_staff', ids[0]); await pg.select_option('#sb_with', ids[1])
         await pg.evaluate("window.confirm = function(){ return true; }")
         await pg.click('#sb_go'); await pg.wait_for_timeout(600)
+        await pg.evaluate("window.confirm = function(){ return true; }; var b = document.getElementById('ssd_commit'); if(b && !b.disabled) b.click();"); await pg.wait_for_timeout(500)   # 2026-11-08：仮スケジュール表の下書きを本体に反映する
         mv = await pg.evaluate("JSON.parse(localStorage.getItem('tritime_events')).filter(function(e){ return e.type === 'move' && !e.del; }).sort(function(a, b){ return a.toTime < b.toTime ? -1 : 1; }).map(function(e){ return e.patientNo.slice(-4) + ' ' + e.toTime; })")
         assert mv == ['9801 09:15', '9803 10:00', '9802 10:45'], '付け替えたとき、町名で寄せて時刻が組み直されません：' + str(mv)
         await pg.evaluate("document.body.classList.remove('ssOpen')")

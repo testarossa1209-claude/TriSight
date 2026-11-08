@@ -56,7 +56,10 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   #shPick .box{background:#fff;border:1px solid #e9e3d6;border-radius:14px;padding:22px;max-width:420px;width:100%;box-shadow:0 8px 28px rgba(16,36,59,.12)}
   #shPick .who{display:block;width:100%;margin:6px 0;padding:14px 12px;font-size:17px;text-align:left}
   /* 2026-11-06（宏史さんの指示）：出勤日の最初に押す「スタート」の窓（出勤時刻の厳守を促す。押さなくても画面は開く） */
-  #stStart{position:fixed;inset:0;z-index:997;background:rgba(16,36,59,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+  #stStart{position:fixed;inset:0;z-index:997;background:#f4f1ea;display:flex;align-items:center;justify-content:center;padding:16px}   /* 2026-11-08（宏史さんの指示）：出退勤の窓ではなく、トライタイムのログイン画面の体にする */
+  #stStart .stLogo{display:flex;align-items:center;gap:10px;margin:0 0 14px}
+  #stStart .stLogo img{width:44px;height:44px;border-radius:10px}
+  #stStart .stLogo b{font-size:22px;letter-spacing:.04em}
   #stStart .box{background:#fff;border:1px solid #e9e3d6;border-radius:14px;padding:22px;max-width:440px;width:100%;box-shadow:0 8px 28px rgba(16,36,59,.2)}
   #stStart .go{display:block;width:100%;margin:8px 0;padding:16px 12px;font-size:18px;text-align:left}
   #labLock .box{background:#fff;border:1px solid #e9e3d6;border-radius:14px;padding:22px;max-width:380px;width:100%;box-shadow:0 8px 28px rgba(16,36,59,.12)}
@@ -346,7 +349,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-08-03</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-08-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -3301,11 +3304,14 @@ function stPrompt(){
   var s = meStaff(), date = stToday(); if(lj(ST_SKIP, '') === date) return;   /* 「あとで押す」を押した日は窓を出さず、上の帯だけ残す */
   var w = workRule(), fv = stFirstVisit(s.id, date);
   var box = document.createElement('div'); box.id = 'stStart';
-  box.innerHTML = '<div class="box"><h2 style="margin:0 0 6px">今日のスタート（' + esc(jpDate(date)) + '）</h2>' +
-    '<p class="muted" style="margin:0 0 10px">' + esc(s.name) + 'さん、出勤したら押してください。押した時刻が勤怠の記録になります。出勤時刻 ' + esc(w.start) + (fv ? '・今日の最初の訪問 ' + esc(fv) : '') + '</p>' +
-    '<button type="button" class="btn go" id="stGoOffice">出勤（事務所から）</button>' +
-    '<button type="button" class="btn go amber" id="stGoDirect">直行（利用者さんのお宅へ）</button>' +
-    '<p style="margin:10px 0 0"><button type="button" class="btn sub" id="stLater">あとで押す（上の帯に残ります）</button></p></div>';
+  /* 2026-11-08（宏史さん「出退勤の画面だと職員は見張られている思いになる。トライタイムのログイン画面みたいな体に」）：
+     画面の言葉から出勤・勤怠・遅刻・出勤時刻を外し、トライタイムを始める画面にする。押した時刻の記録（type "start"）と野木画面への届き方は今までどおり */
+  box.innerHTML = '<div class="box"><div class="stLogo"><img src="TriTime_icon_192.png" alt=""><b>トライタイム</b></div>' +
+    '<p style="margin:0 0 4px;font-size:17px"><b>' + esc(s.name) + 'さん、おはようございます。</b></p>' +
+    '<p class="muted" style="margin:0 0 10px">' + esc(jpDate(date)) + (fv ? '・今日の最初の訪問 ' + esc(fv) : '') + '</p>' +
+    '<button type="button" class="btn go" id="stGoOffice">事務所から始める</button>' +
+    '<button type="button" class="btn go amber" id="stGoDirect">直行で始める（利用者さんのお宅へ）</button>' +
+    '<p style="margin:10px 0 0"><button type="button" class="btn sub" id="stLater">あとで始める</button></p></div>';
   document.body.appendChild(box);
   $('stGoOffice').onclick = function(){ stPress('office'); };
   $('stGoDirect').onclick = function(){ stPress('direct'); };
@@ -3315,7 +3321,7 @@ function stBar(){
   var el = $('stBar'); if(!el) return;
   if(!stShouldAsk()){ el.style.display = 'none'; el.innerHTML = ''; return; }
   var w = workRule(); el.style.display = '';
-  el.innerHTML = '今日のスタートをまだ押していません（出勤時刻 ' + esc(w.start) + '）。 <button type="button" class="btn small" id="stBarOffice" style="margin-left:6px">出勤</button> <button type="button" class="btn small amber" id="stBarDirect">直行</button>';
+  el.innerHTML = 'トライタイムを始めましょう。 <button type="button" class="btn small" id="stBarOffice" style="margin-left:6px">事務所から始める</button> <button type="button" class="btn small amber" id="stBarDirect">直行で始める</button>';   /* 2026-11-08：出勤・出勤時刻の言葉は出さない */
   $('stBarOffice').onclick = function(){ stPress('office'); };
   $('stBarDirect').onclick = function(){ stPress('direct'); };
 }
@@ -7190,11 +7196,11 @@ var MN_MARKS = [
     ['管理者へ上申する（一般の職員）', '予定を変えられるのは管理者と事務局だけです。職員の画面では、本スケジュール表の下のオレンジの「管理者へ上申する」から、利用者さん・上申の種類（相性に問題がある／利用者側から「来ないでほしい」と言われた／訪問が難しい事情がある／その他）・内容を入れて「上申する」と、部門の管理者の連絡板に届きます（担当の変更や拒否の記録への反映は管理者が決めます）。'],
     ['空の表から組む（手組み）', '右端の「手組み」の引き出し（予定を組む人の端末だけ）。ゼロから作り直す下書きの表で、「この表で確定」を押すまでいまの予定は変わりません。職員 × 曜日の空の表に、下に並ぶ利用者の札を引っぱって置き、週の予定をホワイトボードのように組みます。升の端にその曜日の件数と訪問の間の合計が出ます（許容を超えると赤）。「効率バージョンを写す」で今の予定から直すこともでき、「H&Nパトリオットで確かめる」で下書きを確かめ、「この表で確定」で毎週の予定に置き換えます。下書きは閉じても残ります。'],
     ['H&Nパトリオット', '本スケジュール表と仮スケジュール表の下のボタン。表の週の予定を「許容範囲外の条項表」で確かめ、根拠付きの指摘を出します。指摘を押すと表の中の訪問が光ります。「問題なし」とは言わず、見た範囲だけを言います。'],
-    ['赤字の区間（遠回り）', '管理者の窓の「予定表の対比」と野木画面の比較に出ます。管理者が組んだ1日の回り方を、同じ利用者さんのままAIの道順（事業所から出て、隣町でも近い人を先に回る順）と比べ、AIの道順に無い行ったり来たりの区間を赤字で出します。H&Nパトリオットの条項「道のりの無駄」は、人情変更の札が入った日も数えます。'],
+    ['赤字の区間（遠回り）', '管理者の窓の「予定表の対比」に出ます。管理者が組んだ1日の回り方を、同じ利用者さんのままAIの道順（事業所から出て、隣町でも近い人を先に回る順）と比べ、AIの道順に無い行ったり来たりの区間を赤字で出します。H&Nパトリオットの条項「道のりの無駄」は、人情変更の札が入った日も数えます。'],
     ['2名体制の合流のしかた', '「予定」タブの1日の予定の下に出ます。1名体制から2名体制に日の途中で変わるとき、事務所で合流・現地で合流（それぞれ移動）・1件目の家に自転車を置いて車で回る（その日のうちに回収／次の訪問で回収）を、2人分の移動の時間（目安）で比べ、少ない案に◎を付けます。自転車の案は、利用者登録で「自転車を置かせてもらえる」に印がある家だけです。了承は担当看護師が取ります。その日のうちに回収するなら電池は付けたまま・鍵は掛ける、後日回収なら鍵を掛け電池は持ち帰ります。'],
     ['同じ升の中で順番を入れ替える', '本スケジュール表の札を、同じ人・同じ日の升の中で上下に引っぱり、別の札の上（または下）で離すと、その並びの位置の時刻に自動で書き換わります。時刻は、その升に入っている時刻の枠を上から付け直すので、1日の流れは崩れません。小窓で「この日だけ入れ替える」か「毎週の予定を変える」かを選びます。遠回りになるときは赤字で出ます。'],
     ['空いている曜日と時間帯', '利用者登録の「予定の希望」の「空いている曜日と時間帯を見る」を押すと、月〜土の午前・午後ごとに「入れます／少し空き／埋まっています」と、空いている看護師が出ます。「人気」は、いまの利用者さんの希望が集まっている時間帯です。希望の曜日・時間帯を入れてから押すと、そこが太枠になり、埋まっているときは新しい利用者さんへのご案内の文（読み上げ用）が出ます。'],
-    ['条項表', 'H&Nパトリオットが使う線です。野木画面の「条項表」で値を変えたり、行を足したり外したりできます（全端末に共有）。'],
+    ['条項表', 'H&Nパトリオットが確かめに使う線です（全端末に共有）。'],
     ['事業所の都合', 'キャンセル受付の理由の分類に「事業所の都合（職員の休み・調整）」を足しました。キャンセル料はかからず、利用者の信用度も下がりません。条項表の「事業所の都合による休み・変更」に数えます。'],
     ['伝票', '「伝票」タブで、カイポケの実績（伝票）のCSVを読み込んで月ごとに保管し、予定・看護記録・伝票の三つを突き合わせます。元のCSVは保管フォルダの slips／年-月 に残ります。']
   ]],
@@ -7223,7 +7229,7 @@ var MN_GUIDE = [
     ['休みの届け', '「名簿・設定」の「休みの届け」で、その日だけの休みを入れます（「休みを入れる」）。'],
     ['翌月の予定の申告（非常勤）', '「名簿・設定」の「翌月の予定の申告（非常勤）」で、出られる日に印を付けて「この内容で申告する」。申告した月は、申告の日だけが出勤日になります。'],
     ['勤務の決まり', '1日の目標件数・移動の目安（最短10分・最長20分）・出勤と退勤の時刻・休憩を決めます。予定は移動15分（最短と最長の真ん中）で組みます。'],
-    ['今日のスタート（毎日の決まり）', '出勤日に端末を開くと「今日のスタート」の窓が出ます（野木画面を開ける端末として登録した2台には出ません）。事務所に着いたら「出勤（事務所から）」、利用者さんのお宅へ直接行く日は「直行（利用者さんのお宅へ）」を押します。押した時刻が勤怠の記録になり、出勤時刻（直行はその日の最初の訪問の時刻）を過ぎて押すと遅刻の印が付きます。押さなくても画面は開きますが、上に帯が残り、押さなかった日は野木画面で「押し忘れ」に数えます。']
+    ['トライタイムを始める（毎日のはじめに）', '出勤の日に端末を開くと、トライタイムの始める画面が出ます。事務所から始める日は「事務所から始める」、利用者さんのお宅へ直接行く日は「直行で始める（利用者さんのお宅へ）」を押すと、その日の予定が開きます。「あとで始める」を押したときは、画面の上に「トライタイムを始めましょう」の帯が残ります。']
   ]],
   ['3. 利用者さんの登録（利用者登録）', [
     ['利用者さんを入れる', '「利用者登録」タブで契約書番号・氏名・地区（町名）・住所・本人の携帯などを入れて「この内容で登録する」。地区は町名で入れると、予定が町名で寄ります。'],

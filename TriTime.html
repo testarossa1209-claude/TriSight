@@ -413,7 +413,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-09-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-09-06</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -7288,7 +7288,7 @@ function ssGridHTML(days, opt){
           if(!v.cx && prev){ var g = toMin(v.time) - (toMin(prev.time) + (+prev.min || 30)); gap = mvGapHTML(g, wr); }
           if(!v.cx) prev = v;
           var warn = why && !v.cx;
-          var vk = '', mn = opt.num && !v.cx ? opt.num[date + '|' + v.no + '|' + v.time + '|' + v.staffId] : 0; if((opt.drag || (opt.dragSelf && v.staffId === opt.dragSelf)) && !v.cx && !v.asWith && date >= today){ vk = date + '|' + v.no + '|' + v.time; SS_V[vk] = v; }
+          var vk = '', mn = opt.num && !v.cx ? opt.num[date + '|' + v.no + '|' + v.time + '|' + v.staffId] : 0; if((opt.drag || (opt.dragSelf && v.staffId === opt.dragSelf)) && !v.cx && date >= today){ vk = date + '|' + v.no + '|' + v.time + (v.asWith ? '|w' : ''); SS_V[vk] = v; }   /* 2026-11-09（宏史さん「伊藤看護補助運転手はつまめませんよ」）：同行側の札も動かせる。動かすと同行の付け替え（ssWithMove） */
           var hv = !v.cx && hvOf(v);   /* 2026-11-04：人情変更の札 */
           return gap + '<span class="ssChip' + (v.cx ? ' cx' : '') + (warn ? ' warn' : '') + (vk ? ' dg' : '') + (hv ? ' hv' : '') + '"' + (vk ? ' data-vk="' + esc(vk) + '"' : '') + ' data-pk="' + esc(date + '|' + v.no + '|' + v.time) + '" title="' + esc(v.time + ' ' + dnn(v.no) + '（' + v.min + '分）' + (v.area ? '・' + v.area : '') + (v.cx ? '・キャンセル' : '') + (warn ? '・休みの日の訪問' : '') + (hv ? '・' + hv.why + (hv.note ? '：' + hv.note : '') : '')) + '">' + (mn ? '<b class="ssNo"' + (opt.col ? ' style="background:' + opt.col(v.staffId) + '"' : '') + '>' + mn + '</b>' : '') + esc(v.time) + '<br>' + (v.asWith ? '<b>同行</b><br>' : '') + esc(ssShortNo(v.no)) + (nameOf(v.no) ? '<br>' + esc(nameOf(v.no)) : '') + (hv ? '<small class="hvL">人情</small>' : '') + (v.asWith ? '<small style="display:block;white-space:normal">担当 ' + esc(staffName(v.staffId)) + '</small>' : (withLabel(v) ? '<small style="display:block;white-space:normal;color:var(--amber);font-weight:700">' + esc(withLabel(v)) + '</small>' : '')) + (warn ? '<br>要調整' : '') + '</span>';
         }).join('') + (live2 ? '<span class="ssCnt' + (live2 >= wr.target ? ' ok' : '') + '">' + live2 + '件</span>' : '') + '</td>';
@@ -7474,6 +7474,7 @@ function ssDragEnd(e, cancel){
   var v = SS_V[dg.vk]; if(!v) return;
   var sid = dg.over.getAttribute('data-sid'), date = dg.over.getAttribute('data-date');
   if(!canSched()) return;   /* 2026-11-08：予定を動かせるのは予定を組む人だけ。動かすのは仮スケジュール表（下書き）の中だけ */
+  if(v.asWith){ ssdWith(function(){ ssWithMove(v, sid, date); }); return; }
   ssdWith(function(){
     if(sid === v.staffId && date === v.date){ if(date >= ymd(new Date())) ssReorder(v, dg.over, e.clientY); return; }   /* 2026-11-07：同じ升の中は順番の入れ替え */
     ssMoveAsk(v, sid, date);
@@ -7529,6 +7530,37 @@ function ssWithAsk(box, v, tg, date){
       pnHTML([{ to:to, label:to.map(staffName).join('・') + 'さんへ', subj:'【ノア】同行の予定が入りました', text:'2名体制の同行の予定が入りました。\n' + dn(v.no) + '：毎週 ' + DOW[+w.dow] + '曜 ' + w.time + '\n担当：' + staffName(v.staffId) + '　同行：' + tg.name + '\nトライタイムで確認してください。' }]) +
       '<div class="btns" style="margin-top:8px"><button class="btn sub" type="button" id="mv_close">閉じる</button></div>';
     $('mv_with').disabled = true; $('mv_close').onclick = function(){ box.remove(); };
+    refreshAll();
+  };
+}
+/* 2026-11-09（宏史さんの指摘「伊藤看護補助運転手はつまめませんよ」）：同行側の札を動かしたとき。
+   ・同じ日のほかの人の升へ移す＝同行の付け替え（毎週の予定の同行が替わる）
+   ・別の日へ移す＝同行だけ日を動かすことはできないので、担当側の札を動かすよう案内する */
+function ssWithMove(v, sid, date){
+  var box = document.createElement('div'); box.className = 'ssMv'; box.id = 'ssMv'; box.setAttribute('data-draft', ssdOn() ? '1' : '0');
+  var close = '<div class="btns"><button class="btn sub" type="button" id="mv_no">閉じる</button></div>';
+  var wk = live('weekly').filter(function(x){ return x.id === v.wid; })[0], tg = staff().filter(function(x){ return x.id === sid; })[0];
+  if(date !== v.date){
+    box.innerHTML = '<div class="card"><h2>同行の札は日を動かせません</h2><p>' + esc(staffName(v.withId)) + 'さんは、' + esc(dnn(v.no)) + 'に担当の' + esc(staffName(v.staffId)) + 'さんと2名で入る同行です。日や時刻を変えるときは、' + esc(staffName(v.staffId)) + 'さんの升の札を動かしてください（同行も一緒に動きます）。</p>' + close + '</div>';
+  } else if(sid === v.withId || sid === v.staffId || !tg || !wk){
+    box.innerHTML = '<div class="card"><h2>同行を替えられません</h2><p>' + (sid === v.staffId ? '担当の' + esc(staffName(v.staffId)) + 'さん本人の升です。' : sid === v.withId ? '同じ人の升です。' : '毎週の予定が見つかりません。') + '同行を替えるときは、同じ日のほかの人の升へ離してください。</p>' + close + '</div>';
+  } else {
+    box.innerHTML = '<div class="card"><h2>同行を替える</h2><p><b>' + esc(dnn(v.no)) + '</b><br>' + esc(jpDate(v.date) + ' ' + v.time + '（担当 ' + staffName(v.staffId) + '）') + '</p>' +
+      '<p>同行を <b>' + esc(staffName(v.withId)) + 'さん</b> から <b>' + esc(tg.name) + 'さん</b> に替えますか。毎週の予定（' + esc(DOW[+wk.dow]) + '曜 ' + esc(wk.time) + '）の同行が替わります。</p>' +
+      '<div class="btns"><button class="btn amber" type="button" id="mv_with2">同行を替える</button><button class="btn sub" type="button" id="mv_no">やめる</button></div><div id="mv_res"></div></div>';
+  }
+  document.body.appendChild(box);
+  $('mv_no').onclick = function(){ box.remove(); };
+  if($('mv_with2')) $('mv_with2').onclick = function(){
+    var a = live('weekly'), w = a.filter(function(x){ return x.id === v.wid; })[0]; if(!w) return;
+    var old = w.withId; w.withId = sid; saveCol('weekly', a);
+    var me = dev().me || '', to = [v.staffId, old, sid].filter(Boolean), ev = events();
+    ev.push({ id:uid(), type:'note', kind:'予定の組み換え', from:me, to:to, title:'【同行の付け替え】' + dnn(v.no) + '　毎週 ' + DOW[+w.dow] + '曜 ' + w.time + '（担当 ' + staffName(v.staffId) + '）の同行が ' + staffName(old) + 'さんから ' + tg.name + 'さんに替わりました', body:'2名体制の同行の付け替えです。', mDate:'', mTime:'', created:nowLocal(), date:ymd(new Date()) });
+    saveEvents(ev);
+    $('mv_res').innerHTML = '<div class="judge free" style="margin-top:8px"><b>同行を替えました。</b><br><small>連絡板に、' + esc(to.map(staffName).join('・')) + 'さんあての知らせを残しました。</small></div>' +
+      pnHTML([{ to:to, label:to.map(staffName).join('・') + 'さんへ', subj:'【ノア】同行の予定が替わりました', text:'2名体制の同行が替わりました。\n' + dn(v.no) + '：毎週 ' + DOW[+w.dow] + '曜 ' + w.time + '\n担当：' + staffName(v.staffId) + '　同行：' + staffName(old) + ' → ' + tg.name + '\nトライタイムで確認してください。' }]) +
+      '<div class="btns" style="margin-top:8px"><button class="btn sub" type="button" id="mv_close">閉じる</button></div>';
+    $('mv_with2').disabled = true; $('mv_close').onclick = function(){ box.remove(); };
     refreshAll();
   };
 }
@@ -7738,7 +7770,8 @@ var MN_GUIDE = [
     ['休みの届け', '「名簿・設定」の「休みの届け」で、その日だけの休みを入れます（「休みを入れる」）。'],
     ['翌月の予定の申告（非常勤）', '「名簿・設定」の「翌月の予定の申告（非常勤）」で、出られる日に印を付けて「この内容で申告する」。申告した月は、申告の日だけが出勤日になります。'],
     ['勤務の決まり', '1日の目標件数・移動の目安（最短10分・最長20分）・出勤と退勤の時刻・休憩を決めます。予定は移動15分（最短と最長の真ん中）で組みます。'],
-    ['トライタイムを始める（毎日のはじめに）', '出勤の日に端末を開くと、トライタイムの始める画面が出ます。事務所から始める日は「事務所から始める」、利用者さんのお宅へ直接行く日は「直行で始める（利用者さんのお宅へ）」を押すと、その日の予定が開きます。「あとで始める」を押したときは、画面の上に「トライタイムを始めましょう」の帯が残ります。']
+    ['トライタイムを開く（ログイン画面）', '端末でトライタイムを開くと、紺色の背景にトライタイムのログイン画面が出ます。「使う人」の欄に自分の名前が出ていることを確かめて、ボタンを押すと開きます。共用の端末では、「使う人」の欄で自分の名前を選んでください。はじめての端末では、その前に一度だけ認証コードを聞かれます（事務局が入れます）。'],
+    ['トライタイムを始める（毎日のはじめに）', '仕事の日は、ログイン画面のボタンが「事務所から始める」と「直行で始める（利用者さんのお宅へ）」になります。事務所から始める日は「事務所から始める」、利用者さんのお宅へ直接行く日は「直行で始める」を押すと、その日の予定が開きます。「あとで始める（このまま開く）」を押したときは、画面の上に「トライタイムを始めましょう」の帯が残ります。']
   ]],
   ['3. 利用者さんの登録（利用者登録）', [
     ['利用者さんを入れる', '「利用者登録」タブで契約書番号・氏名・地区（町名）・住所・本人の携帯などを入れて「この内容で登録する」。地区は町名で入れると、予定が町名で寄ります。'],

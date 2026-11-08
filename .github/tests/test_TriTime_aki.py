@@ -56,6 +56,7 @@ async def test(p):
           localStorage.setItem('tritime_events', JSON.stringify(ev)); })()""")
         await pg.evaluate("document.querySelector('#tabs button[data-tab=pt]').click()"); await pg.wait_for_timeout(200)
         await pg.evaluate("document.querySelector('#tabs button[data-tab=plan]').click()"); await pg.wait_for_timeout(500)
+        await pg.evaluate("document.getElementById('plTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：今週の訪問予定は左端の「今週の予定」の引き出しの中
         btn = await pg.query_selector('#planBody [data-gap]')
         assert btn, 'キャンセルの訪問に「空いた時間の案」のボタンが出ません'
         await btn.click(); await pg.wait_for_timeout(400)

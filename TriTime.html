@@ -238,8 +238,12 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   /* 2026-10-29：情報の引き出し（右端のつまみを縦に並べる：仮スケジュール表・対照表・使い方） */
   .sideTabs{position:fixed;right:0;top:30%;z-index:60;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
   .sideTabs .ssTab{position:static}
-  body.ssOpen .sideTabs .ssTab, body.kpOpen .sideTabs .ssTab, body.mnOpen .sideTabs .ssTab, body.nmOpen .sideTabs .ssTab, body.osOpen .sideTabs .ssTab, body.rqOpen .sideTabs .ssTab, body.jmOpen .sideTabs .ssTab, body.jlOpen .sideTabs .ssTab{display:none}
-  body.kpOpen #kpPanel, body.mnOpen #mnPanel, body.nmOpen #nmPanel, body.osOpen #osPanel, body.rqOpen #rqPanel, body.jmOpen #jmPanel, body.jlOpen #jlPanel{transform:none}
+  body.ssOpen .sideTabs .ssTab, body.kpOpen .sideTabs .ssTab, body.mnOpen .sideTabs .ssTab, body.nmOpen .sideTabs .ssTab, body.osOpen .sideTabs .ssTab, body.rqOpen .sideTabs .ssTab, body.jmOpen .sideTabs .ssTab, body.jlOpen .sideTabs .ssTab, body.hbOpen .sideTabs .ssTab, body.auOpen .sideTabs .ssTab, body.plOpen .sideTabs .ssTab{display:none}
+  body.kpOpen #kpPanel, body.mnOpen #mnPanel, body.nmOpen #nmPanel, body.osOpen #osPanel, body.rqOpen #rqPanel, body.jmOpen #jmPanel, body.jlOpen #jlPanel, body.hbOpen #hbPanel, body.auOpen #auPanel, body.plOpen #plPanel{transform:none}
+  /* 2026-11-08：引き出しに入れた枠は、枠の飾りを外して引き出しの中にそのまま並べる。手組みの表は曜日が7列あるので広めに開く */
+  #auPanel .card, #plPanel .card{box-shadow:none;border:0;padding:6px 0;margin:0}
+  .ssPanel.wide{width:min(960px,100vw)}
+  @media (min-width:1240px){ body.auOpen{padding-right:600px} body.plOpen{padding-left:600px} }
   /* 2026-11-06（宏史さんの指示）：目次の引き出し（左右）。下にスクロールすると出てくる項目へ、ボタン一押しで飛ぶ */
   .jmList{display:flex;flex-direction:column;gap:8px;padding:12px}
   .jmList .btn{text-align:left;font-size:16px;padding:12px 14px}
@@ -342,7 +346,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-07-09</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-08-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -351,6 +355,9 @@ function tsPortalAsk(){
 <button type="button" class="ssTab" id="ssTab" title="仮スケジュール表を右に開きます" aria-label="仮スケジュール表"><span>仮</span><span>ス</span><span>ケ</span><span>ジ</span><span>ュ</span><span class="bar">ー</span><span>ル</span><span>表</span></button>
 <button type="button" class="ssTab" id="kpTab" title="番号と氏名の対照表を右に開きます" aria-label="対照表"><span>対</span><span>照</span><span>表</span></button>
 <button type="button" class="ssTab" id="nmTab" title="2名体制の利用者の一覧を右に開きます" aria-label="2名体制"><span>２</span><span>名</span><span>体</span><span>制</span></button>
+<!-- 2026-11-08（宏史さんの指示「ゼロから作る下書きならば引き出しへ」「自動の振り分けも、今週の訪問予定も引き出し情報でいい」）：予定タブの下の大きな表を引き出しへ移し、スクロールを減らす -->
+<button type="button" class="ssTab" id="hbTab" title="空の表から組む（手組み）の下書きを右に開きます" aria-label="手組み"><span>手</span><span>組</span><span>み</span></button>
+<button type="button" class="ssTab" id="auTab" title="週間予定を地区で寄せて組む（自動の振り分け）を右に開きます" aria-label="自動の振り分け"><span>自</span><span>動</span><span>組</span><span>み</span></button>
 </div>
 <!-- 2026-11-03（宏史さん「ラップトップだと横の引き出しの使い方が見えなくなる。左にも引き出しを作っていい。ご要望は職員のトライタイムへの要望が主なので引き出しへ」）：
      左端に「使い方」「ご要望」のつまみを置き、左から開く -->
@@ -359,7 +366,50 @@ function tsPortalAsk(){
 <button type="button" class="ssTab" id="mnTab" title="この画面の使い方と、印の意味を左に開きます" aria-label="使い方"><span>使</span><span>い</span><span>方</span></button>
 <button type="button" class="ssTab" id="osTab" title="今日の訪問を、利用者さんへ携帯のメッセージで知らせます" aria-label="お知らせ"><span>お</span><span>知</span><span>ら</span><span>せ</span></button>
 <button type="button" class="ssTab" id="rqTab" title="トライタイムへのご要望を残す画面を左に開きます" aria-label="ご要望"><span>ご</span><span>要</span><span>望</span></button>
+<button type="button" class="ssTab" id="plTab" title="今週の訪問予定を左に開きます" aria-label="今週の訪問予定"><span>今</span><span>週</span><span>の</span><span>予</span><span>定</span></button>
 </div>
+<!-- 2026-11-08：手組み・自動の振り分け・今週の訪問予定の引き出し -->
+<aside class="ssPanel wide" id="hbPanel" aria-label="空の表から組む（手組み）">
+  <div class="ssHead"><h2>空の表から組む（手組み）<small>ゼロから作り直す、毎週の予定の下書き。「この表で確定」を押すまで、いまの予定は変わりません</small></h2><button type="button" class="ssClose" id="hbClose" title="閉じる" aria-label="閉じる">×</button></div>
+  <div class="ssBody"><div id="hbBox"></div></div>
+</aside>
+<aside class="ssPanel" id="auPanel" aria-label="週間予定を地区で寄せて組む（自動の振り分け）">
+  <div class="ssHead"><h2>週間予定を地区で寄せて組む<small>自動の振り分け。「この組み方を週間予定に入れる」を押すまで、いまの予定は変わりません</small></h2><button type="button" class="ssClose" id="auClose" title="閉じる" aria-label="閉じる">×</button></div>
+  <div class="ssBody">
+  <div class="card" id="cardAuto" style="display:none">
+        <p class="lead">利用中の患者さんを地区ごとにまとめ、看護師の出る曜日（名簿の公休）と1日の件数の上限の中で、週間予定の組み方を自動で出します。件数の上限は決まった数（常勤9件・非常勤5件）で組むので、ふだんは「組み方を出す」を押すだけです。出た組み方を見て、よければ「この組み方を週間予定に入れる」を押します。</p>
+    <!-- 2026-11-08（宏史さんの指摘「地区で寄せるのが基本ベース。件数の上限や管理者の割合を取り立てて入力する必要はない」）：ふだんは決まった数で組むので、入力欄は閉じておく -->
+    <details id="au_caps"><summary>1日の件数の上限・管理者の訪問の割合を変える（ふだんは開かなくてかまいません）</summary>
+    <div class="row">
+      <div><label class="f" for="au_full">常勤の1日の件数の上限</label><input type="number" id="au_full" min="1" max="10"></div>
+      <div><label class="f" for="au_part">非常勤の1日の件数の上限</label><input type="number" id="au_part" min="1" max="10"></div>
+      <div><label class="f" for="au_mgr">管理者の訪問の割合（一般の職員を100として）</label><input type="number" id="au_mgr" min="10" max="100" step="5"></div>
+    </div>
+    </details>
+    <div class="btns"><button class="btn" id="au_make">組み方を出す</button><button class="btn amber" id="au_apply" style="display:none">この組み方を週間予定に入れる</button><button class="btn sub" id="au_undo" style="display:none">元に戻す</button><span class="muted" id="au_msg"></span></div>
+    <div id="au_diff"></div>
+    <div id="au_out"></div>
+  </div>
+  </div>
+</aside>
+<aside class="ssPanel lft" id="plPanel" aria-label="今週の訪問予定">
+  <div class="ssHead"><h2>今週の訪問予定<small>週間予定をもとに、その週の訪問を日ごとに並べます</small></h2><button type="button" class="ssClose" id="plClose" title="閉じる" aria-label="閉じる">×</button></div>
+  <div class="ssBody">
+  <div class="card" id="cardPlan">
+        <p class="lead">週間予定をもとに、その週の訪問を日ごとに並べます。キャンセルが入った訪問には印が付き、「空いた時間の案」を開くと代わりの案が出ます。</p>
+    <div class="row">
+      <div><label class="f" for="planWeek">週の始まり（月曜日）</label><input type="date" id="planWeek"></div>
+      <div><label class="f" for="planStaff" data-t="表示する{worker}">表示する看護師</label><select id="planStaff"></select></div>
+    </div>
+    <div class="btns">
+      <button class="btn sub small" id="planPrev">前の週</button>
+      <button class="btn sub small" id="planThis">今週</button>
+      <button class="btn sub small" id="planNext">次の週</button>
+    </div>
+    <div id="planBody"></div>
+  </div>
+  </div>
+</aside>
 <!-- 2026-10-29：対照表（右に立ち上がるサブ画面） -->
 <aside class="ssPanel" id="kpPanel" aria-label="対照表">
   <div class="ssHead"><h2>番号と氏名の対照表<small>番号・氏名・ふりがな・地区のどれかの一部を打つと、その人に絞れます</small></h2><button type="button" class="ssClose" id="kpClose" title="閉じる" aria-label="閉じる">×</button></div>
@@ -464,18 +514,6 @@ function tsPortalAsk(){
     <details id="td_dayBox"><summary>この日の回る順と気を付けること（地図の番号の一覧）</summary><div class="tbl-scroll" id="td_list"></div></details>
     <div id="td_join"></div>
   </div>
-  <div class="card" id="cardAuto" style="display:none">
-    <h2>週間予定を地区で寄せて組む（自動の振り分け）</h2>
-    <p class="lead">利用中の患者さんを地区ごとにまとめ、看護師の出る曜日（名簿の公休）と1日の件数の上限の中で、週間予定の組み方を自動で出します。出た組み方を見て、よければ「この組み方を週間予定に入れる」を押します。</p>
-    <div class="row">
-      <div><label class="f" for="au_full">常勤の1日の件数の上限</label><input type="number" id="au_full" min="1" max="10"></div>
-      <div><label class="f" for="au_part">非常勤の1日の件数の上限</label><input type="number" id="au_part" min="1" max="10"></div>
-      <div><label class="f" for="au_mgr">管理者の訪問の割合（一般の職員を100として）</label><input type="number" id="au_mgr" min="10" max="100" step="5"></div>
-    </div>
-    <div class="btns"><button class="btn" id="au_make">組み方を出す</button><button class="btn amber" id="au_apply" style="display:none">この組み方を週間予定に入れる</button><button class="btn sub" id="au_undo" style="display:none">元に戻す</button><span class="muted" id="au_msg"></span></div>
-    <div id="au_diff"></div>
-    <div id="au_out"></div>
-  </div>
   <div class="card" id="cardMine" style="display:none">
     <h2>あなたの今月の稼働率</h2>
     <div id="mineBody"></div>
@@ -490,20 +528,6 @@ function tsPortalAsk(){
     <p class="lead">利用者さんごとに決めた周期（毎月・3か月ごと など）と、前回のモニタリングの日から、次に行う月を出します。計画の更新期限が近いものにも印が付きます。モニタリングを行ったら、「利用者さんの経過」で記録してください。</p>
     <div class="row"><div><label class="f" for="monStaff">表示する担当</label><select id="monStaff"></select></div></div>
     <div class="tbl-scroll" id="monBody"></div>
-  </div>
-  <div class="card" id="cardPlan">
-    <h2>今週の訪問予定</h2>
-    <p class="lead">週間予定をもとに、その週の訪問を日ごとに並べます。キャンセルが入った訪問には印が付き、「空いた時間の案」を開くと代わりの案が出ます。</p>
-    <div class="row">
-      <div><label class="f" for="planWeek">週の始まり（月曜日）</label><input type="date" id="planWeek"></div>
-      <div><label class="f" for="planStaff" data-t="表示する{worker}">表示する看護師</label><select id="planStaff"></select></div>
-    </div>
-    <div class="btns">
-      <button class="btn sub small" id="planPrev">前の週</button>
-      <button class="btn sub small" id="planThis">今週</button>
-      <button class="btn sub small" id="planNext">次の週</button>
-    </div>
-    <div id="planBody"></div>
   </div>
   <div class="card">
     <h2 data-t="{board}">連絡板（事務局から看護部へ）</h2>
@@ -4483,7 +4507,7 @@ function applyDept(){
   document.querySelectorAll('#tabs button').forEach(function(b){ b.style.display = tabOn[b.getAttribute('data-tab')] ? '' : 'none'; });
   var cur = document.querySelector('#tabs button.on');
   if(cur && !tabOn[cur.getAttribute('data-tab')]){ var first = [].filter.call(document.querySelectorAll('#tabs button'), function(b){ return tabOn[b.getAttribute('data-tab')]; })[0]; if(first) first.click(); }
-  show('cardSummary', d.kind === 'office'); show('cardMonitor', d.kind === 'monitor'); show('cardPlan', d.kind === 'visit');
+  show('cardSummary', d.kind === 'office'); show('cardMonitor', d.kind === 'monitor'); show('cardPlan', d.kind === 'visit'); show('plTab', d.kind === 'visit'); if(d.kind !== 'visit' && document.body.classList.contains('plOpen')) sideOpen('pl', false);
   show('cardAdDoctor', !!d.doctor); show('cardPt', d.kind !== 'office'); show('ptInstWrap', !!d.doctor); show('ptMon', d.kind === 'monitor');
   show('ptsInst', !!d.doctor); show('ptsRep', !!d.report); show('ptsPlan', d.kind === 'visit'); show('cardHard', d.kind === 'visit');
   show('cardWk', d.kind === 'visit'); show('cardIm', d.kind === 'visit'); show('cardRules', d.kind === 'visit');
@@ -4496,7 +4520,8 @@ function applyDept(){
   show('cardLab', !!window.TT_DEV || (R.lv === 'all' && !dev().share));
   labRender();
   if(stf){ ['cardWk','cardIm','cardRules'].forEach(function(id){ show(id, false); }); }
-  var ssHide = (R.lv === 'staff' || R.lv === 'none'); show('ssTab', !ssHide); if(ssHide && document.body.classList.contains('ssOpen')) ssOpen(false);
+  var ssHide = (R.lv === 'staff' || R.lv === 'none'); show('ssTab', !ssHide);
+  var hbOk = canSched(); show('hbTab', hbOk); show('auTab', hbOk); if(!hbOk){ if(document.body.classList.contains('hbOpen')) sideOpen('hb', false); if(document.body.classList.contains('auOpen')) sideOpen('au', false); }   /* 2026-11-08：手組み・自動の振り分けのつまみは予定を組む人の端末だけ */ if(ssHide && document.body.classList.contains('ssOpen')) ssOpen(false);
   show('kpTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('kpOpen')) sideOpen('kp', false);
   show('jmTab', R.lv !== 'none'); show('jlTab', R.lv !== 'none'); if(R.lv === 'none'){ sideOpen('jm', false); sideOpen('jl', false); }
   show('rqTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('rqOpen')) sideOpen('rq', false);
@@ -4682,7 +4707,7 @@ function mhUse(){
   if(!mhLast) return;
   var t = document.querySelector('#tabs button[data-tab=plan]'); if(t) t.click();
   auMake(mhLast);
-  if($('cardAuto').scrollIntoView) $('cardAuto').scrollIntoView({ behavior:'smooth', block:'start' });
+  sideOpen('au', true);
 }
 function mhRender(){
   var pr = mhPrice();
@@ -6702,7 +6727,7 @@ $('sr_out').addEventListener('click', function(){
 var SS_KEY = 'tritime_ss_open';
 var ssStart = null;
 function ssOpen(on){
-  if(on){ document.body.classList.remove('kpOpen', 'mnOpen', 'nmOpen', 'osOpen', 'rqOpen'); }
+  if(on){ document.body.classList.remove('kpOpen', 'mnOpen', 'nmOpen', 'osOpen', 'rqOpen', 'hbOpen', 'auOpen', 'plOpen'); if(window.HB){ HB.on = false; } }
   document.body.classList.toggle('ssOpen', !!on);
   try{ localStorage.setItem(SS_KEY, on ? '1' : '0'); }catch(e){}
   if(on){ if(!ssStart) ssStart = parseYmd($('planWeek').value) || mondayOf(new Date()); ssRender(); }
@@ -7007,9 +7032,10 @@ function ssMoveDo(v, sid, date, weeklyToo){
 /* ---- 情報の引き出し（2026-10-29・宏史さんの発案「画面を変えたり、情報を探したりする必要がなくなる」）----
    右端のつまみから、対照表と使い方を、いまの画面のまま横に開く。 */
 function sideOpen(k, on){
-  if(on){ document.body.classList.remove('ssOpen', 'kpOpen', 'mnOpen', 'nmOpen', 'osOpen', 'rqOpen', 'jmOpen', 'jlOpen'); }
+  if(on){ document.body.classList.remove('ssOpen', 'kpOpen', 'mnOpen', 'nmOpen', 'osOpen', 'rqOpen', 'jmOpen', 'jlOpen', 'hbOpen', 'auOpen', 'plOpen'); }
+  if(!on && k === 'hb' && window.HB){ HB.on = false; HB.sel = null; }   /* 2026-11-08：手組みの引き出しを閉じたら下書きの表もしまう（下書きの中身は残る） */
   document.body.classList.toggle(k + 'Open', !!on);
-  if(on){ if(k === 'jm' || k === 'jl'){ jmRender(k); return; } if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else if(k === 'nm') nmRender(); else if(k === 'os') osRender(); else if(k === 'rq') rqOpenPanel(); else mnRender(); }
+  if(on){ if(k === 'jm' || k === 'jl'){ jmRender(k); return; } if(k === 'hb'){ HB.on = true; hbRender(); return; } if(k === 'au'){ var ca = $('cardAuto'); if(ca) ca.style.display = ''; return; } if(k === 'pl'){ return; } if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else if(k === 'nm') nmRender(); else if(k === 'os') osRender(); else if(k === 'rq') rqOpenPanel(); else mnRender(); }
 }
 /* 2026-11-03：利用者さんへのお知らせ。選んだ日の訪問（キャンセルを除く）を利用者さんごとに1行にまとめ、その日のいちばん早い時刻で定型文を作る。
    定型文は設定（settings.osText）に持ち、{時刻} をその人の時刻に置き換える。送ったら type "notify" を残す */
@@ -7142,9 +7168,9 @@ var MN_MARKS = [
   ['札の移動・人情変更・H&Nパトリオット・伝票（2026-11-04）', [
     ['本スケジュール表の札', '「予定」の地図の下の本スケジュール表でも、今日以降の札を引っぱって動かせます（予定を組む人の端末だけ）。動かす小窓の「変更の理由」で理由を残せます。'],
     ['人情変更', '変更の理由で「人情変更（相性・体調への配慮・家族の事情・その他）」を選んだ札は点線で出ます。管理者の判断（ワイルドカード）として、H&Nパトリオットは効率だけの条項ではその札を指摘しません。度が過ぎたもの（1日の件数の超過・休みの日の予定・人情変更の割合など）だけを指摘します。'],
-    ['予定表の作り方を選ぶ', '「予定」タブの本スケジュール表の上にあるオレンジのボタン（予定を組む人の端末だけ）。押すと「AIが作る」「AIがベースを作って自分で直す」「自分で作る」の三つの道が出ます。AIが作る＝自動の振り分けの枠へ。AIがベース＝いまの週間予定を手組みの表に写して直す。自分で作る＝空の表に札を置いて組む。'],
+    ['予定表の作り方を選ぶ', '「予定」タブの本スケジュール表の上にあるオレンジのボタン（予定を組む人の端末だけ）。押すと「AIが作る」「AIがベースを作って自分で直す」「自分で作る」の三つの道が出ます。AIが作る＝右端の「自動組み」の引き出しが開く。AIがベース＝AIが作ったベースを右端の「手組み」の引き出しの表に写して直す。自分で作る＝「手組み」の引き出しの空の表に札を置いて組む。'],
     ['管理者へ上申する（一般の職員）', '予定を変えられるのは管理者と事務局だけです。職員の画面では、本スケジュール表の下のオレンジの「管理者へ上申する」から、利用者さん・上申の種類（相性に問題がある／利用者側から「来ないでほしい」と言われた／訪問が難しい事情がある／その他）・内容を入れて「上申する」と、部門の管理者の連絡板に届きます（担当の変更や拒否の記録への反映は管理者が決めます）。'],
-    ['空の表から組む（手組み）', '本スケジュール表の下のボタン（予定を組む人の端末だけ）。職員 × 曜日の空の表に、下に並ぶ利用者の札を引っぱって置き、週の予定をホワイトボードのように組みます。升の端にその曜日の件数と訪問の間の合計が出ます（許容を超えると赤）。「効率バージョンを写す」で今の予定から直すこともでき、「H&Nパトリオットで確かめる」で下書きを確かめ、「この表で確定」で毎週の予定に置き換えます。下書きは閉じても残ります。'],
+    ['空の表から組む（手組み）', '右端の「手組み」の引き出し（予定を組む人の端末だけ）。ゼロから作り直す下書きの表で、「この表で確定」を押すまでいまの予定は変わりません。職員 × 曜日の空の表に、下に並ぶ利用者の札を引っぱって置き、週の予定をホワイトボードのように組みます。升の端にその曜日の件数と訪問の間の合計が出ます（許容を超えると赤）。「効率バージョンを写す」で今の予定から直すこともでき、「H&Nパトリオットで確かめる」で下書きを確かめ、「この表で確定」で毎週の予定に置き換えます。下書きは閉じても残ります。'],
     ['H&Nパトリオット', '本スケジュール表と仮スケジュール表の下のボタン。表の週の予定を「許容範囲外の条項表」で確かめ、根拠付きの指摘を出します。指摘を押すと表の中の訪問が光ります。「問題なし」とは言わず、見た範囲だけを言います。'],
     ['赤字の区間（遠回り）', '管理者の窓の「予定表の対比」と野木画面の比較に出ます。管理者が組んだ1日の回り方を、同じ利用者さんのままAIの道順（事業所から出て、隣町でも近い人を先に回る順）と比べ、AIの道順に無い行ったり来たりの区間を赤字で出します。H&Nパトリオットの条項「道のりの無駄」は、人情変更の札が入った日も数えます。'],
     ['2名体制の合流のしかた', '「予定」タブの1日の予定の下に出ます。1名体制から2名体制に日の途中で変わるとき、事務所で合流・現地で合流（それぞれ移動）・1件目の家に自転車を置いて車で回る（その日のうちに回収／次の訪問で回収）を、2人分の移動の時間（目安）で比べ、少ない案に◎を付けます。自転車の案は、利用者登録で「自転車を置かせてもらえる」に印がある家だけです。了承は担当看護師が取ります。その日のうちに回収するなら電池は付けたまま・鍵は掛ける、後日回収なら鍵を掛け電池は持ち帰ります。'],
@@ -7154,7 +7180,7 @@ var MN_MARKS = [
     ['事業所の都合', 'キャンセル受付の理由の分類に「事業所の都合（職員の休み・調整）」を足しました。キャンセル料はかからず、利用者の信用度も下がりません。条項表の「事業所の都合による休み・変更」に数えます。'],
     ['伝票', '「伝票」タブで、カイポケの実績（伝票）のCSVを読み込んで月ごとに保管し、予定・看護記録・伝票の三つを突き合わせます。元のCSVは保管フォルダの slips／年-月 に残ります。']
   ]],
-  ['自動の振り分け（「予定」の2つ目の枠）の見方', [
+  ['自動の振り分け（右端の「自動組み」の引き出し）の見方', [
     ['希望 ○○（赤字）', '組まれた時刻・時間帯が、本人の希望とずれています。'],
     ['希望どおりの枠が埋まっていた人', '希望の曜日・時刻・時間帯が埋まっていたため、代わりの曜日・時刻で組んだ人です。組んだ枠と、利用者さんへ読み上げるご案内の文が出ます。入りきらなかった人には、残っている枠から代わりの候補が出ます。'],
     ['同行の欄が空の人', '2名体制の希望があるのに、週間予定の同行の欄が空の人です。売上は2名で数えています（週の1回目を看護補助者、2回目以降を看護師の加算）。同行する人か、「2名（看護師・未定）」「2名（准看護師・未定）」「2名（看護補助者・未定）」を、「名簿・設定」の「週間予定」の一覧の同行の欄で選んでください。選ぶとすぐ残ります。'],
@@ -7191,10 +7217,10 @@ var MN_GUIDE = [
   ['4. 週間予定を組む（スケジュール表の作り方）', [
     ['まず「予定表の作り方を選ぶ」', '「予定」タブの本スケジュール表の上にあるオレンジのボタン「予定表の作り方を選ぶ」を押します（予定を組む人の端末＝事務局・管理者）。三つの道が出ます——①AIが作る ②AIがベースを作って自分で直す ③自分で作る。どの道でも、できた表は本スケジュール表に入り、あとから札を動かして直せます。'],
     ['①AIがベースを作って自分で直す（基本の道）', '押すと、AIがその場でベース（地区で寄せた組み方）を作り、手組みの表（職員 × 曜日）に写して開きます。札を引っぱって別の人・別の曜日へ動かし、直し終えたら「この表で確定」で週間予定に入れます。週間予定にはまだ入っていないので、確定するまでは何も変わりません。'],
-    ['②AIが作る', '押すと「週間予定を地区で寄せて組む（自動の振り分け）」の枠へ移ります。「常勤の1日の件数の上限」「非常勤の1日の件数の上限」を確かめて白い「組み方を出す」。出た表と「いまの週間予定から変わる訪問」を見て、よければオレンジの「この組み方を週間予定に入れる」。入れる前の予定は控えに残り「元に戻す」で戻せます。モデルコースの見本の枠のまま当てはめたいときは「モデルコースの見本」タブで表を作り「このコースで患者さんを当てはめる」を押すと、同じ枠に出ます。'],
-    ['③自分で作る', '押すと空の手組みの表が開きます。下に並ぶ利用者さんの札（契約書番号＋氏名・2名体制は「2名」・週の回数ぶんの残り枚数）を升へ引っぱって置きます（札を一度押してから升を押しても置けます）。時刻は自動（勤務の始まり→前の終わり＋移動15分）で、置いた札を押すと時刻を直したり外したりできます。「効率バージョンを写す」で①の表から始めることも、「全部消す」でやり直すこともできます。最後に「この表で確定」。下書きは閉じても残ります。'],
+    ['②AIが作る', '押すと右端の「自動組み」の引き出し（週間予定を地区で寄せて組む）が開きます。件数の上限は決まった数（常勤9件・非常勤5件）で組むので、そのまま白い「組み方を出す」を押します（数を変えるときだけ「1日の件数の上限・管理者の訪問の割合を変える」を開きます）。出た表と「いまの週間予定から変わる訪問」を見て、よければオレンジの「この組み方を週間予定に入れる」。入れる前の予定は控えに残り「元に戻す」で戻せます。モデルコースの見本の枠のまま当てはめたいときは「モデルコースの見本」タブで表を作り「このコースで患者さんを当てはめる」を押すと、同じ引き出しに出ます。'],
+    ['③自分で作る', '押すと右端の「手組み」の引き出しに空の表が開きます。下に並ぶ利用者さんの札（契約書番号＋氏名・2名体制は「2名」・週の回数ぶんの残り枚数）を升へ引っぱって置きます（札を一度押してから升を押しても置けます）。時刻は自動（勤務の始まり→前の終わり＋移動15分）で、置いた札を押すと時刻を直したり外したりできます。「効率バージョンを写す」で①の表から始めることも、「全部消す」でやり直すこともできます。最後に「この表で確定」。下書きは閉じても残ります。'],
     ['できたあとの直し方', '本スケジュール表と仮スケジュール表（右端のつまみ）で、今日以降の札を指で押さえたまま別の人・別の日の升へ引っぱると動かせます（小窓で時刻・理由・了承の印）。動かせるのは管理者と事務局の端末だけで、一般の職員は与えられた予定を消化します（伝えたいことは「管理者へ上申する」から）。'],
-    ['組み方を出す', '「予定」タブの「週間予定を地区で寄せて組む（自動の振り分け）」で「組み方を出す」。町名ごとに寄せ、午前から移動15分で詰めて組みます。今の担当と曜日のまま組めるものは動かしません。'],
+    ['組み方を出す', '右端の「自動組み」の引き出し（週間予定を地区で寄せて組む）で「組み方を出す」。町名ごとに寄せ、午前から移動15分で詰めて組みます。今の担当と曜日のまま組めるものは動かしません。'],
     ['週間予定に入れる', '出た表を見て、よければオレンジの「この組み方を週間予定に入れる」。入れる前の予定は控えに残り、「元に戻す」で戻せます。'],
     ['変わる訪問を見る', '組み方を出すと「いまの週間予定から変わる訪問」が、入れた後は「元に戻す」の下に「入れ替える前から変わった訪問」が出ます。'],
     ['1日の件数の上限', '常勤9件・非常勤5件が最初の値です（同じ枠の上の欄で変えられます）。'],
@@ -7203,13 +7229,13 @@ var MN_GUIDE = [
   ]],
   ['5. 毎日の予定を見る', [
     ['1日の予定と地図', '「予定」タブのいちばん上。職員を選ぶとその人の予定と地図、「全員」を選ぶと全員の分が職員ごとの色で出ます。地図の下には、選んだ日を含む1週間の本スケジュール表（職員 × 曜日）が出て、札の丸い番号が地図の番号です。お昼に会社へ戻るので、地図の上の「午前の行程」「午後の行程」のボタンで、午前と午後の回り方を分けて出します（開いたときは、いまの時刻の方）。それぞれ「会社→訪問→会社」の一回りで、線の上の三角の矢印が回る向きです。非常勤で、その日の訪問が4件以下の人は、1日を一回りで出します（5件以上の非常勤は常勤と同じく分けます）。番号は表の「順」（時刻の早い順）と同じなので、線は必ず ① → ② → ③ … の順に進みます。'],
-    ['今週の訪問予定', '「予定」タブの「今週の訪問予定」で、週の訪問を日ごとに並べます。担当の横に同行が出ます。'],
+    ['今週の訪問予定', '左端の「今週の予定」の引き出しで、週の訪問を日ごとに並べます。担当の横に同行が出ます。'],
     ['仮スケジュール表', '右端の「仮スケジュール表」。職員×日付の表で、訪問と訪問の間に「移動 15分」などが出ます。今日以降の札は引っぱって、別の人・別の日へ動かせます。'],
     ['祝日に出た日の付け替え', '仮スケジュール表の下の「この日の訪問を、まとめて担当・同行に付け替える（祝日に出た日など）」で、日・担当・同行を選んで「この日の訪問を付け替える」。町名で寄せて時刻を組み直し、二人とも出勤の扱いになります。']
   ]],
   ['6. キャンセルのとき', [
     ['キャンセルを受ける', '「キャンセル受付」タブで、利用者さん・日時・理由を入れて「この内容で記録する」。'],
-    ['空いた時間の使い方', 'ほかの利用者さんの予定は動かしません。「今週の訪問予定」のキャンセルの「空いた時間の案」の上に、「事務所に戻る」か「近くの取引先へご挨拶」の案が出ます。'],
+    ['空いた時間の使い方', 'ほかの利用者さんの予定は動かしません。左端の「今週の予定」の引き出しの、キャンセルの「空いた時間の案」の上に、「事務所に戻る」か「近くの取引先へご挨拶」の案が出ます。'],
     ['取引先の登録', '「名簿・設定」の「事業所と取引先」で、事業所の町名と、役所・病院・包括・居宅などの取引先を町名つきで入れます。']
   ]],
   ['7. 利用者さんへのお知らせ', [
@@ -7280,6 +7306,12 @@ function jmRender(k){
   [].forEach.call(box.querySelectorAll('.jmGo'), function(b){ b.onclick = function(){ var it = items[+b.getAttribute('data-i')]; sideOpen(k, false); if(it && it.el){ try{ it.el.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ it.el.scrollIntoView(); } } }; });
 }
 $('jmTab').addEventListener('click', function(){ sideOpen('jm', true); });
+$('hbTab').addEventListener('click', function(){ sideOpen('hb', true); });
+$('hbClose').addEventListener('click', function(){ sideOpen('hb', false); });
+$('auTab').addEventListener('click', function(){ sideOpen('au', true); });
+$('auClose').addEventListener('click', function(){ sideOpen('au', false); });
+$('plTab').addEventListener('click', function(){ sideOpen('pl', true); });
+$('plClose').addEventListener('click', function(){ sideOpen('pl', false); });
 $('jmClose').addEventListener('click', function(){ sideOpen('jm', false); });
 $('jlTab').addEventListener('click', function(){ sideOpen('jl', true); });
 $('jlClose').addEventListener('click', function(){ sideOpen('jl', false); });
@@ -7812,7 +7844,7 @@ function hbNextTime(vs){
 }
 function hbPatients(){ return patients().filter(function(p){ return !p.status || p.status === '利用中'; }); }
 function hbFreq(p){ var f = auFreqInfo(p, 0); return Math.max(1, +(f && f.f) || 1); }
-function hbBtnHTML(){ return canSched() ? '<div class="btns" style="margin:6px 0 2px"><button type="button" class="btn sub" id="hb_open">空の表から組む（手組み）</button><small class="muted">ホワイトボードのように、空の表へ利用者の札を置いて週の予定を組みます。</small></div><div id="hbBox"></div>' : ''; }
+function hbBtnHTML(){ return ''; }   /* 2026-11-08：手組みは右端の「手組み」の引き出しへ移した（置き場の hbBox も引き出しの中） */
 
 /* ============================================================
    2026-11-05：予定表の作り方を選ぶ（宏史さんの指示「スケジュール表の作り方を選ばせる引き出しが必要。AIが作る／自分で作る／AIがベースを作って人間が直す、
@@ -7833,7 +7865,7 @@ function pwOpen(){
     '<div class="btns"><button class="btn sub" type="button" id="pw_no">閉じる</button></div></div>';
   document.body.appendChild(box);
   $('pw_no').onclick = function(){ box.remove(); };
-  $('pw_ai').onclick = function(){ box.remove(); var c = $('cardAuto'); if(c){ c.style.display = ''; if(c.scrollIntoView) c.scrollIntoView({ behavior:'smooth', block:'start' }); } };
+  $('pw_ai').onclick = function(){ box.remove(); sideOpen('au', true); };
   $('pw_mix').onclick = function(){
     box.remove();
     /* 2026-11-06（宏史さん「AIがベースを作って自分で直すを押したら、全部組んでしまい直す部分はありませんと出た」）：
@@ -7850,7 +7882,7 @@ function pwOpen(){
   };
   $('pw_hand').onclick = function(){ box.remove(); HB.on = true; HB.sel = null; hbRender(); pwScroll(); };
 }
-function pwScroll(){ var b = $('hbBox'); if(b && b.scrollIntoView) b.scrollIntoView({ behavior:'smooth', block:'start' }); }
+function pwScroll(){ sideOpen('hb', true); }   /* 2026-11-08：手組みの表は引き出しで開く */
 
 /* ============================================================
    2026-11-05：管理者へ上申する（一般の職員）——渋谷さんのヒアリング（宏史さん伝達）：
@@ -7886,7 +7918,7 @@ function jsOpen(){
     try{ renderBoard(); }catch(e){}
   };
 }
-function hbToggle(){ var b = $('hbBox'); if(!b) return; HB.on = !HB.on; HB.sel = null; if(HB.on) hbRender(); else b.innerHTML = ''; }
+function hbToggle(){ sideOpen('hb', !document.body.classList.contains('hbOpen')); }
 function hbRender(){
   var box = $('hbBox'); if(!box || !HB.on) return;
   var st = hbRaw(), rows = hbRows(), wr = workRule();
@@ -7917,7 +7949,7 @@ function hbRender(){
     (rest.length ? rest.map(function(x){ return '<span class="ssChip hbFuda pool' + (HB.sel === x.p.no ? ' sel' : '') + '" data-hbp="' + esc(x.p.no) + '" title="' + esc((x.p.area || '') + (x.p.wish ? '・希望 ' + x.p.wish : '') + (x.p.wDays && x.p.wDays.length ? '・希望の曜日 ' + x.p.wDays.map(function(d){ return DOW[+d]; }).join('') : '')) + '">' + esc(ssShortNo(x.p.no)) + ' ' + esc(x.p.name || '') + (isTwoP(x.p) ? ' <b style="color:var(--amber)">2名</b>' : '') + '<small> 残り' + x.left + '</small></span>'; }).join('') : '<span class="muted sm">置ける札はありません（全員ぶん置きました）。</span>') +
     '</div>' + (done.length ? '<small class="muted">置き終えた利用者：' + esc(done.map(function(x){ return x.p.name || ssShortNo(x.p.no); }).join('・')) + '</small>' : '') + '</div><div id="hb_ptrbox"></div><div id="hb_msg" class="muted sm"></div></div>';
   box.innerHTML = h;
-  $('hb_close').onclick = function(){ HB.on = false; box.innerHTML = ''; };
+  $('hb_close').onclick = function(){ sideOpen('hb', false); };
   $('hb_copy').onclick = function(){
     var st2 = hbRaw(); if(hbCount(st2) && !confirm('いまの下書きを消して、今使っている週間予定を写します。よろしいですか。')) return;
     st2 = { cells:{} }; var ids = {}; hbRows().forEach(function(r){ ids[r.id] = 1; });

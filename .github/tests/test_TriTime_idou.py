@@ -25,6 +25,7 @@ def seed(s2off):
 
 async def rowsOf(pg):
     await pg.evaluate("document.querySelector('#tabs button[data-tab=plan]').click()"); await pg.wait_for_timeout(300)
+    await pg.evaluate("document.getElementById('auTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
     await pg.click('#au_make'); await pg.wait_for_timeout(1500)
     return await pg.evaluate("(function(){ var rows=[]; document.querySelectorAll('#au_out .ssChip').forEach(function(c){ rows.push(c.textContent); }); return rows; })()")
 

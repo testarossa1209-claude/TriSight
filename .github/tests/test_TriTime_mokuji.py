@@ -32,12 +32,13 @@ async def test(p):
         await pg.evaluate("document.getElementById('jmTab').click()"); await pg.wait_for_timeout(400)
         assert await pg.evaluate("document.body.classList.contains('jmOpen')"), '右の目次が開きません'
         names = await pg.evaluate("[].map.call(document.querySelectorAll('#jmBody .jmGo'), function(b){ return b.textContent; })")
-        for t in ['1日の予定と地図', 'あなたの今月の稼働率', '今週の訪問予定']:
+        for t in ['1日の予定と地図', 'あなたの今月の稼働率', '連絡板']:
             assert any(t in n for n in names), t + ' が目次にありません：' + str(names)
         assert not any('地区で寄せて組む' in n for n in names), '見えていない枠が目次に出ています：' + str(names)
+        assert not any('今週の訪問予定' in n for n in names), '引き出しへ移した「今週の訪問予定」が目次に出ています：' + str(names)   # 2026-11-08
         await s.shot('#jmPanel', 'TriTime_mokuji_1.png')
         y0 = await pg.evaluate("window.scrollY")
-        idx = [i for i, n in enumerate(names) if '今週の訪問予定' in n][0]
+        idx = [i for i, n in enumerate(names) if '連絡板' in n][0]
         await pg.evaluate("document.querySelectorAll('#jmBody .jmGo')[%d].click()" % idx); await pg.wait_for_timeout(900)
         assert not await pg.evaluate("document.body.classList.contains('jmOpen')"), '押しても引き出しが閉じません'
         assert await pg.evaluate("window.scrollY") > y0, '押しても画面が動きません'

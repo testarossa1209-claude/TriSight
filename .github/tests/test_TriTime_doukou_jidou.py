@@ -34,7 +34,9 @@ async def test(p):
           var st = JSON.parse(localStorage.getItem('tritime_staff')), a = st.filter(function(x){ return x.name === '看護 一子'; })[0].id;
           localStorage.setItem('tritime_weekly', JSON.stringify([{ id:'w1', dow:'3', time:'09:15', min:30, no:'2010-01-看-9402', staffId:a, withId:'tbd:n', upd:t }])); localStorage.removeItem('tritime_weekly_backup'); })()""")
         await pg.evaluate("document.querySelector('#tabs button[data-tab=plan]').click()"); await pg.wait_for_timeout(400)
+        await pg.evaluate("document.getElementById('auTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
         await pg.wait_for_selector('#au_make', state='visible', timeout=15000)
+        await pg.evaluate("document.getElementById('auTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
         await pg.click('#au_make'); await pg.wait_for_timeout(800)
         au = await pg.inner_text('#au_out')
         assert '2名・同行 補助 三郎' in au, '週の1回目に、看護補助者が同行に付きません'
@@ -53,6 +55,7 @@ async def test(p):
         assert wk[0][2] == '補助 三郎', '週の1回目（火）の同行が看護補助者になりません：' + str(wk)
         assert wk[1][2].startswith('看護') and wk[1][2] != wk[1][1], '週の2回目（木）の同行が、担当と別の看護師になりません：' + str(wk)
         # 右の引き出し「2名体制」：週間予定に入れた同行が、理由つきで出る
+        await pg.evaluate("document.getElementById('auClose').click()"); await pg.wait_for_timeout(200)   # 引き出しを開いている間は、ほかのつまみが隠れる
         await pg.click('#nmTab'); await pg.wait_for_timeout(400)
         nm = await pg.inner_text('#nmPanel')
         assert '3人' in nm, '2名体制名簿に3人が出ません：' + nm[:300]

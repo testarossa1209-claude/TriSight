@@ -43,6 +43,7 @@ async def test(p):
         await pg.select_option('#sb_staff', ids[1]); await pg.select_option('#sb_with', ids[2])
         await pg.evaluate("window.confirm = function(){ return true; }")
         await pg.click('#sb_go'); await pg.wait_for_timeout(600)
+        await pg.evaluate("window.confirm = function(){ return true; }; var b = document.getElementById('ssd_commit'); if(b && !b.disabled) b.click();"); await pg.wait_for_timeout(500)   # 2026-11-08：仮スケジュール表の下書きを本体に反映する
         ss = await pg.inner_text('#ssBody'); tb = await pg.inner_text('#ssBody table')
         assert '要調整' not in tb, '付け替えた後も「要調整」が残っています'
         assert ss.count('2名・同行 佐野 試験') == 2, '付け替えた訪問の札に「2名・同行 佐野 試験」が出ません'
@@ -61,6 +62,7 @@ async def test(p):
         await pg.evaluate("document.getElementById('ssTab').click()"); await pg.wait_for_timeout(600)
         await pg.evaluate("var b = document.getElementById('ssBulk'); if(b && !b.open) b.open = true"); await pg.wait_for_timeout(200)
         await pg.click('#sb_undo'); await pg.wait_for_timeout(600)
+        await pg.evaluate("window.confirm = function(){ return true; }; var b = document.getElementById('ssd_commit'); if(b && !b.disabled) b.click();"); await pg.wait_for_timeout(500)   # 2026-11-08：仮スケジュール表の下書きを本体に反映する
         ss2 = await pg.inner_text('#ssBody table')
         assert ss2.count('要調整') >= 2 and '2名・同行 佐野 試験' not in ss2, '取り消しても元の予定に戻りません'
         ev = await pg.evaluate("JSON.parse(localStorage.getItem('tritime_events')).filter(function(e){ return !e.del && (e.type === 'move' || e.type === 'work'); }).length")

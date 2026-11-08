@@ -52,7 +52,8 @@ async def test(p):
         # ④ 同じ升の中の入れ替え（試験 一 を 試験 二 の後ろへ）
         await pg.evaluate("document.querySelector('#tabs button[data-tab=plan]').click()"); await pg.wait_for_timeout(800)
         await pg.evaluate("document.getElementById('td_staff').value = '*'; document.getElementById('td_staff').dispatchEvent(new Event('change', {bubbles:true}))"); await pg.wait_for_timeout(600)
-        r = await pg.evaluate("""(function(){ var cs = [].slice.call(document.querySelectorAll('#td_week .ssChip.dg'));
+        await pg.evaluate("document.getElementById('ssTab').click()"); await pg.wait_for_timeout(600)   # 2026-11-08：札を動かすのは仮スケジュール表（下書き）
+        r = await pg.evaluate("""(function(){ var cs = [].slice.call(document.querySelectorAll('#ssBody .ssChip.dg'));
           var c1 = cs.filter(function(c){ return c.textContent.indexOf('試験 一') >= 0; })[0], c2 = cs.filter(function(c){ return c.textContent.indexOf('試験 二') >= 0; })[0];
           if(!c1 || !c2) return 'no chip:' + cs.length;
           c1.scrollIntoView({ block:'center' });
@@ -67,6 +68,7 @@ async def test(p):
         assert '09:15 → 10:15' in dlg and '10:15 → 09:15' in dlg, '入れ替えの確かめに、新しい時刻が出ません：' + dlg[:300]
         await s.shot('#ssMv .card', 'TriTime_irekae.png')
         await pg.click('#mv_once'); await pg.wait_for_timeout(600)
+        await pg.evaluate("window.confirm = function(){ return true; }; var b = document.getElementById('ssd_commit'); if(b && !b.disabled) b.click();"); await pg.wait_for_timeout(500)   # 2026-11-08：仮スケジュール表の下書きを本体に反映する
         mv = await pg.evaluate("JSON.parse(localStorage.getItem('tritime_events')).filter(function(e){ return e.type === 'move'; }).map(function(e){ return e.patientNo + ' ' + e.fromTime + '>' + e.toTime; }).sort()")
         assert mv == ['2010-01-看-9801 09:15>10:15', '2010-01-看-9802 10:15>09:15'], '入れ替えたあと、時刻が動かした位置の時刻になりません：' + str(mv)
         await pg.evaluate("var b = document.getElementById('ssMv'); if(b) b.remove();")

@@ -83,7 +83,7 @@ async def test(p):
 
         # 自動の振り分けに待機の人が入らない
         await pg.evaluate("document.querySelector('#tabs button[data-tab=plan]').click()"); await pg.wait_for_timeout(300)
-        await pg.evaluate("document.getElementById('auTab').click()"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
+        await pg.evaluate("document.getElementById('ssTab').click(); document.getElementById('ssAi').open = true"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
         await pg.click('#au_make'); await pg.wait_for_timeout(600)
         out = await pg.inner_text('#au_out')
         assert '待機 三子' not in out and '常勤 一子' in out, '自動の振り分けの表に待機の人が入っています'
@@ -91,7 +91,7 @@ async def test(p):
         # 仮スケジュール表：来週を出す
         await pg.evaluate("document.getElementById('ssTab').click()"); await pg.wait_for_timeout(400)
         await pg.click('#ssNext'); await pg.wait_for_timeout(400)
-        rows = await pg.evaluate("[].slice.call(document.querySelectorAll('#ssBody > table tbody th.who')).map(function(t){ return t.firstChild.textContent; })")
+        rows = await pg.evaluate("[].slice.call(document.querySelectorAll('#ssGrid > table tbody th.who')).map(function(t){ return t.firstChild.textContent; })")
         assert rows[-1] == '待機 三子', '待機の人が表のいちばん下に来ません：' + '、'.join(rows)
         cell_tue = await pg.inner_text('#ssBody td[data-sid="%s"][data-date="%s"]' % (sid2, tue.isoformat()))
         cell_mon = await pg.inner_text('#ssBody td[data-sid="%s"][data-date="%s"]' % (sid2, mon.isoformat()))
@@ -103,8 +103,9 @@ async def test(p):
         await drag(pg, '#ssBody .ssChip.dg[data-vk="%s|2010-01-看-9002|10:15"]' % mon.isoformat(), '#ssBody td[data-sid="%s"][data-date="%s"]' % (sid2, mon.isoformat()))
         assert await pg.is_visible('#ssMv'), '札を引っぱって離しても、動かす小窓が出ません'
         await pg.check('#mv_ok'); await pg.click('#mv_once'); await pg.wait_for_timeout(400)
+        await pg.evaluate("window.confirm = function(){ return true; }; var b = document.getElementById('ssd_commit'); if(b && !b.disabled) b.click();"); await pg.wait_for_timeout(500)   # 2026-11-08：仮スケジュール表の下書きを本体に反映する
         res = await pg.inner_text('#mv_res')
-        assert '動かしました' in res and '移動の間を計算し直しました' in res and '連絡板に' in res, '動かした後の知らせが出ません：' + res
+        assert '下書きに入れました' in res and '移動の間を計算し直しました' in res and '連絡板に' in res, '動かした後の知らせが出ません：' + res
         await s.shot('#ssMv .card', 'TriTime_hj_move.png')
         mv = await pg.evaluate(EV + ".filter(function(e){ return e.type === 'move'; })")
         assert len(mv) == 1 and mv[0]['toStaff'] == sid2 and mv[0]['consent'] is True and 'toDate' not in mv[0], '組み換えの記録が違います：' + str(mv)
@@ -116,6 +117,7 @@ async def test(p):
         sid1 = await pg.evaluate("JSON.parse(localStorage.getItem('tritime_staff')).filter(function(s){ return s.name === '常勤 一子'; })[0].id")
         await drag(pg, '#ssBody .ssChip.dg[data-vk="%s|2010-01-看-9001|09:15"]' % mon.isoformat(), '#ssBody td[data-sid="%s"][data-date="%s"]' % (sid1, tue.isoformat()))
         await pg.click('#mv_once'); await pg.wait_for_timeout(300); await pg.click('#mv_close'); await pg.wait_for_timeout(300)
+        await pg.evaluate("window.confirm = function(){ return true; }; var b = document.getElementById('ssd_commit'); if(b && !b.disabled) b.click();"); await pg.wait_for_timeout(500)   # 2026-11-08：仮スケジュール表の下書きを本体に反映する
         c_mon = await pg.inner_text('#ssBody td[data-sid="%s"][data-date="%s"]' % (sid1, mon.isoformat()))
         c_tue = await pg.inner_text('#ssBody td[data-sid="%s"][data-date="%s"]' % (sid1, tue.isoformat()))
         assert '9001' not in c_mon and '9001' in c_tue, '別の日へ動かした札が、元の日から消えて先の日に出ません'
@@ -125,6 +127,7 @@ async def test(p):
         wed = mon + datetime.timedelta(days=2)
         await drag(pg, '#ssBody .ssChip.dg[data-vk="%s|2010-01-看-9001|09:15"]' % tue.isoformat(), '#ssBody td[data-sid="%s"][data-date="%s"]' % (sid1, wed.isoformat()))
         await pg.click('#mv_week'); await pg.wait_for_timeout(300); await pg.click('#mv_close'); await pg.wait_for_timeout(300)
+        await pg.evaluate("window.confirm = function(){ return true; }; var b = document.getElementById('ssd_commit'); if(b && !b.disabled) b.click();"); await pg.wait_for_timeout(500)   # 2026-11-08：仮スケジュール表の下書きを本体に反映する
         wk = await pg.evaluate(WK + ".filter(function(v){ return v.no === '2010-01-看-9001'; })")
         assert len(wk) == 1 and wk[0]['dow'] == '3', '毎週の予定が水曜に書き換わりません：' + str(wk)
         mv = await pg.evaluate(EV + ".filter(function(e){ return e.type === 'move' && e.patientNo === '2010-01-看-9001'; })")

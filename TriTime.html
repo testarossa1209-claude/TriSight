@@ -346,7 +346,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-08-02</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-08-03</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -4584,17 +4584,34 @@ function withDept(k, fn){
   try{ return fn(); } finally { try{ if(o == null) localStorage.removeItem(DEPT_KEY); else localStorage.setItem(DEPT_KEY, o); }catch(e){} }
 }
 /* 職員の端末：予定のタブの上に、自分の今月の稼働率だけを出す（売上は出さない） */
+/* 2026-11-08（宏史さんの指示「一般画面で見れるものは、必ず私も確認できるようにしてください」）：
+   事務局・管理者・野木画面の見え方でも、この枠を出す。訪問しない人の端末でも中身が見えるよう、枠の上で「どの職員の画面として見るか」を選び、
+   その職員のタブレットに出ているものと同じ中身を出す */
+var MINE_WHO = '';
 function renderMine(){
   var R = role(), card = $('cardMine'); if(!card) return;
-  var on = R.lv === 'staff' && R.s && D().kind === 'visit';
+  var view = D().kind === 'visit' && R.lv !== 'staff' && R.lv !== 'none';
+  var on = (R.lv === 'staff' && R.s && D().kind === 'visit') || view;
   card.style.display = on ? '' : 'none'; if(!on) return;
-  var m = ymd(new Date()).slice(0, 7), r = mdStats(R.s, m);
-  if(!r.c.n){ $('mineBody').innerHTML = '<p class="empty">今月のモデルコース（1日の件数・出る曜日）がまだ決まっていません。管理者が決めると、ここに稼働率が出ます。</p>'; return; }
-  $('mineBody').innerHTML = '<p class="lead">' + esc(jpMonth(m)) + '：1日 ' + r.c.n + '件・' + esc(r.c.days.map(function(d){ return DOW[+d]; }).join('・')) + 'のモデルコースを100%として数えています。</p>' +
+  var who = R.s, pick = '';
+  if(R.lv !== 'staff'){
+    var ppl = deptStaff().filter(function(x){ return !staffOrphan(x) && !staffOut(x) && jobOf(x) !== '事務局'; });
+    if(!ppl.length){ $('mineBody').innerHTML = '<p class="empty">この部署に職員がいません。</p>'; return; }
+    if(!ppl.some(function(x){ return x.id === MINE_WHO; })) MINE_WHO = (R.s && ppl.some(function(x){ return x.id === R.s.id; })) ? R.s.id : ppl[0].id;
+    who = ppl.filter(function(x){ return x.id === MINE_WHO; })[0];
+    pick = '<div class="row"><div><label class="f" for="mineWho">どの職員の画面として見るか</label><select id="mineWho">' + ppl.map(function(x){ return '<option value="' + esc(x.id) + '"' + (x.id === MINE_WHO ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '</select></div></div><p class="muted sm" style="margin:0 0 6px">選んだ職員のタブレットに出ているものと同じ中身です。</p>';
+  }
+  mineBodyRender(who, pick);
+  if($('mineWho')) $('mineWho').onchange = function(){ MINE_WHO = this.value; renderMine(); };
+}
+function mineBodyRender(who, pick){
+  var m = ymd(new Date()).slice(0, 7), r = mdStats(who, m);
+  if(!r.c.n){ $('mineBody').innerHTML = pick + '<p class="empty">今月のモデルコース（1日の件数・出る曜日）がまだ決まっていません。管理者が決めると、ここに稼働率が出ます。</p>'; return; }
+  $('mineBody').innerHTML = pick + '<p class="lead">' + esc(jpMonth(m)) + '：1日 ' + r.c.n + '件・' + esc(r.c.days.map(function(d){ return DOW[+d]; }).join('・')) + 'のモデルコースを100%として数えています。</p>' +
     '<table><tr><th></th><th class="num">件数</th><th class="num">稼働率</th></tr>' +
     '<tr><td>モデルコース（この月）</td><td class="num">' + r.model + '件</td><td class="num">100%</td></tr>' +
     '<tr><td>いまの予定（キャンセル・休みの日を除く）</td><td class="num">' + r.plan + '件</td><td class="num"><b>' + mdPct(r.plan, r.model) + '</b></td></tr>' +
-    '<tr><td>実績（今日まで・' + (r.act != null ? esc(r.actSrc) : '記録なし') + '）</td><td class="num">' + (r.act != null ? r.act + '件' : '—') + '</td><td class="num">' + (r.act != null ? '<b>' + mdPct(r.act, r.modelPast) + '</b><br><small class="muted">今日までのモデル ' + r.modelPast + '件に対して</small>' : '—') + '</td></tr></table>' + mineCourse(R.s, r.c);
+    '<tr><td>実績（今日まで・' + (r.act != null ? esc(r.actSrc) : '記録なし') + '）</td><td class="num">' + (r.act != null ? r.act + '件' : '—') + '</td><td class="num">' + (r.act != null ? '<b>' + mdPct(r.act, r.modelPast) + '</b><br><small class="muted">今日までのモデル ' + r.modelPast + '件に対して</small>' : '—') + '</td></tr></table>' + mineCourse(who, r.c);
 }
 /* 2026-10-27：職員のタブレットに、自分の週間モデルコース（曜日ごとの件数）と1日の流れを出す（稼働率の枠の続き） */
 function mineCourse(s, c){
@@ -7894,13 +7911,16 @@ function pwScroll(){ sideOpen('hb', true); }   /* 2026-11-08：手組みの表�
      （管理者がいない部署は事務局あて）。拒否の記録（利用者登録の「拒否の記録」）に入れるかは、管理者が上申を読んで決める
    ============================================================ */
 var JS_KINDS = ['相性に問題がある', '利用者側から「来ないでほしい」と言われた（出禁）', '訪問が難しい事情がある（安全・体調・家族など）', 'その他'];
-function jsBtnHTML(){ return canJoshin() ? '<div class="btns" style="margin:6px 0 2px"><button type="button" class="btn amber" id="js_open">管理者へ上申する</button><small class="muted">相性の問題・利用者さんからの申し出など、予定に関わることを部門の管理者へ伝えます。</small></div>' : ''; }
+/* 2026-11-08（宏史さんの指示「一般画面で見れるものは、必ず私も確認できるようにしてください」）：事務局・管理者・野木画面の見え方でも、職員と同じボタンを出す */
+function canJoshinView(){ var r = role(); return D().kind === 'visit' && r.lv !== 'staff' && r.lv !== 'none'; }
+function jsBtnHTML(){ return canJoshin() ? '<div class="btns" style="margin:6px 0 2px"><button type="button" class="btn amber" id="js_open">管理者へ上申する</button><small class="muted">相性の問題・利用者さんからの申し出など、予定に関わることを部門の管理者へ伝えます。</small></div>' :
+  canJoshinView() ? '<div class="btns" style="margin:6px 0 2px"><button type="button" class="btn amber" id="js_open">管理者へ上申する</button><small class="muted">職員の端末と同じボタンです。押すと、職員が見る窓が出ます。</small></div>' : ''; }
 function jsTargets(){ var m = deptStaff().filter(isMgr).map(function(x){ return x.id; }); if(m.length) return m; var od = DEPTS.filter(function(d){ return d.kind === 'office'; })[0]; return od ? deptStaff(od).map(function(x){ return x.id; }) : []; }
 function jsOpen(){
   var box = document.createElement('div'); box.className = 'ssMv'; box.id = 'ssMv';
   var ps = patients().filter(function(p){ return !p.status || p.status === '利用中'; }).slice().sort(function(a, b){ return (a.kana || a.name || '') < (b.kana || b.name || '') ? -1 : 1; });
   var to = jsTargets();
-  box.innerHTML = '<div class="card"><h2>管理者へ上申する</h2><p class="muted sm">宛先：' + esc(to.length ? to.map(staffName).join('・') + 'さん' : '（宛先の管理者がいません）') + '。連絡板に残り、宛先の人の画面に出ます。</p>' +
+  box.innerHTML = '<div class="card"><h2>管理者へ上申する</h2>' + (canJoshin() ? '' : '<p class="judge" style="margin:0 0 6px">職員の端末と同じ窓です。「上申する」を押すと、実際に連絡板へ届きます。</p>') + '<p class="muted sm">宛先：' + esc(to.length ? to.map(staffName).join('・') + 'さん' : '（宛先の管理者がいません）') + '。連絡板に残り、宛先の人の画面に出ます。</p>' +
     '<div class="row"><div><label class="f" for="js_pt">利用者さん</label><select id="js_pt"><option value="">（利用者さんに関わらない内容）</option>' + ps.map(function(p){ return '<option value="' + esc(p.no) + '">' + esc(dn(p.no) + '　' + (p.name || '')) + '</option>'; }).join('') + '</select></div>' +
     '<div><label class="f" for="js_kind">上申の種類</label><select id="js_kind">' + JS_KINDS.map(function(k){ return '<option value="' + esc(k) + '">' + esc(k) + '</option>'; }).join('') + '</select></div></div>' +
     '<label class="f" for="js_body">内容（いつ・何があったか・どうしてほしいか）</label><textarea id="js_body" rows="4" placeholder="例：11/4の訪問で「次から男性の看護師は来ないでほしい」と本人から言われました。担当の変更をお願いします。"></textarea>' +

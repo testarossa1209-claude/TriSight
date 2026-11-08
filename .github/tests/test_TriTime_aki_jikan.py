@@ -81,8 +81,8 @@ async def test(p):
         has = await pg.evaluate("typeof L !== 'undefined'")
         if has:
             # 2026-11-09：地図は開いた時刻が12時以後だと「午後の行程」を出す。機械の点検は世界標準時で動くため、日本の朝は向こうの夜になり、
-            # 午前の訪問だけの試験の地図が「午後」で開いて矢印が0本になっていた。午前に切り替えてから数える
-            await pg.evaluate("tdHalf = 'am'; renderToday();"); await pg.wait_for_timeout(1500)
+            # 午前の訪問だけの試験の地図が「午後」で開いて矢印が0本になっていた。画面の「午前の行程」のボタンを押してから数える
+            await pg.evaluate("(function(){ var b = document.querySelector('#td_half [data-tdhalf=am]'); if(b) b.click(); })()"); await pg.wait_for_timeout(1500)
             n = await pg.evaluate("document.querySelectorAll('#td_map .tdArrow').length")
             assert n >= 3, '地図の線に、回る向きの矢印が付きません：' + str(n)
         else:

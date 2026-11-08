@@ -413,7 +413,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-09-03</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-09-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -3516,6 +3516,64 @@ function stBar(){
   $('stBarOffice').onclick = function(){ stPress('office'); };
   $('stBarDirect').onclick = function(){ stPress('direct'); };
 }
+/* ============================================================
+   2026-11-09（宏史さんの提案「トライタイムログイン画面として、職員名をいれる（選択しにして）方法ではいかがですか？」）
+   ・認証コードは端末ごとに初回だけ（宏史さんが入れる）。開くたびに出すのは、使う人を選ぶログイン画面
+   ・選べる名前は絞る（自由に選べると、職員が管理者の名前を選んで売上などを見られてしまうため）：
+       専用の端末＝その端末の「主に使う人」だけ／共用端末＝共用端末の名簿（sharedPickList）
+   ・出勤日でまだ始めていなければ、ここで「事務所から始める／直行で始める」を押せる（これまでのスタートの窓と同じ記録）
+   ・出さない端末：野木画面を開ける2台・共有していない端末・使う人が決まっていない端末
+   ============================================================ */
+var LG_SHOWN = false;
+function lgShould(){
+  if(LG_SHOWN) return false;
+  var cls = document.documentElement.className; if(cls.indexOf('openLocked') >= 0 || cls.indexOf('labLocked') >= 0) return false;
+  var t = ''; try{ t = localStorage.getItem('tritime_login_test') || ''; }catch(e){}
+  if(navigator.webdriver && t !== '1') return false;   /* 自動の点検では、ログイン画面の試験のときだけ出す */
+  if(window.TT_LAB || zIsReg()) return false;
+  var r = devRaw(); if(!r.share || !r.me) return false;
+  return true;
+}
+function lgList(){ var r = devRaw(); return r.me === SHARED_ME ? sharedPickList() : staff().filter(function(s){ return s.id === r.me; }); }
+function lgShow(){
+  LG_SHOWN = true;
+  var list = lgList(), r = devRaw(), shared = r.me === SHARED_ME;
+  if(!list.length){ if(dev().share) sharedPick(false); stBar(); stPrompt(); return; }
+  var cur = shared ? sharedUser() : r.me, date = ymd(new Date());
+  var w = document.createElement('div'); w.id = 'ttLogin';
+  w.setAttribute('style', 'position:fixed;inset:0;z-index:99990;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:radial-gradient(120% 90% at 50% 0%,#1d3a5c 0%,#10243b 55%,#0a1626 100%);overflow:auto');
+  w.innerHTML = '<div class="lgCard" style="background:#fff;border-radius:18px;max-width:400px;width:100%;padding:26px 24px 16px;box-sizing:border-box;box-shadow:0 30px 70px -30px rgba(0,0,0,.75);color:#10243b;text-align:center">' +
+    '<img src="TriTime_icon_192.png" alt="" width="76" height="76" style="display:block;margin:0 auto 8px;border-radius:18px">' +
+    '<div style="font-family:Georgia,serif;font-weight:800;font-size:26px;letter-spacing:.02em">TriTime</div>' +
+    '<div style="font-weight:700;font-size:14px;color:#3a4a63;margin-top:2px">トライタイム</div>' +
+    '<div style="font-size:12.5px;color:#5b6680;margin:6px 0 14px;line-height:1.6">' + esc(jpDate(date)) + '</div>' +
+    '<label for="lgWho" style="display:block;text-align:left;font-size:13px;font-weight:700;margin-bottom:4px">使う人</label>' +
+    '<select id="lgWho" style="width:100%;box-sizing:border-box;font-size:16px;padding:11px 12px;border:1px solid #afb8c1;border-radius:10px;background:#fff"' + (shared ? '' : ' disabled') + '>' +
+      (shared ? '<option value="">名前を選んでください</option>' : '') +
+      list.map(function(s){ return '<option value="' + esc(s.id) + '"' + (s.id === cur ? ' selected' : '') + '>' + esc(s.name) + 'さん</option>'; }).join('') + '</select>' +
+    '<div id="lgAct" style="margin-top:14px"></div>' +
+    '<div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px;padding-top:10px;border-top:1px solid #e3e7ee;font-size:11.5px;color:#69748a"><img src="TriSight_icon_192.png" alt="" width="18" height="18">TriSight® ファミリー</div></div>';
+  document.body.appendChild(w);
+  var B = 'width:100%;font-family:inherit;font-size:16px;font-weight:700;padding:12px 18px;border:0;border-radius:12px;cursor:pointer;touch-action:manipulation;margin-top:8px;color:#fff;';
+  var close = function(){ var x = $('ttLogin'); if(x) x.remove(); };
+  var act = function(){
+    var sid = $('lgWho').value, box = $('lgAct');
+    if(!sid){ box.innerHTML = '<button type="button" disabled style="' + B + 'background:#9aa5b8">名前を選ぶと開けます</button>'; return; }
+    if(shared) sj(SHU_KEY, { id:sid, date:date });
+    if(stShouldAsk()){
+      box.innerHTML = '<button type="button" id="lgOffice" style="' + B + 'background:#10243b">事務所から始める</button>' +
+        '<button type="button" id="lgDirect" style="' + B + 'background:#a8650f">直行で始める（利用者さんのお宅へ）</button>' +
+        '<button type="button" id="lgLater" style="width:100%;font-family:inherit;font-size:13.5px;padding:9px;border:1px solid #afb8c1;background:#fff;color:#3a4a63;border-radius:12px;cursor:pointer;margin-top:8px">あとで始める（このまま開く）</button>';
+      $('lgOffice').onclick = function(){ close(); stPress('office'); };
+      $('lgDirect').onclick = function(){ close(); stPress('direct'); };
+      $('lgLater').onclick = function(){ sj(ST_SKIP, date); close(); refreshAll(); };
+    } else {
+      box.innerHTML = '<button type="button" id="lgOpen" style="' + B + 'background:#10243b">トライタイムを開く</button>';
+      $('lgOpen').onclick = function(){ close(); refreshAll(); };
+    }
+  };
+  $('lgWho').onchange = act; act();
+}
 /* 野木画面の勤怠：その月のスタートの記録（出勤・直行・遅刻・押し忘れ）。押し忘れは、スタートの記録が始まった日から今日までの出勤日のうち、記録の無い日 */
 function stMonth(s, m){
   var all = events().filter(function(e){ return e.type === 'start'; }), first = all.map(function(e){ return e.date; }).sort()[0] || '';
@@ -4729,8 +4787,8 @@ function applyDept(){
   if(document.body.classList.contains('kpOpen')) kpRender(); if(document.body.classList.contains('mnOpen')) mnRender(); if(document.body.classList.contains('nmOpen')) nmRender(); if(document.body.classList.contains('osOpen') && document.activeElement && document.activeElement.id !== 'osTpl') osRender();
   /* 2026-11-01：管理者の合言葉の枠は、管理者の印が付いた人の端末と、管理者の画面が出ている端末だけに出す（職員の端末には出さない） */
   show('cardMgrKey', !((R.lv === 'staff' || R.lv === 'office') && !R.noKey));
-  roleNote(R); sharedBar(); if(dev().share) sharedPick(false);
-  stBar(); stPrompt();   /* 2026-11-06：出勤日の最初の「スタート」 */
+  roleNote(R); sharedBar();
+  if(lgShould()) lgShow(); else { if(dev().share) sharedPick(false); stBar(); stPrompt(); }   /* 2026-11-09：開くたびのログイン画面（出ている間は、共用端末の窓とスタートの窓を出さない） */
 }
 
 /* ---- 見る範囲（2026-10-27・宏史さんの決め）----

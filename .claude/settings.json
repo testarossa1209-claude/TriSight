@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$CLAUDE_PROJECT_DIR/.claude/hooks/nagisa_censor.js\"; [ -f \"$f\" ] || f=\"$CLAUDE_PROJECT_DIR/trisight/.claude/hooks/nagisa_censor.js\"; [ -f \"$f\" ] || f=/home/claude/trisight/.claude/hooks/nagisa_censor.js; node \"$f\""
+          }
+        ]
+      }
+    ]
+  }
+}

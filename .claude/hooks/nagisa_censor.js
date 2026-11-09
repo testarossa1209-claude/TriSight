@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /*! ===========================================================================
  *  nagisa_censor.js — なぎさの外に置く検閲（返答を終える直前に照合する）
- *  版：2026-11-10-02
+ *  版：2026-11-10-03
  *  ---------------------------------------------------------------------------
  *  Claude の「Stop」フックとして呼ばれる。なぎさが返答を終えようとした時点で、
  *  宏史さんの最後の発言以降の「なぎさが書いた文」と「なぎさが使った道具の順番」を
@@ -15,7 +15,7 @@
  *    第1条　仕切りの文／「ご指示をお待ちします」で締める／「やります」宣言だけで手を動かさない
  *    第2条　同じファイルを同じ会話で2度渡す（1）／英語の文（6）
  *    第3条　金額を、確かめた場所を書かずに出す
- *    第4条　画面の操作を、現物を開かずに案内する
+ *    第4条　画面の操作を、現物を開かずに案内する／確かめずに「確かめた・効く」と書く／雛形を見ずに申請を出す
  *    第5条　人に資料を出させる前に、自分で探していない
  *  第6条・第7条・第8条は文字や道具の順番では判定できないため、H&Nパトリオットの照合へ回す。
  * ========================================================================== */
@@ -158,6 +158,32 @@ function art4(text, steps_) {
   return [];
 }
 
+function art4b(steps_) {
+  /* やっていないのにやった風に書く：確かめる道具（ファイル・画面を開く／動かす）を使う前に「確かめた・効く・通った」と書いたら止める */
+  let checked = false;
+  for (const s of steps_) {
+    if (s.kind === 'tool' && (T.look(s.name) || s.name === 'Bash')) checked = true;
+    if (s.kind !== 'text') continue;
+    for (const line of sentences(s.text)) {
+      if (/(確かめました|確認しました|確認済み|動きました|効きます|通りました|止まりました|完了しました|問題ありません)/.test(line) && !checked) {
+        return ['第4条：確かめる道具を一度も使わずに、確かめた・効く・通ったと書いている（やっていないのにやった風）→ ' + line.slice(0, 50)];
+      }
+    }
+  }
+  return [];
+}
+
+function art4c(allItems, start) {
+  /* 作業を端折る：申請（プルリクエスト）を出す前に、この会話で申請の雛形を一度も読んでいなければ止める */
+  const all = steps(allItems, 0);
+  const now = steps(allItems, start);
+  const isPR = s => s.kind === 'tool' && /(\/pulls\b[\s\S]*-f title|gh pr create)/.test(String(s.input.command || ''));
+  if (!now.some(isPR)) return [];
+  const readTemplate = all.some(s => s.kind === 'tool' &&
+    /pull_request_template|pulls\?state/.test(String(s.input.command || s.input.file_path || '')));
+  return readTemplate ? [] : ['第4条：申請の雛形（.github/pull_request_template.md）も前の申請も見ずに、申請を出している（作業を端折っている）'];
+}
+
 function art5(steps_) {
   /* 人に資料を出させる文が出る前に、自分で探す道具（過去ログ・記憶・GitHubの現物）を使っていなければ止める */
   let searched = false;
@@ -202,6 +228,8 @@ function main() {
     art2(text, items, start),
     art3(text),
     art4(text, turn),
+    art4b(turn),
+    art4c(items, start),
     art5(turn)
   );
   if (!ng.length) { try { fs.unlinkSync(cf); } catch (e) {} return 0; }

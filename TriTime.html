@@ -348,6 +348,28 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   try{fetch(RELAY,{method:"OPTIONS",mode:"cors",cache:"no-store"}).catch(function(){});}catch(e){}
 })();
 </script>
+<script>
+/* 実験機の鍵の画面（開くたびに合言葉を求める）
+   2026-11-09-09（宏史さん「ログイン画面の反応が悪い件は直ってませんね」＝デモ機の野木タブレット・実験機）：
+   これまでは本体（約1MB）を全部読み終えた後ろの方（6,259行目あたり）で出していたため、開いてから合言葉の画面が出るまで空白の時間があった。
+   認証コードの画面と同じく、本体の頭で出す。ここでは本体の道具（$・labHash）がまだ無いため、照合はこの中で行う（計算の仕方は labHash と同じ） */
+(function(){
+  if(!window.TT_LAB || document.documentElement.className.indexOf('labLocked') < 0) return;
+  var d = document.createElement('div'); d.id = 'labLock';
+  d.innerHTML = '<div class="box"><h2 style="margin:0 0 6px">実験機</h2><p class="muted" style="margin:0 0 6px">この端末は実験機です。開くには、実験機の合言葉を入れてください。</p><input type="password" id="labLockPw" autocomplete="current-password"><div class="btns"><button class="btn" type="button" id="labLockGo">開く</button></div><p class="muted" id="labLockMsg" style="color:var(--red)"></p></div>';
+  document.body.appendChild(d);
+  var pw = d.querySelector('#labLockPw'), msg = d.querySelector('#labLockMsg');
+  var hash = function(salt, v){ return crypto.subtle.digest('SHA-256', new TextEncoder().encode('tritime-lab:' + salt + ':' + v)).then(function(b){ return Array.prototype.map.call(new Uint8Array(b), function(x){ return ('0' + x.toString(16)).slice(-2); }).join(''); }); };
+  var go = function(){ var m = window.TT_DEV; hash(m.salt, pw.value).then(function(h){
+    if(h !== m.hash){ msg.textContent = '合言葉が違います。'; pw.value = ''; return; }
+    try{ sessionStorage.setItem('tritime_lab_open', '1'); }catch(e){}
+    document.documentElement.className = document.documentElement.className.replace(/\s*labLocked/g, ''); d.remove();
+  }); };
+  d.querySelector('#labLockGo').onclick = go;
+  pw.addEventListener('keydown', function(e){ if(e.key === 'Enter') go(); });
+  setTimeout(function(){ try{ pw.focus(); }catch(e){} }, 50);
+})();
+</script>
 <!-- 2026-10-15：前のページに戻るボタン（全画面共通・マウスの「戻る」と同じ動き。前のページが無いときは表札へ） -->
 <div id="tsBackBar" data-guard="0" style="padding:8px 16px 4px;box-sizing:border-box;text-align:left;width:100%;align-self:stretch"><button type="button" onclick="tsGoBack()" title="ひとつ前に開いていた画面へ戻ります" style="font-family:inherit;font-size:13px;line-height:1.4;color:#1f2328;background:#ffffff;border:1px solid #afb8c1;border-radius:999px;padding:4px 14px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.12)">‹ 前のページに戻る</button></div>
 <style>@media print{#tsBackBar{display:none !important}}</style>
@@ -413,7 +435,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-09-08</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-09-09</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -6255,21 +6277,6 @@ function labRender(){
     });
   };
 }
-/* 実験機の鍵の画面（開くたびに合言葉を求める） */
-(function(){
-  if(!window.TT_LAB || document.documentElement.className.indexOf('labLocked') < 0) return;
-  var d = document.createElement('div'); d.id = 'labLock';
-  d.innerHTML = '<div class="box"><h2 style="margin:0 0 6px">実験機</h2><p class="muted" style="margin:0 0 6px">この端末は実験機です。開くには、実験機の合言葉を入れてください。</p><input type="password" id="labLockPw" autocomplete="current-password"><div class="btns"><button class="btn" type="button" id="labLockGo">開く</button></div><p class="muted" id="labLockMsg" style="color:var(--red)"></p></div>';
-  document.body.appendChild(d);
-  var go = function(){ var m = window.TT_DEV; labHash(m.salt, $('labLockPw').value).then(function(h){
-    if(h !== m.hash){ $('labLockMsg').textContent = '合言葉が違います。'; $('labLockPw').value = ''; return; }
-    try{ sessionStorage.setItem('tritime_lab_open', '1'); }catch(e){}
-    document.documentElement.className = document.documentElement.className.replace(/\s*labLocked/g, ''); d.remove();
-  }); };
-  $('labLockGo').onclick = go;
-  $('labLockPw').addEventListener('keydown', function(e){ if(e.key === 'Enter') go(); });
-  setTimeout(function(){ try{ $('labLockPw').focus(); }catch(e){} }, 50);
-})();
 $('dv_save').addEventListener('click', function(){
   var was = dev().share;
   if(window.TT_LAB) $('dv_share').checked = false;   /* 実験機の記録は共有しない */

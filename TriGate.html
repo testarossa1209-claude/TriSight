@@ -868,6 +868,28 @@ window.tsSyncBanner = function(msg){
     try{ return JSON.stringify(out); }catch(_){ return String(localStr||"{}"); }
   }
 
+  /* 獲得実績（trigate_results）の足し合わせ。形は { "認証コード": [実績, ...] }。
+     同じ id の実績は端末の側を残し、どちらか一方にしか無い実績はすべて残す。
+     注意：別の端末で消した実績は、まだ箱や他端末に残っていれば戻ってくる。 */
+  function mergeResults(localStr, boxStr){
+    var a=null,b=null;
+    try{ a=JSON.parse(localStr||"{}")||{}; }catch(_){ a=null; }
+    try{ b=JSON.parse(boxStr ||"{}")||{}; }catch(_){ b=null; }
+    if(!a||typeof a!=="object"||Array.isArray(a)) return String(boxStr||"{}");
+    if(!b||typeof b!=="object"||Array.isArray(b)) return String(localStr||"{}");
+    var out={},codes={};
+    Object.keys(b).forEach(function(c){ codes[c]=1; });
+    Object.keys(a).forEach(function(c){ codes[c]=1; });
+    Object.keys(codes).forEach(function(c){
+      var la=Array.isArray(a[c])?a[c]:[], lb=Array.isArray(b[c])?b[c]:[];
+      var seen={}, list=[];
+      la.forEach(function(r){ if(!r) return; if(r.id){ if(seen[r.id]) return; seen[r.id]=1; } list.push(r); });
+      lb.forEach(function(r){ if(!r) return; if(r.id){ if(seen[r.id]) return; seen[r.id]=1; } list.push(r); });
+      out[c]=list;
+    });
+    try{ return JSON.stringify(out); }catch(_){ return String(localStr||"{}"); }
+  }
+
   /* ---- 素の保存領域を先に押さえる（この後 window を差し替えるため） ---- */
   var raw = window.localStorage;
   var mem = {};                 /* 写し */
@@ -991,6 +1013,13 @@ window.tsSyncBanner = function(msg){
         if(k === BOX_WEB){
           mem[k] = mergeLedger(raw.getItem(k), String(d[k]));
           dirty[k] = 1;                 /* 足した結果を箱へ戻す */
+        }else if(k === "trigate_results"){
+          /* 2026-11-12：獲得実績も上書きせず、1件ずつ足し合わせる。
+             上書きにしていたため、実績の無い端末が後から預けると、
+             ほかの端末で開いたときに登録済みの実績が消えていた。 */
+          var __rm = mergeResults(raw.getItem(k), String(d[k]));
+          mem[k] = __rm;
+          if(__rm !== String(d[k])) dirty[k] = 1;   /* 箱に無かった分を箱へ戻す */
         }else{
           mem[k] = String(d[k]);
         }
@@ -8291,7 +8320,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-11-09-02';
+  const TRIGATE_VERSION = '2026-11-12-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

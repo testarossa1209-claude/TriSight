@@ -812,6 +812,7 @@ window.tsSyncBanner = function(msg){
     "trigate_closed_override",    /* 受付終了の取り消し印 */
     "trigate_offbiz_override",    /* 事業外の取り消し印 */
     "trigate_results",            /* 成果カウンター */
+    "trigate_results_tomb",       /* 成果カウンターの削除の印（2026-11-12） */
     "trigate_pj_threshold",       /* しきい値の設定 */
     /* 2026-09-14：企業基礎情報の3つの鍵を保管庫から外した。
        他の端末が抱えている会社の情報が保管庫を経由して戻り、
@@ -870,8 +871,20 @@ window.tsSyncBanner = function(msg){
 
   /* 獲得実績（trigate_results）の足し合わせ。形は { "認証コード": [実績, ...] }。
      同じ id の実績は端末の側を残し、どちらか一方にしか無い実績はすべて残す。
-     注意：別の端末で消した実績は、まだ箱や他端末に残っていれば戻ってくる。 */
-  function mergeResults(localStr, boxStr){
+     削除の印（tomb）に載っている番号の実績は、どちらに残っていても外す。 */
+  function mergeTomb(localStr, boxStr){
+    var a={}, b={};
+    try{ a=JSON.parse(localStr||"{}")||{}; }catch(_){ a={}; }
+    try{ b=JSON.parse(boxStr ||"{}")||{}; }catch(_){ b={}; }
+    var out={};
+    [a,b].forEach(function(o){
+      if(!o||typeof o!=="object"||Array.isArray(o)) return;
+      Object.keys(o).forEach(function(id){ out[id] = Math.max(Number(out[id]||0), Number(o[id]||0)) || 1; });
+    });
+    return out;
+  }
+  function mergeResults(localStr, boxStr, tomb){
+    tomb = tomb || {};
     var a=null,b=null;
     try{ a=JSON.parse(localStr||"{}")||{}; }catch(_){ a=null; }
     try{ b=JSON.parse(boxStr ||"{}")||{}; }catch(_){ b=null; }
@@ -883,8 +896,8 @@ window.tsSyncBanner = function(msg){
     Object.keys(codes).forEach(function(c){
       var la=Array.isArray(a[c])?a[c]:[], lb=Array.isArray(b[c])?b[c]:[];
       var seen={}, list=[];
-      la.forEach(function(r){ if(!r) return; if(r.id){ if(seen[r.id]) return; seen[r.id]=1; } list.push(r); });
-      lb.forEach(function(r){ if(!r) return; if(r.id){ if(seen[r.id]) return; seen[r.id]=1; } list.push(r); });
+      la.forEach(function(r){ if(!r) return; if(r.id){ if(seen[r.id] || tomb[r.id]) return; seen[r.id]=1; } list.push(r); });
+      lb.forEach(function(r){ if(!r) return; if(r.id){ if(seen[r.id] || tomb[r.id]) return; seen[r.id]=1; } list.push(r); });
       out[c]=list;
     });
     try{ return JSON.stringify(out); }catch(_){ return String(localStr||"{}"); }
@@ -1017,9 +1030,15 @@ window.tsSyncBanner = function(msg){
           /* 2026-11-12：獲得実績も上書きせず、1件ずつ足し合わせる。
              上書きにしていたため、実績の無い端末が後から預けると、
              ほかの端末で開いたときに登録済みの実績が消えていた。 */
-          var __rm = mergeResults(raw.getItem(k), String(d[k]));
+          var __tomb = mergeTomb(raw.getItem("trigate_results_tomb"), d.trigate_results_tomb);
+          var __rm = mergeResults(raw.getItem(k), String(d[k]), __tomb);
           mem[k] = __rm;
           if(__rm !== String(d[k])) dirty[k] = 1;   /* 箱に無かった分を箱へ戻す */
+        }else if(k === "trigate_results_tomb"){
+          /* 削除の印は、どちらかで消した番号をすべて残す */
+          var __tm = JSON.stringify(mergeTomb(raw.getItem(k), d[k]));
+          mem[k] = __tm;
+          if(__tm !== String(d[k])) dirty[k] = 1;
         }else{
           mem[k] = String(d[k]);
         }
@@ -7252,6 +7271,13 @@ window.tsSyncBanner = function(msg){
         const data = rcLoadAll();
         const code = rcCurrentCode();
         data[code] = (data[code]||[]).filter(r => r.id !== btn.dataset.id);
+        /* 2026-11-12：消した実績の番号を「削除の印」に残す。保管庫で足し合わせるとき、
+           ほかの端末に残っている同じ実績が戻ってこないようにするため。 */
+        try{
+          const tomb = JSON.parse(localStorage.getItem("trigate_results_tomb") || "{}") || {};
+          tomb[btn.dataset.id] = Date.now();
+          localStorage.setItem("trigate_results_tomb", JSON.stringify(tomb));
+        }catch(e){}
         await rcPersist(data);
         rcRenderFigs();
         rcRenderDetail();
@@ -8320,7 +8346,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-11-12-01';
+  const TRIGATE_VERSION = '2026-11-12-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

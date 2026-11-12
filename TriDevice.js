@@ -6,6 +6,8 @@
  *  ・中継（trisight-relay）へ認証コード付きで送る通信に、札（x-trisight-device）を添える。
  *  ・中継は札が登録済みかを照らし、未登録なら宏史さんへ知らせる（止めはしない）。
  *  ・札は認証コードとは無関係（札からコードは分からない）。
+ *  ・2026-11-12 改2（宏史さんの決定）：未登録の端末は中継が止める（403・device）。
+ *    止められたら、この部品が画面全体に案内を出す（各画面は変えない）。
  *  各画面の <head> の最初の <script> として読み込む。
  * ========================================================================== */
 (function () {
@@ -41,8 +43,36 @@
         init = ni;
       }
     } catch (e) {}
-    return of.call(this, input, init);
+    var isRelay = false;
+    try { isRelay = (typeof input === 'string' ? input : (input && input.url) || '').indexOf('trisight-relay.vercel.app') >= 0; } catch (e) {}
+    var p = of.call(this, input, init);
+    if (!isRelay) return p;
+    return p.then(function (res) {
+      try {
+        if (res && res.status === 403) {
+          res.clone().json().then(function (j) { if (j && (j.device === 'unregistered' || j.device === 'notag')) showBlocked(j); }, function () {});
+        }
+      } catch (e) {}
+      return res;
+    });
   };
+  function showBlocked(j) {
+    try {
+      if (document.getElementById('triDeviceBlocked')) return;
+      var w = document.createElement('div'); w.id = 'triDeviceBlocked';
+      w.setAttribute('style', 'position:fixed;inset:0;background:rgba(15,29,58,.72);z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;font-family:inherit');
+      var t = new Date(), hm = ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2);
+      var head = j.device === 'unregistered' ? 'この端末は登録されていません' : '画面を開き直してください';
+      w.innerHTML = '<div style="background:#fff;border-radius:12px;max-width:440px;width:100%;padding:22px 20px 16px;box-sizing:border-box;color:#16213a;line-height:1.7">'
+        + '<div style="font-weight:700;font-size:17px;margin-bottom:8px">' + head + '</div>'
+        + '<div style="font-size:14px;color:#3d4660"></div>'
+        + '<div style="font-size:12px;color:#5b6680;margin-top:8px">止められた時刻：' + hm + '</div>'
+        + '<div style="text-align:right;margin-top:12px"><button type="button" style="font-family:inherit;font-size:14px;padding:7px 18px;border:0;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">開き直す</button></div></div>';
+      w.querySelector('div div:nth-child(2)').textContent = j.error || '';
+      w.querySelector('button').onclick = function () { location.reload(); };
+      (document.body || document.documentElement).appendChild(w);
+    } catch (e) {}
+  }
   w.__triDev = 1;
   window.fetch = w;
 })();

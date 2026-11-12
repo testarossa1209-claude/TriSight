@@ -7268,6 +7268,7 @@ window.tsSyncBanner = function(msg){
     detail.querySelectorAll(".rcdel").forEach(btn=>{
       btn.addEventListener("click", async ()=>{
         if(!confirm("この実績を削除しますか？（元に戻せません）")) return;
+        await rcWaitBox();   /* 2026-11-12：保管庫の取り込みを待ち、最新の中身から消す */
         const data = rcLoadAll();
         const code = rcCurrentCode();
         data[code] = (data[code]||[]).filter(r => r.id !== btn.dataset.id);
@@ -7311,6 +7312,7 @@ window.tsSyncBanner = function(msg){
     if(on){ if(rcSyncOn) rcRefreshFromFile(); else rcRenderDetail(); }
   });
   $("rcSaveBtn").addEventListener("click", async ()=>{
+    await rcWaitBox();   /* 2026-11-12：保管庫の取り込みを待ち、最新の中身に足す */
     const name   = $("rcName").value.trim();
     const amount = Number($("rcAmount").value);
     const date   = $("rcDate").value;
@@ -7339,6 +7341,17 @@ window.tsSyncBanner = function(msg){
     if($("rcDetail").classList.contains("on")) rcRenderDetail();
   });
   rcRenderFigs();
+  /* 2026-11-12：起動直後の表示は、保管庫を取り込む前の端末の中身。
+     取り込みが終わったら読み直して表示し直す（読み直さないと、古い中身のまま
+     登録・削除して、足し合わせた実績を上書きしていた）。 */
+  async function rcWaitBox(){
+    if(window.tsBoxReady){ try{ await window.tsBoxReady; }catch(e){} }
+    if(!rcSyncOn) RC_CACHE = null;
+  }
+  rcWaitBox().then(function(){
+    rcRenderFigs();
+    if($("rcDetail").classList.contains("on")) rcRenderDetail();
+  });
   rcTryRestoreFolder();
 
   // ---- 見込み額カウンター（2026-07-22導入）：発掘の候補のうち、給付方式=要件充足型・除外条件抵触なしのみを合算 ----
@@ -8346,7 +8359,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-11-12-02';
+  const TRIGATE_VERSION = '2026-11-12-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

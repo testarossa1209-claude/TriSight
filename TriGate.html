@@ -738,7 +738,7 @@ function tsPortalAsk(){
    応答に載ってくる版がこれと違えば、「リレーが古い」と出して止める。
    gate.js・box.js を直して版を上げたら、ここも同じ回に上げること。 */
 window.TS_EXPECT = {
-  relay: "2026-09-16-02",                    /* api/gate.js の GATE_VERSION */
+  relay: "2026-11-12-01",                    /* api/gate.js の GATE_VERSION（2026-11-13：10/29以降の中継の版上げに追いついていなかったため合わせた） */
   readV: "r2",                               /* api/gate.js の READ_V（読み取りの指示文の版） */
   model: "claude-sonnet-4-5-20250929",       /* api/gate.js の MODEL */
   box:   "2026-09-16-01"                     /* api/box.js の BOX_VERSION */
@@ -8360,7 +8360,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-11-12-04';
+  const TRIGATE_VERSION = '2026-11-13-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

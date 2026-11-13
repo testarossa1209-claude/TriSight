@@ -8360,7 +8360,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-11-13-01';
+  const TRIGATE_VERSION = '2026-11-13-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -8509,6 +8509,15 @@ window.tsSyncBanner = function(msg){
       window.__tsNightRun = false;
       document.title = "TriGate 自動発掘 中止";
     };
+    /* 2026-11-13：10/24〜25、表題が「実行中」のまま5時間たっても変わらず、自動発掘が毎時やり直されて止まらなかった。
+       どこかの待ちが返ってこなくても必ず終わるよう、全体の持ち時間（3時間50分）を過ぎたら「中止」にする。
+       持ち時間は試験のときだけ window.__tsNightLimitMs で短くできる。 */
+    var limitMs = Number(window.__tsNightLimitMs) > 0 ? Number(window.__tsNightLimitMs) : 230 * 60000;
+    setTimeout(function(){
+      if(document.title === "TriGate 自動発掘 実行中"){
+        stop("持ち時間（" + Math.round(limitMs / 60000) + "分）のうちに終わりませんでした。途中まで：" + String(window.__tsNightNote || "入口ページを読んでいる途中") );
+      }
+    }, limitMs);
     var code = (typeof tsCode === "function") ? tsCode() : "";
     var comp = null;
     try{ comp = JSON.parse(localStorage.getItem("trisight_dig_company") || "null"); }catch(_){ comp = null; }
@@ -8611,9 +8620,13 @@ window.tsSyncBanner = function(msg){
     document.title = "TriGate 自動発掘 完了";
   }
   var go = function(){ if(isNight) runNight(); else showMorning(); };
-  var ready = window.tsBoxReady;
-  if(ready && typeof ready.then === "function") ready.then(function(){ setTimeout(go, 1500); }, function(){ setTimeout(go, 1500); });
-  else setTimeout(go, 3000);
+  var ready = window.tsBoxReady, went = false;
+  var go1 = function(){ if(went) return; went = true; go(); };
+  if(ready && typeof ready.then === "function"){
+    ready.then(function(){ setTimeout(go1, 1500); }, function(){ setTimeout(go1, 1500); });
+    setTimeout(go1, 60000);   /* 2026-11-13：保管庫の返事が来なくても、1分で先へ進む（待ち続けて何も起きないのを防ぐ） */
+  }
+  else setTimeout(go1, 3000);
 })();
 </script>
 

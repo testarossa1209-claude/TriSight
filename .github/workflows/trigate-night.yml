@@ -4,6 +4,12 @@
 # その日まだ動いていなければ、トライゲイトの自動発掘を最後まで走らせる。
 # 会社の情報は保管庫に置いた「ダミー入りの写し」だけを使い、記録（ログ）には書き出さない。
 # 2026-09-29
+# 2026-11-13 直し：
+#  ・10/24〜25、発掘が「完了」にならないまま毎時やり直され、止まらなかった（10/25に宏史さんの了承で停止）。
+#    → 動かした日は、終わり方にかかわらず「今日は試した」の印（キャッシュ）を残し、同じ日には二度動かさない。
+#  ・11/12から中継は未登録の端末を止める。仮想ブラウザは毎回新しい端末になるため、
+#    認証コードから作った決まった札（端末の印）を使う。札はトライデバイスの画面で一度だけ登録する。
+#  ・どこで止まったかが分かるよう、画面の帯の文言が変わるたびに記録へ出す。
 name: TriGate auto dig
 on:
   schedule:
@@ -17,11 +23,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 300
     steps:
+      - name: day
+        id: day
+        run: echo "jst=$(TZ=Asia/Tokyo date +%Y%m%d)" >> "$GITHUB_OUTPUT"
+      - name: tried-today
+        id: tried
+        uses: actions/cache/restore@v4
+        with:
+          path: night-tried.txt
+          key: trigate-night-tried-${{ steps.day.outputs.jst }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
       - name: check
         id: check
+        if: steps.tried.outputs.cache-hit != 'true'
         env:
           TRIGATE_CODE: ${{ secrets.TRIGATE_NIGHT_CODE }}
         run: |
@@ -30,14 +46,15 @@ jobs:
           const CODE = process.env.TRIGATE_CODE || '';
           const log = (m) => console.log(new Date().toISOString().slice(0, 19) + ' ' + m);
           const out = (v) => fs.appendFileSync(process.env.GITHUB_OUTPUT, 'go=' + v + '\n');
+          const DEV = (() => { const a = 'abcdefghijkmnpqrstuvwxyz23456789'; const h = require('crypto').createHash('sha256').update('trigate-night-device:' + CODE).digest(); let t = ''; for (let i = 0; i < 24; i++) t += a[h[i] % a.length]; return t; })();
           (async () => {
             if (!CODE) { log('secret TRIGATE_NIGHT_CODE is missing'); out('no'); process.exit(1); }
             let d = {};
             try {
               const r = await fetch('https://trisight-relay.vercel.app/api/box', { method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-trisight-code': CODE },
+                headers: { 'Content-Type': 'application/json', 'x-trisight-code': CODE, 'x-trisight-device': DEV },
                 body: JSON.stringify({ op: 'get' }) });
-              if (!r.ok) { log('box refused ' + r.status); out('no'); process.exit(1); }
+              if (!r.ok) { log('box refused ' + r.status + (r.status === 403 ? '（自動発掘の札が未登録の見込み。トライデバイスの画面で「見かけた未登録の端末」の Linux・Chrome を登録してください）' : '')); out('no'); process.exit(1); }
               const j = await r.json(); d = (j && j.data) || {};
             } catch (e) { log('box unreachable'); out('no'); process.exit(1); }
             if (!d.trisight_dig_company || !d.trisight_dig_company_name) { log('no company registered'); out('no'); return; }
@@ -58,6 +75,15 @@ jobs:
           })();
           EOF
           node check.cjs
+      - name: mark-tried
+        if: steps.check.outputs.go == 'yes'
+        run: date -u +%FT%TZ > night-tried.txt
+      - name: save-tried
+        if: steps.check.outputs.go == 'yes'
+        uses: actions/cache/save@v4
+        with:
+          path: night-tried.txt
+          key: trigate-night-tried-${{ steps.day.outputs.jst }}
       - if: steps.check.outputs.go == 'yes'
         run: |
           npm install --no-save playwright@1.47.2
@@ -70,10 +96,12 @@ jobs:
           import { chromium } from 'playwright';
           const CODE = process.env.TRIGATE_CODE || '';
           const log = (m) => console.log(new Date().toISOString().slice(0, 19) + ' ' + m);
+          import { createHash } from 'crypto';
+          const DEV = (() => { const a = 'abcdefghijkmnpqrstuvwxyz23456789'; const h = createHash('sha256').update('trigate-night-device:' + CODE).digest(); let t = ''; for (let i = 0; i < 24; i++) t += a[h[i] % a.length]; return t; })();
           let comp = '', name = '';
           try {
             const r = await fetch('https://trisight-relay.vercel.app/api/box', { method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-trisight-code': CODE },
+              headers: { 'Content-Type': 'application/json', 'x-trisight-code': CODE, 'x-trisight-device': DEV },
               body: JSON.stringify({ op: 'get' }) });
             if (!r.ok) { log('box refused ' + r.status); process.exit(1); }
             const j = await r.json();
@@ -83,25 +111,29 @@ jobs:
           if (!comp || !name) { log('no company registered'); process.exit(0); }
           const browser = await chromium.launch();
           const ctx = await browser.newContext({ locale: 'ja-JP', timezoneId: 'Asia/Tokyo' });
-          await ctx.addInitScript(({ code, comp, name }) => {
+          await ctx.addInitScript(({ code, comp, name, dev }) => {
             try {
               if (location.hostname.endsWith('github.io')) {
+                localStorage.setItem('trisight_device_id', dev);
                 localStorage.setItem('trisight_access_code', code);
                 localStorage.setItem('trisight_dig_company', comp);
                 localStorage.setItem('trisight_dig_company_name', name);
               }
             } catch (e) {}
-          }, { code: CODE, comp, name });
+          }, { code: CODE, comp, name, dev: DEV });
           const page = await ctx.newPage();
           page.on('dialog', (d) => { d.accept().catch(() => {}); });
           await page.goto('https://testarossa1209-claude.github.io/TriSight/TriGate.html?night=1', { waitUntil: 'load', timeout: 120000 });
           log('opened');
           const t0 = Date.now();
-          let title = '', last = '';
+          let title = '', last = '', lastB = '';
           while (Date.now() - t0 < 280 * 60000) {
             await page.waitForTimeout(30000);
             title = await page.title().catch(() => '');
             if (title !== last) { log('title: ' + title); last = title; }
+            const bn = await page.evaluate(() => { const b = document.getElementById('nightBanner'); return b ? b.textContent : ''; }).catch(() => '');
+            const bs = String(bn).replace(/（[^）]*）/g, '').slice(0, 120);
+            if (bs !== lastB) { log('banner: ' + bs); lastB = bs; }
             if (/自動発掘 (完了|中止)/.test(title)) break;
           }
           const banner = await page.evaluate(() => {

@@ -284,6 +284,12 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   .kpT th,.kpT td{border:1px solid var(--paper-deep);padding:5px 6px;text-align:left;vertical-align:top}
   .kpT th{background:var(--paper);position:sticky;top:0}
   .kpT td small{color:var(--muted)}
+  /* 2026-11-14：対照表で予定の希望（①曜日・②時刻と時間帯・⑤体制）をその場で入れる（宏史さん「一人ひとりのアセスメント登録のような大げさなものではなく、簡単に入力できる」） */
+  #kpPanel.kpWide{width:min(1060px,100vw)}
+  .kpT .kpDow{white-space:normal;line-height:1.9}.kpT .kpDow label{display:inline-block;margin:0 3px 0 0;font-size:12.5px}.kpT .kpDow input{margin:0 1px 0 0}
+  .kpT td.kpNum{text-align:center;white-space:nowrap}.kpT select,.kpT input[type=time]{font-size:12.5px;padding:2px 3px;max-width:128px}
+  .kpT tr.kpChg td{background:#fff8e1}.kpT td.kpNeed{background:#fdecea}
+  .kpBar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 8px}
   .mnSec{margin:12px 0 4px;font-size:15px;border-left:4px solid var(--amber);padding-left:8px}
   .mnCard{border:1px solid var(--paper-deep);border-radius:10px;padding:8px 10px;margin:6px 0;background:#fffdf9}
   .mnCard b{display:block;margin-bottom:2px}
@@ -414,7 +420,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-12-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-14-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -459,8 +465,9 @@ function tsPortalAsk(){
   <div class="ssHead"><h2>番号と氏名の対照表<small>番号・氏名・ふりがな・地区のどれかの一部を打つと、その人に絞れます</small></h2><button type="button" class="ssClose" id="kpClose" title="閉じる" aria-label="閉じる">×</button></div>
   <div class="ssNav"><input type="search" class="kpFind" id="kpFind" placeholder="例：0061、山田、やまだ、本町"></div>
   <div class="ssNav" id="kpDepts" style="padding-top:0"></div>
+  <div class="ssNav" style="padding-top:0"><label class="sm"><input type="checkbox" id="kpEnd"> 契約終了の人も出す</label></div>
   <div class="ssBody" id="kpBody"></div>
-  <div class="ssFoot">いま使っている部署の利用者（契約終了の人も含む）を、ふりがなのあいうえお順に並べています（ふりがなが未入力の人は末尾）。ほかの部署の利用者は、上の「○○の一覧」のボタンを押したときだけ出ます。いま使っている部署の分を紙に出すときは <button type="button" class="btn sub small" id="kpPrint">対照表を印刷する</button> <span id="kpMsg"></span></div>
+  <div class="ssFoot">いま使っている部署の利用者を、ふりがなのあいうえお順に並べています（ふりがなが未入力の人は末尾）。契約終了（死亡を含む）の人は、上の「契約終了の人も出す」に印を付けたときだけ出ます。ほかの部署の利用者は、上の「○○の一覧」のボタンを押したときだけ出ます。いま使っている部署の分を紙に出すときは <button type="button" class="btn sub small" id="kpPrint">対照表を印刷する</button> <span id="kpMsg"></span></div>
 </aside>
 <!-- 2026-11-03：2名体制名簿（右に立ち上がるサブ画面。宏史さんの指示「対照表の下に2名体制名簿として、引き出しに分けて」） -->
 <aside class="ssPanel" id="nmPanel" aria-label="2名体制名簿">
@@ -718,6 +725,26 @@ function tsPortalAsk(){
       <div class="row"><div style="flex:1"><label class="f" for="pt_em3Addr">住所</label><input type="text" id="pt_em3Addr"></div></div>
       </div>
     </details>
+    <!-- 2026-11-14：予定の希望は、新規の登録で基本の情報と一緒に入れられるよう2段目へ上げた（宏史さん「利用者登録画面にも週の回数や希望の時間帯、何名体制かの枠があれば一度で済む」） -->
+    <details class="ptsec" id="ptsWish" open><summary>予定の希望（予定を組むときの条件）</summary>
+      <p class="muted">本人・家族から聞いた、訪問の日と時刻の希望です。自動の振り分けは、「訪問できない曜日」は必ず外し、希望の曜日・時刻・時間帯・訪問時間・体制をできるかぎり守って組みます。守れなかった人は、組み方の下に理由付きで出ます。担当の看護師についての希望（「男性は嫌」など）はここに書かず、「経過」の「拒否の申し出」に本人の言葉で残してください。</p>
+      <p class="muted sm" style="margin:2px 0 6px"><b>② は必ず入れます。</b>希望の時刻か時間帯のどちらかを入れるか、希望が無い人は「何時でも可」に印を付けてください（2026-11-07の決め）。</p>
+      <div class="btns" style="margin:0 0 6px"><button type="button" class="btn sub" id="pt_avBtn">空いている曜日と時間帯を見る</button></div><div id="pt_avBox"></div>
+      <label class="f">① 希望の曜日（無ければ印を付けない）<b id="pt_wCnt" style="margin-left:10px;color:var(--navy)"></b></label><div id="pt_wDays" class="btns" style="margin-top:2px"></div>
+      <div class="row">
+        <div><label class="f" for="pt_wish">② 希望の時刻</label><input type="time" id="pt_wish"></div>
+        <div><label class="f" for="pt_wBand">② 希望の時間帯</label><select id="pt_wBand"><option value="">指定なし</option><option>午前</option><option>午後</option></select><label class="f" style="margin-top:4px"><input type="checkbox" id="pt_anyTime"> 何時でも可</label></div>
+        <div><label class="f" for="pt_vmin">④ 1回の訪問時間</label><select id="pt_vmin"><option value="">決まりのとおり</option><option value="30">30分</option><option value="60">60分</option><option value="90">90分</option></select></div>
+        <div><label class="f" for="pt_team">⑤ 体制</label><select id="pt_team"><option value="">1名</option><option>2名</option></select></div>
+        <div><label class="f" for="pt_preCall">⑥ 訪問前の連絡</label><select id="pt_preCall"><option value="">不要</option><option>要（電話）</option><option>要（その他）</option></select></div>
+      </div>
+      <label class="f">③ 訪問できない曜日（通院・デイサービス・就労など）</label><div id="pt_ngDays" class="btns" style="margin-top:2px"></div>
+      <label class="f" for="pt_ngNote">③ 訪問できない時間・理由（例：火曜の午前は通院）</label><input type="text" id="pt_ngNote" maxlength="200">
+      <label class="f"><input type="checkbox" id="pt_bike"> 2名体制のとき、この家に自転車を置かせてもらえる（担当看護師が利用者さんの了承を得た）</label>
+      <div class="row"><div><label class="f" for="pt_bikeDate">了承を得た日</label><input type="date" id="pt_bikeDate"></div><div><label class="f" for="pt_bikeBy">了承を取った看護師</label><input type="text" id="pt_bikeBy" maxlength="40"></div></div>
+      <p class="muted sm" style="margin:2px 0 8px">その日のうちに回収するなら電池は付けたまま・鍵は掛ける。後日回収なら鍵を掛け、電池は持ち帰る。</p>
+      <label class="f" for="pt_wOther">⑦ その他の希望</label><textarea id="pt_wOther" maxlength="800" style="min-height:48px"></textarea>
+    </details>
     <details class="ptsec" id="ptsCare" open><summary>トライケアから読み込む（この端末のアセスメント）</summary>
       <p class="muted">この端末のトライケア（アセスメント）に入っている利用者さんの情報を、下の欄へ入れます。AIは使わず、通信もしません。氏名・ふりがな・生年月日・住所・電話番号・保険の番号・ご家族の氏名は入れません（トライタイムは契約書番号で扱うため）。すでに書いてある欄は書き換えず、空いている欄だけを埋めます。</p>
       <div class="row"><div><label class="f" for="tc_pick">トライケアの利用者さん</label><select id="tc_pick"></select></div></div>
@@ -780,25 +807,6 @@ function tsPortalAsk(){
         <div><label class="f" for="pt_cxRule">キャンセルの取り決め</label><select id="pt_cxRule"><option value="">決まりごとのとおり</option><option>この人だけ別の取り決め</option></select></div>
       </div>
       <label class="f" for="pt_ctrNote">別の取り決め・契約の特記</label><textarea id="pt_ctrNote" maxlength="800" style="min-height:48px"></textarea>
-    </details>
-    <details class="ptsec" id="ptsWish" open><summary>予定の希望（予定を組むときの条件）</summary>
-      <p class="muted">本人・家族から聞いた、訪問の日と時刻の希望です。自動の振り分けは、「訪問できない曜日」は必ず外し、希望の曜日・時刻・時間帯・訪問時間・体制をできるかぎり守って組みます。守れなかった人は、組み方の下に理由付きで出ます。担当の看護師についての希望（「男性は嫌」など）はここに書かず、「経過」の「拒否の申し出」に本人の言葉で残してください。</p>
-      <p class="muted sm" style="margin:2px 0 6px"><b>② は必ず入れます。</b>希望の時刻か時間帯のどちらかを入れるか、希望が無い人は「何時でも可」に印を付けてください（2026-11-07の決め）。</p>
-      <div class="btns" style="margin:0 0 6px"><button type="button" class="btn sub" id="pt_avBtn">空いている曜日と時間帯を見る</button></div><div id="pt_avBox"></div>
-      <label class="f">① 希望の曜日（無ければ印を付けない）</label><div id="pt_wDays" class="btns" style="margin-top:2px"></div>
-      <div class="row">
-        <div><label class="f" for="pt_wish">② 希望の時刻</label><input type="time" id="pt_wish"></div>
-        <div><label class="f" for="pt_wBand">② 希望の時間帯</label><select id="pt_wBand"><option value="">指定なし</option><option>午前</option><option>午後</option></select><label class="f" style="margin-top:4px"><input type="checkbox" id="pt_anyTime"> 何時でも可</label></div>
-        <div><label class="f" for="pt_vmin">④ 1回の訪問時間</label><select id="pt_vmin"><option value="">決まりのとおり</option><option value="30">30分</option><option value="60">60分</option><option value="90">90分</option></select></div>
-        <div><label class="f" for="pt_team">⑤ 体制</label><select id="pt_team"><option value="">1名</option><option>2名</option></select></div>
-        <div><label class="f" for="pt_preCall">⑥ 訪問前の連絡</label><select id="pt_preCall"><option value="">不要</option><option>要（電話）</option><option>要（その他）</option></select></div>
-      </div>
-      <label class="f">③ 訪問できない曜日（通院・デイサービス・就労など）</label><div id="pt_ngDays" class="btns" style="margin-top:2px"></div>
-      <label class="f" for="pt_ngNote">③ 訪問できない時間・理由（例：火曜の午前は通院）</label><input type="text" id="pt_ngNote" maxlength="200">
-      <label class="f"><input type="checkbox" id="pt_bike"> 2名体制のとき、この家に自転車を置かせてもらえる（担当看護師が利用者さんの了承を得た）</label>
-      <div class="row"><div><label class="f" for="pt_bikeDate">了承を得た日</label><input type="date" id="pt_bikeDate"></div><div><label class="f" for="pt_bikeBy">了承を取った看護師</label><input type="text" id="pt_bikeBy" maxlength="40"></div></div>
-      <p class="muted sm" style="margin:2px 0 8px">その日のうちに回収するなら電池は付けたまま・鍵は掛ける。後日回収なら鍵を掛け、電池は持ち帰る。</p>
-      <label class="f" for="pt_wOther">⑦ その他の希望</label><textarea id="pt_wOther" maxlength="800" style="min-height:48px"></textarea>
     </details>
     <details class="ptsec" id="ptsLike" open><summary>好き嫌い・関わり方</summary>
       <p class="muted">本人が好むこと・嫌がることを、聞いた言葉や見た事実で書きます。特定の職員を嫌がる申し出や、「男性の看護師は嫌」のような要望は、ここではなく下の「看護師への要望（拒否の申し出）」に本人の言葉で記録してください（記録した要望だけが、配置の条件になります）。</p>
@@ -2779,7 +2787,8 @@ function ptDocs(){
 }
 function ptCopiedN(p){ var c = (p && p.copied) || {}; return ptDocs().filter(function(x){ return c[x[0]]; }).length; }
 var WISH_DOW = ['1','2','3','4','5','6','0'];
-function ptDowBox(id, sel){ var on = {}; (sel || []).forEach(function(d){ on[d] = 1; }); $(id).innerHTML = WISH_DOW.map(function(d){ return '<label style="display:inline-block;margin:2px 12px 2px 0"><input type="checkbox" value="' + d + '"' + (on[d] ? ' checked' : '') + '> ' + DOW[+d] + '</label>'; }).join(''); }
+function ptWCnt(){ var c = $('pt_wCnt'); if(!c) return; var n = document.querySelectorAll('#pt_wDays input:checked').length; c.textContent = n ? '週' + n + '回' : ''; }
+function ptDowBox(id, sel){ setTimeout(ptWCnt, 0); var on = {}; (sel || []).forEach(function(d){ on[d] = 1; }); $(id).innerHTML = WISH_DOW.map(function(d){ return '<label style="display:inline-block;margin:2px 12px 2px 0"><input type="checkbox" value="' + d + '"' + (on[d] ? ' checked' : '') + '> ' + DOW[+d] + '</label>'; }).join(''); }
 function ptDowGet(id){ var a = []; document.querySelectorAll('#' + id + ' input:checked').forEach(function(c){ a.push(c.value); }); return a; }
 function ptForm(){
   ptDowBox('pt_wDays', ptDowGet('pt_wDays')); ptDowBox('pt_ngDays', ptDowGet('pt_ngDays'));
@@ -4785,7 +4794,7 @@ function applyDept(){
   show('rqTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('rqOpen')) sideOpen('rq', false);
   show('osTab', R.lv !== 'none' && R.lv !== 'staff'); osBadge(); if((R.lv === 'none' || R.lv === 'staff') && document.body.classList.contains('osOpen')) sideOpen('os', false);   /* 利用者さんへのお知らせは、事務局・管理者が送る */
   show('nmTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('nmOpen')) sideOpen('nm', false);
-  if(document.body.classList.contains('kpOpen')) kpRender(); if(document.body.classList.contains('mnOpen')) mnRender(); if(document.body.classList.contains('nmOpen')) nmRender(); if(document.body.classList.contains('osOpen') && document.activeElement && document.activeElement.id !== 'osTpl') osRender();
+  if(document.body.classList.contains('kpOpen') && !(document.activeElement && $('kpBody').contains(document.activeElement) && document.activeElement.matches('input[type=time]'))) kpRender(); if(document.body.classList.contains('mnOpen')) mnRender(); if(document.body.classList.contains('nmOpen')) nmRender(); if(document.body.classList.contains('osOpen') && document.activeElement && document.activeElement.id !== 'osTpl') osRender();
   /* 2026-11-01：管理者の合言葉の枠は、管理者の印が付いた人の端末と、管理者の画面が出ている端末だけに出す（職員の端末には出さない） */
   show('cardMgrKey', !((R.lv === 'staff' || R.lv === 'office') && !R.noKey));
   roleNote(R); sharedBar();
@@ -6138,16 +6147,19 @@ $('ptFilter').addEventListener('change', renderPtList);
 $('wk_no').addEventListener('change', function(){ var p = patient(selNo('wk_no')); if(p && p.wish && !$('wk_time').value) $('wk_time').value = p.wish; if(p && p.vmin) $('wk_min').value = p.vmin; });
 /* ---- 番号と氏名の対照表（2026-10-28・宏史さんの指示「契約番号氏名対照表は必須」）----
    いま選んでいる部署の、契約終了も含めた全員を番号の順に並べて印刷する */
-function ptRosterPrint(){
-  var list = patients().slice().sort(kpOrder);
+/* 2026-11-14：印刷にも①②⑤を出す（聞き取りの手元用）。印の付いた曜日は■、付いていない曜日は□ */
+function kpPrintWish(p){ var w = (p.wDays || []).map(String); return '<td style="white-space:nowrap">' + WISH_DOW.map(function(d){ return (w.indexOf(d) >= 0 ? '■' : '□') + DOW[+d]; }).join(' ') + '</td><td>' + (w.length ? '週' + w.length + '回' : '') + '</td><td>' + esc([p.wish, p.anyTime ? '何時でも可' : p.wBand].filter(Boolean).join('・')) + '</td><td>' + esc(p.team || '1名') + '</td>'; }
+function ptRosterPrint(o){
+  o = (o && o.noEnd != null) ? o : {};   /* 対照表から印刷するときは、契約終了の人を外す（印を付けたときだけ出す）。利用者登録の一覧からは、これまでどおり全員 */
+  var list = patients().slice().sort(kpOrder).filter(function(p){ return !o.noEnd || (p.status || '利用中') !== '契約終了'; }), wish = D().kind === 'visit';
   if(!list.length){ $('pt_rosterMsg').textContent = '登録されている' + D().client + 'がいません。'; return; }
   var noName = list.filter(function(p){ return !p.name; }).length;
-  var css = '@page{size:A4;margin:12mm}body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;font-size:10.5pt;color:#10243b}' +
+  var css = '@page{size:A4' + (wish ? ' landscape' : '') + ';margin:12mm}body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;font-size:10.5pt;color:#10243b}' +
     '.hd{display:flex;align-items:center;gap:10px;border-bottom:1.5px solid #10243b;padding-bottom:6px;margin-bottom:8px}.hd img{width:30px;height:30px}.hd h1{font-size:14pt;margin:0}.hd p{margin:0;font-size:9.5pt;color:#5d6b7a}' +
     'table{width:100%;border-collapse:collapse}th,td{border:1px solid #cfc6b4;padding:3px 6px;text-align:left}th{background:#f4f1ea}tr{page-break-inside:avoid}.sm{font-size:9pt;color:#5d6b7a}.red{color:#b0402f}';
-  var rows = list.map(function(p, i){ return '<tr><td>' + (i + 1) + '</td><td>' + esc(dn(p.no)) + '</td><td>' + (p.name ? esc(p.name) : '<span class="red">未入力</span>') + '</td><td>' + esc(p.kana || '') + '</td><td>' + esc(p.sex || '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + kpTel(p) + '</td></tr>'; }).join('');
+  var rows = list.map(function(p, i){ return '<tr><td>' + (i + 1) + '</td><td>' + esc(dn(p.no)) + '</td><td>' + (p.name ? esc(p.name) : '<span class="red">未入力</span>') + '</td><td>' + esc(p.kana || '') + '</td><td>' + esc(p.sex || '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + kpTel(p) + '</td>' + (wish ? kpPrintWish(p) : '') + '</tr>'; }).join('');
   var body = '<div class="hd"><img src="' + esc(new URL('TriSight_icon_512.png', location.href).href) + '" alt="TriSight®"><div><h1>契約書番号と氏名の対照表</h1><p>' + esc(D().name) + '　' + list.length + '名　作成日 ' + esc(jpDate(ymd(new Date()))) + '</p></div></div>' +
-    '<table><tr><th>No.</th><th>契約書番号</th><th>氏名</th><th>ふりがな</th><th>性別</th><th>地区</th><th>状態</th></tr>' + rows + '</table>' +
+    '<table><tr><th>No.</th><th>契約書番号</th><th>氏名</th><th>ふりがな</th><th>性別</th><th>地区</th><th>状態</th>' + (wish ? '<th>① 訪問曜日</th><th>週</th><th>② 時刻・時間帯</th><th>⑤ 体制</th>' : '') + '</tr>' + rows + '</table>' +
     '<p class="sm">個人情報を含む書類です。事業所の外へ持ち出さず、使い終えたら決められた場所に保管してください。</p>';
   var win = window.open('', '_blank');
   if(!win){ $('pt_rosterMsg').textContent = '印刷の画面を開けませんでした。ブラウザのポップアップの許可を確かめてください。'; return; }
@@ -7693,18 +7705,78 @@ function kpTel(p){
 /* 2026-11-03：対照表は、いま使っている部署の利用者だけを出す（これまでどおり）。ほかの部署の利用者は、上の部署のボタンを押したときだけ出す。
    開き直すと、いま使っている部署に戻る */
 var KP_D = null;
+/* 2026-11-14（宏史さんの指示）：対照表で「予定の希望」の①曜日・②時刻と時間帯・⑤体制を、その場で入れて保存する。
+   登録画面と同じ欄（p.wDays・p.wish・p.wBand・p.anyTime・p.team）に入るので、どちらで入れても同じ中身になる。
+   入れている途中の分は KP_EDIT に持ち、共有で表が描き直されても消えない。保存の直前に中継の最新を取り込み、変えた欄だけを重ねる。
+   職員（一般）の端末では見るだけ。訪問の部署だけに出す（予定の希望は訪問の部署の欄のため） */
+var KP_EDIT = {};
+function kpVal(p){ var e = KP_EDIT[p.no] || {}; return { wDays: e.wDays || (p.wDays || []).map(String), wish: e.wish != null ? e.wish : (p.wish || ''), wBand: e.wBand != null ? e.wBand : (p.wBand || ''), anyTime: e.anyTime != null ? e.anyTime : !!p.anyTime, team: e.team != null ? e.team : (p.team || '') }; }
+function kpWishCells(p, ed){
+  var v = kpVal(p), end = (p.status || '利用中') === '契約終了', need = !end && !v.wish && !v.wBand && !v.anyTime;
+  var bandV = v.anyTime ? 'any' : v.wBand;
+  if(!ed) return '<td class="kpDow">' + (v.wDays.length ? WISH_DOW.filter(function(d){ return v.wDays.indexOf(d) >= 0; }).map(function(d){ return DOW[+d]; }).join('・') : '') + '</td><td class="kpNum">' + (v.wDays.length ? '週' + v.wDays.length + '回' : '') + '</td><td' + (need ? ' class="kpNeed"' : '') + '>' + esc([v.wish, v.anyTime ? '何時でも可' : v.wBand].filter(Boolean).join('・')) + '</td><td class="kpNum">' + esc(v.team || '1名') + '</td>';
+  return '<td class="kpDow">' + WISH_DOW.map(function(d){ return '<label><input type="checkbox" data-kpf="dow" value="' + d + '"' + (v.wDays.indexOf(d) >= 0 ? ' checked' : '') + '>' + DOW[+d] + '</label>'; }).join('') + '</td>' +
+    '<td class="kpNum" data-kpcnt>' + (v.wDays.length ? '週' + v.wDays.length + '回' : '') + '</td>' +
+    '<td' + (need ? ' class="kpNeed" title="②が未入力です"' : '') + '><input type="time" data-kpf="wish" value="' + esc(v.wish) + '"><br><select data-kpf="band"><option value=""' + (bandV === '' ? ' selected' : '') + '>時間帯の指定なし</option><option' + (bandV === '午前' ? ' selected' : '') + '>午前</option><option' + (bandV === '午後' ? ' selected' : '') + '>午後</option><option value="any"' + (bandV === 'any' ? ' selected' : '') + '>何時でも可</option></select></td>' +
+    '<td class="kpNum"><select data-kpf="team"><option value=""' + (v.team !== '2名' ? ' selected' : '') + '>1名</option><option' + (v.team === '2名' ? ' selected' : '') + '>2名</option></select></td>';
+}
+function kpBar(){ var n = Object.keys(KP_EDIT).length; return '<div class="kpBar"><button type="button" class="btn small" data-kpsave' + (n ? '' : ' disabled') + '>入れた内容を保存する' + (n ? '（' + n + '人）' : '') + '</button><span class="muted sm" data-kpmsg>' + esc(KP_MSG) + '</span></div>'; }
+var KP_MSG = '';
+function kpBind(){
+  $('kpBody').querySelectorAll('tr[data-kpno]').forEach(function(tr){
+    var no = tr.getAttribute('data-kpno');
+    tr.querySelectorAll('[data-kpf]').forEach(function(el){ el.addEventListener('change', function(){
+      var p = patient(no) || allPatients().filter(function(x){ return x.no === no; })[0]; if(!p) return;
+      var e = KP_EDIT[no] = KP_EDIT[no] || {}, k = el.getAttribute('data-kpf');
+      if(k === 'dow') e.wDays = [].map.call(tr.querySelectorAll('[data-kpf=dow]:checked'), function(c){ return String(c.value); });
+      else if(k === 'wish') e.wish = el.value || '';
+      else if(k === 'band'){ e.wBand = (el.value === 'any') ? '' : el.value; e.anyTime = el.value === 'any'; }
+      else if(k === 'team') e.team = el.value;
+      var c = tr.querySelector('[data-kpcnt]'), v = kpVal(p); if(c) c.textContent = v.wDays.length ? '週' + v.wDays.length + '回' : '';
+      tr.classList.add('kpChg'); KP_MSG = '';
+      $('kpBody').querySelectorAll('[data-kpsave]').forEach(function(b){ var n = Object.keys(KP_EDIT).length; b.disabled = !n; b.textContent = '入れた内容を保存する（' + n + '人）'; });
+      $('kpBody').querySelectorAll('[data-kpmsg]').forEach(function(m){ m.textContent = ''; });
+    }); });
+  });
+  $('kpBody').querySelectorAll('[data-kpsave]').forEach(function(b){ b.onclick = kpSave; });
+}
+function kpSave(){
+  var nos = Object.keys(KP_EDIT); if(!nos.length) return;
+  $('kpBody').querySelectorAll('[data-kpsave]').forEach(function(b){ b.disabled = true; b.textContent = '保存しています…'; });
+  var go = function(){
+    var a = allPatients(), n = 0, by = dev().me || '';
+    nos.forEach(function(no){
+      var p = a.filter(function(x){ return x.no === no; })[0], e = KP_EDIT[no]; if(!p || !e) return;
+      if(e.wDays){ p.wDays = e.wDays.slice(); p.ngDays = (p.ngDays || []).map(String).filter(function(d){ return p.wDays.indexOf(d) < 0; }); }
+      if(e.wish != null) p.wish = e.wish;
+      if(e.wBand != null) p.wBand = e.wBand;
+      if(e.anyTime != null) p.anyTime = e.anyTime;
+      if(e.team != null) p.team = e.team;
+      p.editedBy = by; p.edited = nowLocal(); n++;
+    });
+    saveCol('patients', a); KP_EDIT = {}; KP_MSG = '保存しました（' + n + '人）。利用者登録の「予定の希望」にも同じ内容が入っています。';
+    refreshAll(); kpRender();
+  };
+  (dev().share ? syncFresh().catch(function(){}) : Promise.resolve()).then(go);
+}
 function kpRender(){
   var q = String($('kpFind').value || '').trim().toLowerCase(), kd = KP_D || (D().kind === 'office' ? visitDepts()[0] : D());
   var ds = DEPTS.filter(function(x){ return x.kind !== 'office' && (x === D() || allPatients().some(function(p){ return inDept(p.no, x); })); });
   $('kpDepts').innerHTML = ds.length > 1 ? ds.map(function(x){ return '<button type="button" class="btn small ' + (x === kd ? '' : 'sub') + '" data-kpd="' + x.k + '">' + esc(x.name) + (x === D() ? '' : 'の一覧') + '</button>'; }).join('') : '';
   $('kpDepts').querySelectorAll('[data-kpd]').forEach(function(b){ b.onclick = function(){ var x = DEPTS.filter(function(y){ return y.k === b.getAttribute('data-kpd'); })[0]; KP_D = x === D() ? null : x; kpRender(); }; });
-  var list = allPatients().filter(function(p){ return inDept(p.no, kd); }).sort(kpOrder);
+  var showEnd = !!($('kpEnd') && $('kpEnd').checked), all0 = allPatients().filter(function(p){ return inDept(p.no, kd); });
+  var endN = all0.filter(function(p){ return (p.status || '利用中') === '契約終了'; }).length;
+  var list = all0.filter(function(p){ return showEnd || (p.status || '利用中') !== '契約終了'; }).sort(kpOrder);
+  var wish = kd.kind === 'visit', canEd = wish && role().lv !== 'staff';
+  $('kpPanel').classList.toggle('kpWide', wish);
   var hit = list.filter(function(p){ return !q || [dn(p.no), p.name, p.kana, p.area, p.telMobile, p.telHome].some(function(x){ return String(x || '').toLowerCase().indexOf(q) >= 0; }); });
   if(!list.length){ $('kpBody').innerHTML = '<p class="empty">まだ' + esc(kd.client) + 'が登録されていません。「利用者登録」で入れると、ここに並びます。</p>'; return; }
   if(!hit.length){ $('kpBody').innerHTML = '<p class="empty">「' + esc(q) + '」に当たる人はいません。</p>'; return; }
-  $('kpBody').innerHTML = '<table class="kpT"><tr><th>契約書番号</th><th>氏名</th><th>地区</th><th>状態</th></tr>' + hit.map(function(p){
-    return '<tr><td>' + esc(dn(p.no)) + '</td><td>' + (p.name ? '<b>' + esc(p.name) + '</b>' : '<span style="color:var(--red)">氏名が未入力</span>') + (p.kana || p.sex ? '<br><small>' + esc([p.kana, p.sex].filter(Boolean).join('・')) + '</small>' : '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + kpTel(p) + '</td></tr>';
-  }).join('') + '</table><p class="muted">' + (kd === D() ? '' : esc(kd.name) + '・') + hit.length + '人' + (q ? '（全 ' + list.length + '人のうち）' : '') + '</p>';
+  var endMsg = !showEnd && endN ? '（契約終了の ' + endN + '人は出していません）' : '';
+  $('kpBody').innerHTML = (canEd ? kpBar() : '') + '<table class="kpT"><tr><th>契約書番号</th><th>氏名</th><th>地区</th><th>状態</th>' + (wish ? '<th>① 訪問曜日</th><th>週</th><th>② 時刻・時間帯</th><th>⑤ 体制</th>' : '') + '</tr>' + hit.map(function(p){
+    return '<tr data-kpno="' + esc(p.no) + '"' + (KP_EDIT[p.no] ? ' class="kpChg"' : '') + '><td>' + esc(dn(p.no)) + '</td><td>' + (p.name ? '<b>' + esc(p.name) + '</b>' : '<span style="color:var(--red)">氏名が未入力</span>') + (p.kana || p.sex ? '<br><small>' + esc([p.kana, p.sex].filter(Boolean).join('・')) + '</small>' : '') + '</td><td>' + esc(p.area || '') + '</td><td>' + esc(p.status || '利用中') + ((p.status === '契約終了' && p.endWhy) ? '・' + esc(p.endWhy) : '') + kpTel(p) + '</td>' + (wish ? kpWishCells(p, canEd) : '') + '</tr>';
+  }).join('') + '</table><p class="muted">' + (kd === D() ? '' : esc(kd.name) + '・') + hit.length + '人' + (q ? '（全 ' + list.length + '人のうち）' : '') + endMsg + '</p>' + (canEd ? kpBar() : '');
+  if(canEd) kpBind();
 }
 /* 印の意味（印が付く決まりを、画面の作りに合わせて書いたもの） */
 var MN_MARKS = [
@@ -7863,7 +7935,9 @@ function mnRender(){
 $('kpTab').addEventListener('click', function(){ sideOpen('kp', true); });
 $('kpClose').addEventListener('click', function(){ sideOpen('kp', false); });
 $('kpFind').addEventListener('input', kpRender);
-$('kpPrint').addEventListener('click', function(){ ptRosterPrint(); $('kpMsg').textContent = $('pt_rosterMsg').textContent; });
+$('kpEnd').addEventListener('change', kpRender);
+$('pt_wDays').addEventListener('change', ptWCnt);
+$('kpPrint').addEventListener('click', function(){ ptRosterPrint({ noEnd: !$('kpEnd').checked }); $('kpMsg').textContent = $('pt_rosterMsg').textContent; });
 $('rqTab').addEventListener('click', function(){ sideOpen('rq', true); });
 /* 2026-11-06：目次。いま開いているタブの中で見えている枠（card）の見出し（h2）を並べ、押すとそこへ飛んで引き出しを閉じる */
 function jmItems(){

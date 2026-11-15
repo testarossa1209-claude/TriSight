@@ -420,7 +420,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-15-07</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-15-08</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -568,6 +568,8 @@ function tsPortalAsk(){
 
 <!-- ===== 予定係 ===== -->
 <section class="tab on" id="tab-plan">
+  <!-- 2026-11-15（宏史さん「管理者端末には当月の売り上げと目標までの残売り上げ（新規利用者週２回であと何人）を」）：管理者の端末の「予定」タブのいちばん上 -->
+  <div class="card" id="cardGoalNow" style="display:none"><h2 id="gn_title">今月の売上と目標</h2><div id="gn_body"></div></div>
   <div class="card" id="cardToday">
     <h2>1日の予定と地図</h2>
     <p class="lead">選んだ日の訪問先を地図に番号で出し、その下に、その日を含む1週間の本スケジュール表（職員 × 曜日）を出します。選んだ日の列は色付きで、札の丸い番号が地図の番号です。タブレットでは、この端末を使う人の予定が最初から出ます。</p>
@@ -5513,8 +5515,38 @@ function todayFill(){
   else if(cur && list.some(function(s){ return s.id === cur; })) $('td_staff').value = cur;
   else if(list.length === 1) $('td_staff').value = list[0].id;
 }
+/* 2026-11-15（宏史さんの指示）：今月の売上と目標までの残りを、管理者の端末（部門の管理者も）の「予定」タブのいちばん上に出す。
+   チェックした時点で、自分の部門が目標に届くか・足りないかが一目で分かるように。計算は「モデルコース」タブの「目標の売上に届くか」と同じ（mdTotals）。
+   足りない分は「週2回の新規の利用者さんで、あと何人」に直して出す（1人の月の売上＝1回の平均の売上×週2回×月約4.33週） */
+function gnRender(){
+  var c = $('cardGoalNow'); if(!c) return; var d = D();
+  if(!canMoney() || d.kind !== 'visit'){ c.style.display = 'none'; return; }
+  c.style.display = '';
+  var today = ymd(new Date()), m = today.slice(0, 7), X = mdTotals(m), b = $('gn_body');
+  $('gn_title').innerHTML = '今月の売上と目標 <small class="muted" style="font-weight:400">' + esc(d.name) + '・' + esc(jpMonth(m)) + '（' + esc(jpDate(today)) + '時点）</small>';
+  if(!X){ b.innerHTML = '<p class="empty">職員ごとの件数と出る曜日（「モデルコース」タブの条件）がまだ無いため、売上を出せません。</p>'; return; }
+  var T = X.T, goal = X.goal, avg = X.avg;
+  if(!X.hasPrice){ b.innerHTML = '<p class="empty">売上を出せる訪問がありません。「患者さんの登録」で保険の種類を入れてください。</p>'; return; }
+  var per = avg * 2 * 52 / 12;
+  var h = '<table><tr><th>今月の見込みの売上</th><td class="num"><b>' + mdYen(T.sFc) + '</b></td></tr>' +
+    '<tr><th>目標の売上</th><td class="num">' + (goal ? mdYen(goal) : '<small class="muted">未入力</small>') + '</td></tr>' +
+    (goal ? '<tr><th>達成の見込み</th><td class="num"><b>' + mdPct(T.sFc, goal) + '</b></td></tr>' : '') + '</table>';
+  if(!goal){ h += '<div class="judge" style="background:#eef3f8;color:var(--ink-soft)">目標の売上が入っていません。「モデルコース」タブの「目標の売上に届くか」で入れると、目標までの残りが出ます。</div>'; }
+  else {
+    var gap = goal - T.sFc;
+    if(gap <= 0) h += '<div class="judge free"><b>目標に届く見込みです。</b>（目標を ' + mdYen(-gap) + ' 上回る見込み）</div>';
+    else {
+      var n = per ? Math.ceil(gap / per) : 0;
+      h += '<div class="judge fee">目標まで <b>あと ' + mdYen(gap) + '</b> 足りません。' +
+        (n ? '<br>週2回の新規の利用者さんで、<b>あと ' + n + '人</b> です。<br><small>1人あたり月 約' + mdYen(Math.round(per)) + '（1回の平均 ' + mdYen(Math.round(avg)) + ' × 週2回 × 月約4.3週）で数えています。</small>' : '') + '</div>';
+    }
+  }
+  h += '<p class="muted sm" style="margin:6px 0 0">見込みは、今日までは実績、明日からはいまの予定（直前3か月のキャンセルの割合を引いたもの）です。中身は「モデルコース」タブで見られます。</p>';
+  b.innerHTML = h;
+}
 function renderToday(){
   if(!$('cardToday')) return;
+  try{ gnRender(); }catch(e){ if($('cardGoalNow')) $('cardGoalNow').style.display = 'none'; }
   setTimeout(function(){ try{ joinRender(); }catch(e){ if($('td_join')) $('td_join').innerHTML = ''; } }, 0);   /* 2026-11-07：2名体制の合流のしかた */
   todayFill();
   var date = $('td_date').value, sid = $('td_staff').value;
@@ -6051,10 +6083,17 @@ function refreshAll(){
   $('dv_share').checked = dev().share;
   /* 2026-11-01：新しい端末では名簿が届く前に「主に使う人」を選べないため、先に共有を始める順番を案内する */
   if($('dv_hint')) $('dv_hint').style.display = ($('dv_me').options.length <= 2) ? '' : 'none';   /* 2026-11-06：「共用端末」の選択肢が1つ増えた */
-  renderSetup(); renderPlan(); renderToday(); renderAuto(); renderIntakeList(); renderCourse(); renderReport(); renderAdmin();
-  renderMonitor(); renderSummary();
-  ptForm(); rdKinds(); renderPtList(); nrRender(); renderReq(); renderFix(); renderVm(); keyStatus(); mkStatus(); if(!hasOwnKey()) purgeOwn(); zRender(); renderMine();
-  if(typeof renderModel === 'function' && canMoney()) renderModel();
+  /* 2026-11-15（宏史さん「各部のボタンを押してもしばらく画面が変わりません」）：見えていないタブは描かない。
+     タブを押したときにそのタブを描き直す仕組み（下の「配線」）があるので、ここでは今見えているタブだけを描く。名簿・設定と共通の部分はこれまでどおり毎回描く */
+  var onT = (document.querySelector('#tabs button.on') || {}).getAttribute ? document.querySelector('#tabs button.on').getAttribute('data-tab') : 'plan';
+  renderSetup(); renderIntakeList(); renderAuto();   /* 自動の振り分けは仮スケジュール表（右端）で使うので毎回 */
+  if(onT === 'plan'){ renderPlan(); renderToday(); renderMonitor(); renderSummary(); }
+  if(onT === 'course') renderCourse();
+  if(onT === 'report') renderReport();
+  if(onT === 'admin') renderAdmin();
+  ptForm(); rdKinds(); if(onT === 'pt'){ renderPtList(); nrRender(); }
+  renderReq(); renderFix(); renderVm(); keyStatus(); mkStatus(); if(!hasOwnKey()) purgeOwn(); zRender(); renderMine();
+  if(onT === 'model' && typeof renderModel === 'function' && canMoney()) renderModel();
   var ngs = $('tab-nogi'); if(ngs && ngs.classList.contains('on')) ngRender();
   slpRender();   /* 2026-11-04：伝票タブが開いているときだけ描く */
   if(typeof jsRender === 'function') jsRender();   /* 2026-11-09：助成金の予定 */
@@ -6962,7 +7001,7 @@ function mdFees(m, vfn){
       /* 2026-11-03：利用者登録の体制が「2名」の人は、同行者が決まっていなくても2名で数える（宏史さんの指示「指示書では2名体制なので、売上は2名で計算」）。
          同行者が決まっていなければ看護補助者の加算（週1日まで）で、看護師・准看護師が同行者ならその料金で数える。
          2026-11-03 追記（宏史さんの指示）：同行者が決まっていない人の、同じ週の2回目以降は、看護補助者の加算が付かないため看護師の同行（4,500円）で数える */
-      var mj = feeJob(v.staffId) === 'j' ? 'j' : 'n', wj = v.withId ? feeJob(v.withId) : (isTwoP(p) ? ((hojo[v.no] || wkTimes(v.no) >= 2) ? 'n' : 'h') : ''), min = +v.min || 30, fee = 0;   /* 2026-11-15：週2回以上の人は看護師で数える */
+      var mj = feeJob(v.staffId) === 'j' ? 'j' : 'n', wj = v.withId ? feeJob(v.withId) : (isTwoP(p) ? ((hojo[v.no] || wkTimes(v.no) >= 2) ? 'n' : 'h') : ''), min = +v.min || 30, fee = 0, wfee = 0;   /* 2026-11-15：週2回以上の人は看護師で数える。wfee＝そのうち同行の加算の分 */
       if(ins === '精神科訪問看護（医療）' || ins === '医療保険'){
         var w4 = nth >= 4;
         if(w4 && !feeSpecial(p, date)){ out.w4ng++; out.map[key] = { fee:0, ng:true }; return; }
@@ -6971,22 +7010,24 @@ function mdFees(m, vfn){
         fee += first[v.no] ? FEE.kanriNext : (FEE.kanriFirst[c.kanri] || FEE.kanriFirst.other); first[v.no] = 1;
         if(wj){
           if(ins === '精神科訪問看護（医療）'){
-            if(min >= 30){ if(wj !== 'h') fee += FEE.psyWith[wj]; else if(!hojo[v.no]){ fee += FEE.psyWith.h; hojo[v.no] = 1; } else out.hojoOver++; }
+            if(min >= 30){ if(wj !== 'h'){ fee += FEE.psyWith[wj]; wfee = FEE.psyWith[wj]; } else if(!hojo[v.no]){ fee += FEE.psyWith.h; wfee = FEE.psyWith.h; hojo[v.no] = 1; } else out.hojoOver++; }
           } else out.medWith++;
         }
       } else if(ins === '介護保険'){
         var u = 0; FEE.kaigoUnits.some(function(x){ if(min < x[0]){ u = x[1]; return true; } return false; });
+        var kk = (c.shogu ? 1.018 : 1) * c.tanka, u0 = u;
         if(wj) u += (wj === 'h' ? FEE.kaigoWith.II : FEE.kaigoWith.I)[min < 30 ? 'u30' : 'o30'];
-        fee = Math.floor(u * (c.shogu ? 1.018 : 1) * c.tanka);
+        fee = Math.floor(u * kk); if(wj) wfee = fee - Math.floor(u0 * kk);
       } else {
         fee = +c.prices[ins] || +settings().price || 0; if(!fee) out.noPrice++;
       }
-      out.map[key] = { fee:fee, w:!!wj };
+      out.map[key] = { fee:fee, w:!!wj, wfee:wfee, wid:(v.withId && !isTbd(v.withId) ? v.withId : '') };
     });
   }
   return out;
 }
 /* 部署の職員ぶんの集計。予定の無い職員の1件あたりの売上は、部署の平均（それも無ければ決まりごとの単価） */
+function mdInRows(F, id){ if(!id) return false; if(!F.ppl){ F.ppl = {}; mdPeople().forEach(function(x){ F.ppl[x.id] = 1; }); } return !!F.ppl[id]; }
 function mdRows(m){
   var F = mdFees(m), rows = mdPeople().map(function(s){ return mdStats(s, m, F); });
   var sp = 0, pl = 0; rows.forEach(function(r){ sp += r.sPlan; pl += r.plan; });
@@ -7035,7 +7076,11 @@ function mdStats(s, m, F){
     if(fixed){ r.clashFix += ok; return; }                            /* 公休・祝日の日の予定は要調整（件数には入れない） */
     if(why){ r.clash += ok; if(isModel){ r.leave += c.n; r.leaveDays++; } return; }     /* 休みの届けの日：予定は要調整、モデルの件数はそのまま失う */
     r.cxAll += vs.length - ok; r.plan += ok; if(past) r.planPast += ok; else r.planFuture += ok;
-    vs.forEach(function(v){ if(v.cx) return; if(v.staffId !== s.id){ r.withN++; return; } var f = F.map[date + '|' + v.time + '|' + v.no]; if(f){ r.sPlan += f.fee; if(f.ng) r.ng++; } });
+    /* 2026-11-15（宏史さん「それでは稼働した職員の売り上げ成績にはなりません。同行者はかわいそう」）：同行の加算は、同行した職員の売上に付ける。
+       同行した人が稼働率表にいない（看護補助者など）ときと、同行者が決まっていないときは、これまでどおり担当の売上に入れる。合計は変わらない */
+    vs.forEach(function(v){ if(v.cx) return; var f = F.map[date + '|' + v.time + '|' + v.no];
+      if(v.staffId !== s.id){ r.withN++; if(f && f.wfee && f.wid === s.id){ r.sPlan += f.wfee; r.withYen = (r.withYen || 0) + f.wfee; } return; }
+      if(f){ r.sPlan += f.fee - (f.wfee && mdInRows(F, f.wid) ? f.wfee : 0); if(f.ng) r.ng++; } });
     if(isModel){
       var emp = Math.max(0, c.n - vs.length);
       r.empty += emp; if(!past) r.emptyFuture += emp;
@@ -7075,7 +7120,8 @@ function mdActual(m, R){
     if(v){
       used[x.date + '|' + v.time + '|' + v.no + '|' + st.id] = 1;
       if(v.staffId !== st.id){ b.withN++; return; }
-      var f = F.map[x.date + '|' + v.time + '|' + v.no]; b.yen += f ? f.fee : 0;
+      var f = F.map[x.date + '|' + v.time + '|' + v.no];
+      if(f && f.wfee && by[f.wid]){ b.yen += f.fee - f.wfee; by[f.wid].yen += f.wfee; } else b.yen += f ? f.fee : 0;   /* 2026-11-15：同行の加算は同行した職員の実績に付ける */
     } else { b.off++; b.yen += b.r.price || R.avg || 0; }
   });
   var out = { n:0, yen:0, off:0, withN:0, unknown:unknown, by:by };
@@ -7204,13 +7250,13 @@ function mdResult(){
   if(F.hojoOver) warn.push('看護補助者・精神保健福祉士との同行で、同じ週の2日目以降の ' + F.hojoOver + '件は、加算を入れていません（週1日まで）。');
   if(F.medWith) warn.push('医療保険（精神科以外）の2名体制 ' + F.medWith + '件は、加算を入れていません。');
   if(F.noPrice) warn.push('保険の種類が未入力か、単価の無い訪問 ' + F.noPrice + '件は、売上0で数えています。');
-  h += '<p class="muted" style="margin-top:8px">売上：いまの週間予定の訪問を1件ずつ、料金表（令和8年6月1日から）で計算しています（管理療養費＝' + esc(KANRI_LBL[c.kanri] || KANRI_LBL.other) + '・介護の1単位＝' + c.tanka + '円' + (c.shogu ? '・処遇改善加算1.8%込み' : '') + '）。モデルと見込みの売上は、その職員のいまの予定の1件あたりの売上に件数を掛けたものです。' + (T.withN ? '2名体制の同行 ' + T.withN + '件は、同行した職員の稼働に数え、売上は担当の職員に付けています。' : '') + '</p>' + (warn.length ? '<p style="color:var(--red);font-size:13px">' + warn.join('<br>') + '</p>' : '');
+  h += '<p class="muted" style="margin-top:8px">売上：いまの週間予定の訪問を1件ずつ、料金表（令和8年6月1日から）で計算しています（管理療養費＝' + esc(KANRI_LBL[c.kanri] || KANRI_LBL.other) + '・介護の1単位＝' + c.tanka + '円' + (c.shogu ? '・処遇改善加算1.8%込み' : '') + '）。モデルと見込みの売上は、その職員のいまの予定の1件あたりの売上に件数を掛けたものです。' + (T.withN ? '2名体制の同行 ' + T.withN + '件は、同行した職員の稼働に数え、同行の加算は同行した職員の売上に付けています（看護補助者など、この表にいない人や同行者が決まっていない訪問の加算は担当の職員の売上に入れています）。' : '') + '</p>' + (warn.length ? '<p style="color:var(--red);font-size:13px">' + warn.join('<br>') + '</p>' : '');
   $('md_judge').innerHTML = h;
   /* ---- 稼働率 ---- */
   $('md_rate').innerHTML = '<table><tr><th>職員</th><th class="num">モデル</th><th class="num">いまの予定</th><th class="num">予定の稼働率</th><th class="num">実績<br><small>（今日まで）</small></th><th class="num">実績の稼働率<br><small>（今日までのモデルに対して）</small></th>' + (hasPrice ? '<th class="num">モデルの売上</th><th class="num">見込みの売上</th>' : '') + '</tr>' +
     rows.map(function(r){
       return '<tr><td>' + esc(r.s.name) + '<br><small class="muted">1日' + r.c.n + '件・' + (r.c.days.map(function(d){ return DOW[+d]; }).join('') || '出る曜日なし') + '</small></td>' +
-        '<td class="num">' + r.model + '件</td><td class="num">' + r.plan + '件' + (r.withN ? '<br><small class="muted">うち同行 ' + r.withN + '件</small>' : '') + '</td><td class="num"><b>' + mdPct(r.plan, r.model) + '</b></td>' +
+        '<td class="num">' + r.model + '件</td><td class="num">' + r.plan + '件' + (r.withN ? '<br><small class="muted">うち同行 ' + r.withN + '件' + (r.withYen ? '（加算 ' + mdYen(r.withYen) + '）' : '') + '</small>' : '') + '</td><td class="num"><b>' + mdPct(r.plan, r.model) + '</b></td>' +
         '<td class="num">' + (r.act != null ? r.act + '件<br><small class="muted">' + r.actSrc + '</small>' : '<small class="muted">記録なし</small>') + '</td>' +
         '<td class="num">' + (r.act != null ? '<b>' + mdPct(r.act, r.modelPast) + '</b><br><small class="muted">モデル ' + r.modelPast + '件</small>' : '—') + '</td>' +
         (hasPrice ? '<td class="num">' + (r.price ? mdYen(r.model * r.price) + '<br><small class="muted">1件 ' + mdYen(r.price) + '</small>' : '<small class="muted">単価なし</small>') + '</td><td class="num">' + (r.price ? mdYen(r.fc * r.price) : '—') + '</td>' : '') + '</tr>';

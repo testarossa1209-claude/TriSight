@@ -17,6 +17,7 @@ SEED = """(function(){ var t = Date.now();
   localStorage.setItem('tritime_staff', JSON.stringify(ST)); localStorage.setItem('tritime_patients', JSON.stringify(P));
   localStorage.setItem('tritime_weekly', JSON.stringify(W)); localStorage.removeItem('tritime_weekly_backup');
   localStorage.setItem('tritime_events', '[]'); localStorage.setItem('tritime_settings', JSON.stringify({ work:{} })); localStorage.setItem('tritime_dept', 'nurse');
+  localStorage.setItem('tritime_au_caps', JSON.stringify({ f:9, p:5, m:70, n9:1 }));   /* ほかの試験が残した上限を初めの値に戻す */
 })()"""
 
 async def test(p):

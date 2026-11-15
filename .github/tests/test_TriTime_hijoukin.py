@@ -105,7 +105,7 @@ async def test(p):
         await pg.check('#mv_ok'); await pg.click('#mv_once'); await pg.wait_for_timeout(400)
         await pg.evaluate("window.confirm = function(){ return true; }; var b = document.getElementById('ssd_commit'); if(b && !b.disabled) b.click();"); await pg.wait_for_timeout(500)   # 2026-11-08：仮スケジュール表の下書きを本体に反映する
         res = await pg.inner_text('#mv_res')
-        assert '下書きに入れました' in res and '移動の間を計算し直しました' in res and '連絡板に' in res, '動かした後の知らせが出ません：' + res
+        assert '動かしました' in res and '移動の間を計算し直しました' in res and '連絡板に' in res, '動かした後の知らせが出ません：' + res
         await s.shot('#ssMv .card', 'TriTime_hj_move.png')
         mv = await pg.evaluate(EV + ".filter(function(e){ return e.type === 'move'; })")
         assert len(mv) == 1 and mv[0]['toStaff'] == sid2 and mv[0]['consent'] is True and 'toDate' not in mv[0], '組み換えの記録が違います：' + str(mv)

@@ -420,7 +420,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-15-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-15-05</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -1855,7 +1855,7 @@ function mvGapHTML(g, wr, pv, v){
   if(g == null || isNaN(g)) return '';
   /* 2026-11-15（宏史さんの指示）：同行の交代は2通りだけ。①事務所へ戻って同行者を拾って向かう ②現地集合（同行者は自転車） */
   if(isSwap(pv, v)){ var need = swapNeed(wr);
-    if(g >= need) return '<span class="ssGap">同行交代：事務所で拾う（約' + need + '分）か現地集合（自転車）</span>';
+    if(g >= need) return '<span class="ssGap" style="color:var(--ink);font-weight:700">事務所に戻って同行交代（戻り' + wr.mvStd + '分・交代' + SWAP_MIN + '分・出発' + wr.mvStd + '分）</span>';
     if(g >= wr.mvMin) return '<span class="ssGap short">同行交代：事務所で拾うにはあと' + (need - g) + '分足りません（現地集合・自転車なら間に合います）</span>';
     return '<span class="ssGap short">同行交代：間が' + Math.max(0, g) + '分しかありません（現地集合でも足りません）</span>'; }
   if(g < wr.mvMin) return '<span class="ssGap short">移動 ' + Math.max(0, g) + '分（短い）</span>';
@@ -5829,6 +5829,25 @@ function auCompute(opt){
       /* 2026-11-07：運転手のことは「希望どおりに組めなかった人」には入れない（希望の話ではないため）。付けられなかった訪問だけ、別の枠で知らせる */
     });
   })();
+  /* 2026-11-15（宏史さんの指摘「事務所へ戻るなら、最初から事務所を通過点にしたコース取りをして、看護補助者の入れ替えを予定に入れればいい」）：
+     同じ担当の続く2件で同行者が替わる所は、事務所を通過点にする。間が「戻り＋交代10分＋出発」に足りなければ、その後の訪問を後ろへずらして時間を取る。
+     本人の希望の時刻（○時○分）がある訪問は動かさず、動かせないときはその人に理由を残す */
+  (function(){ var wr = workRule(), need = swapNeed(wr), by = {};
+    rows.forEach(function(r){ var k = r.staffId + '|' + r.dow; (by[k] = by[k] || []).push(r); });
+    Object.keys(by).forEach(function(k){
+      var a = by[k].sort(function(x, y){ return x.time < y.time ? -1 : 1; });
+      for(var i = 1; i < a.length; i++){
+        if(!isSwap(a[i - 1], a[i])) continue;
+        var end = toMin(a[i - 1].time) + (+a[i - 1].min || wr.visit), lack = need - (toMin(a[i].time) - end);
+        if(lack <= 0){ a[i].viaOffice = true; continue; }
+        var fixedAt = -1; for(var j = i; j < a.length; j++){ if(/^\d{1,2}:\d{2}$/.test(a[j].wish || '')){ fixedAt = j; break; } }
+        var room = fixedAt < 0 ? 1e9 : toMin(a[fixedAt].time) - (toMin(a[fixedAt - 1].time) + (+a[fixedAt - 1].min || wr.visit)) - wr.mvMin;
+        if(fixedAt === i || room < lack){ var pp = P.filter(function(z){ return z.no === a[i].no; })[0]; if(pp && pp.why) pp.why.push(DOW[+a[i].dow] + '曜 ' + a[i].time + '：同行の交代で事務所へ戻る時間（約' + need + '分）が取れません。希望の時刻の訪問があるため、仮スケジュール表で直してください'); continue; }
+        for(var j2 = i; j2 < a.length && (fixedAt < 0 || j2 < fixedAt); j2++) a[j2].time = hm(toMin(a[j2].time) + lack);
+        a[i].viaOffice = true;
+      }
+    });
+  })();
   return { rows:rows, miss:miss, out:out, info:info, P:P, ST:ST, wk:wk, capOf:capOf };
 }
 function auMake(course){
@@ -5894,11 +5913,11 @@ function auMake(course){
           var sw = 0, by = {}; rows.forEach(function(r){ var k = r.staffId + '|' + r.dow; (by[k] = by[k] || []).push(r); });
           Object.keys(by).forEach(function(k){ var a = by[k].sort(function(x, y){ return x.time < y.time ? -1 : 1; }); for(var i = 1; i < a.length; i++) if(isSwap(a[i - 1], a[i])) sw++; });
           return '<p class="sm" style="margin:6px 0">2名体制として組んだ人：<b>' + two.length + '人</b>（一覧は右端の引き出し「2名体制」）' +
-            (sw ? '　<span style="color:var(--red);font-weight:700">事務所へ戻って同行を替える所：' + sw + 'か所</span>（表の中に、戻り・交代・出発の時間を出しています）' : '') + '</p>'; })() +
+            (sw ? '　<b>事務所を通って同行を替える所：' + sw + 'か所</b>（予定に、事務所への戻り・交代・出発の時間を入れて組んでいます）' : '') + '</p>'; })() +
         '<details style="margin:8px 0"><summary>患者さんごとの週の回数（どこから取ったか）を見る</summary><ul style="margin:4px 0 0 18px">' + P.slice().sort(function(a, b){ return b.f - a.f || (a.no < b.no ? -1 : 1); }).map(function(p){ return '<li>' + esc(dnn(p.no)) + '：週' + p.f + '回（' + esc(p.fi.src) + '）</li>'; }).join('') + '</ul></details>'; })() +
     '<p class="muted sm" style="margin:6px 0 2px">日付は今週（' + esc(jpDate(dateOf('1'))) + '〜' + esc(jpDate(dateOf('0'))) + '）に当てはめています。祝日などその日だけ休みの人の訪問は「要調整」と出ます。週間予定には毎週の予定として入るので、その日だけの付け替えは仮スケジュール表で行います（付け替えた日は見出しに「付け替え済み」と出ます）。</p>' +
     '<div class="tbl-scroll"><table class="mhT">' + head + body + '</table></div>' +
-    '<p class="muted">同じ地区の患者さんを、同じ職員・同じ曜日に寄せています。いまの担当がいる患者さんは、なるべく同じ職員のままにしています。週の回数は、利用者登録の「訪問の回数・時間帯の取り決め」の週◯回です（無ければ「予定の希望」の希望の曜日の数、それも無ければいまの週間予定の回数、それも無ければ週1回）。1日の中は、地区ごと・位置が分かるものは近い順に並べ、時刻は「勤務の決まり」の1日の流れに当てています。2名体制の同行者は、いまの週間予定に入っている分を引き継ぎ、足りない分は自動で付けます（その患者さんの週の1回目は看護補助者、2回目以降は担当とは別の、その日に空いている看護師）。</p>';
+    '<p class="muted">同じ地区の患者さんを、同じ職員・同じ曜日に寄せています。いまの担当がいる患者さんは、なるべく同じ職員のままにしています。週の回数は、利用者登録の「訪問の回数・時間帯の取り決め」の週◯回です（無ければ「予定の希望」の希望の曜日の数、それも無ければいまの週間予定の回数、それも無ければ週1回）。1日の中は、地区ごと・位置が分かるものは近い順に並べ、時刻は「勤務の決まり」の1日の流れに当てています。2名体制の同行者は、いまの週間予定に入っている分を引き継ぎ、足りない分は自動で付けます（週1回の人は看護補助者、週2回以上の人は担当とは別の看護師。その日に出勤している非常勤の看護師から先に選びます。同じ日に同じ担当が2名体制で続くときは、なるべく同じ同行者を続けて付けます。同行者が替わる所は、事務所を通って交代する時間を予定に入れて組みます）。</p>';
   $('au_apply').style.display = rows.length ? '' : 'none';
 }
 /* 2026-11-03：週間予定の違い（前→後）。患者さんごとに、曜日と担当が変わった訪問と、職員ごとの曜日別の件数の増減を出す。時刻だけの違いは出さない */

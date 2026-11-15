@@ -420,7 +420,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-15-06</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-15-07</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -5536,7 +5536,7 @@ function renderToday(){
   var num = {}; live.forEach(function(v, i){ num[date + '|' + v.no + '|' + v.time + '|' + v.staffId] = ALL ? v._n : i + 1; });
   var mon = mondayOf(parseYmd(date)), wdays = []; for(var di = 0; di < 7; di++) wdays.push(ymd(addDays(mon, di)));
   var wg = D().kind === 'office' ? { empty:'' } : ssGridHTML(wdays, { only:ALL ? null : sid, mark:date, num:num, col:colOf });   /* 2026-11-08：本体の表は見る表。札を動かすのは仮スケジュール表（下書き）だけ */   /* 2026-11-04：本体の表でも札を動かせる（予定を組む人の端末）。2026-11-05：一般の職員は自分の担当の札だけ（宏史さんの決め(b)） */
-  $('td_week').innerHTML = wg.empty != null ? wg.empty : '<h3 style="margin:6px 0 4px;font-size:15px">本スケジュール表 <small class="muted" style="font-weight:400">' + esc(jpDate(wdays[0])) + ' 〜 ' + esc(jpDate(wdays[6])) + '</small></h3><div class="ssBody tdWeek">' + wg.html + '</div><p class="muted sm" style="margin:4px 0 0">色の付いた列が選んだ日です。日付を変えると、その日の週の表に変わります。札の丸い番号は地図の番号と同じです。' + (canSched() ? '予定を変えるときは、右端の「仮スケジュール表」で札を動かし、「本体に反映する」を押します。点線の札は人情変更です。' : '') + '</p>' + (canSched() ? ptrBtnHTML('ptr_td', 'ptr_tdbox') : '') + hbBtnHTML() + jsBtnHTML();   /* 2026-11-05：空の表から組む（手組み） */
+  $('td_week').innerHTML = wg.empty != null ? wg.empty : '<h3 style="margin:6px 0 4px;font-size:15px">本スケジュール表 <small class="muted" style="font-weight:400">' + esc(jpDate(wdays[0])) + ' 〜 ' + esc(jpDate(wdays[6])) + '</small></h3><div class="ssBody tdWeek">' + wg.html + '</div><p class="muted sm" style="margin:4px 0 0">色の付いた列が選んだ日です。日付を変えると、その日の週の表に変わります。札の丸い番号は地図の番号と同じです。' + (canSched() ? '予定を変えるときは、右端の「仮スケジュール表」を開き、いちばん上の「予定を組み直す」を押すか札を動かして、「この内容で予定を確定する」を押します。点線の札は人情変更です。' : '') + '</p>' + (canSched() ? ptrBtnHTML('ptr_td', 'ptr_tdbox') : '') + hbBtnHTML() + jsBtnHTML();   /* 2026-11-05：空の表から組む（手組み） */
   if($('ptr_td')) $('ptr_td').onclick = function(){ ptrRun(wdays, 'ptr_tdbox', '#td_week', '本スケジュール表'); };
   if($('hb_open')) $('hb_open').onclick = hbToggle; if(window.HB && HB.on) hbRender();
   if($('pw_open')) $('pw_open').onclick = pwOpen;   /* 2026-11-05：予定表の作り方を選ぶ */
@@ -5817,6 +5817,38 @@ function auCompute(opt){
     rows.forEach(function(v){ if(!okWith(v.withId)) v.withId = ''; });
     var firstSeen = {}, hojoUsed = {}, sameWith = {};
     var weeklyTimes = {}; rows.forEach(function(r){ if(r.no) weeklyTimes[r.no] = (weeklyTimes[r.no] || 0) + 1; });
+    /* 2026-11-15（宏史さん「なるべく、同行の交代はないような組み方は出来ないのですか？」）：
+       同行者は1件ずつではなく、担当の1日分（2名体制の訪問）をまとめて1人に決める。
+       ・その日に週2回以上の人が1人でもいれば、その日は看護師が通しで同行する（週1回の人は看護補助者「でよい」決まりなので、看護師でもかまわない）
+       ・週1回の人だけの日は、看護補助者が通しで同行する
+       ・前の予定から引き継いだ同行者は、決まりに合って1日通しで空いていれば、いちばん多く入っている人を先に使う
+       ・1日通しで付けられる人がいなければ元のままにし、下の1件ずつの付け方と、同じ同行者の訪問を続けて並べる処理に任せる */
+    (function(){
+      var byId = function(id){ return staff().filter(function(x){ return x.id === id; })[0] || null; };
+      var isAideId = function(id){ return AIDE_JOBS.indexOf(jobOf(byId(id) || {})) >= 0; };
+      var grp = {};
+      rows.forEach(function(v){ if(isTbd(v.withId)) return; if(!isTwoP(patient(v.no) || {}) && !v.withId) return; (grp[v.staffId + '|' + v.dow] = grp[v.staffId + '|' + v.dow] || []).push(v); });
+      Object.keys(grp).forEach(function(k){
+        var g = grp[k]; if(g.length < 2) return;
+        var old = g.map(function(v){ return v.withId || ''; });
+        if(old[0] && old.every(function(id){ return id === old[0]; })) return;
+        var d = g[0].dow, sid = g[0].staffId, needN = g.some(function(v){ return (weeklyTimes[v.no] || 0) >= 2; });
+        g.forEach(function(v){ v.withId = ''; });
+        var fits = function(id){
+          if(!id || id === sid || !okWith(id)) return false;
+          if(isAideId(id)){ if(needN) return false; var sa = byId(id); if(!sa || !dayOK(sa, d)) return false; }
+          else { var nx = ST.filter(function(x){ return x.s.id === id; })[0]; if(!nx || nx.days.indexOf(d) < 0 || loadOf(id, d) + g.length > capOf(nx, d)) return false; }
+          return g.every(function(v){ return !busy(id, d, v.time, v.min || 30); }); };
+        var cnt = {}; old.forEach(function(id){ if(id) cnt[id] = (cnt[id] || 0) + 1; });
+        var pick = Object.keys(cnt).sort(function(a, b){ return cnt[b] - cnt[a]; }).filter(fits)[0] || '';
+        if(!pick && !needN) pick = aides.map(function(x){ return x.id; }).filter(fits)[0] || '';
+        if(!pick) pick = ST.filter(function(x){ return x.s.id !== sid && x.days.indexOf(d) >= 0; })
+          .sort(function(a, b){ return (needN ? pTier(a) - pTier(b) : wTier(a) - wTier(b)) || loadOf(a.s.id, d) - loadOf(b.s.id, d); })
+          .map(function(x){ return x.s.id; }).filter(fits)[0] || '';
+        if(pick) g.forEach(function(v){ v.withId = pick; v.autoWith = true; });
+        else g.forEach(function(v, i){ v.withId = old[i]; });
+      });
+    })();
     rows.forEach(function(v){ if(v.withId && AIDE_JOBS.indexOf(jobOf(staff().filter(function(x){ return x.id === v.withId; })[0] || {})) >= 0) hojoUsed[v.no] = 1; });
     rows.slice().sort(function(a, b){ var da = (+a.dow + 6) % 7, db = (+b.dow + 6) % 7; return da - db || (a.time < b.time ? -1 : 1); }).forEach(function(v){
       var p = patient(v.no) || {}, tb = isTbd(v.withId) ? v.withId : '';
@@ -5850,6 +5882,21 @@ function auCompute(opt){
       var w = driver(v, v.min || p.vmin || 30);
       if(w){ v.withId = w; v.autoWith = true; v.farDrv = true; } else { v.needDrv = true; }
       /* 2026-11-07：運転手のことは「希望どおりに組めなかった人」には入れない（希望の話ではないため）。付けられなかった訪問だけ、別の枠で知らせる */
+    });
+  })();
+  /* 2026-11-15：それでも1日の中で同行者が替わる担当は、同じ同行者の訪問を続けて並べて、交代を1回にする（希望の時刻・時間帯のある訪問は動かさない。並べ替えで同行者の予定が重なるなら元に戻す） */
+  (function(){
+    var by = {}; rows.forEach(function(r){ if(!r.withId || isTbd(r.withId)) return; (by[r.staffId + '|' + r.dow] = by[r.staffId + '|' + r.dow] || []).push(r); });
+    Object.keys(by).forEach(function(k){
+      var a = by[k].slice().sort(function(x, y){ return x.time < y.time ? -1 : 1; });
+      var ids = {}; a.forEach(function(r){ ids[r.withId] = 1; }); if(Object.keys(ids).length < 2) return;
+      var mv = a.filter(function(r){ return !r.wish; }); if(mv.length < 2) return;
+      var first = {}; a.forEach(function(r, i){ if(first[r.withId] == null) first[r.withId] = i; });
+      var bak = mv.map(function(r){ return r.time; }), times = bak.slice().sort();
+      mv.slice().sort(function(x, y){ return first[x.withId] - first[y.withId] || (x.time < y.time ? -1 : 1); }).forEach(function(r, i){ r.time = times[i]; });
+      var clash = mv.some(function(r){ var x0 = toMin(r.time), x1 = x0 + (+r.min || 30);
+        return rows.some(function(o){ if(o === r || o.dow !== r.dow || (o.staffId !== r.withId && o.withId !== r.withId)) return false; var y0 = toMin(o.time), y1 = y0 + (+o.min || 30); return x0 < y1 && y0 < x1; }); });
+      if(clash) mv.forEach(function(r, i){ r.time = bak[i]; });
     });
   })();
   officePass(rows, P);
@@ -7537,7 +7584,11 @@ function ssRender(){
   if(d.kind === 'office'){
     var hs = acrossDepts(function(x){ var g0 = ssGridHTML(days, {}); return g0.html ? ['<h3 style="margin:10px 0 4px;font-size:15px">' + esc(x.name) + '</h3>' + g0.html] : []; });
     $('ssTitle').innerHTML = '仮スケジュール表<small>訪問のある全部署・1週間の見渡し</small>';
-    $('ssGrid').innerHTML = hs.length ? hs.join('') + '<p class="muted sm" style="margin:6px 0 0">ここでは見るだけです。札を動かすときは、上の「使う部署」でその部署を選んでください。</p>' : '<p class="empty">訪問のある部署に、まだ職員がいません。</p>';
+    /* 2026-11-15（宏史さん「仮スケジュール表の一番上に３つのボタンがならんでいません」）：全体で開いたときも、いちばん上に部署ごとの「組み直す・確定する」入口を出し、押せばその部署の表に切り替える */
+    var gw = '<div class="ssdBar"><span>予定を組み直す・確定するのは部署ごとです。下のボタンを押すと、その部署の表に切り替わり、いちばん上に「予定を組み直す」「この内容で予定を確定する」が出ます。</span>' +
+      DEPTS.filter(function(x){ return x.kind === 'visit' && !x.paused; }).map(function(x){ return '<button type="button" class="btn" data-ssgo="' + x.k + '">' + esc(x.name) + 'の予定を組み直す・確定する</button>'; }).join('') + '</div>';
+    $('ssGrid').innerHTML = gw + (hs.length ? hs.join('') + '<p class="muted sm" style="margin:6px 0 0">ここでは見るだけです。札を動かすときは、上の「使う部署」でその部署を選んでください。</p>' : '<p class="empty">訪問のある部署に、まだ職員がいません。</p>');
+    $('ssGrid').querySelectorAll('[data-ssgo]').forEach(function(b){ b.onclick = function(){ try{ localStorage.setItem(DEPT_KEY, b.getAttribute('data-ssgo')); }catch(e){} applyDept(); refreshAll(); ssRender(); }; });
     return;
   }
   /* 2026-11-08：ここからは下書き。開いたときに下書きが無ければ、いまの本体の予定（AIのベースを管理者が直したもの）を写して始める */
@@ -7564,7 +7615,7 @@ function ssRender(){
     var n = ssdCount(); if(!n) return;
     if(!confirm('変えた ' + n + '件で予定を確定します。確定すると、担当者の画面の予定が変わります。確定しますか。')) return;
     var r = ssdCommit(); refreshAll();
-    $('ssGrid').insertAdjacentHTML('afterbegin', '<div class="judge free" style="margin:0 0 10px"><b>本体に反映しました（' + r.n + '件）。</b><br>連絡板の知らせも本体に入りました。' + (r.pn.length ? '担当者へ携帯・メールで知らせるときは、下のボタンを押してください。' : '') + '</div>' + (r.pn.length ? pnHTML(r.pn) : ''));
+    $('ssGrid').insertAdjacentHTML('afterbegin', '<div class="judge free" style="margin:0 0 10px"><b>予定を確定しました（' + r.n + '件）。</b><br>担当者の画面の予定と連絡板の知らせも変わりました。' + (r.pn.length ? '担当者へ携帯・メールで知らせるときは、下のボタンを押してください。' : '') + '</div>' + (r.pn.length ? pnHTML(r.pn) : ''));
   };
   $('ssd_reset').onclick = function(){ if(!confirm('変えた所を取り消して、いまの予定に戻します。よろしいですか。')) return; SSD = null; ssdSave(); ssRender(); };
 }

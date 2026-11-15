@@ -420,7 +420,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-15-05</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-15-06</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -509,8 +509,8 @@ function tsPortalAsk(){
   <div class="ssNav"><b id="ssWeek"></b><input type="date" id="ssFrom" title="表の始まりの日（この日から7日分を出します）" style="font:inherit;font-size:13px;padding:3px 6px"><button type="button" class="btn sub small" id="ssPrev">前の週</button><button type="button" class="btn sub small" id="ssThis">今日から</button><button type="button" class="btn sub small" id="ssNext">次の週</button></div>
   <div class="ssBody" id="ssBody"><div id="ssGrid"></div>
     <!-- 2026-11-08：AIのベース（地区で寄せる組み方）は、仮スケジュール表の中で組み直す（自動組みの引き出しはやめた） -->
-    <details class="ssAi" id="ssAi"><summary>AIのベースで組み直す（地区で寄せて組む）</summary><div id="ssAiBody"><div class="card" id="cardAuto" style="display:none">
-        <p class="lead">利用中の患者さんを地区ごとにまとめ、看護師の出る曜日（名簿の公休）と1日の件数の上限の中で、AIがベースの組み方を出します。件数の上限は決まった数（常勤9件・非常勤5件）で組むので、ふだんは「組み方を出す」を押すだけです。よければ「この組み方を下書きに入れる」を押し、上の表で札を動かして直してから「本体に反映する」を押します。</p>
+    <details class="ssAi" id="ssAi"><summary>組み直しの結果と細かい設定（1日の件数の上限など）</summary><div id="ssAiBody"><div class="card" id="cardAuto" style="display:none">
+        <p class="lead">利用中の患者さんを地区ごとにまとめ、看護師の出る曜日（名簿の公休）と1日の件数の上限の中で、AIがベースの組み方を出します。件数の上限は決まった数（常勤9件・非常勤5件）で組むので、ふだんは表のいちばん上の「予定を組み直す」を押すだけです（ここの「組み方を出す」「この組み方を下書きに入れる」は、結果を細かく見たいとき用です）。表で札を動かして直してから「この内容で予定を確定する」を押します。</p>
     <!-- 2026-11-08（宏史さんの指摘「地区で寄せるのが基本ベース。件数の上限や管理者の割合を取り立てて入力する必要はない」）：ふだんは決まった数で組むので、入力欄は閉じておく -->
     <details id="au_caps"><summary>1日の件数の上限・管理者の訪問の割合を変える（ふだんは開かなくてかまいません）</summary>
     <div class="row">
@@ -525,7 +525,7 @@ function tsPortalAsk(){
   </div>
   </div></details>
   </div>
-  <div class="ssFoot">仮の表（下書き）です。ここで札を動かしても、本体の予定は変わりません。「本体に反映する」を押したときだけ本体へ入ります。キャンセルの入った訪問は赤の取り消し線、休みの升は灰色の斜線、休みの日の訪問は赤枠の「要調整」で出ます。訪問の間が移動の目安より短いと赤字で、長いと「空き」で出ます。升の右下は、その日の件数です（目標に届くと緑）。</div>
+  <div class="ssFoot">予定を直す表です。ここで札を動かしても、「この内容で予定を確定する」を押すまで、ほかの端末の予定は変わりません。キャンセルの入った訪問は赤の取り消し線、休みの升は灰色の斜線、休みの日の訪問は赤枠の「要調整」で出ます。訪問の間が移動の目安より短いと赤字で、長いと「空き」で出ます。升の右下は、その日の件数です（目標に届くと緑）。</div>
 </aside>
 
 <div id="verNotice"></div>
@@ -1693,6 +1693,7 @@ function live(col){ return raw(col).filter(function(x){ return x && !x.del; }); 
 function strip(o){ var c = {}; Object.keys(o || {}).forEach(function(k){ if(k !== 'upd' && k !== 'srv' && k !== 'del') c[k] = o[k]; }); return JSON.stringify(c); }
 function markDirty(col, id){ var s = lj(SYNC_KEY, {}); s.dirty = s.dirty || {}; (s.dirty[col] = s.dirty[col] || {})[id] = 1; sj(SYNC_KEY, s); }
 function saveCol(col, liveArr){
+  if(col === 'weekly' && ssdOn()) officePass(liveArr);   /* 2026-11-15：下書きの札を手で動かしたら、その日の同行交代の時間をAIが計算し直す */
   if((col === 'weekly' || col === 'events') && ssdOn()){ SSD[col] = ssdClone(liveArr.filter(function(x){ return x && !x.del; })); ssdSave(); return; }   /* 2026-11-08：下書きの間は写しにだけ入れる */
   var kf = KEYF[col], now = srvNow(), old = raw(col), om = {}, seen = {}, out = [];   /* 2026-10-31：後先は中継の時刻に合わせて決める（時計のずれた端末が勝たないように） */
   old.forEach(function(o){ if(o && o[kf] != null) om[o[kf]] = o; });
@@ -1806,7 +1807,7 @@ function pnMail(mails, subj, text){ var q = 'subject=' + encodeURIComponent(subj
 function pnHTML(items){
   /* 2026-11-08：下書きの中での組み換えでは、携帯・メールの一押しを出さずに取っておき、「本体に反映する」を押したあとにまとめて出す */
   var dm = document.getElementById('ssMv');
-  if(SSD && ((dm && dm.getAttribute('data-draft') === '1') || SSD_PNQ > 0)){ (SSD.pn = SSD.pn || []); items.forEach(function(it){ if(!SSD.pn.some(function(x){ return x.text === it.text && String(x.to) === String(it.to); })) SSD.pn.push(it); }); ssdSave(); return '<p class="muted sm" style="margin:6px 0">担当者への携帯・メールの知らせは、「本体に反映する」を押したあとに出ます。</p>'; }
+  if(SSD && ((dm && dm.getAttribute('data-draft') === '1') || SSD_PNQ > 0)){ (SSD.pn = SSD.pn || []); items.forEach(function(it){ if(!SSD.pn.some(function(x){ return x.text === it.text && String(x.to) === String(it.to); })) SSD.pn.push(it); }); ssdSave(); return '<p class="muted sm" style="margin:6px 0">担当者への携帯・メールの知らせは、「この内容で予定を確定する」を押したあとに出ます。</p>'; }
   var all = staff(), h = '';
   items.forEach(function(it){
     var ps = (it.to || []).filter(function(x, i, a){ return x && a.indexOf(x) === i; }).map(function(id){ return all.filter(function(s){ return s.id === id; })[0]; }).filter(Boolean);
@@ -1849,6 +1850,28 @@ function twoWhy(p){ return !p ? '' : p.team === '2名' ? '利用者登録の体�
 /* 2026-11-15（宏史さんの指摘「同行が入れ替わると事務所へ戻らなければならない。移動時間を計算し直さないとならない」）：
    同じ担当の続く2件で、同行者が別の人に替わるときは、事務所へ戻って同行を替えて出直す時間（戻り＋交代10分＋出発）で見る */
 var SWAP_MIN = 10;
+/* 2026-11-15（宏史さんの指摘「事務所を通過点にしたコース取り」「手で動かしたあともAIが移動時間を計算し直さないと予定ががたがたになる」）：
+   同じ担当・同じ曜日の続く2件で同行者が替わる所は、事務所を通過点にする。間が「戻り＋交代10分＋出発」に足りなければ、その後の訪問を後ろへずらす。
+   本人の希望の時刻（○時○分）がある訪問は動かさず、動かせないときは P（組み方の患者さん）に理由を残す。組み方を出すときと、下書きの札を手で動かしたときに使う */
+function officePass(rows, P){
+  var wr = workRule(), need = swapNeed(wr), by = {};
+  var wishOf = function(r){ var p = patient(r.no) || {}; return r.wish || p.wish || ''; };
+  rows.forEach(function(r){ if(!r || r.del || !r.staffId || r.dow == null) return; var k = r.staffId + '|' + r.dow; (by[k] = by[k] || []).push(r); });
+  Object.keys(by).forEach(function(k){
+    var a = by[k].sort(function(x, y){ return x.time < y.time ? -1 : 1; });
+    for(var i = 1; i < a.length; i++){
+      if(!isSwap(a[i - 1], a[i])) continue;
+      var end = toMin(a[i - 1].time) + (+a[i - 1].min || wr.visit), lack = need - (toMin(a[i].time) - end);
+      if(lack <= 0) continue;
+      var fixedAt = -1; for(var j = i; j < a.length; j++){ if(/^\d{1,2}:\d{2}$/.test(wishOf(a[j]))){ fixedAt = j; break; } }
+      var room = fixedAt < 0 ? 1e9 : toMin(a[fixedAt].time) - (toMin(a[fixedAt - 1].time) + (+a[fixedAt - 1].min || wr.visit)) - wr.mvMin;
+      if(fixedAt === i || room < lack){ var pp = (P || []).filter(function(z){ return z.no === a[i].no; })[0]; if(pp && pp.why) pp.why.push(DOW[+a[i].dow] + '曜 ' + a[i].time + '：同行の交代で事務所へ戻る時間（約' + need + '分）が取れません。希望の時刻の訪問があるため、仮スケジュール表で直してください'); continue; }
+      for(var j2 = i; j2 < a.length && (fixedAt < 0 || j2 < fixedAt); j2++) a[j2].time = hm(toMin(a[j2].time) + lack);
+    }
+  });
+  return rows;
+}
+
 function isSwap(pv, v){ return !!(pv && v && pv.staffId && pv.staffId === v.staffId && pv.withId && v.withId && pv.withId !== v.withId); }
 function swapNeed(wr){ return wr.mvStd * 2 + SWAP_MIN; }
 function mvGapHTML(g, wr, pv, v){
@@ -5829,25 +5852,7 @@ function auCompute(opt){
       /* 2026-11-07：運転手のことは「希望どおりに組めなかった人」には入れない（希望の話ではないため）。付けられなかった訪問だけ、別の枠で知らせる */
     });
   })();
-  /* 2026-11-15（宏史さんの指摘「事務所へ戻るなら、最初から事務所を通過点にしたコース取りをして、看護補助者の入れ替えを予定に入れればいい」）：
-     同じ担当の続く2件で同行者が替わる所は、事務所を通過点にする。間が「戻り＋交代10分＋出発」に足りなければ、その後の訪問を後ろへずらして時間を取る。
-     本人の希望の時刻（○時○分）がある訪問は動かさず、動かせないときはその人に理由を残す */
-  (function(){ var wr = workRule(), need = swapNeed(wr), by = {};
-    rows.forEach(function(r){ var k = r.staffId + '|' + r.dow; (by[k] = by[k] || []).push(r); });
-    Object.keys(by).forEach(function(k){
-      var a = by[k].sort(function(x, y){ return x.time < y.time ? -1 : 1; });
-      for(var i = 1; i < a.length; i++){
-        if(!isSwap(a[i - 1], a[i])) continue;
-        var end = toMin(a[i - 1].time) + (+a[i - 1].min || wr.visit), lack = need - (toMin(a[i].time) - end);
-        if(lack <= 0){ a[i].viaOffice = true; continue; }
-        var fixedAt = -1; for(var j = i; j < a.length; j++){ if(/^\d{1,2}:\d{2}$/.test(a[j].wish || '')){ fixedAt = j; break; } }
-        var room = fixedAt < 0 ? 1e9 : toMin(a[fixedAt].time) - (toMin(a[fixedAt - 1].time) + (+a[fixedAt - 1].min || wr.visit)) - wr.mvMin;
-        if(fixedAt === i || room < lack){ var pp = P.filter(function(z){ return z.no === a[i].no; })[0]; if(pp && pp.why) pp.why.push(DOW[+a[i].dow] + '曜 ' + a[i].time + '：同行の交代で事務所へ戻る時間（約' + need + '分）が取れません。希望の時刻の訪問があるため、仮スケジュール表で直してください'); continue; }
-        for(var j2 = i; j2 < a.length && (fixedAt < 0 || j2 < fixedAt); j2++) a[j2].time = hm(toMin(a[j2].time) + lack);
-        a[i].viaOffice = true;
-      }
-    });
-  })();
+  officePass(rows, P);
   return { rows:rows, miss:miss, out:out, info:info, P:P, ST:ST, wk:wk, capOf:capOf };
 }
 function auMake(course){
@@ -5952,7 +5957,7 @@ function auApply(){
   if(!auPlan || !auPlan.rows.length) return;
   var tdy = ymd(new Date()), nowA = nowLocal(), setN = {}; auPlan.nos.forEach(function(n){ setN[n] = 1; });
   var nOld = events().filter(function(e){ return e.type === 'move' && setN[e.patientNo] && (e.toDate || e.date) > tdy && !moveStale(e); }).length;
-  if(!confirm((nOld ? '明日以降に「この日だけ」組み換えた記録が ' + nOld + '件あります。記録は残しますが、予定には新しい週間予定（確定行程）だけを出します。\n\n' : '') + '下書きの週間予定のうち、振り分けた患者さん ' + auPlan.nos.length + '人の分を、この組み方に入れ替えます。本体は「本体に反映する」を押すまで変わりません。入れ替えますか。')) return;
+  if(!confirm((nOld ? '明日以降に「この日だけ」組み換えた記録が ' + nOld + '件あります。記録は残しますが、予定には新しい週間予定（確定行程）だけを出します。\n\n' : '') + '下書きの週間予定のうち、振り分けた患者さん ' + auPlan.nos.length + '人の分を、この組み方に入れ替えます。ほかの端末の予定は「この内容で予定を確定する」を押すまで変わりません。入れ替えますか。')) return;
   var all = live('weekly');
   var apPrev = lj(AU_APPLIED, {}) || {}, apNew = JSON.parse(JSON.stringify(apPrev));
   auPlan.nos.forEach(function(n){ apNew[n] = { at:nowA, day:tdy }; });
@@ -5963,7 +5968,7 @@ function auApply(){
   auPlan.rows.forEach(function(v){ var inf = auPlan.info[v.no] || {}, w = v.withId || '';
     keep.push({ id:uid(), dow:v.dow, time:v.time, min:v.min || inf.min || 30, no:v.no, staffId:v.staffId, withId:w }); });
   saveCol('weekly', keep);
-  $('au_msg').textContent = '下書きに入れました（' + auPlan.rows.length + '件）。上の表で直してから「本体に反映する」を押します。';
+  $('au_msg').textContent = '組み直しました（' + auPlan.rows.length + '件）。表で確かめて、必要なら札を動かしてから「この内容で予定を確定する」を押します。';
   auPlan = null; $('au_apply').style.display = 'none'; var pd = $('au_pdiff'); if(pd) pd.remove(); refreshAll(); auUndoShow();   /* 入れた後は「いまの週間予定から変わる訪問」は古くなるので消す。違いは上の控えとの比べで出る */
 }
 function auUndoShow(){ ssdLoad(); var b = (SSD && SSD.bak) ? SSD.bak : lj(AU_BAK, null); $('au_undo').style.display = 'none';   /* 2026-11-08：戻すのは仮スケジュール表の「下書きを捨てて本体に戻す」に一本化。違いは下書き（あれば）と入れる前の控えで出す */
@@ -7540,10 +7545,12 @@ function ssRender(){
   ssdWith(function(){
     var g = ssGridHTML(days, { drag:true });
     var n = ssdCount(), wkEmpty = !weekly().length;
-    var bar = '<div class="ssdBar"><b>下書き</b><span>' + (n ? '本体から変えた所が <b>' + n + '件</b> あります。' : '本体と同じ中身です。') + '</span>' +
-      '<button type="button" class="btn amber" id="ssd_commit"' + (n ? '' : ' disabled') + '>本体に反映する</button>' +
-      '<button type="button" class="btn sub small" id="ssd_reset"' + (n ? '' : ' disabled') + '>下書きを捨てて本体に戻す</button>' +
-      '<small class="muted" style="flex-basis:100%">ここで札を動かしても本体は変わりません。' + (wkEmpty ? 'まだ予定が入っていないので、下の「AIのベースで組み直す」でAIにベースを組ませてください。' : '直し終えたら「本体に反映する」を押します。') + '</small></div>';
+    /* 2026-11-15（宏史さんの指摘「下書き・本体・AIのベースが分かりにくい」「組み直しのボタンも一番上にまとめて」）：言葉を改め、組み直しを一番上へ */
+    var bar = '<div class="ssdBar"><button type="button" class="btn" id="ssd_remake">予定を組み直す</button>' +
+      '<span>' + (n ? 'いまの予定から変えた所が <b>' + n + '件</b> あります。「この内容で予定を確定する」を押すまで、ほかの端末の予定は変わりません。' : 'いまの予定のままです（まだ変えていません）。') + '</span>' +
+      '<button type="button" class="btn amber" id="ssd_commit"' + (n ? '' : ' disabled') + '>この内容で予定を確定する</button>' +
+      '<button type="button" class="btn sub small" id="ssd_reset"' + (n ? '' : ' disabled') + '>変えた所を取り消す（いまの予定に戻す）</button>' +
+      '<small class="muted" style="flex-basis:100%">「予定を組み直す」を押すと、AIが地区・出勤日・2名体制の同行・事務所での同行交代の時間まで入れて組み直します。札を手で動かすと、その日の移動と同行交代の時間はAIが自動で計算し直します。</small></div>';
     if(g.empty){ $('ssGrid').innerHTML = bar + g.empty; }
     else {
       $('ssGrid').innerHTML = bar + g.html + '<p class="muted sm" style="margin:6px 0 0">今日以降の訪問の札は、指で押さえたまま別の人の升・別の曜日の升へ引っぱると動かせます。同じ升の中で上下に動かすと順番が入れ替わります。点線の札は人情変更です。</p>' + ptrBtnHTML('ptr_ss', 'ptr_ssbox') + ssBulkHTML(days) + ssStandbyHTML(days);
@@ -7552,13 +7559,14 @@ function ssRender(){
     }
     if(wkEmpty && $('ssAi')) $('ssAi').open = true;
   });
+  $('ssd_remake').onclick = function(){ auMake(); if(auPlan && auPlan.rows.length){ ssdLoad(); if(!SSD) ssdStart(); ssdWith(auApply); } else if($('ssAi')){ $('ssAi').open = true; } };
   $('ssd_commit').onclick = function(){
     var n = ssdCount(); if(!n) return;
-    if(!confirm('下書きで変えた ' + n + '件を本体の予定に反映します。反映すると、担当者の画面の予定が変わります。反映しますか。')) return;
+    if(!confirm('変えた ' + n + '件で予定を確定します。確定すると、担当者の画面の予定が変わります。確定しますか。')) return;
     var r = ssdCommit(); refreshAll();
     $('ssGrid').insertAdjacentHTML('afterbegin', '<div class="judge free" style="margin:0 0 10px"><b>本体に反映しました（' + r.n + '件）。</b><br>連絡板の知らせも本体に入りました。' + (r.pn.length ? '担当者へ携帯・メールで知らせるときは、下のボタンを押してください。' : '') + '</div>' + (r.pn.length ? pnHTML(r.pn) : ''));
   };
-  $('ssd_reset').onclick = function(){ if(!confirm('下書きで変えた所を捨てて、本体の予定に戻します。よろしいですか。')) return; SSD = null; ssdSave(); ssRender(); };
+  $('ssd_reset').onclick = function(){ if(!confirm('変えた所を取り消して、いまの予定に戻します。よろしいですか。')) return; SSD = null; ssdSave(); ssRender(); };
 }
 /* 2026-11-03：その日の訪問を、まとめて担当・同行に付け替える（宏史さん「本日（祭日）は全部の利用者を島さんと佐野（夫）さんが回った。全部複数名。要確認の直し方は」）。
    その日の訪問（キャンセルを除く）ごとに組み換え（move）を残し、担当と同行を替える。担当と同行の人には、その日の「出勤」（type "work"）を付けて、公休・祝日の要調整を消す。
@@ -7815,7 +7823,7 @@ function ssMoveDo(v, sid, date, weeklyToo){
   saveEvents(ev2);
   /* 携帯・メールの文面には、患者さんの氏名を入れない（11/2の決め）。日時と契約書番号だけ */
   var txt = (weeklyToo ? '毎週の訪問の予定が変わりました。' : '訪問の予定が変わりました。') + '\n' + dn(v.no) + '：' + (weeklyToo ? DOW[parseYmd(v.od).getDay()] + '曜 ' + v.ot + ' → ' + DOW[parseYmd(date).getDay()] + '曜 ' + t : jpDate(v.date) + ' ' + v.time + ' → ' + jpDate(date) + ' ' + t) + '\n担当：' + staffName(sid) + '\nトライタイムで確認し、事務所へ連絡をお願いします。';
-  $('mv_res').innerHTML = '<div class="judge free" style="margin-top:8px"><b>' + (ssdOn() ? '下書きに入れました（本体はまだ変わっていません）。' : '動かしました。') + '</b><br>' + esc(what) + '<br><small>移動の間を計算し直しました：' + esc(ssGapText(sid, date)) + (from !== sid || v.date !== date ? '／' + esc(ssGapText(from, v.date)) : '') + '</small><br><small>連絡板に、' + esc(to.map(staffName).join('・')) + 'さんあての知らせを残しました。</small></div>' +
+  $('mv_res').innerHTML = '<div class="judge free" style="margin-top:8px"><b>' + (ssdOn() ? '動かしました（「この内容で予定を確定する」を押すまで、ほかの端末の予定は変わりません）。' : '動かしました。') + '</b><br>' + esc(what) + '<br><small>移動の間を計算し直しました：' + esc(ssGapText(sid, date)) + (from !== sid || v.date !== date ? '／' + esc(ssGapText(from, v.date)) : '') + '</small><br><small>連絡板に、' + esc(to.map(staffName).join('・')) + 'さんあての知らせを残しました。</small></div>' +
     pnHTML([{ to:to, label:to.map(staffName).join('・') + 'さんへ', subj:'【ノア】訪問の予定が変わりました', text:txt }]) +
     '<div class="btns" style="margin-top:8px"><button class="btn sub" type="button" id="mv_close">閉じる</button></div>';
   ['mv_once','mv_week'].forEach(function(id){ if($(id)) $(id).disabled = true; });
@@ -8042,7 +8050,7 @@ var MN_MARKS = [
    各項目は［見出し, どの画面のどこで, 何をするか］。画面の名前・ボタンの名前は画面の文字のまま */
 var MN_GUIDE = [
   ['1. はじめに（使い始めの順番）', [
-    ['登録の順番', '①「名簿・設定」で職員を入れる →②「名簿・設定」の「勤務の決まり」を確かめる →③「利用者登録」で利用者さんを入れる →④右端の「仮スケジュール表」でAIのベースを入れて直し、「本体に反映する」で週間予定にする →⑤毎日は「予定」タブで見る。'],
+    ['登録の順番', '①「名簿・設定」で職員を入れる →②「名簿・設定」の「勤務の決まり」を確かめる →③「利用者登録」で利用者さんを入れる →④右端の「仮スケジュール表」の「予定を組み直す」でAIに組ませて直し、「この内容で予定を確定する」で週間予定にする →⑤毎日は「予定」タブで見る。'],
     ['画面の行き来', '上に並ぶタブ（予定・利用者登録・キャンセル受付 …）で画面を切り替えます。右端の縦長のつまみ（仮スケジュール表・対照表・２名体制）と左端のつまみ（使い方・お知らせ・ご要望）は、いまの画面のまま横に開く引き出しです。'],
     ['使う部署', 'いちばん上の「使う部署」のボタンで、訪問看護部・訪問介護部などを切り替えます。部署ごとに利用者さん・予定・記録が分かれます。'],
     ['新しい版にする', '画面の上の「版 ◯◯」の右にある「最新の版に更新」を押します。新しい版が出ると、上に「新しい版が公開されています」と出ます。']
@@ -8066,13 +8074,13 @@ var MN_GUIDE = [
     ['地図の位置', '住所（番地まで）を入れておき、「予定」タブの「1日の予定と地図」で「住所から位置を取る」を押すと、地図に出せるようになります。']
   ]],
   ['4. 週間予定を組む（スケジュール表の作り方）', [
-    ['予定の組み方（仮スケジュール表で組む）', '予定は右端の「仮スケジュール表」で組みます（予定を組む人の端末＝事務局・管理者）。仮スケジュール表は下書きで、札を動かしても本体の予定は変わりません。直し終えたら、表の上の「本体に反映する」を押したときだけ本体に入ります。ベースは必ずAIが作ります（地区で寄せる組み方）。管理者は、そのベースに最小限の手直し（人情変更）を入れます。'],
-    ['AIのベースを入れる', '仮スケジュール表のいちばん下の「AIのベースで組み直す（地区で寄せて組む）」を開き、白い「組み方を出す」を押します。件数の上限は決まった数（常勤9件・非常勤5件）で組むので、数を変えるときだけ「1日の件数の上限・管理者の訪問の割合を変える」を開きます。出た組み方を見て、よければオレンジの「この組み方を下書きに入れる」。まだ本体は変わりません。'],
-    ['下書きを直す', '仮スケジュール表で、今日以降の札を指で押さえたまま別の人・別の日の升へ引っぱると動かせます（小窓で時刻・理由・了承の印。「この日だけ」か「毎週の予定を変える」かを選びます）。同じ升の中で上下に動かすと順番が入れ替わります。直した札は下書きにだけ入ります。'],
-    ['本体に反映する／下書きを捨てる', '表の上の帯に、本体から変えた所の件数が出ます。オレンジの「本体に反映する」を押すと本体の予定が変わり、連絡板の知らせが届きます。担当者へ携帯・メールで知らせるボタンは、反映したあとに出ます。やめるときは「下書きを捨てて本体に戻す」。下書きは閉じても残ります。'],
-    ['本スケジュール表', '「予定」の地図の下の本スケジュール表は、決まった予定を見る表です。札は動かせません。予定を変えるときは、仮スケジュール表で動かして反映します。一般の職員は与えられた予定を消化します（伝えたいことは「管理者へ上申する」から）。'],
-    ['組み方を出す', '仮スケジュール表の「AIのベースで組み直す」で「組み方を出す」。町名ごとに寄せ、午前から移動15分で詰めて組みます。今の担当と曜日のまま組めるものは動かしません。'],
-    ['下書きに入れる', '出た表を見て、よければオレンジの「この組み方を下書きに入れる」。本体に入れるのは、仮スケジュール表の「本体に反映する」です。'],
+    ['予定の組み方（仮スケジュール表で組む）', '予定は右端の「仮スケジュール表」で組みます（予定を組む人の端末＝事務局・管理者）。表のいちばん上の紺色の「予定を組み直す」を押すと、AIが組み直します。札を手で動かして直したら、オレンジの「この内容で予定を確定する」を押したときだけ、ほかの端末の予定が変わります。'],
+    ['予定を組み直す', '仮スケジュール表のいちばん上の紺色の「予定を組み直す」を押すと、AIが地区・出勤日・2名体制の同行・事務所での同行交代の時間まで入れて組み直し、表に出します。件数の上限を変えるときだけ、表の下の「組み直しの結果と細かい設定」を開きます。'],
+    ['札を手で動かす', '仮スケジュール表で、今日以降の札を指で押さえたまま別の人・別の日の升へ引っぱると動かせます（小窓で時刻・理由・了承の印）。同じ升の中で上下に動かすと順番が入れ替わります。動かすと、その日の移動と同行交代の時間はAIが自動で計算し直し、後ろの訪問の時刻をずらします（本人の希望の時刻がある訪問は動かしません）。'],
+    ['予定を確定する／取り消す', '表の上の帯に、いまの予定から変えた所の件数が出ます。オレンジの「この内容で予定を確定する」を押すと予定が変わり、連絡板の知らせが届きます。担当者へ携帯・メールで知らせるボタンは、確定したあとに出ます。やめるときは「変えた所を取り消す（いまの予定に戻す）」。直している途中は、閉じても残ります。'],
+    ['本スケジュール表', '「予定」の地図の下の本スケジュール表は、決まった予定を見る表です。札は動かせません。予定を変えるときは、仮スケジュール表で動かして確定します。一般の職員は与えられた予定を消化します（伝えたいことは「管理者へ上申する」から）。'],
+    ['組み直しの中身', '町名ごとに寄せ、午前から移動15分で詰めて組みます。今の担当と曜日のまま組めるものは動かしません。結果の細かい内容は、表の下の「組み直しの結果と細かい設定」で見られます。'],
+    ['確定するまで', '組み直した予定は、オレンジの「この内容で予定を確定する」を押すまで、ほかの端末には出ません。'],
     ['変わる訪問を見る', '組み方を出すと「いまの週間予定から変わる訪問」が出ます。'],
     ['1日の件数の上限', '常勤9件・非常勤5件が最初の値です（同じ枠の上の欄で変えられます）。'],
     ['同行（2名体制）', '同行が決まっていない2名体制の訪問には、「組み方を出す」で同行が自動で付きます。週1回の人には看護補助者、週2回以上の人には担当とは別の看護師（その日に出勤している非常勤の看護師を先に、いなければ常勤）が付きます。合わない組み合わせは、仮スケジュール表で同行の札をつまんで、同じ日のほかの人の升へ移すと付け替えられます。2名体制の人の一覧は右端の「２名体制」。'],
@@ -8081,8 +8089,8 @@ var MN_GUIDE = [
   ['5. 毎日の予定を見る', [
     ['1日の予定と地図', '「予定」タブのいちばん上。職員を選ぶとその人の予定と地図、「全員」を選ぶと全員の分が職員ごとの色で出ます。地図の下には、選んだ日を含む1週間の本スケジュール表（職員 × 曜日）が出て、札の丸い番号が地図の番号です。お昼に会社へ戻るので、地図の上の「午前の行程」「午後の行程」のボタンで、午前と午後の回り方を分けて出します（開いたときは、いまの時刻の方）。それぞれ「会社→訪問→会社」の一回りで、線の上の三角の矢印が回る向きです。非常勤で、その日の訪問が4件以下の人は、1日を一回りで出します（5件以上の非常勤は常勤と同じく分けます）。番号は表の「順」（時刻の早い順）と同じなので、線は必ず ① → ② → ③ … の順に進みます。'],
     ['今週の訪問予定', '左端の「今週の予定」の引き出しで、週の訪問を日ごとに並べます。担当の横に同行が出ます。'],
-    ['仮スケジュール表', '右端の「仮スケジュール表」。職員×日付の表（下書き）で、訪問と訪問の間に「移動 15分」などが出ます。今日以降の札は引っぱって、別の人・別の日へ動かせます。動かした分は「本体に反映する」を押すまで本体に入りません。'],
-    ['祝日に出た日の付け替え', '仮スケジュール表の下の「この日の訪問を、まとめて担当・同行に付け替える（祝日に出た日など）」で、日・担当・同行を選んで「この日の訪問を付け替える」。町名で寄せて時刻を組み直し、二人とも出勤の扱いになります（下書きに入り、「本体に反映する」で本体に入ります）。']
+    ['仮スケジュール表', '右端の「仮スケジュール表」。職員×日付の表（下書き）で、訪問と訪問の間に「移動 15分」などが出ます。今日以降の札は引っぱって、別の人・別の日へ動かせます。動かした分は「この内容で予定を確定する」を押すまで、ほかの端末の予定に入りません。動かすと、その日の移動と同行交代の時間はAIが計算し直します。'],
+    ['祝日に出た日の付け替え', '仮スケジュール表の下の「この日の訪問を、まとめて担当・同行に付け替える（祝日に出た日など）」で、日・担当・同行を選んで「この日の訪問を付け替える」。町名で寄せて時刻を組み直し、二人とも出勤の扱いになります（「この内容で予定を確定する」で予定に入ります）。']
   ]],
   ['6. キャンセルのとき', [
     ['キャンセルを受ける', '「キャンセル受付」タブで、利用者さん・日時・理由を入れて「この内容で記録する」。'],

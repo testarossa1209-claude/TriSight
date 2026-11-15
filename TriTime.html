@@ -420,7 +420,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-15-02</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-15-03</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -956,6 +956,7 @@ function tsPortalAsk(){
     <label class="f" for="fx_fix">修正案（正しくはこう）</label><textarea id="fx_fix" maxlength="1000" placeholder="例：正しくは「3-15」"></textarea>
     <div class="btns"><button class="btn" id="fx_send">事務局へ送る</button><span class="muted" id="fx_msg"></span></div>
     <h3 style="margin:16px 0 6px;font-size:15px">送った修正のお願い</h3>
+    <p class="muted" style="margin:0 0 6px">ここには、この端末を使う人が送ったものだけが出ます（事務局の端末では全件が出ます）。</p>
     <div class="row"><div><label class="f" for="fx_show">表示する</label><select id="fx_show"><option value="open">まだ直していないもの</option><option value="all">すべて</option></select></div></div>
     <div id="fxList"></div>
   </div>
@@ -1033,6 +1034,22 @@ function tsPortalAsk(){
       </div>
       <label class="f" for="ct_note">メモ（分かっている範囲で）</label><textarea id="ct_note" style="min-height:48px" placeholder="例：原因は不明。利用料の集金が残っている"></textarea>
       <div class="btns"><button class="btn" id="ct_save">記録する</button></div>
+    </details>
+    <!-- 2026-11-15（宏史さんの指示）：音声メモ。移動のあいだに、その日の利用者さんの様子をまるごと話して残し、
+         事務所でAIに要約させて「今日やったこと・次回の約束」へ振り分ける。運転する人は走行中に使わない -->
+    <details id="vmCard"><summary>音声メモを残す（移動のあいだに話す）</summary>
+      <div class="note" style="background:#fdecea;border-color:#e0a39a;color:#7a1d12;font-weight:700">運転する人は、走っている間はトライタイムを使わないでください（見る・触る・話す、のどれも）。2名体制のときは運転しない人が移動中に、1名体制のときは走り出す前に車の中で入れてください。</div>
+      <p class="muted">上の「契約書番号」で利用者さんを選んでから、「🎤 話して入力」を押して、その日の様子をまるごと話してください。長いときは、ひと区切りずつ「押して話す → 押して止める」を繰り返すと、言い直しが最後の区切りだけで済みます。</p>
+      <div class="row">
+        <div><label class="f" for="vm_date">訪問した日</label><input type="date" id="vm_date"></div>
+        <div><label class="f" for="vm_by">話した人</label><select id="vm_by"></select></div>
+      </div>
+      <label class="f" for="vm_text">話した内容（言葉のまま）</label><textarea id="vm_text" maxlength="4000" style="min-height:120px"></textarea>
+      <div class="btns"><button class="btn" id="vm_save">音声メモとして残す</button><span class="muted" id="vm_msg"></span></div>
+    </details>
+    <details id="vmSort"><summary>音声メモを要約して振り分ける（事務所で）</summary>
+      <p class="muted">残した音声メモが並びます。「要約して振り分ける」を押すと、AIが「今日やったこと」と「次回の約束」に分けて、下の「今日やったこと・次回の約束を残す」の欄に下書きします。色の付いた欄を確かめて直してから「記録する」を押してください。記録すると、そのメモは「振り分け済み」になります。</p>
+      <div id="vmList"></div>
     </details>
     <details id="dPromise"><summary data-t="{promiseSum}">今日やったこと・次回の約束を残す</summary>
       <div class="row">
@@ -2620,6 +2637,72 @@ function addCourseEvent(obj, need){
   return true;
 }
 
+/* ---- 音声メモ（2026-11-15）：移動中に話して残し（type "vmemo"）、事務所でAIに要約させて「今日やったこと・次回の約束」へ振り分ける ----
+   一般の職員の端末では自分が話したメモだけ、事務局・全部署を見る端末では全員のメモが並ぶ */
+var VM_CUR = null;
+function vmSave(){
+  var no = selNo('k_no'); if(!no){ alert('先に上の「契約書番号」で利用者さんを選んでください。'); return; }
+  var t = $('vm_text').value.trim(); if(!t){ alert('話した内容が入っていません。「🎤 話して入力」を押して話してください。'); return; }
+  if(!$('vm_by').value){ alert('話した人を選んでください。'); return; }
+  var a = events(); a.push({ id:uid(), type:'vmemo', patientNo:no, date:$('vm_date').value || ymd(new Date()), by:$('vm_by').value, text:t, st:'未振り分け', created:nowLocal() });
+  saveEvents(a); $('vm_text').value = ''; $('vm_msg').textContent = '残しました。事務所で「音声メモを要約して振り分ける」から記録へ写してください。';
+  renderVm(); try{ syncNow(); }catch(e){}
+}
+function renderVm(){
+  if(!$('vmList')) return;
+  fillSelect('vm_by', staffLive().map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
+  if(!$('vm_by').value && dev().me) $('vm_by').value = dev().me;
+  if(!$('vm_date').value) $('vm_date').value = ymd(new Date());
+  var lv = role().lv, can = lv === 'all' || lv === 'office', me = dev().me;
+  var rs = events().filter(function(e){ return e.type === 'vmemo' && e.st === '未振り分け' && (can || (me && e.by === me)); }).sort(function(a, b){ return (a.created || '') < (b.created || '') ? -1 : 1; });
+  $('vmList').innerHTML = rs.length ? rs.map(function(e){
+    return '<div class="note-item"><div><b>' + esc(dnn(e.patientNo)) + '</b>　<span class="muted">' + esc(jpDate(e.date)) + '・' + esc(staffName(e.by) || '話した人の記録なし') + '</span></div>' +
+      '<div style="white-space:pre-wrap;margin-top:4px">' + esc(e.text) + '</div>' +
+      '<div class="btns" style="margin-top:6px"><button class="btn small" data-vmgo="' + esc(e.id) + '">要約して振り分ける</button> <button class="btn small danger" data-vmdel="' + esc(e.id) + '">このメモを消す</button></div></div>';
+  }).join('') : '<p class="empty">まだ振り分けていない音声メモはありません。</p>';
+  $('vmList').querySelectorAll('[data-vmgo]').forEach(function(b){ b.addEventListener('click', function(){ vmSort(b.getAttribute('data-vmgo'), b); }); });
+  $('vmList').querySelectorAll('[data-vmdel]').forEach(function(b){ b.addEventListener('click', function(){
+    if(!confirm('この音声メモを消しますか？（記録へ写していない内容は残りません）')) return;
+    var a = events(); a.forEach(function(e){ if(e.id === b.getAttribute('data-vmdel')){ e.st = '消した'; e.stAt = nowLocal(); } }); saveEvents(a); renderVm();
+  }); });
+}
+function vmSort(id, btn){
+  var m = events().filter(function(e){ return e.id === id; })[0]; if(!m) return;
+  var opt = [].filter.call($('k_no').options, function(o){ return keyNo(o.value) === m.patientNo; })[0];
+  if(!opt){ alert('この利用者さんが、いまの部署の一覧に見つかりません。'); return; }
+  $('k_no').value = opt.value; $('k_no').dispatchEvent(new Event('change', { bubbles:true }));
+  btn.disabled = true; btn.textContent = '要約しています…';
+  var prompt = '訪問看護の看護師が、訪問のあとに話した音声メモの文字起こしです。これを訪問看護の経過の記録に写すため、次の2つに分けてください。\n' +
+    '規則：\n1) 出力はJSONオブジェクトのみ。前置き・説明・コードフェンスは付けない。\n' +
+    '2) キーは did（今日やったこと・その日の利用者さんの様子）と next（次回の約束・次回に行うこと）。\n' +
+    '3) did は「・」で始まる箇条書きにし、1行に1つ。話した内容を短く要約し、話していないことは書かない。推測で補わない。\n' +
+    '4) next は話した内容のうち次回のことだけ。無ければ空の文字列。\n' +
+    '5) 実名や住所など個人を特定する情報は出力に含めない。\n\n【文字起こし】\n' + m.text;
+  var code = ''; try{ code = localStorage.getItem('trisight_access_code') || ''; }catch(e){}
+  fetch('https://trisight-relay.vercel.app/api/anthropic', { method:'POST', headers:{ 'Content-Type':'application/json', 'x-trisight-code':code },
+    body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:1500, messages:[{ role:'user', content:prompt }] }) })
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      var out = (j && j.content && j.content[0] && j.content[0].text) || '';
+      out = out.replace(/```json/gi, '').replace(/```/g, ''); var x = out.indexOf('{'), y = out.lastIndexOf('}');
+      var o = null; try{ o = JSON.parse(out.slice(x, y + 1)); }catch(e){}
+      if(!o || (!o.did && !o.next)){ alert('AIの要約を読み取れませんでした。メモの文を見て、手で入れてください。'); renderVm(); return; }
+      $('dPromise').open = true;
+      $('p_date').value = m.date; if([].some.call($('p_staff').options, function(o){ return o.value === m.by; })) $('p_staff').value = m.by;   /* 話した人が看護師の一覧にいなければ、看護師は手で選ぶ */
+      $('p_did').value = String(o.did || '').trim(); $('p_next').value = String(o.next || '').trim();
+      ['p_did', 'p_next'].forEach(function(k){ $(k).classList.add('ai-filled'); });
+      VM_CUR = id; renderVm();
+      $('dPromise').scrollIntoView({ block:'start', behavior:'smooth' });
+    })
+    .catch(function(e){ alert('要約の通信がうまくいきませんでした（' + e.message + '）。メモは残っています。'); renderVm(); });
+}
+function vmDone(){
+  if(!VM_CUR) return; var id = VM_CUR; VM_CUR = null;
+  var a = events(); a.forEach(function(e){ if(e.id === id){ e.st = '振り分け済み'; e.stAt = nowLocal(); } }); saveEvents(a);
+  ['p_did', 'p_next'].forEach(function(k){ $(k).classList.remove('ai-filled'); });
+  renderVm(); try{ syncNow(); }catch(e){}
+}
+
 /* ---- 報告係 ---- */
 /* ---- 訪問看護計画書の下書き（2026-10-27 宏史さんの指示）----
    欄は「訪問看護計画書及び訪問看護報告書等の取扱いについて」（平成12年3月3日 老企第55号）別紙様式1の記載要領の順：
@@ -3265,8 +3348,10 @@ function renderFix(){
   if(!$('fxList')) return;
   fillSelect('fx_by', staffLive().map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
   if(!$('fx_by').value && dev().me) $('fx_by').value = dev().me;
-  var all = events().filter(function(e){ return e.type === 'fix'; }).sort(function(a, b){ return (b.created || '') < (a.created || '') ? -1 : 1; });
-  var rs = $('fx_show').value === 'all' ? all : all.filter(function(e){ return e.st === '届いた'; }), can = fxCanDo();
+  /* 2026-11-15（宏史さんの了承）：一般の職員の端末では、自分が送ったものだけを出す。全件が見えるのは事務局・全部署を見る端末だけ（利用者さんのことや、だれが何を送ったかを職員どうしで見せない） */
+  var can = fxCanDo(), me = dev().me;
+  var all = events().filter(function(e){ return e.type === 'fix' && (can || (me && e.by === me)); }).sort(function(a, b){ return (b.created || '') < (a.created || '') ? -1 : 1; });
+  var rs = $('fx_show').value === 'all' ? all : all.filter(function(e){ return e.st === '届いた'; });
   $('fxList').innerHTML = rs.length ? rs.map(function(e){
     return '<div class="note-item"><div><span class="tag ' + (e.st === '直した' ? 'green' : e.st === '直さない' ? 'gray' : 'amber') + '">' + esc(e.st) + '</span> <b>' + esc(e.cat) + '</b>　<span class="muted">' + esc(jpDate(e.date)) + '・' + esc(staffName(e.by) || '送った人の記録なし') + 'さんから</span></div>' +
       (e.target ? '<div class="muted">対象：' + esc(e.target) + '</div>' : '') +
@@ -5867,7 +5952,7 @@ function refreshAll(){
   if($('dv_hint')) $('dv_hint').style.display = ($('dv_me').options.length <= 2) ? '' : 'none';   /* 2026-11-06：「共用端末」の選択肢が1つ増えた */
   renderSetup(); renderPlan(); renderToday(); renderAuto(); renderIntakeList(); renderCourse(); renderReport(); renderAdmin();
   renderMonitor(); renderSummary();
-  ptForm(); rdKinds(); renderPtList(); nrRender(); renderReq(); renderFix(); keyStatus(); mkStatus(); if(!hasOwnKey()) purgeOwn(); zRender(); renderMine();
+  ptForm(); rdKinds(); renderPtList(); nrRender(); renderReq(); renderFix(); renderVm(); keyStatus(); mkStatus(); if(!hasOwnKey()) purgeOwn(); zRender(); renderMine();
   if(typeof renderModel === 'function' && canMoney()) renderModel();
   var ngs = $('tab-nogi'); if(ngs && ngs.classList.contains('on')) ngRender();
   slpRender();   /* 2026-11-04：伝票タブが開いているときだけ描く */
@@ -6160,7 +6245,7 @@ $('ct_save').addEventListener('click', function(){
   if(addCourseEvent({ type:'contract', date:date, kind:kind, note:$('ct_note').value.trim(), firstAdd:firstAdd }, [])){ $('ct_kind').value = ''; $('ct_note').value = ''; refreshAll(); }
 });
 $('p_save').addEventListener('click', function(){
-  if(addCourseEvent({ type: D().kind === 'monitor' ? 'monitor' : 'promise', date:$('p_date').value, staffId:$('p_staff').value, did:$('p_did').value.trim(), next:$('p_next').value.trim() }, [['p_date','訪問した日'],['p_staff','看護師'],['p_next','次回の約束']])){ $('p_did').value = ''; $('p_next').value = ''; }
+  if(addCourseEvent({ type: D().kind === 'monitor' ? 'monitor' : 'promise', date:$('p_date').value, staffId:$('p_staff').value, did:$('p_did').value.trim(), next:$('p_next').value.trim() }, [['p_date','訪問した日'],['p_staff','看護師'],['p_next','次回の約束']])){ vmDone(); $('p_did').value = ''; $('p_next').value = ''; }
 });
 $('d_save').addEventListener('click', function(){
   if(addCourseEvent({ type:'doctor', date:$('d_date').value, staffId:$('d_staff').value, a1:$('d_a1').value.trim(), a2:$('d_a2').value.trim(), a3:$('d_a3').value.trim(), a4:$('d_a4').value.trim() }, [['d_date','確認した日'],['d_staff','確認した看護師']])){ ['d_a1','d_a2','d_a3','d_a4'].forEach(function(id){ $(id).value = ''; }); }
@@ -6246,6 +6331,7 @@ $('pt_roster').addEventListener('click', ptRosterPrint);
 $('rq_date').value = ymd(new Date());
 $('rq_save').addEventListener('click', reqSave);
 $('fx_send').addEventListener('click', fxSend);
+$('vm_save').addEventListener('click', vmSave);
 $('fx_show').addEventListener('change', renderFix);
 $('rq_show').addEventListener('change', renderReq);
 $('rq_copy').addEventListener('click', reqCopy);
@@ -7965,6 +8051,8 @@ var MN_GUIDE = [
   ]],
   ['9. ご要望を残す', [
     ['ご要望', '左端の「ご要望」。看護部の皆さんから聞いた「こうしてほしい」を、言われた言葉のまま残します。'],
+    ['音声メモ（移動のあいだに話す）', '「利用者経過」の「音声メモを残す」。契約書番号で利用者さんを選び、「🎤 話して入力」でその日の様子をまるごと話して「音声メモとして残す」を押します。運転する人は走っている間は使いません（2名体制は運転しない人が移動中に、1名体制は走り出す前に）。事務所で「音声メモを要約して振り分ける」の「要約して振り分ける」を押すと、AIが今日やったこと・次回の約束に分けて下書きします。確かめてから「記録する」を押します。'],
+    ['録音の取り消し', '録音中は右下に「取り消す」が出ます。押すと、いまの録音は入りません。誤って押したときは、10秒以内に「元に戻す」を押せば入ります。文字が入ったあとに出る「今入れた分を取り消す」を押すと、直前に入った分だけが消えます。'],
     ['間違いの修正のお願い', '左端の「ご要望」のいちばん上。利用者さんの登録内容・予定・職員の名簿などの間違いに気づいたら、ご自分では直さずに、「何が違うか」と「修正案（正しくはこう）」を入れて「事務局へ送る」を押します。直すのは事務局です。直ると、一覧の印が「直した」に変わります。']
   ]],
   ['10. タブレットを職員に渡すとき（事務局・管理者）', [
@@ -9232,7 +9320,7 @@ window.addEventListener('pageshow', function(e){ if(e.persisted) verCheck(); });
 if(window.TriVoice && TriVoice.dictation) TriVoice.dictation({ exclude:'#st_name' });
 if(window.TriVoice && TriVoice.command) TriVoice.command({ exclude:'#st_name', mergeWithDictation:true });  /* 2026-10-27：右下のマイク1つで、欄の文字入れとボタン操作の両方 */
 /* 2026-10-28：利用者登録とキャンセル受付は、文字の欄ごとに「🎤 話して入力」を付ける（宏史さんの指示）。聞き取った全文の欄（読むだけ）には付けない */
-if(window.TriVoice && TriVoice.fieldMics) TriVoice.fieldMics({ within:'#tab-pt, #tab-intake', exclude:'#st_name, #c_raw' });
+if(window.TriVoice && TriVoice.fieldMics) TriVoice.fieldMics({ within:'#tab-pt, #tab-intake, #vmCard', exclude:'#st_name, #c_raw' });   /* 2026-11-15：音声メモの欄にも付ける */
 </script>
 <script src="TriSheetSync.js"></script>
 <script>

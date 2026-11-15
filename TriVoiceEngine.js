@@ -1,5 +1,5 @@
 /*! ===========================================================================
- *  TriVoiceEngine.js  —  TriSight® 横串・共通音声エンジン（正）  v2.2（2026-10-28：欄ごとの「話して入力」fieldMics／2026-10-15：小さいマイク small）
+ *  TriVoiceEngine.js  —  TriSight® 横串・共通音声エンジン（正）  v2.3（2026-11-15：録音の取り消し・元に戻す・今入れた分を取り消す／2026-10-28：欄ごとの「話して入力」fieldMics／2026-10-15：小さいマイク small）
  *  ---------------------------------------------------------------------------
  *  役割：録音 → リレー → 文字起こし(Whisper) → ［任意］AI構造化(Claude) → 落とし込み
  *  構成：iPad Safari でも確実に動く MediaRecorder 方式。
@@ -93,6 +93,62 @@
     else { stopStream(); if(rec.owner && rec.owner.button){ rec.owner.button.classList.remove('listening'); } rec.owner = null; }
   }
 
+  /* ---- 2026-11-15（宏史さんの指示）：取り消し3つ ---------------------------------
+     ① 録音中だけ「取り消す」を出す。押すと録った音を文字にせず止める
+     ② 取り消した音は10秒だけ手元に残し、「元に戻す」で文字にする（誤って取り消したとき）
+     ③ 文字が欄に入るたびに「今入れた分を取り消す」を出す（直前に入った分だけ欄から消す）
+     置き場所は画面の右下・マイクの上に少し離して（マイクのすぐ隣には置かない） */
+  var act = null, held = null, lastIns = null;
+  function actBox(){
+    if(act) return act;
+    var css = document.createElement('style');
+    css.textContent = '.tv-act{position:fixed;right:16px;bottom:150px;z-index:2147483001;display:none;flex-direction:column;align-items:flex-end;gap:6px;max-width:min(320px,calc(100vw - 32px))}'+
+      '.tv-act button{font:inherit;font-size:14px;font-weight:700;padding:8px 16px;border-radius:999px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.25)}'+
+      '.tv-act .tv-cancel{background:#fff;color:#c0392b;border:2px solid #c0392b}'+
+      '.tv-act .tv-undo{background:#1f2328;color:#fff;border:0}'+
+      '.tv-act .tv-msg{background:#1f2328;color:#fff;font-size:13px;line-height:1.5;padding:6px 12px;border-radius:8px}'+
+      '@media print{.tv-act{display:none !important}}';
+    document.head.appendChild(css);
+    var box = document.createElement('div'); box.className = 'tv-act'; box.setAttribute('role', 'status');
+    document.body.appendChild(box);
+    act = { box: box, timer: null };
+    return act;
+  }
+  function actShow(html, ms){
+    var a = actBox(); clearTimeout(a.timer);
+    a.box.innerHTML = html; a.box.style.display = html ? 'flex' : 'none';
+    if(html && ms) a.timer = setTimeout(function(){ a.box.style.display = 'none'; a.box.innerHTML = ''; held = null; }, ms);
+    return a.box;
+  }
+  function actCancelBtn(){
+    var b = actShow('<button type="button" class="tv-cancel" id="tvCancel">取り消す（いまの録音を入れない）</button>');
+    b.querySelector('#tvCancel').addEventListener('click', function(){ cancelRec(); });
+  }
+  function cancelRec(){
+    if(!isRecording()) return;
+    rec.cancel = true;
+    try{ rec.mr.stop(); }catch(e){}
+  }
+  function heldUndoBox(){
+    var b = actShow('<div class="tv-msg">録音を取り消しました。</div><button type="button" class="tv-undo" id="tvRedo">元に戻す（取り消した録音を入れる）</button>', 10000);
+    b.querySelector('#tvRedo').addEventListener('click', function(){
+      var h = held; held = null; actShow('');
+      if(h) transcribe(h.blob, h.mime, h.owner);
+    });
+  }
+  /* 欄に文字を入れたら呼ぶ。直前に入った分だけを取り消せるように覚えておく */
+  function noteInsert(n, beforeVal){
+    lastIns = { n: n, before: beforeVal, after: n.value };
+    var b = actShow('<button type="button" class="tv-undo" id="tvUndoIns">今入れた分を取り消す</button>', 60000);
+    b.querySelector('#tvUndoIns').addEventListener('click', function(){
+      var L = lastIns; lastIns = null; actShow('');
+      if(!L || !document.body.contains(L.n)) return;
+      if(L.n.value === L.after){ L.n.value = L.before; }
+      else { var add = L.after.slice(L.before.length); var i = L.n.value.lastIndexOf(add); if(add && i >= 0) L.n.value = L.n.value.slice(0, i) + L.n.value.slice(i + add.length); }
+      L.n.dispatchEvent(new Event('input', { bubbles:true })); L.n.dispatchEvent(new Event('change', { bubbles:true }));
+    });
+  }
+
   function startRec(owner){
     var say = owner.status || function(){};
     if(!global.MediaRecorder || !navigator.mediaDevices){
@@ -108,15 +164,18 @@
       var mime = pickMime(), mr;
       try{ mr = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream); }
       catch(e){ say('録音を開始できません：' + e.message); stopStream(); return; }
-      rec.mr = mr; rec.chunks = []; rec.owner = owner;
+      rec.mr = mr; rec.chunks = []; rec.owner = owner; rec.cancel = false; held = null;
       if(owner.button) owner.button.classList.add('listening');
       say(owner.recordingMessage);
+      actCancelBtn();
       mr.ondataavailable = function(ev){ if(ev.data && ev.data.size) rec.chunks.push(ev.data); };
       mr.onstop = function(){
         if(owner.button) owner.button.classList.remove('listening');
         var usedMime = mr.mimeType || mime || 'audio/mp4';
         var blob = new Blob(rec.chunks, { type: usedMime });
         rec.chunks = []; stopStream(); rec.owner = null;
+        if(rec.cancel){ rec.cancel = false; held = { blob: blob, mime: usedMime, owner: owner }; say(''); heldUndoBox(); return; }
+        actShow('');
         transcribe(blob, usedMime, owner);
       };
       mr.start();
@@ -309,6 +368,7 @@
 
   function insertText(n, txt){
     var v = n.value || '';
+    var beforeVal = v;
     var s = (typeof dict.selS === 'number' && dict.last === n) ? dict.selS : v.length;
     var e = (typeof dict.selE === 'number' && dict.last === n) ? dict.selE : v.length;
     if(s > v.length) s = v.length; if(e > v.length) e = v.length;
@@ -320,6 +380,7 @@
     try{ n.setSelectionRange(pos, pos); }catch(e){}
     dict.selS = dict.selE = pos;
     n.dispatchEvent(new Event('input', { bubbles:true }));
+    noteInsert(n, beforeVal);
     n.dispatchEvent(new Event('change', { bubbles:true }));
     n.classList.add('tv-dict-filled');
     setTimeout(function(){ n.classList.remove('tv-dict-filled'); }, 2500);
@@ -544,7 +605,7 @@
           if(!document.body.contains(n) || n.disabled || n.readOnly){ owner.status('この欄には入れられませんでした。聞き取った文字：' + txt); return; }
           if(dict){ if(dict.last === n){ dict.selS = dict.selE = null; } dict.last = null; insertText(n, txt); }
           else { var v = n.value || ''; n.value = v + (v && !/[\s　、。\n]$/.test(v) ? (n.tagName === 'TEXTAREA' ? '\n' : '　') : '') + txt;
-            n.dispatchEvent(new Event('input', { bubbles:true })); n.dispatchEvent(new Event('change', { bubbles:true })); }
+            n.dispatchEvent(new Event('input', { bubbles:true })); n.dispatchEvent(new Event('change', { bubbles:true })); noteInsert(n, v); }
           owner.status('入れました。違っていれば手で直してください。');
           setTimeout(function(){ if(st.textContent === '入れました。違っていれば手で直してください。') st.textContent = ''; }, 6000);
         } };

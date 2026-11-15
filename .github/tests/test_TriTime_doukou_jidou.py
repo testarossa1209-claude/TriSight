@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """トライタイムの同行者の自動の付け方の試験（2026-11-03・宏史さん「加藤かんじは2名だろ、同行者は誰なんだよ」）
 ・体制が「2名」で同行が決まっていない人は、自動の振り分けで同行者が付く
-・その患者さんの週の1回目は看護補助者、2回目以降は担当とは別の看護師
+・週1回の人の同行は看護補助者。週2回以上の人の同行は、看護師を非常勤の看護師から先に選ぶ（2026-11-15 宏史さんの指示で改め）
 ・「この組み方を週間予定に入れる」で、付いた同行者が週間予定に入る"""
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
@@ -23,6 +23,7 @@ async def test(p):
         for x in [{'name':'看護 一子', 'dept':'訪問看護部', 'job':'看護師（正看）', 'emp':'常勤'},
                   {'name':'看護 二子', 'dept':'訪問看護部', 'job':'看護師（正看）', 'emp':'常勤'},
                   {'name':'補助 三郎', 'dept':'訪問看護部', 'job':'看護補助者', 'emp':'常勤'},
+                  {'name':'看護 五子', 'dept':'訪問看護部', 'job':'看護師（正看）', 'emp':'非常勤'},
                   {'name':'事務 四子', 'dept':'経営企画事務職', 'job':'事務局', 'emp':'常勤', 'sub':'訪問看護部'}]:
             await pg.evaluate(ADD, x)
         await pg.evaluate("""(function(){ var t = Date.now();
@@ -39,8 +40,8 @@ async def test(p):
         await pg.evaluate("document.getElementById('ssTab').click(); document.getElementById('ssAi').open = true"); await pg.wait_for_timeout(300)   # 2026-11-08：自動の振り分けは右端の「自動組み」の引き出しの中
         await pg.click('#au_make'); await pg.wait_for_timeout(800)
         au = await pg.inner_text('#au_out')
-        assert '2名・同行 補助 三郎' in au, '週の1回目に、看護補助者が同行に付きません'
-        assert '2名・同行 看護' in au, '週の2回目に、看護師が同行に付きません'
+        assert '2名・同行 補助 三郎' in au, '週1回の人（指示書で複数名）に、看護補助者が同行に付きません'
+        assert '2名・同行 看護' in au, '週2回の人に、看護師が同行に付きません'
         assert '2名・同行未定' not in au, '同行者を付けられる人がいるのに「同行未定」が残っています'
         assert '同行 事務 四子' not in au, '事務局の人が同行に付いています'
         # 2026-11-03 改め（宏史さん「縦長になりすぎ。2名体制は右の引き出しに分けて」）：組み方の上は人数の1行だけ。一覧は右の引き出し「2名体制」
@@ -53,8 +54,9 @@ async def test(p):
           return JSON.parse(localStorage.getItem('tritime_weekly')).filter(function(v){ return !v.del; }).sort(function(a, b){ return +a.dow - +b.dow; }).map(function(v){ return [String(v.dow), nm(v.staffId), nm(v.withId)]; }); })()""")
         wk = [w for w in wk if w[0] in ('2', '4')]
         assert len(wk) == 2, '週2回で入りません：' + str(wk)
-        assert wk[0][2] == '補助 三郎', '週の1回目（火）の同行が看護補助者になりません：' + str(wk)
-        assert wk[1][2].startswith('看護') and wk[1][2] != wk[1][1], '週の2回目（木）の同行が、担当と別の看護師になりません：' + str(wk)
+        for w in wk:
+            assert w[2].startswith('看護') and w[2] != w[1], '週2回の人の同行が、担当と別の看護師になりません：' + str(wk)
+        assert any(w[2] == '看護 五子' for w in wk if w[1] != '看護 五子'), '週2回の人の同行に、非常勤の看護師が先に選ばれません：' + str(wk)
         # 右の引き出し「2名体制」：週間予定に入れた同行が、理由つきで出る
         await pg.evaluate("document.getElementById('ssClose').click()"); await pg.wait_for_timeout(200)   # 引き出しを開いている間は、ほかのつまみが隠れる
         await pg.click('#nmTab'); await pg.wait_for_timeout(400)

@@ -420,7 +420,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-15-03</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-15-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -5068,11 +5068,14 @@ function mhNowUsers(){
 }
 /* 2026-11-03（宏史さん「単価が変わっているのに総額は全然変わっていない。なぜ」）：2名体制の加算と、月の初回の管理療養費の高い分を、売上の合計に入れる。
    two＝週の2名体制の回数、wk2＝週の2名体制の加算、mon2＝その4週分、kanD＝月の初回の管理療養費の差（1人あたり）、kan＝利用者全員の分 */
+/* 2026-11-15：いまの週間予定での、その利用者さんの週の回数（同行の決まり：週1回は看護補助者、週2回以上は看護師） */
+var WKT = null;   /* 同じ描き直しの間だけ使う控え（毎回数え直すと遅くなるため） */
+function wkTimes(no){ if(!WKT){ WKT = {}; weekly().forEach(function(v){ WKT[v.no] = (WKT[v.no] || 0) + 1; }); setTimeout(function(){ WKT = null; }, 0); } return WKT[no] || 0; }
 function mhExtra(){
   var act = patients().filter(function(p){ return !p.status || p.status === '利用中'; }), nos = {}, ptOf = {}, hojoW = {}, two = 0, wk2 = 0;
   act.forEach(function(p){ nos[p.no] = 1; ptOf[p.no] = p; });
   weekly().forEach(function(v){ if(!nos[v.no]) return;
-    var wj = v.withId ? feeJob(v.withId) : (isTwoP(ptOf[v.no]) ? (hojoW[v.no] ? 'n' : 'h') : ''); if(!wj) return;   /* 同行者未定の2回目以降は看護師で数える */
+    var wj = v.withId ? feeJob(v.withId) : (isTwoP(ptOf[v.no]) ? ((hojoW[v.no] || wkTimes(v.no) >= 2) ? 'n' : 'h') : ''); if(!wj) return;   /* 同行者未定の2回目以降は看護師で数える。2026-11-15：週2回以上の人は、同行を看護師で組むので看護師で数える */
     two++; if(wj !== 'h') wk2 += FEE.psyWith[wj]; else if(!hojoW[v.no]){ hojoW[v.no] = 1; wk2 += FEE.psyWith.h; } });
   var kanD = Math.max(0, (FEE.kanriFirst[mdCfg().kanri] || FEE.kanriFirst.other) - FEE.kanriNext);
   return { two:two, wk2:wk2, mon2:wk2 * 4, kanD:kanD, kan:act.length * kanD, users:act.length };
@@ -5115,7 +5118,7 @@ function miMake(){
   var h = '<table><tr><th>見るもの</th><th class="num">週の訪問</th><th class="num">4週の売上</th></tr>' +
     '<tr><td>いま（患者さん登録 ' + U + '人の週間予定）</td><td class="num">' + cur + '件</td><td class="num">' + yen(base) + '</td></tr>' +
     '<tr><td>訪問看護ベースアップ評価料（Ⅰ）（利用者 ' + U + '人 × 月 1,050円）：全額を職員の賃上げに充てるため、売上に入れていません</td><td class="num">—</td><td class="num">—</td></tr>' +
-    '<tr><td>2名体制の加算（いまの週間予定で週 ' + two + '回・週 ' + yen(twoFee) + '。同行者が決まっていない人は、週の1回目を看護補助者、2回目以降を看護師の加算で数えています）</td><td class="num">—</td><td class="num">＋' + yen(wUp) + '</td></tr>' +
+    '<tr><td>2名体制の加算（いまの週間予定で週 ' + two + '回・週 ' + yen(twoFee) + '。同行者が決まっていない人は、週1回の人を看護補助者、週2回以上の人を看護師の加算で数えています）</td><td class="num">—</td><td class="num">＋' + yen(wUp) + '</td></tr>' +
     '<tr><td>月の初回の管理療養費の高い分（利用者 ' + U + '人 × ' + yen(X.kanD) + '）</td><td class="num">—</td><td class="num">＋' + yen(kan) + '</td></tr>' +
     '<tr><td><b>いまの合計</b><br><small class="muted">週間予定の訪問 週 ' + cur + '件のうち、2名体制の ' + two + '件を2件と数えて、週 ' + eqC + '件です</small></td><td class="num"><b>' + eqC + '件</b></td><td class="num"><b>' + yen(tot) + '</b></td></tr>' +
     '<tr><td>目標設定額 ' + esc(mdYenShort(goal)) + 'コースに要る訪問</td><td class="num">' + needP + '件</td><td class="num">' + yen(goal) + '</td></tr>' +
@@ -5755,7 +5758,8 @@ function auCompute(opt){
   /* 2026-11-03（宏史さん「加藤かんじは2名だろ、同行者は誰なんだよ」「複数名利用者は変更しましたよ」）：
      利用者登録の体制が「2名」で、今の週間予定から引き継ぐ同行が無い訪問には、同行者を自動で付ける。
      決まり（宏史さんの指示 11/3）：同行の指定が無い2名体制は、週1回を看護補助者、残りは看護師で入る。
-     ・その患者さんの週の1回目：看護補助者（その曜日に出ていて、同じ時刻に別の同行が無い人）。いなければ看護師
+     ・週1回の患者さん：看護補助者（その曜日に出ていて、同じ時刻に別の同行が無い人）。いなければ看護師
+     ・週2回以上の患者さん（2026-11-15 改め）：看護師。その日に出勤している非常勤の看護師を先に、いなければ常勤
      ・2回目以降：看護師（担当とは別の人。その曜日に出ていて、同じ時刻に自分の訪問・同行が無く、その日の件数＋同行が上限に届いていない人のうち、その日がいちばん空いている人）
      ・見つからなければ空のまま（札に「2名・同行未定」と出る） */
   /* 2026-11-03 改め（宏史さん「渋谷は事務局員なので看護助手ではない」「2名体制で全部がちゃんと入っていない」）：
@@ -5770,22 +5774,27 @@ function auCompute(opt){
     var busy = function(sid, d, t, mn){ var a = toMin(t), b = a + (+mn || 30);
       return rows.some(function(r){ if(r.dow !== d || (r.staffId !== sid && r.withId !== sid)) return false; var x = toMin(r.time), y = x + (+r.min || 30); return x < b && a < y; }); };
     var loadOf = function(sid, d){ return rows.filter(function(r){ return r.dow === d && (r.staffId === sid || r.withId === sid); }).length; };
-    var nurse = function(v, mn, job){ var c = ST.filter(function(x){ return x.s.id !== v.staffId && (!job || jobOf(x.s) === job) && x.days.indexOf(v.dow) >= 0 && !busy(x.s.id, v.dow, v.time, mn) && loadOf(x.s.id, v.dow) < capOf(x, v.dow); })
-        .sort(function(a, b){ return wTier(a) - wTier(b) || loadOf(a.s.id, v.dow) - loadOf(b.s.id, v.dow); }); return c.length ? c[0].s.id : ''; };
+    var nurse = function(v, mn, job, partFirst){ var c = ST.filter(function(x){ return x.s.id !== v.staffId && (!job || jobOf(x.s) === job) && x.days.indexOf(v.dow) >= 0 && !busy(x.s.id, v.dow, v.time, mn) && loadOf(x.s.id, v.dow) < capOf(x, v.dow); })
+        .sort(function(a, b){ var ta = partFirst ? pTier(a) : wTier(a), tb2 = partFirst ? pTier(b) : wTier(b); return ta - tb2 || loadOf(a.s.id, v.dow) - loadOf(b.s.id, v.dow); }); return c.length ? c[0].s.id : ''; };
+    /* 週2回以上の人の同行：非常勤の看護師（週4日以上 → 週3日以下）を先に、いなければ常勤 */
+    function pTier(x){ return x.full ? 2 : x.days.length > 3 ? 0 : 1; }
     /* 2026-11-07（宏史さんの指示）：2名体制の相手（看護師）は、週4日以上の非常勤を先に。いなければ常勤、最後に週3日以下の非常勤（看護補助者の伊藤さんは、上の決まりどおり週1回） */
     function wTier(x){ return !x.full && x.days.length > 3 ? 0 : x.full ? 1 : 2; }
     var aide = function(v, mn){ var a = aides.filter(function(s){ return dayOK(s, v.dow) && !busy(s.id, v.dow, v.time, mn); })[0]; return a ? a.id : ''; };
     rows.forEach(function(v){ if(!okWith(v.withId)) v.withId = ''; });
     var firstSeen = {}, hojoUsed = {};
+    var weeklyTimes = {}; rows.forEach(function(r){ if(r.no) weeklyTimes[r.no] = (weeklyTimes[r.no] || 0) + 1; });
     rows.forEach(function(v){ if(v.withId && AIDE_JOBS.indexOf(jobOf(staff().filter(function(x){ return x.id === v.withId; })[0] || {})) >= 0) hojoUsed[v.no] = 1; });
     rows.slice().sort(function(a, b){ var da = (+a.dow + 6) % 7, db = (+b.dow + 6) % 7; return da - db || (a.time < b.time ? -1 : 1); }).forEach(function(v){
       var p = patient(v.no) || {}, tb = isTbd(v.withId) ? v.withId : '';
       if(v.withId && !tb){ firstSeen[v.no] = 1; return; }
       if(!tb && !isTwoP(p)) return;
       var mn = v.min || p.vmin || 30, w = '';
-      if(tb === 'tbd:h' || (!tb && !hojoUsed[v.no])){ w = hojoUsed[v.no] ? '' : aide(v, mn); if(w) hojoUsed[v.no] = 1; }
-      if(!w && tb !== 'tbd:h') w = nurse(v, mn, tb === 'tbd:n' ? '看護師（正看）' : tb === 'tbd:j' ? '准看護師' : '') || (tb ? '' : '');
-      if(!w && !tb) w = nurse(v, mn, '');
+      /* 2026-11-15（宏史さんの指示）：週1回の人の同行は看護補助者でよい。週2回以上の人の同行は、原則として看護師を、その日に出勤している非常勤の看護師から選ぶ（いなければ常勤の看護師） */
+      var times = weeklyTimes[v.no] || 0;
+      if(tb === 'tbd:h' || (!tb && times <= 1 && !hojoUsed[v.no])){ w = hojoUsed[v.no] ? '' : aide(v, mn); if(w) hojoUsed[v.no] = 1; }
+      if(!w && tb !== 'tbd:h') w = nurse(v, mn, tb === 'tbd:n' ? '看護師（正看）' : tb === 'tbd:j' ? '准看護師' : '', times >= 2) || (tb ? '' : '');
+      if(!w && !tb) w = nurse(v, mn, '', times >= 2);
       firstSeen[v.no] = 1;
       if(w){ v.withId = w; v.autoWith = true; } else if(tb) v.withId = tb;
     });
@@ -6861,7 +6870,7 @@ function mdFees(m, vfn){
       /* 2026-11-03：利用者登録の体制が「2名」の人は、同行者が決まっていなくても2名で数える（宏史さんの指示「指示書では2名体制なので、売上は2名で計算」）。
          同行者が決まっていなければ看護補助者の加算（週1日まで）で、看護師・准看護師が同行者ならその料金で数える。
          2026-11-03 追記（宏史さんの指示）：同行者が決まっていない人の、同じ週の2回目以降は、看護補助者の加算が付かないため看護師の同行（4,500円）で数える */
-      var mj = feeJob(v.staffId) === 'j' ? 'j' : 'n', wj = v.withId ? feeJob(v.withId) : (isTwoP(p) ? (hojo[v.no] ? 'n' : 'h') : ''), min = +v.min || 30, fee = 0;
+      var mj = feeJob(v.staffId) === 'j' ? 'j' : 'n', wj = v.withId ? feeJob(v.withId) : (isTwoP(p) ? ((hojo[v.no] || wkTimes(v.no) >= 2) ? 'n' : 'h') : ''), min = +v.min || 30, fee = 0;   /* 2026-11-15：週2回以上の人は看護師で数える */
       if(ins === '精神科訪問看護（医療）' || ins === '医療保険'){
         var w4 = nth >= 4;
         if(w4 && !feeSpecial(p, date)){ out.w4ng++; out.map[key] = { fee:0, ng:true }; return; }
@@ -7984,7 +7993,7 @@ var MN_MARKS = [
   ['自動の振り分け（右端の「自動組み」の引き出し）の見方', [
     ['希望 ○○（赤字）', '組まれた時刻・時間帯が、本人の希望とずれています。'],
     ['希望どおりの枠が埋まっていた人', '希望の曜日・時刻・時間帯が埋まっていたため、代わりの曜日・時刻で組んだ人です。組んだ枠と、利用者さんへ読み上げるご案内の文が出ます。入りきらなかった人には、残っている枠から代わりの候補が出ます。'],
-    ['同行の欄が空の人', '2名体制の希望があるのに、週間予定の同行の欄が空の人です。売上は2名で数えています（週の1回目を看護補助者、2回目以降を看護師の加算）。同行する人か、「2名（看護師・未定）」「2名（准看護師・未定）」「2名（看護補助者・未定）」を、「名簿・設定」の「週間予定」の一覧の同行の欄で選んでください。選ぶとすぐ残ります。'],
+    ['同行の欄が空の人', '2名体制の希望があるのに、週間予定の同行の欄が空の人です。売上は2名で数えています（週1回の人は看護補助者、週2回以上の人は看護師の加算）。同行する人か、「2名（看護師・未定）」「2名（准看護師・未定）」「2名（看護補助者・未定）」を、「名簿・設定」の「週間予定」の一覧の同行の欄で選んでください。選ぶとすぐ残ります。'],
     ['点線の「空き ○件」', 'モデルコースの枠のうち、まだ患者さんが入っていない枠です。']
   ]]
 ];
@@ -8026,7 +8035,7 @@ var MN_GUIDE = [
     ['下書きに入れる', '出た表を見て、よければオレンジの「この組み方を下書きに入れる」。本体に入れるのは、仮スケジュール表の「本体に反映する」です。'],
     ['変わる訪問を見る', '組み方を出すと「いまの週間予定から変わる訪問」が出ます。'],
     ['1日の件数の上限', '常勤9件・非常勤5件が最初の値です（同じ枠の上の欄で変えられます）。'],
-    ['同行（2名体制）', '同行が決まっていない2名体制の訪問には、週の1回目に看護補助者、2回目以降に担当とは別の看護師が自動で付きます。2名体制の人の一覧は右端の「２名体制」。'],
+    ['同行（2名体制）', '同行が決まっていない2名体制の訪問には、「組み方を出す」で同行が自動で付きます。週1回の人には看護補助者、週2回以上の人には担当とは別の看護師（その日に出勤している非常勤の看護師を先に、いなければ常勤）が付きます。合わない組み合わせは、仮スケジュール表で同行の札をつまんで、同じ日のほかの人の升へ移すと付け替えられます。2名体制の人の一覧は右端の「２名体制」。'],
     ['手で直す', '「名簿・設定」の「週間予定」の一覧で、行ごとに同行を選んだり「外す」ことができます。新しい行は上の欄で入れて「追加する」。']
   ]],
   ['5. 毎日の予定を見る', [

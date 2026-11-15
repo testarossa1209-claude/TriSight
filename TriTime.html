@@ -420,7 +420,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-14-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-15-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -3492,13 +3492,32 @@ function stToday(){ return ymd(new Date(srvNow())); }
 function stShouldAsk(){ if(navigator.webdriver) return false;   /* 自動の点検（ブラウザを機械が動かしているとき）は出さない。人が使う端末では出る */
   if(zIsReg()) return false;   /* 2026-11-08（宏史さんの指示「ラップトップの出退勤は必要ない」）：野木画面を開ける端末として登録した2台（トライサイトPC・ラップトップ）には、今日のスタートの窓も上の帯も出さない */
   var s = meStaff(); if(!s || D().kind === 'office' || jobOf(s) === '事務局') return false; var date = stToday(); if(offWhy(s.id, date)) return false; return !startRec(s.id, date); }
+/* 2026-11-15（宏史さん「事務所から始めるボタンを押しても反応がない。レスポンス悪すぎ」）：
+   これまでは押したあと、全部のタブを描き直す重い処理（refreshAll）を同じ流れで続けたため、それが終わるまで画面が一切変わらず、押せていないように見えた。
+   ①押した瞬間にボタンを止めて「開いています…」を出し、窓と帯を先に消す ②重い描き直しは画面が変わったあとに回す
+   ③その日すでに始めていた場合も、黙って何もしないのをやめ、窓を閉じて開く */
+function stBusy(on){
+  var el = $('stBusy');
+  if(!on){ if(el) el.remove(); return; }
+  if(el) return;
+  el = document.createElement('div'); el.id = 'stBusy';
+  el.setAttribute('style', 'position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:100001;background:#10243b;color:#fff;font-weight:700;font-size:15px;padding:10px 22px;border-radius:999px;box-shadow:0 10px 30px -10px rgba(0,0,0,.5)');
+  el.textContent = 'トライタイムを開いています…';
+  document.body.appendChild(el);
+}
+function stDefer(fn){ stBusy(true); requestAnimationFrame(function(){ setTimeout(function(){ try{ fn(); } finally { stBusy(false); } }, 0); }); }
 function stPress(kind){
-  var s = meStaff(); if(!s) return; var d = new Date(srvNow()), date = ymd(d), at = pad(d.getHours()) + ':' + pad(d.getMinutes());
-  if(startRec(s.id, date)) return;
-  var due = stDue(s.id, date, kind), late = !!(due && toMin(at) != null && toMin(due) != null && toMin(at) > toMin(due));
-  var a = events(); a.push({ id:uid(), type:'start', staffId:s.id, date:date, kind:kind, at:at, due:due, late:late, by:s.id, created:nowLocal() });
-  saveEvents(a); var b = $('stStart'); if(b) b.remove();
-  refreshAll(); try{ syncNow(); }catch(e){}
+  ['stGoOffice', 'stGoDirect', 'stLater', 'stBarOffice', 'stBarDirect'].forEach(function(id){ var x = $(id); if(x){ x.disabled = true; x.style.opacity = '.6'; } });
+  var b = $('stStart'); if(b) b.remove();
+  var bar = $('stBar'); if(bar){ bar.style.display = 'none'; bar.innerHTML = ''; }
+  var s = meStaff(); if(!s){ stDefer(function(){ refreshAll(); }); return; }
+  var d = new Date(srvNow()), date = ymd(d), at = pad(d.getHours()) + ':' + pad(d.getMinutes());
+  if(!startRec(s.id, date)){
+    var due = stDue(s.id, date, kind), late = !!(due && toMin(at) != null && toMin(due) != null && toMin(at) > toMin(due));
+    var a = events(); a.push({ id:uid(), type:'start', staffId:s.id, date:date, kind:kind, at:at, due:due, late:late, by:s.id, created:nowLocal() });
+    saveEvents(a);
+  }
+  stDefer(function(){ refreshAll(); try{ syncNow(); }catch(e){} });
 }
 function stPrompt(){
   if($('stStart') || $('shPick') || !stShouldAsk()) return;
@@ -3576,10 +3595,10 @@ function lgShow(){
         '<button type="button" id="lgLater" style="width:100%;font-family:inherit;font-size:13.5px;padding:9px;border:1px solid #afb8c1;background:#fff;color:#3a4a63;border-radius:12px;cursor:pointer;margin-top:8px">あとで始める（このまま開く）</button>';
       $('lgOffice').onclick = function(){ close(); stPress('office'); };
       $('lgDirect').onclick = function(){ close(); stPress('direct'); };
-      $('lgLater').onclick = function(){ sj(ST_SKIP, date); close(); refreshAll(); };
+      $('lgLater').onclick = function(){ sj(ST_SKIP, date); close(); stDefer(function(){ refreshAll(); }); };
     } else {
       box.innerHTML = '<button type="button" id="lgOpen" style="' + B + 'background:#10243b">トライタイムを開く</button>';
-      $('lgOpen').onclick = function(){ close(); refreshAll(); };
+      $('lgOpen').onclick = function(){ close(); stDefer(function(){ refreshAll(); }); };
     }
   };
   $('lgWho').onchange = act; act();

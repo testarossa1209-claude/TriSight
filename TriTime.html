@@ -1846,8 +1846,18 @@ function twoWhy(p){ return !p ? '' : p.team === '2名' ? '利用者登録の体�
 /* 2026-11-03（宏史さん「仮スケジュール表と本スケジュール表に、利用者と利用者の間の移動時間の表示もないのはなぜ」）：
    訪問と訪問の間に、移動の時間を出す。間が移動の目安（最短〜最長）に入っていれば「移動 ◯分」、最長より長ければ「移動 ◯分・空き ◯分」（移動はふだんの目安）、
    最短より短ければ「移動 ◯分（短い）」。訪問先どうしの実際の距離ではなく、予定の時刻の間から出す */
-function mvGapHTML(g, wr){
+/* 2026-11-15（宏史さんの指摘「同行が入れ替わると事務所へ戻らなければならない。移動時間を計算し直さないとならない」）：
+   同じ担当の続く2件で、同行者が別の人に替わるときは、事務所へ戻って同行を替えて出直す時間（戻り＋交代10分＋出発）で見る */
+var SWAP_MIN = 10;
+function isSwap(pv, v){ return !!(pv && v && pv.staffId && pv.staffId === v.staffId && pv.withId && v.withId && pv.withId !== v.withId); }
+function swapNeed(wr){ return wr.mvStd * 2 + SWAP_MIN; }
+function mvGapHTML(g, wr, pv, v){
   if(g == null || isNaN(g)) return '';
+  /* 2026-11-15（宏史さんの指示）：同行の交代は2通りだけ。①事務所へ戻って同行者を拾って向かう ②現地集合（同行者は自転車） */
+  if(isSwap(pv, v)){ var need = swapNeed(wr);
+    if(g >= need) return '<span class="ssGap">同行交代：事務所で拾う（約' + need + '分）か現地集合（自転車）</span>';
+    if(g >= wr.mvMin) return '<span class="ssGap short">同行交代：事務所で拾うにはあと' + (need - g) + '分足りません（現地集合・自転車なら間に合います）</span>';
+    return '<span class="ssGap short">同行交代：間が' + Math.max(0, g) + '分しかありません（現地集合でも足りません）</span>'; }
   if(g < wr.mvMin) return '<span class="ssGap short">移動 ' + Math.max(0, g) + '分（短い）</span>';
   if(g <= wr.mvMax) return '<span class="ssGap">移動 ' + g + '分</span>';
   return '<span class="ssGap">移動 ' + wr.mvStd + '分・空き ' + minLabel(g - wr.mvStd) + '</span>';
@@ -5782,21 +5792,28 @@ function auCompute(opt){
     function wTier(x){ return !x.full && x.days.length > 3 ? 0 : x.full ? 1 : 2; }
     var aide = function(v, mn){ var a = aides.filter(function(s){ return dayOK(s, v.dow) && !busy(s.id, v.dow, v.time, mn); })[0]; return a ? a.id : ''; };
     rows.forEach(function(v){ if(!okWith(v.withId)) v.withId = ''; });
-    var firstSeen = {}, hojoUsed = {};
+    var firstSeen = {}, hojoUsed = {}, sameWith = {};
     var weeklyTimes = {}; rows.forEach(function(r){ if(r.no) weeklyTimes[r.no] = (weeklyTimes[r.no] || 0) + 1; });
     rows.forEach(function(v){ if(v.withId && AIDE_JOBS.indexOf(jobOf(staff().filter(function(x){ return x.id === v.withId; })[0] || {})) >= 0) hojoUsed[v.no] = 1; });
     rows.slice().sort(function(a, b){ var da = (+a.dow + 6) % 7, db = (+b.dow + 6) % 7; return da - db || (a.time < b.time ? -1 : 1); }).forEach(function(v){
       var p = patient(v.no) || {}, tb = isTbd(v.withId) ? v.withId : '';
-      if(v.withId && !tb){ firstSeen[v.no] = 1; return; }
+      if(v.withId && !tb){ firstSeen[v.no] = 1; if(!sameWith[v.staffId + '|' + v.dow]) sameWith[v.staffId + '|' + v.dow] = v.withId; return; }
       if(!tb && !isTwoP(p)) return;
       var mn = v.min || p.vmin || 30, w = '';
       /* 2026-11-15（宏史さんの指示）：週1回の人の同行は看護補助者でよい。週2回以上の人の同行は、原則として看護師を、その日に出勤している非常勤の看護師から選ぶ（いなければ常勤の看護師） */
       var times = weeklyTimes[v.no] || 0;
-      if(tb === 'tbd:h' || (!tb && times <= 1 && !hojoUsed[v.no])){ w = hojoUsed[v.no] ? '' : aide(v, mn); if(w) hojoUsed[v.no] = 1; }
+      /* 2026-11-15：同じ日に同じ担当の2名体制の訪問には、同じ同行者を続けて付ける（入れ替わると事務所へ戻る必要が出るため）。決まりに合う人で、空いているときだけ */
+      var keepK = v.staffId + '|' + v.dow, keep = sameWith[keepK];
+      if(keep && !tb){ var ks = staff().filter(function(x){ return x.id === keep; })[0], isAide = ks && AIDE_JOBS.indexOf(jobOf(ks)) >= 0;
+        var okRule = isAide ? (times <= 1 && !hojoUsed[v.no]) : true;
+        var nx = ST.filter(function(x){ return x.s.id === keep; })[0];
+        var free = !busy(keep, v.dow, v.time, mn) && (isAide ? true : (nx && nx.days.indexOf(v.dow) >= 0 && loadOf(keep, v.dow) < capOf(nx, v.dow)));
+        if(okRule && free && keep !== v.staffId){ w = keep; if(isAide) hojoUsed[v.no] = 1; } }
+      if(!w && (tb === 'tbd:h' || (!tb && times <= 1 && !hojoUsed[v.no]))){ w = hojoUsed[v.no] ? '' : aide(v, mn); if(w) hojoUsed[v.no] = 1; }
       if(!w && tb !== 'tbd:h') w = nurse(v, mn, tb === 'tbd:n' ? '看護師（正看）' : tb === 'tbd:j' ? '准看護師' : '', times >= 2) || (tb ? '' : '');
       if(!w && !tb) w = nurse(v, mn, '', times >= 2);
       firstSeen[v.no] = 1;
-      if(w){ v.withId = w; v.autoWith = true; } else if(tb) v.withId = tb;
+      if(w){ v.withId = w; v.autoWith = true; sameWith[v.staffId + '|' + v.dow] = w; } else if(tb) v.withId = tb;
     });
     /* 2026-11-06（宏史さんの指示「免許の無い人の遠方の訪問は、免許のある人との2名体制でだけ可能」）：
        担当が免許の無い人で、利用者が遠方なら、同行を運転手（免許のある人。看護補助者を先に）に付け替える。同行が既に免許のある人ならそのまま。
@@ -5842,7 +5859,7 @@ function auMake(course){
       var rw = rows.filter(function(v){ return v.withId === x.s.id && v.staffId !== x.s.id && v.dow === d; });
       if(why && !r.length && !rw.length) return '<td class="mhOff">休（' + esc(why) + '）</td>';
       var cp = capOf(x, d), empty = course ? Math.max(0, cp - r.length) : 0;
-      return '<td' + (why ? ' class="mhOff"' : '') + '>' + (why ? '<div class="sm" style="font-weight:700">休（' + esc(why) + '）</div>' : '') + r.map(function(v, i){ var pv = r[i - 1], wr0 = workRule(); return (pv ? mvGapHTML(toMin(v.time) - (toMin(pv.time) + (+pv.min || wr0.visit)), wr0) : '') + '<span class="ssChip"' + (why ? ' style="border:1px solid var(--red);color:var(--red)"' : '') + '>' + esc(v.time) + ' ' + esc(dnn(v.no)) + (why ? ' <b>要調整</b>' : '') + '<br><small>' + esc(v.area) + (v.wish ? '・<span' + (toMin(v.wish) != null ? (Math.abs(toMin(v.wish) - toMin(v.time)) > 30 ? ' style="color:var(--red)"' : '') : ((v.wish === '午前') !== (toMin(v.time) < 720) ? ' style="color:var(--red)"' : '')) + '>希望 ' + esc(v.wish) + '</span>' : '') + (withLabel(v) ? '<br><b style="color:var(--amber)">' + esc(withLabel(v)) + '</b>' : '') + '</small></span>'; }).join('') +
+      return '<td' + (why ? ' class="mhOff"' : '') + '>' + (why ? '<div class="sm" style="font-weight:700">休（' + esc(why) + '）</div>' : '') + r.map(function(v, i){ var pv = r[i - 1], wr0 = workRule(); return (pv ? mvGapHTML(toMin(v.time) - (toMin(pv.time) + (+pv.min || wr0.visit)), wr0, pv, v) : '') + '<span class="ssChip"' + (why ? ' style="border:1px solid var(--red);color:var(--red)"' : '') + '>' + esc(v.time) + ' ' + esc(dnn(v.no)) + (why ? ' <b>要調整</b>' : '') + '<br><small>' + esc(v.area) + (v.wish ? '・<span' + (toMin(v.wish) != null ? (Math.abs(toMin(v.wish) - toMin(v.time)) > 30 ? ' style="color:var(--red)"' : '') : ((v.wish === '午前') !== (toMin(v.time) < 720) ? ' style="color:var(--red)"' : '')) + '>希望 ' + esc(v.wish) + '</span>' : '') + (withLabel(v) ? '<br><b style="color:var(--amber)">' + esc(withLabel(v)) + '</b>' : '') + '</small></span>'; }).join('') +
         rw.map(function(v){ return '<span class="ssChip" style="background:#fff7ec;border:1px solid var(--amber)">' + esc(v.time) + ' <b>同行</b> ' + esc(dnn(v.no)) + '<br><small>担当 ' + esc(staffName(v.staffId)) + '・' + esc(v.area) + '</small></span>'; }).join('') + (empty ? '<span class="ssChip" style="background:#fff;border:1px dashed var(--amber);color:var(--amber)">空き ' + empty + '件</span>' : '') + '<div class="mhCnt' + (r.length >= cp ? ' full' : '') + '">' + r.length + (course ? '／' + cp : '') + '件</div></td>';
     }).join('');
     return '<tr><th class="who">' + esc(x.s.name) + '<small>' + (x.full ? '常勤' : '非常勤') + (course ? '・コースの枠' : '・1日 ' + x.cap + '件まで') + '</small><small>週 ' + w + '件</small></th>' + cells + '</tr>';
@@ -5873,7 +5890,11 @@ function auMake(course){
       return         (function(){ /* 2026-11-03 改め（宏史さん「トライタイムが縦長になりすぎた。2名体制は毎回見る必要がないので、横の引き出しの対照表の下に2名体制名簿として分けて」）：
           組み方の上には人数の1行だけを出し、一覧は右の引き出し「2名体制」に出す */
           var two = P.filter(function(p){ return isTwoP(patient(p.no)) || rows.some(function(r){ return r.no === p.no && r.withId; }); });
-          return '<p class="sm" style="margin:6px 0">2名体制として組んだ人：<b>' + two.length + '人</b>（一覧は右端の引き出し「2名体制」）</p>'; })() +
+          /* 2026-11-15：同じ日に同じ担当で同行が入れ替わる所（事務所へ戻って同行を替える所）の数 */
+          var sw = 0, by = {}; rows.forEach(function(r){ var k = r.staffId + '|' + r.dow; (by[k] = by[k] || []).push(r); });
+          Object.keys(by).forEach(function(k){ var a = by[k].sort(function(x, y){ return x.time < y.time ? -1 : 1; }); for(var i = 1; i < a.length; i++) if(isSwap(a[i - 1], a[i])) sw++; });
+          return '<p class="sm" style="margin:6px 0">2名体制として組んだ人：<b>' + two.length + '人</b>（一覧は右端の引き出し「2名体制」）' +
+            (sw ? '　<span style="color:var(--red);font-weight:700">事務所へ戻って同行を替える所：' + sw + 'か所</span>（表の中に、戻り・交代・出発の時間を出しています）' : '') + '</p>'; })() +
         '<details style="margin:8px 0"><summary>患者さんごとの週の回数（どこから取ったか）を見る</summary><ul style="margin:4px 0 0 18px">' + P.slice().sort(function(a, b){ return b.f - a.f || (a.no < b.no ? -1 : 1); }).map(function(p){ return '<li>' + esc(dnn(p.no)) + '：週' + p.f + '回（' + esc(p.fi.src) + '）</li>'; }).join('') + '</ul></details>'; })() +
     '<p class="muted sm" style="margin:6px 0 2px">日付は今週（' + esc(jpDate(dateOf('1'))) + '〜' + esc(jpDate(dateOf('0'))) + '）に当てはめています。祝日などその日だけ休みの人の訪問は「要調整」と出ます。週間予定には毎週の予定として入るので、その日だけの付け替えは仮スケジュール表で行います（付け替えた日は見出しに「付け替え済み」と出ます）。</p>' +
     '<div class="tbl-scroll"><table class="mhT">' + head + body + '</table></div>' +
@@ -7470,7 +7491,7 @@ function ssGridHTML(days, opt){
         ms.map(function(m){ return '<span class="ssChip meet">' + esc(m.mTime || '') + ' 会議</span>'; }).join('') +
         vs.map(function(v){
           var gap = '';
-          if(!v.cx && prev){ var g = toMin(v.time) - (toMin(prev.time) + (+prev.min || 30)); gap = mvGapHTML(g, wr); }
+          if(!v.cx && prev){ var g = toMin(v.time) - (toMin(prev.time) + (+prev.min || 30)); gap = mvGapHTML(g, wr, prev, v); }
           if(!v.cx) prev = v;
           var warn = why && !v.cx;
           var vk = '', mn = opt.num && !v.cx ? opt.num[date + '|' + v.no + '|' + v.time + '|' + v.staffId] : 0; if((opt.drag || (opt.dragSelf && v.staffId === opt.dragSelf)) && !v.cx && date >= today){ vk = date + '|' + v.no + '|' + v.time + (v.asWith ? '|w' : ''); SS_V[vk] = v; }   /* 2026-11-09（宏史さん「伊藤看護補助運転手はつまめませんよ」）：同行側の札も動かせる。動かすと同行の付け替え（ssWithMove） */
@@ -8760,7 +8781,7 @@ function hbRender(){
       h += '<td data-hsid="' + esc(r.id) + '" data-hdow="' + dw + '"' + (isOff ? ' class="off"' : '') + '>' + (isOff ? '<span class="ssOff">休</span>' : '') +
         vs.map(function(v, i){
           var p = patient(v.no) || {}, prev = vs[i - 1], g = prev ? toMin(v.time) - (toMin(prev.time) + (+prev.min || wr.visit)) : null;
-          return (g != null ? mvGapHTML(g, wr) : '') + '<span class="ssChip hbFuda' + (isOff ? ' warn' : '') + '" data-hb="' + esc(r.id + '|' + dw + '|' + v.no + '|' + v.time) + '" data-pk="' + esc(hbDate(dw) + '|' + v.no + '|' + v.time) + '">' + esc(v.time) + '<br>' + esc(ssShortNo(v.no)) + (nameOf(v.no) ? '<br>' + esc(nameOf(v.no)) : '') + (isTwoP(p) ? '<small style="display:block;color:var(--amber);font-weight:700">2名</small>' : '') + '</span>';
+          return (g != null ? mvGapHTML(g, wr, prev, v) : '') + '<span class="ssChip hbFuda' + (isOff ? ' warn' : '') + '" data-hb="' + esc(r.id + '|' + dw + '|' + v.no + '|' + v.time) + '" data-pk="' + esc(hbDate(dw) + '|' + v.no + '|' + v.time) + '">' + esc(v.time) + '<br>' + esc(ssShortNo(v.no)) + (nameOf(v.no) ? '<br>' + esc(nameOf(v.no)) : '') + (isTwoP(p) ? '<small style="display:block;color:var(--amber);font-weight:700">2名</small>' : '') + '</span>';
         }).join('') +
         (sum.n ? '<span class="hbSum' + (sum.over || sum.bad ? ' ng' : '') + '" title="' + esc('許容 ' + sum.lim + '件まで' + (sum.bad ? '・移動の目安（' + wr.mvMin + '〜' + wr.mvMax + '分）から外れた間があります' : '')) + '">' + sum.n + '件・間 ' + esc(minLabel(sum.gap)) + '</span>' : '') + '</td>';
     });
@@ -8981,7 +9002,7 @@ function cmpWaste(m, vfn){
    2人分の移動の時間（目安）で比べ、少ないものに印を付ける。自転車を置けるのは、利用者登録で了承の印がある家だけ。
    決まり：了承は担当看護師が取る。当日回収なら電池は付けたまま・鍵は掛ける。後日回収なら鍵を掛け、電池は持ち帰る */
 var JN_MIN = { car:3, bike:5, walk:15, bus:6 };   /* 1kmあたりの分（目安：車 時速20km・自転車 時速12km・徒歩 時速4km・バス電車 時速10km） */
-function jnMode(s){ if(canDrive(s)) return 'car'; var m = (s && s.move) || '徒歩'; return m === '自転車' ? 'bike' : m === 'バス電車' ? 'bus' : 'walk'; }
+function jnMode(s){ if(canDrive(s)) return 'car'; var m = (s && s.move) || '自転車'; return m === 'バス電車' ? 'bus' : 'bike'; }   /* 2026-11-15（宏史さん「徒歩での移動はほとんどない」）：車でなければ自転車で見る */
 function jnModeName(k){ return { car:'車', bike:'自転車', walk:'徒歩', bus:'バス・電車' }[k] || k; }
 function jnLL(no){ return no === 'OF' ? officeGeo() : auLL(patient(no) || {}); }
 function jnKm(a, b){ var A = jnLL(a), B = jnLL(b); if(!A || !B) return null; return kmBetween(A, B) || 0; }

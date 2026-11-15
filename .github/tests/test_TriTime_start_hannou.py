@@ -29,7 +29,9 @@ async def test(p):
         # ① ログイン画面（専用の端末）
         await pg.evaluate("""(function(){ var st = JSON.parse(localStorage.getItem('tritime_staff')); var a = st.filter(function(x){ return x.name === '試験 花子'; })[0].id;
           localStorage.setItem('tritime_device', JSON.stringify({ me:a, share:true })); localStorage.setItem('tritime_login_test', '1'); })()""")
-        await pg.reload(); await pg.wait_for_timeout(2500)
+        await pg.reload()
+        try: await pg.wait_for_selector('#lgOffice', timeout=15000)   # 混んでいる機械でも待てるように
+        except Exception: pass
         assert await pg.query_selector('#lgOffice'), 'ログイン画面に「事務所から始める」が出ません'
         await s.shot('#ttLogin .lgCard', 'TriTime_start_login.png')
         r = await pg.evaluate(PRESS, 'lgOffice')
@@ -40,7 +42,9 @@ async def test(p):
         assert await pg.evaluate(STARTS) == 1, 'その日の始まりの記録が残っていません'
         # ② 「あとで始める」を押したあと、上の帯の「事務所から始める」
         await pg.evaluate("() => { localStorage.setItem('tritime_events', '[]'); localStorage.removeItem('tritime_start_skip'); }")
-        await pg.reload(); await pg.wait_for_timeout(2500)
+        await pg.reload()
+        try: await pg.wait_for_selector('#lgLater', timeout=15000)
+        except Exception: pass
         assert await pg.query_selector('#lgLater'), 'ログイン画面に「あとで始める」が出ません'
         r = await pg.evaluate(PRESS, 'lgLater')
         assert not r['login'], '「あとで始める」を押した瞬間にログイン画面が消えません'

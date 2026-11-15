@@ -26,10 +26,13 @@ async def test(p):
         await pg.evaluate(SEED); await pg.reload(); await pg.wait_for_timeout(2000)
         await pg.evaluate("window.confirm = function(){ return true; }")
         await pg.evaluate("document.querySelector('#tabs button[data-tab=plan]').click()"); await pg.wait_for_timeout(400)
-        await pg.evaluate("document.getElementById('ssTab').click()"); await pg.wait_for_timeout(800)
-        try: await pg.wait_for_selector('#ssd_remake', timeout=8000)
-        except Exception:
-            await pg.evaluate("document.getElementById('ssTab').click()"); await pg.wait_for_timeout(800)
+        for _ in range(3):   # 混んでいる機械でも開けるように、開いていなければ開き直す
+            if not await pg.evaluate("document.body.classList.contains('ssOpen')"):
+                await pg.evaluate("document.getElementById('ssTab').click()")
+            try:
+                await pg.wait_for_selector('#ssd_remake', timeout=15000); break
+            except Exception:
+                pass
         bar = await pg.inner_text('.ssdBar')
         for w in ['予定を組み直す', 'この内容で予定を確定する', '変えた所を取り消す（いまの予定に戻す）', 'いまの予定のままです']:
             assert w in bar, '帯に「' + w + '」がありません：' + bar[:200]
@@ -37,7 +40,8 @@ async def test(p):
         # 手で動かしたときの計算し直し：下書きの週間予定を、同行の替わる2件の間が15分の形で保存し直す
         r = await pg.evaluate("""() => { var w = JSON.parse(localStorage.getItem('tritime_ssd') || 'null'); return !!w; }""")
         await s.shot('.ssdBar', 'TriTime_ss_bar.png')
-        await pg.click('#ssd_remake'); await pg.wait_for_timeout(1500)
+        await pg.click('#ssd_remake')
+        await pg.wait_for_function("(document.querySelector('.ssdBar')||{}).innerText && document.querySelector('.ssdBar').innerText.indexOf('いまの予定から変えた所が') >= 0", timeout=20000)
         bar = await pg.inner_text('.ssdBar')
         assert 'いまの予定から変えた所が' in bar, '「予定を組み直す」を押しても、組み直した予定が表に入りません：' + bar[:200]
         await s.shot('#ssBody', 'TriTime_ss_after.png')

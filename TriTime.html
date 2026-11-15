@@ -956,6 +956,7 @@ function tsPortalAsk(){
     <label class="f" for="fx_fix">修正案（正しくはこう）</label><textarea id="fx_fix" maxlength="1000" placeholder="例：正しくは「3-15」"></textarea>
     <div class="btns"><button class="btn" id="fx_send">事務局へ送る</button><span class="muted" id="fx_msg"></span></div>
     <h3 style="margin:16px 0 6px;font-size:15px">送った修正のお願い</h3>
+    <p class="muted" style="margin:0 0 6px">ここには、この端末を使う人が送ったものだけが出ます（事務局の端末では全件が出ます）。</p>
     <div class="row"><div><label class="f" for="fx_show">表示する</label><select id="fx_show"><option value="open">まだ直していないもの</option><option value="all">すべて</option></select></div></div>
     <div id="fxList"></div>
   </div>
@@ -3265,8 +3266,10 @@ function renderFix(){
   if(!$('fxList')) return;
   fillSelect('fx_by', staffLive().map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
   if(!$('fx_by').value && dev().me) $('fx_by').value = dev().me;
-  var all = events().filter(function(e){ return e.type === 'fix'; }).sort(function(a, b){ return (b.created || '') < (a.created || '') ? -1 : 1; });
-  var rs = $('fx_show').value === 'all' ? all : all.filter(function(e){ return e.st === '届いた'; }), can = fxCanDo();
+  /* 2026-11-15（宏史さんの了承）：一般の職員の端末では、自分が送ったものだけを出す。全件が見えるのは事務局・全部署を見る端末だけ（利用者さんのことや、だれが何を送ったかを職員どうしで見せない） */
+  var can = fxCanDo(), me = dev().me;
+  var all = events().filter(function(e){ return e.type === 'fix' && (can || (me && e.by === me)); }).sort(function(a, b){ return (b.created || '') < (a.created || '') ? -1 : 1; });
+  var rs = $('fx_show').value === 'all' ? all : all.filter(function(e){ return e.st === '届いた'; });
   $('fxList').innerHTML = rs.length ? rs.map(function(e){
     return '<div class="note-item"><div><span class="tag ' + (e.st === '直した' ? 'green' : e.st === '直さない' ? 'gray' : 'amber') + '">' + esc(e.st) + '</span> <b>' + esc(e.cat) + '</b>　<span class="muted">' + esc(jpDate(e.date)) + '・' + esc(staffName(e.by) || '送った人の記録なし') + 'さんから</span></div>' +
       (e.target ? '<div class="muted">対象：' + esc(e.target) + '</div>' : '') +

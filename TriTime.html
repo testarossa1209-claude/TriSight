@@ -420,7 +420,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-15-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-15-02</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -942,6 +942,23 @@ function tsPortalAsk(){
 </section>
 
 <section class="tab" id="tab-req">
+  <!-- 2026-11-15（宏史さん「ご要望の欄に、間違いを直してほしいという項目と、何が違うか・修正案を入れる窓、事務局へ送るボタンを」）：
+       職員が登録内容や予定の間違いに気づいたとき、自分では直さずに事務局へ知らせる。直すのは事務局 -->
+  <div class="card" id="fxCard">
+    <h2>間違いの修正のお願い（事務局へ送る）</h2>
+    <p class="lead">利用者さんの登録内容・予定・職員の名簿などに間違いを見つけたときは、ご自分では直さずに、ここから事務局へ送ってください。直すのは事務局です。</p>
+    <div class="row">
+      <div><label class="f" for="fx_cat">どこの間違いか</label><select id="fx_cat"><option>利用者さんの登録内容（名前・住所・電話など）</option><option>予定（曜日・時刻・担当・同行）</option><option>職員の名簿（出勤日・公休・所属など）</option><option>その他</option></select></div>
+      <div><label class="f" for="fx_target">どの利用者さん・どの職員のことか</label><input type="text" id="fx_target" maxlength="100" placeholder="例：契約書番号12の方／11月18日の午前の訪問"></div>
+      <div><label class="f" for="fx_by">送る人</label><select id="fx_by"></select></div>
+    </div>
+    <label class="f" for="fx_wrong">何が違うか</label><textarea id="fx_wrong" maxlength="1000" placeholder="例：住所の番地が「3-5」になっている"></textarea>
+    <label class="f" for="fx_fix">修正案（正しくはこう）</label><textarea id="fx_fix" maxlength="1000" placeholder="例：正しくは「3-15」"></textarea>
+    <div class="btns"><button class="btn" id="fx_send">事務局へ送る</button><span class="muted" id="fx_msg"></span></div>
+    <h3 style="margin:16px 0 6px;font-size:15px">送った修正のお願い</h3>
+    <div class="row"><div><label class="f" for="fx_show">表示する</label><select id="fx_show"><option value="open">まだ直していないもの</option><option value="all">すべて</option></select></div></div>
+    <div id="fxList"></div>
+  </div>
   <div class="card">
     <h2>ご要望を残す</h2>
     <p class="lead">看護部の皆さんから聞いた「こうしてほしい」「ここが使いにくい」を、言われた言葉のまま残します。残したご要望は、まとめてトライタイムの作り直しに取り込みます。</p>
@@ -3228,6 +3245,45 @@ function hardSend(){
   $('adHardMsg').textContent = '連絡板で' + D().name + 'の全員あてに出しました。';
 }
 
+/* ---- 間違いの修正のお願い（2026-11-15）：職員が送り、事務局が直して「直した」にする。記録は共有の記録（events・type "fix"）で事務局の端末へ届く ---- */
+var FIX_ST = ['届いた','直した','直さない'];
+function fxCanDo(){ var lv = role().lv; return lv === 'all' || lv === 'office'; }   /* 状態を変えられるのは事務局・全部署を見る端末だけ */
+function fxOpenOnes(){ return events().filter(function(e){ return e.type === 'fix' && e.st === '届いた'; }); }
+function fxSend(){
+  var w = $('fx_wrong').value.trim(), f = $('fx_fix').value.trim();
+  if(!w){ alert('何が違うかを入れてください。'); $('fx_wrong').focus(); return; }
+  if(!f){ alert('修正案（正しくはこう）を入れてください。'); $('fx_fix').focus(); return; }
+  if(!$('fx_by').value){ alert('送る人を選んでください。'); return; }
+  var a = events();
+  a.push({ id:uid(), type:'fix', date:ymd(new Date()), by:$('fx_by').value, cat:$('fx_cat').value, target:$('fx_target').value.trim(), wrong:w, fix:f, dept:D().k, st:'届いた', created:nowLocal() });
+  saveEvents(a);
+  $('fx_wrong').value = ''; $('fx_fix').value = ''; $('fx_target').value = '';
+  $('fx_msg').textContent = '事務局へ送りました。直ったら、下の一覧の印が「直した」に変わります。';
+  renderFix(); try{ syncNow(); }catch(e){}
+}
+function renderFix(){
+  if(!$('fxList')) return;
+  fillSelect('fx_by', staffLive().map(function(s){ return { v:s.id, t:staffLabel(s) }; }), '選んでください');
+  if(!$('fx_by').value && dev().me) $('fx_by').value = dev().me;
+  var all = events().filter(function(e){ return e.type === 'fix'; }).sort(function(a, b){ return (b.created || '') < (a.created || '') ? -1 : 1; });
+  var rs = $('fx_show').value === 'all' ? all : all.filter(function(e){ return e.st === '届いた'; }), can = fxCanDo();
+  $('fxList').innerHTML = rs.length ? rs.map(function(e){
+    return '<div class="note-item"><div><span class="tag ' + (e.st === '直した' ? 'green' : e.st === '直さない' ? 'gray' : 'amber') + '">' + esc(e.st) + '</span> <b>' + esc(e.cat) + '</b>　<span class="muted">' + esc(jpDate(e.date)) + '・' + esc(staffName(e.by) || '送った人の記録なし') + 'さんから</span></div>' +
+      (e.target ? '<div class="muted">対象：' + esc(e.target) + '</div>' : '') +
+      '<div style="white-space:pre-wrap;margin-top:4px">違うところ：' + esc(e.wrong) + '</div><div style="white-space:pre-wrap">修正案：' + esc(e.fix) + '</div>' +
+      (e.stNote ? '<div class="muted">' + esc(e.st) + '：' + esc(e.stNote) + '</div>' : '') +
+      (can ? '<div class="btns" style="margin-top:6px"><select data-fxst="' + esc(e.id) + '">' + FIX_ST.map(function(x){ return '<option' + (x === e.st ? ' selected' : '') + '>' + x + '</option>'; }).join('') + '</select></div>' : '') + '</div>';
+  }).join('') : '<p class="empty">' + (all.length ? 'まだ直していない修正のお願いはありません。' : 'まだ修正のお願いはありません。') + '</p>';
+  $('fxList').querySelectorAll('[data-fxst]').forEach(function(sel){ sel.addEventListener('change', function(){
+    var v = sel.value, note = '';
+    if(v === '直さない'){ note = prompt('直さない理由を一言入れてください（送った人が見ます）') || ''; if(!note.trim()){ renderFix(); return; } }
+    var a = events(); a.forEach(function(e){ if(e.id === sel.getAttribute('data-fxst')){ e.st = v; e.stNote = note.trim(); e.stAt = nowLocal(); } });
+    saveEvents(a); renderFix(); try{ syncNow(); }catch(e){}
+  }); });
+  /* 事務局・全部署を見る端末では、まだ直していない件数を左端の「ご要望」のつまみに赤い丸で出す */
+  var tab = $('rqTab'), n = can ? fxOpenOnes().length : 0, dot = $('fxDot');
+  if(tab){ if(n){ if(!dot){ dot = document.createElement('span'); dot.id = 'fxDot'; dot.setAttribute('style', 'display:block;margin-top:4px;background:#c0392b;color:#fff;border-radius:999px;font-size:12px;min-width:20px;padding:1px 5px;text-align:center'); tab.appendChild(dot); } dot.textContent = n; dot.title = 'まだ直していない修正のお願い ' + n + '件'; } else if(dot) dot.remove(); }
+}
 /* ---- ご要望（2026-10-26：渋谷さんが島さん・看護部から聞き取った要望を残す） ---- */
 var REQ_ST = ['受け付けた','なぎさへ渡した','取り込んだ','見送った'];
 function reqSave(){
@@ -5811,7 +5867,7 @@ function refreshAll(){
   if($('dv_hint')) $('dv_hint').style.display = ($('dv_me').options.length <= 2) ? '' : 'none';   /* 2026-11-06：「共用端末」の選択肢が1つ増えた */
   renderSetup(); renderPlan(); renderToday(); renderAuto(); renderIntakeList(); renderCourse(); renderReport(); renderAdmin();
   renderMonitor(); renderSummary();
-  ptForm(); rdKinds(); renderPtList(); nrRender(); renderReq(); keyStatus(); mkStatus(); if(!hasOwnKey()) purgeOwn(); zRender(); renderMine();
+  ptForm(); rdKinds(); renderPtList(); nrRender(); renderReq(); renderFix(); keyStatus(); mkStatus(); if(!hasOwnKey()) purgeOwn(); zRender(); renderMine();
   if(typeof renderModel === 'function' && canMoney()) renderModel();
   var ngs = $('tab-nogi'); if(ngs && ngs.classList.contains('on')) ngRender();
   slpRender();   /* 2026-11-04：伝票タブが開いているときだけ描く */
@@ -6189,6 +6245,8 @@ function ptRosterPrint(o){
 $('pt_roster').addEventListener('click', ptRosterPrint);
 $('rq_date').value = ymd(new Date());
 $('rq_save').addEventListener('click', reqSave);
+$('fx_send').addEventListener('click', fxSend);
+$('fx_show').addEventListener('change', renderFix);
 $('rq_show').addEventListener('change', renderReq);
 $('rq_copy').addEventListener('click', reqCopy);
 $('adHardSend').addEventListener('click', hardSend);
@@ -7906,7 +7964,8 @@ var MN_GUIDE = [
     ['モデルコース', '「モデルコース」タブは、管理者の合言葉を入れた端末だけに出ます。']
   ]],
   ['9. ご要望を残す', [
-    ['ご要望', '左端の「ご要望」。看護部の皆さんから聞いた「こうしてほしい」を、言われた言葉のまま残します。']
+    ['ご要望', '左端の「ご要望」。看護部の皆さんから聞いた「こうしてほしい」を、言われた言葉のまま残します。'],
+    ['間違いの修正のお願い', '左端の「ご要望」のいちばん上。利用者さんの登録内容・予定・職員の名簿などの間違いに気づいたら、ご自分では直さずに、「何が違うか」と「修正案（正しくはこう）」を入れて「事務局へ送る」を押します。直すのは事務局です。直ると、一覧の印が「直した」に変わります。']
   ]],
   ['10. タブレットを職員に渡すとき（事務局・管理者）', [
     ['認証コードとは', '認証コードは、トライタイムをご契約いただいた事業所ごとに、合同会社トライサイトからお渡しする鍵です。事業所の中では管理部門（認証コードを預かる方）が保管し、職員の方にはお伝えしません。新しくトライタイムを使い始める事業所には、ご契約のときにこのことを説明し、預かる方を決めていただきます。'],

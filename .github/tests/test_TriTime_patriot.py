@@ -120,7 +120,7 @@ async def test(p):
         await s.shot('#ssMv .card', 'TriTime_patriot_mv.png')
         await pg.evaluate("document.getElementById('mv_once').click()"); await pg.wait_for_timeout(500)
         assert await pg.evaluate("JSON.parse(localStorage.getItem('tritime_events')).filter(e => e.type === 'move').length") == 0, '仮スケジュール表で動かしただけで、本体の記録が変わっています（反映するまで変わらないはず）'
-        assert '本体から変えた所が' in await pg.inner_text('#ssGrid .ssdBar'), '下書きの帯に、変えた所の件数が出ません'
+        assert 'いまの予定から変えた所が' in await pg.inner_text('#ssGrid .ssdBar'), '下書きの帯に、変えた所の件数が出ません'
         await pg.evaluate("window.confirm = function(){ return true; }; var b = document.getElementById('ssd_commit'); if(b && !b.disabled) b.click();"); await pg.wait_for_timeout(500)   # 2026-11-08：仮スケジュール表の下書きを本体に反映する
         mv = await pg.evaluate("JSON.parse(localStorage.getItem('tritime_events')).filter(e => e.type === 'move').map(e => [e.why, e.hv, e.note])")
         assert mv == [['人情変更（体調への配慮）', True, '試験のひとこと']], '組み換えの記録に理由・人情変更の印が残りません：' + str(mv)

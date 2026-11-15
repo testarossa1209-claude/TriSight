@@ -6083,10 +6083,17 @@ function refreshAll(){
   $('dv_share').checked = dev().share;
   /* 2026-11-01：新しい端末では名簿が届く前に「主に使う人」を選べないため、先に共有を始める順番を案内する */
   if($('dv_hint')) $('dv_hint').style.display = ($('dv_me').options.length <= 2) ? '' : 'none';   /* 2026-11-06：「共用端末」の選択肢が1つ増えた */
-  renderSetup(); renderPlan(); renderToday(); renderAuto(); renderIntakeList(); renderCourse(); renderReport(); renderAdmin();
-  renderMonitor(); renderSummary();
-  ptForm(); rdKinds(); renderPtList(); nrRender(); renderReq(); renderFix(); renderVm(); keyStatus(); mkStatus(); if(!hasOwnKey()) purgeOwn(); zRender(); renderMine();
-  if(typeof renderModel === 'function' && canMoney()) renderModel();
+  /* 2026-11-15（宏史さん「各部のボタンを押してもしばらく画面が変わりません」）：見えていないタブは描かない。
+     タブを押したときにそのタブを描き直す仕組み（下の「配線」）があるので、ここでは今見えているタブだけを描く。名簿・設定と共通の部分はこれまでどおり毎回描く */
+  var onT = (document.querySelector('#tabs button.on') || {}).getAttribute ? document.querySelector('#tabs button.on').getAttribute('data-tab') : 'plan';
+  renderSetup(); renderIntakeList(); renderAuto();   /* 自動の振り分けは仮スケジュール表（右端）で使うので毎回 */
+  if(onT === 'plan'){ renderPlan(); renderToday(); renderMonitor(); renderSummary(); }
+  if(onT === 'course') renderCourse();
+  if(onT === 'report') renderReport();
+  if(onT === 'admin') renderAdmin();
+  ptForm(); rdKinds(); if(onT === 'pt'){ renderPtList(); nrRender(); }
+  renderReq(); renderFix(); renderVm(); keyStatus(); mkStatus(); if(!hasOwnKey()) purgeOwn(); zRender(); renderMine();
+  if(onT === 'model' && typeof renderModel === 'function' && canMoney()) renderModel();
   var ngs = $('tab-nogi'); if(ngs && ngs.classList.contains('on')) ngRender();
   slpRender();   /* 2026-11-04：伝票タブが開いているときだけ描く */
   if(typeof jsRender === 'function') jsRender();   /* 2026-11-09：助成金の予定 */

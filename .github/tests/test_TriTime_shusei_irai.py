@@ -43,6 +43,17 @@ async def test(p):
         await pg.select_option('[data-fxst]', '直した'); await pg.wait_for_timeout(400)
         assert (await pg.evaluate(FIXES))[0]['st'] == '直した', '「直した」に変わりません'
         assert not await pg.query_selector('#fxDot'), '直したあとも赤い丸が残っています'
+        # 一般の職員の端末（共有し、事務局でない人）では、ほかの人が送ったものは出ない
+        await pg.evaluate(ADD, {'name':'試験 次郎', 'dept':'訪問看護部', 'job':'看護師（正看）', 'emp':'常勤'})
+        await pg.evaluate("""(function(){ var st = JSON.parse(localStorage.getItem('tritime_staff')); var j = st.filter(function(x){ return x.name === '試験 次郎'; })[0].id;
+          localStorage.setItem('tritime_device', JSON.stringify({ me:j, share:true })); localStorage.setItem('trisight_ekey_test', '1'); })()""")
+        await pg.reload(); await pg.wait_for_timeout(2500)
+        lg = await pg.query_selector('#lgOpen') or await pg.query_selector('#lgLater')
+        if lg: await lg.click(); await pg.wait_for_timeout(800)
+        await pg.evaluate("() => { document.getElementById('fx_show').value = 'all'; document.getElementById('fx_show').dispatchEvent(new Event('change')); }")
+        await pg.wait_for_timeout(300)
+        lst = await pg.inner_text('#fxList')
+        assert '住所の番地' not in lst, 'ほかの職員が送った修正のお願いが、一般の職員の端末に見えています'
         assert not s.errs, '画面の中で誤りが出ました：' + s.errs[0]
     finally:
         await s.close()

@@ -396,6 +396,11 @@ function tsGoBack(){
       <div class="k">この理論が目指す到達点（ゴール）</div>
       <div class="v" id="goalText"></div>
     </div>
+    <!-- 2026-11-17：工程の予定表を紙に出す（11/19 タクシー会社2社への説明用・宏史さん承認） -->
+    <div id="ttPrintRow" style="margin:10px 0 4px;text-align:right">
+      <span id="ttPrintMsg" style="font-size:12.5px;color:var(--ink-soft);margin-right:8px"></span>
+      <button type="button" class="aiprep-btn" id="ttPrintBtn" title="この案件の工程を、紙で消し込める予定表にして印刷します">この予定表を印刷する</button>
+    </div>
     <div class="aiprep" id="aiPrepBox" style="display:none">
       <button type="button" class="aiprep-btn" id="aiPrepBtn">AIの仕分けをやり直す（AI・API利用）</button>
       <div class="aiprep-note">案件を初めて開いたときに、基礎情報と要領の内容から、AIが済ませられる工程を自動で済ませ、下書きできるものには下書きを付けます。
@@ -449,7 +454,7 @@ function tsGoBack(){
     <div style="text-align:center"><button class="reset" id="resetBtn">別の理論で、最初からやり直す</button></div>
   </section>
 
-  <footer>TriTask® v0.3（版 2026-11-12-01） ／ TriSight® Family 共通基盤エンジン</footer>
+  <footer>TriTask® v0.3（版 2026-11-17-01） ／ TriSight® Family 共通基盤エンジン</footer>
 </div>
 
 <script>
@@ -1004,6 +1009,7 @@ function tsGoBack(){
         verify: verify,
         must_verify: !!t.must_verify,
         verify_count: mine.length,
+        due: t.due_text || "",   /* 2026-11-17：予定表の印刷で期日の欄に出す（画面の表示には使わない） */
         _gkey: gkey, _chain: chain, _note: note
       };
     });
@@ -1033,7 +1039,7 @@ function tsGoBack(){
     });
     return out.map(function(s){
       if(!s.substeps) return { title:s.title, action:s.action, verify:s.verify,
-                               must_verify:s.must_verify, verify_count:s.verify_count };
+                               must_verify:s.must_verify, verify_count:s.verify_count, due:s.due || "" };
       const n = s.substeps.length;
       return {
         title: s.title,
@@ -1567,6 +1573,84 @@ function tsGoBack(){
   }
 
   function toggle(i){ stepState[i]=!stepState[i]; refresh(); persist(); syncGrantStatus(); }
+
+  /* ── 2026-11-17：工程の予定表を印刷する ──
+     TriTime の印刷と同じ作り：別の窓に紙用の表を組み立て、開いたら印刷の画面を出す。
+     画面上のボタン・右上の「いまの状況」枠・戻るバーは別の窓に入れないので紙に出ない。
+     保存データは読むだけで、書き換えない。 */
+  function ttPrintEsc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){
+    return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" })[c]; }); }
+  function ttPrintBuild(){
+    const steps = ttCurSteps || [];
+    const g = currentGrantId ? allInbox().find(x=>x.id===currentGrantId) : null;
+    const ap = (g && g.ai_prep && g.ai_prep.by_title) || {};
+    const total = stepState.length, done = stepState.filter(Boolean).length;
+    const pct = total ? Math.round(done/total*100) : 0;
+    const nowIdx = stepState.findIndex(v=>!v);
+    const d = new Date();
+    const today = d.getFullYear() + "年" + (d.getMonth()+1) + "月" + d.getDate() + "日";
+    const name = (g && g.program_name) || $("goalText").textContent || "（名称不明）";
+    const due = g ? ((g.reverse_tasks && g.reverse_tasks[0] && g.reverse_tasks[0].due_text)
+                     || (g.deadlines && g.deadlines[0]) || "期限記載なし") : "";
+    let next = "";
+    if(total && done === total) next = "全工程が済んでいます。";
+    else if(nowIdx >= 0 && steps[nowIdx]){
+      const s = steps[nowIdx];
+      const nt = String(s.action || s.title || "");
+      next = "No." + (nowIdx+1) + " " + (nt.charAt(0) === "「" ? nt : "「" + nt + "」") + (s.due ? "（期日：" + s.due + "）" : "");
+    }
+    const rows = steps.map(function(s, i){
+      const ok = !!stepState[i];
+      let what = "";
+      if(!s.due && s.title) what += '<div class="tt">' + ttPrintEsc(s.title) + '</div>';
+      if(s.action) what += '<div>' + ttPrintEsc(s.action) + '</div>';
+      if(s.substeps && s.substeps.length){
+        what += '<ul class="sub">' + s.substeps.map(function(x){
+          return '<li>□ ' + (x.must_verify ? "◇ " : "") + ttPrintEsc(x.action || "") + '</li>';
+        }).join("") + '</ul>';
+      }
+      const v = String(s.verify || "");
+      const vtxt = v.split("\n").filter(function(l){ return l.trim() !== "期限内に完了していること"; }).join("\n");
+      const r = ap[s.title || ""];
+      const aiTag = (r && TT_KIND[r.kind]) ? '<div class="sm">' + ttPrintEsc(TT_KIND[r.kind].tag) + '</div>' : "";
+      return '<tr' + (ok ? ' class="ok"' : '') + '><td class="ck">' + (ok ? '☑' : '□') + '</td>'
+        + '<td class="no">' + (i+1) + '</td>'
+        + '<td class="due">' + ttPrintEsc(s.due || "") + '</td>'
+        + '<td>' + what + '</td>'
+        + '<td class="vf">' + ttPrintEsc(vtxt) + '</td>'
+        + '<td class="st">' + (ok ? '済' : '未') + aiTag + '</td></tr>';
+    }).join("");
+    const logo = ttPrintEsc(new URL("TriSight_icon_512.png", location.href).href);
+    const css = '@page{size:A4;margin:12mm 12mm 16mm}*{box-sizing:border-box}'
+      + 'body{font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;font-size:10pt;color:#10243b;line-height:1.5;margin:0}'
+      + '.hd{display:flex;align-items:center;gap:10px;border-bottom:1.5px solid #10243b;padding-bottom:6px;margin-bottom:6px}.hd img{width:30px;height:30px}.hd h1{font-size:14pt;margin:0}.hd p{margin:0;font-size:9.5pt;color:#5d6b7a}'
+      + '.meta{margin:4px 0 2px;font-size:10pt}.meta b{font-size:11pt}.prog{margin:2px 0 8px;padding:5px 8px;border:1px solid #cfc6b4;background:#f4f1ea;font-size:10pt}'
+      + 'table{width:100%;border-collapse:collapse}th,td{border:1px solid #cfc6b4;padding:3px 5px;text-align:left;vertical-align:top}th{background:#f4f1ea;font-weight:700;font-size:9.5pt}'
+      + 'tr{break-inside:avoid;page-break-inside:avoid}thead{display:table-header-group}tfoot{display:table-footer-group}'
+      + 'td.ck{width:7mm;text-align:center;font-size:13pt;line-height:1.2}td.no{width:8mm;text-align:center}td.due{width:30mm}td.vf{width:62mm;white-space:pre-line;font-size:9pt}td.st{width:16mm;text-align:center}'
+      + '.tt{font-weight:700}.sub{list-style:none;margin:3px 0 0;padding:0;font-size:9pt}.sm{font-size:8pt;color:#5d6b7a}tr.ok td{color:#5d6b7a}'
+      + 'tfoot td{border:0;height:10mm;padding:0}'
+      + '.ft{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;gap:6px;border-top:1px solid #10243b;padding-top:3px;font-size:8.5pt;color:#10243b;background:#fff}.ft img{width:14px;height:14px}.ft .cf{margin-left:auto;font-weight:700}';
+    const body = '<div class="hd"><img src="' + logo + '" alt="TriSight®"><div><h1>工程の予定表</h1><p>合同会社トライサイト　TriTask®　印刷日 ' + ttPrintEsc(today) + '</p></div></div>'
+      + '<div class="meta">案件名：<b>' + ttPrintEsc(name) + '</b></div>'
+      + '<div class="meta">' + (g && g.company_name ? '会社名：' + ttPrintEsc(g.company_name) + '　' : '') + (due ? '期限：' + ttPrintEsc(due) : '') + '</div>'
+      + '<div class="prog">進み具合：' + total + '工程中 ' + done + '工程済み（' + pct + '%）　次にやること：' + ttPrintEsc(next) + '</div>'
+      + '<table><thead><tr><th>□</th><th>No.</th><th>期日</th><th>工程・やること</th><th>確認すること・必要書類</th><th>状態</th></tr></thead>'
+      + '<tfoot><tr><td colspan="6"></td></tr></tfoot><tbody>' + rows + '</tbody></table>'
+      + '<div class="ft"><img src="' + logo + '" alt=""><span>合同会社トライサイト　TriSight®</span><span class="cf">社外秘</span></div>';
+    return { title: "工程の予定表 " + name, css: css, body: body, count: steps.length };
+  }
+  function ttPrintPlan(){
+    const msg = $("ttPrintMsg");
+    if(!ttCurSteps || !ttCurSteps.length){ if(msg) msg.textContent = "印刷する工程がありません。"; return; }
+    const p = ttPrintBuild();
+    const win = window.open("", "_blank");
+    if(!win){ if(msg) msg.textContent = "印刷の画面を開けませんでした。ブラウザのポップアップの許可を確かめてください。"; return; }
+    win.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>' + ttPrintEsc(p.title) + '</title><style>' + p.css + '</style></head><body>' + p.body + '<script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script></body></html>');
+    win.document.close();
+    if(msg) msg.textContent = "印刷の画面を開きました（" + p.count + "工程）。";
+  }
+  (function(){ const b = document.getElementById("ttPrintBtn"); if(b) b.addEventListener("click", ttPrintPlan); })();
 
   function refresh(){
     const total = stepState.length;

@@ -420,7 +420,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-15-08</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-17-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -1327,6 +1327,74 @@ function tsPortalAsk(){
 <!-- ===== 名簿・設定 ===== -->
 <!-- ===== 助成金・補助金の予定（2026-11-09・宏史さんの指示。経営企画事務職の管理者だけ） ===== -->
 <section class="tab" id="tab-josei">
+  <!-- ===== クライアント別 助成金診断（2026-11-17・宏史さんの指示。経営企画部のコンサルツール。全タク会員の実績作りの仮コンサルで使う） ===== -->
+  <div class="card" id="cardJc">
+    <h2>クライアント別 助成金診断（コンサル用）</h2>
+    <p class="lead">クライアントの会社の情報と職員の情報を入れると、厚生労働省の助成金のうち、その会社で取れる見込みのある制度と、職員ごとの「いつ何をすればよいか」（転換する日・計画を出す期限・申請できる期間など）を出します。結果は、クライアントへの提案書として印刷できます。申請書類の作成・提出・代理は当社は行いません（社会保険労務士の業務です）。</p>
+    <div class="row">
+      <div><label class="f" for="jc_sel">クライアント</label><select id="jc_sel"></select></div>
+      <div><label class="f">&nbsp;</label><button class="btn sub" id="jc_new">新しいクライアントを入れる</button></div>
+    </div>
+    <details id="jc_coBox" open><summary>会社の情報</summary>
+      <div class="row">
+        <div><label class="f" for="jc_c_name">会社の正式名称</label><input type="text" id="jc_c_name" placeholder="例：株式会社〇〇"></div>
+        <div><label class="f" for="jc_c_pref">所在地の都道府県</label><input type="text" id="jc_c_pref" placeholder="例：神奈川県"></div>
+        <div><label class="f" for="jc_c_city">市区町村</label><input type="text" id="jc_c_city" placeholder="例：相模原市"></div>
+        <div><label class="f" for="jc_c_ind">業種</label><select id="jc_c_ind"><option value="drive">タクシー・ハイヤー・バス・トラック（自動車運転の業務）</option><option value="build">建設</option><option value="care">介護・福祉</option><option value="med">医療</option><option value="other">その他</option></select></div>
+        <div><label class="f" for="jc_c_sme">企業の規模</label><select id="jc_c_sme"><option value="1">中小企業</option><option value="0">中小企業以外</option></select></div>
+        <div><label class="f" for="jc_c_n">職員の数（およそ）</label><input type="number" id="jc_c_n" min="0"></div>
+        <div><label class="f" for="jc_c_teinen">定年の年齢（無ければ空）</label><input type="number" id="jc_c_teinen" min="0" max="99"></div>
+        <div><label class="f" for="jc_c_keizoku">継続雇用の上限の年齢（無ければ空）</label><input type="number" id="jc_c_keizoku" min="0" max="99"></div>
+        <div><label class="f" for="jc_c_minw">事業場で一番低い時給（円・分かれば）</label><input type="number" id="jc_c_minw" min="0"></div>
+      </div>
+      <div class="row">
+        <div><label class="f" for="jc_c_rule">就業規則に「正社員へ転換する制度」が</label><select id="jc_c_rule"><option value="">分からない</option><option value="1">ある</option><option value="0">ない</option></select></div>
+        <div><label class="f" for="jc_c_tayou">勤務地限定・職務限定・短時間正社員の制度が</label><select id="jc_c_tayou"><option value="">分からない</option><option value="1">ある</option><option value="0">ない</option></select></div>
+        <div><label class="f" for="jc_c_mgr">キャリアアップ管理者を</label><select id="jc_c_mgr"><option value="">分からない</option><option value="1">置いている</option><option value="0">置いていない</option></select></div>
+        <div><label class="f" for="jc_c_bonus">有期・パートの人に賞与か退職金の制度が</label><select id="jc_c_bonus"><option value="">分からない</option><option value="1">ある</option><option value="0">ない</option></select></div>
+        <div><label class="f" for="jc_c_hire">これから人を雇う予定が</label><select id="jc_c_hire"><option value="">分からない</option><option value="1">ある</option><option value="0">ない</option></select></div>
+      </div>
+      <div class="row">
+        <div><label class="f" for="jc_c_close">給与の締め日</label><select id="jc_c_close"><option value="0">末日</option><option value="10">10日</option><option value="15">15日</option><option value="20">20日</option><option value="25">25日</option></select></div>
+        <div><label class="f" for="jc_c_payM">支給する月</label><select id="jc_c_payM"><option value="0">締めた月（当月払い）</option><option value="1">締めた翌月</option></select></div>
+        <div><label class="f" for="jc_c_payD">支給日</label><select id="jc_c_payD"></select></div>
+        <div><label class="f" for="jc_c_prep">転換までの準備に見込む日数（当社の目安）</label><input type="number" id="jc_c_prep" min="0" max="365"></div>
+      </div>
+      <label class="f" for="jc_c_memo">メモ</label><input type="text" id="jc_c_memo" maxlength="500">
+      <div class="btns"><button class="btn" id="jc_c_save">会社の情報を残す</button><button class="btn sub" id="jc_c_del">このクライアントを消す</button><span class="muted" id="jc_c_msg"></span></div>
+    </details>
+    <details id="jc_eBox" open><summary>職員の情報（一人ずつ入れます）</summary>
+      <p class="muted">名前の代わりに、社員番号やイニシャルでも構いません。個人の情報なので、提案書は先方にだけ渡してください。</p>
+      <div class="row">
+        <div><label class="f" for="jc_e_label">職員（社員番号・イニシャル可）</label><input type="text" id="jc_e_label"></div>
+        <div><label class="f" for="jc_e_birth">生年月日</label><input type="date" id="jc_e_birth"></div>
+        <div><label class="f" for="jc_e_sex">性別</label><select id="jc_e_sex"><option value="">記入しない</option><option value="m">男性</option><option value="f">女性</option></select></div>
+        <div><label class="f" for="jc_e_join">雇い入れた日</label><input type="date" id="jc_e_join"></div>
+        <div><label class="f" for="jc_e_kind">今の雇い方</label><select id="jc_e_kind"><option value="yf">有期（期間の定めあり）・フルタイム</option><option value="yp">有期・短時間（パート）</option><option value="mf">無期（期間の定めなし）・正社員ではない・フルタイム</option><option value="mp">無期・短時間（パート）</option><option value="sei">正社員</option></select></div>
+        <div><label class="f" for="jc_e_wage">今の月給（基本給＋毎月決まった手当・円）</label><input type="number" id="jc_e_wage" min="0"></div>
+        <div><label class="f" for="jc_e_shaho">社会保険に</label><select id="jc_e_shaho"><option value="1">入っている</option><option value="0">入っていない</option></select></div>
+        <div><label class="f" for="jc_e_due">子が生まれる予定日（配偶者の出産を含む・あれば）</label><input type="date" id="jc_e_due"></div>
+      </div>
+      <div class="row" style="font-size:13px">
+        <label><input type="checkbox" id="jc_e_p5"> 雇い入れの前の5年間に、正社員だった期間が合計1年を超える</label>
+        <label><input type="checkbox" id="jc_e_p1"> 雇い入れの前の1年間に、正社員として雇われていた</label>
+        <label><input type="checkbox" id="jc_e_here3"> 過去3年以内に、この会社で正社員だったことがある</label>
+        <label><input type="checkbox" id="jc_e_grad"> 新卒で雇い入れた</label>
+        <label><input type="checkbox" id="jc_e_kin"> 社長・取締役の3親等以内の親族</label>
+        <label><input type="checkbox" id="jc_e_single"> ひとり親（母子家庭の母・父子家庭の父）</label>
+        <label><input type="checkbox" id="jc_e_dis"> 障害がある</label>
+        <label><input type="checkbox" id="jc_e_care"> 家族の介護をしている・する予定</label>
+        <label><input type="checkbox" id="jc_e_kid"> 小学校に上がる前の子を育てている</label>
+      </div>
+      <label class="f" for="jc_e_memo">メモ</label><input type="text" id="jc_e_memo" maxlength="300">
+      <input type="hidden" id="jc_e_id">
+      <div class="btns"><button class="btn" id="jc_e_save">職員を残す</button><button class="btn sub" id="jc_e_clear">入れ直す</button><span class="muted" id="jc_e_msg"></span></div>
+      <div class="tbl-scroll" id="jc_eList"></div>
+    </details>
+    <h3 style="margin-top:16px">診断の結果</h3>
+    <div id="jc_out"></div>
+    <div class="btns"><button class="btn" id="jc_print">提案書を印刷する</button></div>
+  </div>
   <div class="card">
     <h2>キャリアアップ助成金（正社員化コース）の予定</h2>
     <p class="lead">有期で雇った職員を正社員にするまでの流れを、一人ずつ日付で持ちます。入職日と正社員にする日（転換日）を入れると、半年たつ日・計画を出す期限・転換後6か月の賃金の期間・申請できる期間を出します。転換前と転換後の6か月の賃金を入れると、3%以上上がっているかを判定します。</p>
@@ -1360,7 +1428,7 @@ function tsPortalAsk(){
     <input type="hidden" id="js_id">
     <div class="btns"><button class="btn" id="js_save">残す</button><button class="btn sub" id="js_clear">入れ直す</button><span class="muted" id="js_msg"></span></div>
     <div class="tbl-scroll" id="jsCuList"></div>
-    <p class="muted">出所：厚生労働省「キャリアアップ助成金（正社員化コース）支給申請チェックリスト」（mhlw.go.jp/content/11910500/001638027.pdf）＝正社員化前の雇用期間6か月以上、第1期は正社員化後6か月分の賃金支払日の翌日から2か月以内、第2期は次の6か月分の賃金支払日の翌日から2か月以内。沖縄労働局の同チェックリスト（令和7年4月1日以降の取組用）＝正社員化後6か月の賃金が正社員化前6か月より3%以上増額、正社員化後の6か月は勤務日数11日以上の月で数える。令和8年度の3%の比べ方と計画を転換の前日までに出す点は、業務計算ツールのページ（gyomu-keisan.jp）で見たもので、厚労省の原本は未確認です。締めの途中で転換した月の数え方を含め、申請の前に管轄の労働局で確かめてください。（2026年11月9日に確認）</p>
+    <p class="muted">出所：厚生労働省「キャリアアップ助成金のご案内（令和8年度版）」（令和8年4月8日現在・mhlw.go.jp/content/11910500/001687992.pdf）＝正社員化前に正社員と異なる雇用区分で通算6か月以上（p.17）、キャリアアップ計画は転換日の前日までに提出（p.6・10）、転換後6か月の賃金が転換前6か月より3%以上増額（p.19）、第1期は転換後6か月分の賃金を支払った日の翌日から2か月以内・第2期（重点支援対象者のみ）は転換後12か月分の賃金を支払った日の翌日から2か月以内（p.22）。締めの途中で転換した月の数え方は、申請の前に管轄の労働局で確かめてください。（2026年11月17日に確認）</p>
   </div>
   <div class="card">
     <h2>トライゲイトで掘った制度の獲得スケジュール</h2>
@@ -6259,6 +6327,7 @@ function jsRender(){
   if(D().kind === 'office' && canMoney()) jsTgSync();
   jsSoonRender();
   if(!$('tab-josei').classList.contains('on')) return;
+  if(typeof jcRender === 'function') jcRender();   /* 2026-11-17：クライアント別 助成金診断 */
   var A = jsAll(), cfg = A.cfg;
   if(!$('js_payD').options.length) $('js_payD').innerHTML = Array.apply(null, Array(28)).map(function(_, i){ return '<option value="' + (i + 1) + '">' + (i + 1) + '日</option>'; }).join('') + '<option value="0">末日</option>';
   $('js_close').value = String(cfg.close || 0); $('js_payM').value = String(cfg.payM || 0); $('js_payD').value = String(cfg.payD == null ? 25 : cfg.payD); $('js_cuPay').value = cfg.cuPay === '' || cfg.cuPay == null ? '' : cfg.cuPay;
@@ -6326,6 +6395,330 @@ function jsRender(){
     jsPut({ etc:etc }); ['je_id','je_name','je_from','je_to','je_to2','je_memo','je_payM'].forEach(function(id){ $(id).value = ''; }); $('je_st').value = '準備中'; $('je_msg').textContent = e.name + 'を残しました。'; jsRender();
   };
   $('je_clear').onclick = function(){ ['je_id','je_name','je_from','je_to','je_to2','je_memo','je_payM'].forEach(function(id){ $(id).value = ''; }); $('je_st').value = '準備中'; $('je_msg').textContent = ''; };
+})();
+
+/* ============================================================
+   クライアント別 助成金診断（2026-11-17・宏史さんの指示）
+   「職員情報を入力する事により、その職員がいつ、キャリアアップの転換や申請をいつすればよいかなどがトライタイムで算出でき、
+     その情報を元にクライアントに助成金申請の提案をする仕組み」「厚労省関係助成金は……すべての助成金に対応できるように」
+   ・中身は mgmt の 'josei' の cli（クライアントの配列）に置く。助成金タブと同じく、経営企画事務職の売上を見られる人だけ
+   ・制度の一覧と額は、厚生労働省の冊子（下の JC_SRC）から写したもの。ここに無い数字は出さない
+   ・当社は時期と候補を示すまで。申請書類の作成・提出・代理はしない（社会保険労務士法）
+   ============================================================ */
+var JC_SRC = '出所：厚生労働省「令和8年度 雇用・労働分野の助成金のご案内（簡略版）」（令和8年4月8日時点）mhlw.go.jp/content/001711599.pdf／厚生労働省「キャリアアップ助成金のご案内（令和8年度版）」（令和8年4月8日現在）mhlw.go.jp/content/11910500/001687992.pdf の p.6・10・14〜22・33。2026年11月17日に当社で確認。';
+var JC_NOTE = 'この診断は、入れていただいた情報と厚生労働省の冊子をもとに、取れる見込みのある制度と、準備の時期の目安を示すものです。支給の可否と時期は労働局等の審査で決まり、当社が保証するものではありません。各制度の細かい要件は支給要領で定められているため、申請の前に管轄の労働局（機構の制度は高齢・障害・求職者雇用支援機構）で確かめてください。申請書類の作成・提出・代理は当社では行いません（社会保険労務士の業務です）。';
+/* [記号, 区分, 助成金, コース, どんな取組をした事業主か, 中小企業の額（冊子の代表値）, 窓口] */
+var JC_ALL = [
+ ['koyochosei','雇用','雇用調整助成金','','景気の変動等で事業が縮小し、休業・教育訓練・出向で雇用を守る','休業手当等の2/3','労働局'],
+ ['sangyo2','雇用','産業雇用安定助成金','スキルアップ支援','出向でスキルアップさせ、復帰後の賃金を5%以上上げる','出向中の賃金の2/3（1人1日上限8,870円）','労働局'],
+ ['sangyo3','雇用','産業雇用安定助成金','災害特例人材確保支援','能登半島地震で事業が縮小し、在籍型出向で雇用を確保','賃金の4/5（1人1日計8,870円上限）','労働局'],
+ ['sangyo1','雇用','産業雇用安定助成金','産業連携人材確保等支援','事業縮小中に、生産性向上に必要な人材を新たに雇う','1人250万円（5人まで）','労働局'],
+ ['souki1','雇用','早期再就職支援等助成金','再就職支援','離職者の再就職支援を民間の職業紹介事業者に委託し、再就職が実現','委託費用の1/2（1人上限60万円）','労働局'],
+ ['souki2','雇用','早期再就職支援等助成金','雇入れ支援','離職者を無期で雇い入れ、賃金を5%以上上げる','1人30万円','労働局'],
+ ['souki3','雇用','早期再就職支援等助成金','中途採用拡大','中途採用の雇用管理制度を整えて採用を広げ、賃金を5%以上上げる','1人20万円','労働局'],
+ ['toku1','雇用','特定求職者雇用開発助成金','特定就職困難者','60歳以上・障害者・母子家庭の母等を、ハローワーク等の紹介で継続して雇う','1人60万〜240万円（対象により）','労働局'],
+ ['toku2','雇用','特定求職者雇用開発助成金','発達障害者・難治性疾患患者雇用開発','発達障害者・難病の方を継続して雇う','1人120万円','労働局'],
+ ['toku3','雇用','特定求職者雇用開発助成金','中高年層安定雇用支援','35歳以上60歳未満で正社員の機会を逃した方を正社員として雇う','1人60万円','労働局'],
+ ['toku4','雇用','特定求職者雇用開発助成金','生活保護受給者等雇用開発','自治体の要請による生活保護受給者等を継続して雇う','1人60万円','労働局'],
+ ['trial1','雇用','トライアル雇用助成金','一般トライアル','安定した就職が難しい求職者を、ハローワーク等の紹介で試しに雇う','月最大4万円（最長3か月。ひとり親は月最大5万円）','労働局'],
+ ['trial2','雇用','トライアル雇用助成金','障害者トライアル','就職が難しい障害者を試しに雇う','月最大4万円','労働局'],
+ ['trial3','雇用','トライアル雇用助成金','障害者短時間トライアル','短時間から週20時間以上を目指す精神・発達障害者を試しに雇う','月最大4万円（最長12か月）','労働局'],
+ ['trial4','雇用','トライアル雇用助成金','若年・女性建設労働者トライアル','35歳未満か女性の建設労働者を試しに雇う（中小建設事業主）','月最大4万円（最長3か月）','労働局'],
+ ['chiiki1','雇用','地域雇用開発助成金','地域雇用開発','雇用情勢の厳しい地域で事業所を設けて地域の求職者を雇う','50万〜800万円（最大3年）','労働局'],
+ ['chiiki2','雇用','地域雇用開発助成金','沖縄若年者雇用促進','沖縄県内で35歳未満の求職者を雇う','賃金の1/3（1年）','労働局'],
+ ['sho8','雇用','障害者作業施設設置等助成金','','障害による就労上の課題を克服する作業施設等を整える','費用の2/3','機構'],
+ ['sho9','雇用','障害者福祉施設設置等助成金','','障害者の福祉のための施設等を整える','費用の1/3','機構'],
+ ['sho10','雇用','障害者介助等助成金','','介助者の配置、職場復帰の措置、職場支援員の配置等','費用の3/4（職場支援員は月4万円）','機構'],
+ ['sho11','雇用','職場適応援助者助成金','','ジョブコーチによる支援','訪問型1回1.8万円（4時間以上）','機構'],
+ ['sho12','雇用','重度障害者等通勤対策助成金','','障害者の通勤を容易にする措置','費用の3/4','機構'],
+ ['sho13','雇用','重度障害者多数雇用事業所施設設置等助成金','','重度障害者を10人以上雇う事業所の施設を整える','費用の2/3','機構'],
+ ['sho14','雇用','障害者雇用相談援助助成金','','障害者の雇入れ・雇用継続の援助事業を行う事業者向け','1回60万円（中小等への支援は80万円）','機構'],
+ ['jinzai1','雇用','人材確保等支援助成金','雇用管理制度・雇用環境整備','賃金規定・諸手当・人事評価・健康づくり等の制度や、負担を減らす機器を入れて離職率を下げる','制度1つ20万〜40万円（上限80万円）、機器は経費の1/2（上限150万円）','労働局'],
+ ['jinzai2','雇用','人材確保等支援助成金','中小企業団体','中小企業の人材確保・定着の事業を行う認定団体','経費の2/3（上限600万〜1,000万円）','労働局'],
+ ['jinzai3','雇用','人材確保等支援助成金','建設キャリアアップシステム等活用促進','技能者の登録とレベルに応じた賃金5%以上の増加','技能者1人16万円','労働局'],
+ ['jinzai4','雇用','人材確保等支援助成金','若年者及び女性に魅力ある職場づくり（建設）','現場見学会等で若年者・女性の入職・定着を図る','経費の3/5','労働局'],
+ ['jinzai5','雇用','人材確保等支援助成金','作業員宿舎等設置（建設）','女性専用の作業員施設の賃借等','経費の3/5','労働局'],
+ ['jinzai6','雇用','人材確保等支援助成金','外国人労働者就労環境整備','多言語化等で外国人労働者の定着を図る','措置ごとに20万円（上限80万円）','労働局'],
+ ['jinzai7','雇用','人材確保等支援助成金','テレワーク','テレワーク制度の導入と離職率の目標達成','20万円＋目標達成で10万円','労働局'],
+ ['tsunen','雇用','通年雇用助成金','','北海道・東北等で冬に離職する季節労働者を通年雇用','賃金の2/3（第1回・上限71万円）','労働局'],
+ ['k65a','雇用','65歳超雇用推進助成金','65歳超継続雇用促進','65歳以上への定年引上げ、定年の廃止、66歳以上までの継続雇用制度の導入','措置により15万〜240万円','機構'],
+ ['k65b','雇用','65歳超雇用推進助成金','高年齢者評価制度等雇用管理改善','高年齢者向けの評価・賃金制度や雇用管理制度の整備','30万〜60万円','機構'],
+ ['k65c','雇用','65歳超雇用推進助成金','高年齢者無期雇用転換','50歳以上で定年前の有期契約の方を無期に転換','1人40万円','機構'],
+ ['cu1','雇用','キャリアアップ助成金','正社員化','有期・無期の非正規の方を正社員に転換','1人40万〜80万円（重点支援対象者は80万円）＋加算','労働局'],
+ ['cu2','雇用','キャリアアップ助成金','障害者正社員化','障害のある有期雇用の方等を正社員等に転換','1人45万〜120万円','労働局'],
+ ['cu3','雇用','キャリアアップ助成金','賃金規定等改定','有期・パートの方の賃金規定を3%以上増額改定し昇給','1人4万〜7万円','労働局'],
+ ['cu4','雇用','キャリアアップ助成金','賃金規定等共通化','有期・パートの方と正社員の共通の賃金規定を入れる','1事業所60万円','労働局'],
+ ['cu5','雇用','キャリアアップ助成金','賞与・退職金制度導入','有期・パートの方に賞与か退職金の制度を入れる','1事業所40万円','労働局'],
+ ['cu6','雇用','キャリアアップ助成金','短時間労働者労働時間延長支援','短時間の方の労働時間を延ばして社会保険に入れ処遇を改善','1人40万円（小規模企業は50万円）','労働局'],
+ ['ry1','雇用','両立支援等助成金','出生時両立支援（子育てパパ支援）','男性が育児休業を取りやすい環境を整え、取得者が出る','1人目20万円（2〜3人目10万円）','労働局'],
+ ['ry2','雇用','両立支援等助成金','介護離職防止支援','介護支援プランに基づく介護休業の取得や両立制度の利用','介護休業の取得で40万円など','労働局'],
+ ['ry3','雇用','両立支援等助成金','育児休業等支援','育休復帰支援プランに基づく育休の取得と職場復帰','取得時30万円＋復帰時30万円','労働局'],
+ ['ry4','雇用','両立支援等助成金','育休中等業務代替支援','育休を取る方等の業務を代わる同僚への手当の支給等','業務代替手当の3/4（月上限10万円）など','労働局'],
+ ['ry5','雇用','両立支援等助成金','柔軟な働き方選択制度等支援','育児中の方の柔軟な働き方の制度を入れ、利用者が出る','制度3つで20万円','労働局'],
+ ['ry6','雇用','両立支援等助成金','事業所内保育施設','事業所内保育施設の設置・運営等（新規の受付は停止中）','設置費の2/3（上限2,300万円）','労働局'],
+ ['ry7','雇用','両立支援等助成金','不妊治療及び女性の健康課題対応両立支援','不妊治療・月経・更年期に対応する両立の制度を入れ、利用者が出る','各30万円（各1回）','労働局'],
+ ['kai1','雇用','人材開発支援助成金','人材育成支援','10時間以上の職場外訓練（OFF-JT）等を行う','賃金1時間800円＋経費の45〜70%','労働局'],
+ ['kai2','雇用','人材開発支援助成金','教育訓練休暇等付与','有給の教育訓練休暇制度を入れ、取得して訓練','30万円','労働局'],
+ ['kai3','雇用','人材開発支援助成金','建設労働者認定訓練','建設分野の認定訓練','経費の1/6、賃金日額3,800円','労働局'],
+ ['kai4','雇用','人材開発支援助成金','建設労働者技能実習','建設工事に直接関わる実習','経費の3/4','労働局'],
+ ['kai5','雇用','人材開発支援助成金','人への投資促進','デジタル等の成長分野の人材育成、長期の教育訓練休暇制度等','経費の75%など','労働局'],
+ ['kai6','雇用','人材開発支援助成金','事業展開等リスキリング支援','新しい事業に伴う知識・技能の習得訓練','経費の75%、賃金1時間1,000円','労働局'],
+ ['sho21','雇用','障害者能力開発助成金','','障害者への能力開発訓練事業','施設設置費・運営費の3/4','機構'],
+ ['tekiou','雇用','職場適応訓練費','','労働局長の委託を受けた職場適応訓練','月2.4万円','労働局'],
+ ['gyomu','労働条件','業務改善助成金','','事業場で一番低い賃金を引き上げ、生産性を上げる設備投資等を行う','経費の3/4〜4/5（上限30万〜600万円）','労働局'],
+ ['hk1','労働条件','働き方改革推進支援助成金','業種別課題対応','自動車運転の業務・建設・医師など、時間外労働の上限規制が後から適用された業種で労働時間を減らす環境整備','経費の3/4（上限最大550万円）','労働局'],
+ ['hk2','労働条件','働き方改革推進支援助成金','労働時間短縮・年休促進支援','労働時間の削減や年次有給休暇の取得促進の環境整備','経費の3/4（上限最大200万円）','労働局'],
+ ['hk3','労働条件','働き方改革推進支援助成金','勤務間インターバル導入','勤務間インターバル制度の導入と定着','経費の3/4（上限100万〜150万円）','労働局'],
+ ['hk4','労働条件','働き方改革推進支援助成金','取引環境改善','荷主等の集団で運送事業者の荷待ち・荷役の時間を短くする','100万円','労働局'],
+ ['hk5','労働条件','働き方改革推進支援助成金','団体推進','中小企業の事業主団体で労働時間削減・賃上げに取り組む','500万円','労働局'],
+ ['kitsuen','労働条件','受動喫煙防止対策助成金','','既存の特定飲食提供施設での受動喫煙防止措置','経費の1/2〜2/3（上限100万円）','労働局'],
+ ['sanpo','労働条件','団体経由産業保健活動推進助成金','','事業主団体が医師等と契約し傘下企業に産業保健サービスを提供','費用の90%（上限500万円）','労働者健康安全機構'],
+ ['anzen','労働条件','高度安全機械等導入支援補助金','','安全機能のある車両系建設機械等の導入','費用の1/2','厚生労働省'],
+ ['age','労働条件','エイジフレンドリー補助金','','60歳以上の方の労働災害の防止・健康保持の取組','費用の1/2（上限100万円等）または3/4（上限30万円）','厚生労働省'],
+ ['sds','労働条件','SDS電子化補助金','','標準様式に対応したSDSの電子データ用システムの導入','費用の1/2（上限100万円）','厚生労働省'],
+ ['chutai','労働条件','中小企業退職金共済の新規加入等掛金助成','一般の中退共','中退共に新しく入る、または掛金を増やす','掛金月額の1/2（1人上限5,000円）を1年間など','勤労者退職金共済機構'],
+ ['kentai','労働条件','中小企業退職金共済の新規加入等掛金助成','建退共・清退共・林退共','各共済に新しく入る等','掛金の一部の納付免除','勤労者退職金共済機構']
+];
+function jcRow(id){ return JC_ALL.filter(function(x){ return x[0] === id; })[0]; }
+function jcName(id){ var r = jcRow(id); return r ? r[2] + (r[3] ? '（' + r[3] + 'コース）' : '') : id; }
+/* 都道府県の振興機関（2026-11-17・宏史さん「中小企業振興公社は東京都のみの公社なのですか？」）。確かめたものだけ置く */
+var JC_SHINKO = {
+  '東京都':'公益財団法人東京都中小企業振興公社（都内の中小企業が対象）',
+  '神奈川県':'公益財団法人神奈川産業振興センター（県内の中小企業向けの相談・助成）。市の財団として、横浜企業経営支援財団・川崎市産業振興財団・相模原市産業振興財団・横須賀市産業振興財団・湘南産業振興財団（神奈川県「支援機関の御案内」より）'
+};
+function jcAll(){ return jsAll && mgOf('josei').cli ? mgOf('josei').cli : []; }
+function jcCur(){ var id = $('jc_sel') ? $('jc_sel').value : ''; return jcAll().filter(function(c){ return c.id === id; })[0] || null; }
+function jcSave(list){ jsPut({ cli:list }); }
+function jcAge(birth, at){ var b = parseYmd(birth); if(!b || !at) return null; var a = at.getFullYear() - b.getFullYear(); if(at.getMonth() < b.getMonth() || (at.getMonth() === b.getMonth() && at.getDate() < b.getDate())) a--; return a; }
+function jcMax(a, b){ return a > b ? a : b; }
+function jcPeriodStart(d, c){ var st = jsPerStart(d, c); return ymd(st) === ymd(d) ? st : jsAddMon(st, 1); }   /* 締めの期間の初日にそろえる（6か月を数えやすくするため） */
+function jcMan(n){ return n + '万円'; }
+/* 職員ひとりの診断 */
+function jcEmp(co, e){
+  var out = { items:[], warn:[] }, sme = co.sme !== '0', cfg = { close:+co.close || 0, payM:co.payM == null ? 1 : +co.payM, payD:co.payD == null ? 25 : +co.payD };
+  var today = new Date(); today = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  var join = parseYmd(e.join), age = jcAge(e.birth, today), teinen = +co.teinen || 0, hi = (e.kind === 'yf' || e.kind === 'yp'), mu = (e.kind === 'mf' || e.kind === 'mp');
+  if(!join && (hi || mu)) out.warn.push('雇い入れた日が入っていないため、時期を出せません。');
+  /* キャリアアップ助成金 正社員化コース */
+  if((hi || mu) && join){
+    var ng = [];
+    if(e.kin) ng.push('社長・取締役の3親等以内の親族は対象外です（キャリアアップ助成金のご案内 p.17）。');
+    if(e.here3) ng.push('転換の前日から過去3年以内にこの会社で正社員だった方は対象外です（同 p.17）。');
+    var prep = co.prep === '' || co.prep == null ? 30 : +co.prep;
+    var base = jcMax(jsAddMon(join, 6), addDays(today, prep));
+    if(e.grad){ var g1 = jsAddMon(join, 12); if(base < g1) base = g1; }
+    var conv = jcPeriodStart(base, cfg.close);
+    var y3 = jsAddMon(join, 36), y5 = jsAddMon(join, 60);
+    var judge = function(cv){
+      var yuki = hi && cv < y5;   /* 通算5年を超える有期の方は無期とみなされる（同 p.14） */
+      var heavy = '', amt;
+      if(yuki && cv >= y3) heavy = 'a（雇い入れから3年以上の有期）';
+      else if(yuki && !e.p5 && !e.p1) heavy = 'b（3年未満で、過去5年の正社員期間1年以下・過去1年に正社員なし）';
+      else if(e.single) heavy = 'c（母子家庭の母等・父子家庭の父）';
+      if(yuki) amt = heavy ? (sme ? 80 : 60) : (sme ? 40 : 30); else amt = heavy ? (sme ? 40 : 30) : (sme ? 20 : 15);
+      return { cv:cv, yuki:yuki, heavy:heavy, amt:amt, ki:heavy ? 2 : 1 };
+    };
+    var j0 = judge(conv);
+    var tAge = jcAge(e.birth, conv);
+    if(teinen && tAge != null && tAge > teinen - 1) ng.push('転換の時点で定年まで1年以上あることが必要です（同 p.17）。');
+    if(ng.length){ out.items.push({ id:'cu1', ng:ng }); }
+    else {
+      var c = jsCalc({ join:e.join, conv:ymd(j0.cv) }, cfg);
+      var tl = [
+        { d:addDays(today, 0), t:'就業規則に正社員へ転換する制度を定めて周知する' + (co.rule === '1' ? '（済み）' : '') },
+        { d:c.planBy, t:'キャリアアップ計画を労働局へ出す期限（転換の前日まで）' },
+        { d:j0.cv, t:'正社員に転換する日（当社の提案）' },
+        { d:c.st, t:'転換後6か月の賃金の期間が始まる（' + jsD(c.st) + '〜' + jsD(c.end6) + '）' },
+        { d:c.w1.from, t:'第1期の申請受付が始まる（締切 ' + jsD(c.w1.to) + '）' }
+      ];
+      if(j0.ki === 2) tl.push({ d:c.w2.from, t:'第2期の申請受付が始まる（締切 ' + jsD(c.w2.to) + '）' });
+      var need = e.wage ? Math.ceil(+e.wage * 1.03) : 0;
+      var it = { id:'cu1', amt:j0.amt, ki:j0.ki, heavy:j0.heavy, yuki:j0.yuki, conv:j0.cv, tl:tl, need:need, note:[] };
+      it.note.push('転換の前後6か月の賃金を比べて3%以上上げることが要件です（同 p.19）。' + (need ? '今の月給 ' + (+e.wage).toLocaleString() + '円なら、転換後は月 ' + need.toLocaleString() + '円以上が目安です。' : ''));
+      if(e.grad) it.note.push('新卒で雇い入れた方は、雇い入れから1年たつまで対象外のため、転換日を1年後以降にしています（同 p.15）。');
+      if(!j0.yuki && hi) it.note.push('提案の転換日には、有期の通算が5年を超えて無期とみなされるため、無期の額で出しています（同 p.14）。');
+      /* 3年を待てば重点支援対象者a（2期分）になる場合は、もう一つの案として出す */
+      if(hi && !j0.heavy && y3 < y5){
+        var alt = judge(jcPeriodStart(jcMax(y3, base), cfg.close));
+        if(alt.heavy && alt.amt > j0.amt) it.alt = { cv:alt.cv, amt:alt.amt, why:'雇い入れから3年たつ ' + jsD(y3) + ' 以降に転換すると、重点支援対象者a に当たり、2期分の申請ができます。' };
+      }
+      if(j0.heavy.indexOf('b') === 0) it.note.push('重点支援対象者b は、上の「雇い入れの前の5年間・1年間の正社員歴」の印が正しいことが前提です。雇用保険の加入記録等で確かめてください（同 p.14〜16）。');
+      if(e.single && j0.heavy.indexOf('c') === 0) it.note.push('重点支援対象者c の細かい条件は、申請の前に労働局で確かめてください。');
+      out.items.push(it);
+    }
+  }
+  /* 65歳超雇用推進助成金 高年齢者無期雇用転換コース：50歳以上で定年前の有期の方 */
+  if(hi && age != null && age >= 50 && (!teinen || age < teinen)){
+    out.items.push({ id:'k65c', amt:sme ? 40 : 30, note:['50歳以上で定年前の有期の方を無期に転換すると対象になります（簡略版 p.12）。キャリアアップ助成金の正社員化と同じ方で両方を使えるかは、申請の前に確かめてください。' + (teinen ? '' : '定年の年齢が入っていないため、定年前かどうかは確かめていません。')] });
+  }
+  /* 短時間労働者労働時間延長支援コース：社会保険に入っていない短時間の方 */
+  if((e.kind === 'yp' || e.kind === 'mp') && e.shaho === '0') out.items.push({ id:'cu6', amt:sme ? 40 : 30, note:['労働時間を延ばして新たに社会保険に入れると対象になります（簡略版 p.13）。小規模企業は50万円です。2年目にさらに延ばすと上乗せがあります。'] });
+  /* 障害のある方 */
+  if(e.dis && (hi || mu)) out.items.push({ id:'cu2', amt:'45〜120', note:['障害のある有期雇用の方等を正社員等に転換すると対象になります（簡略版の一覧）。'] });
+  if(e.dis) out.items.push({ id:'sho10', amt:'', note:['介助者や職場支援員を置く場合の制度です（窓口は機構）。'] });
+  /* 両立支援 */
+  if(e.due){
+    if(e.sex === 'm') out.items.push({ id:'ry1', amt:20, tl:[{ d:parseYmd(e.due), t:'子の出生予定日。出生後8週間以内に始まる育児休業が対象（簡略版 p.14）' }], note:['休業の前に雇用環境の整備を4つ以上しておくと1人目に10万円の加算があります（簡略版 p.14）。'] });
+    out.items.push({ id:'ry3', amt:'30＋30', tl:[{ d:parseYmd(e.due), t:'子の出生予定日。その前に育休復帰支援プランを作る' }], note:['育休復帰支援プランを作り、それに沿って育休を取り職場に戻ると対象になります（簡略版 p.14）。'] });
+    out.items.push({ id:'ry4', amt:'', note:['育休中の業務を代わる同僚に手当を出す場合に対象になります（簡略版 p.14）。'] });
+  }
+  if(e.care) out.items.push({ id:'ry2', amt:'40〜', note:['介護支援プランを作り、それに沿って介護休業等を取ると対象になります（簡略版 p.14）。介護休業15日以上で60万円などの区分があります。'] });
+  return out;
+}
+/* 会社としての候補 */
+function jcCo(co){
+  var out = [], emps = co.emps || [], today = new Date(), sme = co.sme !== '0';
+  var hiN = emps.filter(function(e){ return ['yf','yp','mf','mp'].indexOf(e.kind) >= 0; }).length;
+  var old60 = emps.filter(function(e){ var a = jcAge(e.birth, today); return a != null && a >= 60; }).length;
+  if(co.ind === 'drive') out.push({ id:'hk1', why:'業種が自動車運転の業務に当たるため、業種別課題対応コースの対象業種です（簡略版 p.24）。外部の専門家の助言や労務管理用の機器の導入などで、労働時間を減らす成果を出すことが要件です。' });
+  if(co.ind === 'build' || co.ind === 'med') out.push({ id:'hk1', why:'建設・医師は業種別課題対応コースの対象業種です（簡略版 p.24）。' });
+  out.push({ id:'hk2', why:'労働時間の削減や年次有給休暇の取得を進める環境整備で対象になります（簡略版 p.24）。' });
+  if(hiN){
+    if(co.rule !== '1') out.push({ id:'cu1', add:sme ? 20 : 15, why:'正社員へ転換する制度を新たに就業規則に定めて転換すると、1事業所1回の加算があります（キャリアアップ助成金のご案内 p.14）。' + (co.rule === '' ? '今の就業規則に定めがあるかは分かっていません。' : '') });
+    if(co.tayou !== '1') out.push({ id:'cu1', add:sme ? 40 : 30, why:'勤務地限定・職務限定・短時間正社員の制度を新たに定めて転換すると、1事業所1回の加算があります（同 p.14）。' });
+    out.push({ id:'cu1', add:sme ? 20 : 15, why:'転換に関する情報を自社のホームページか「しょくばらぼ」に公表すると、1事業所1回の加算があります（同 p.33。令和8年4月8日以降の転換が対象）。' });
+    out.push({ id:'cu3', why:'有期・パートの方の賃金規定を3%以上上げて昇給させると、1人4万〜7万円です（簡略版 p.13）。' });
+    if(co.bonus !== '1') out.push({ id:'cu5', why:'有期・パートの方に賞与か退職金の制度を入れると、1事業所40万円です（簡略版 p.13）。' + (co.bonus === '' ? '今の制度の有無は分かっていません。' : '') });
+    if(co.mgr !== '1') out.push({ id:'cu1', why:'キャリアアップ助成金を使うには、事業所ごとにキャリアアップ管理者を置き、計画を出す必要があります（同 p.4・10）。' + (co.mgr === '' ? '今置いているかは分かっていません。' : '今は置いていないため、まずここから始めます。'), pre:true });
+  }
+  var t = +co.teinen || 0, k = +co.keizoku || 0;
+  if((t && t < 65) || (k && k < 66) || (!t && !k)) out.push({ id:'k65a', why:(t || k) ? '定年が' + (t || '—') + '歳・継続雇用が' + (k || '—') + '歳までのため、65歳以上への定年引上げ等で対象になる見込みがあります（簡略版 p.12）。' : '定年と継続雇用の年齢が入っていません。65歳以上への定年引上げ等をすると対象になります（簡略版 p.12）。' });
+  if(old60){
+    out.push({ id:'k65b', why:'60歳以上の職員が' + old60 + '人います。高年齢者向けの評価・賃金制度等を整えると対象になります（簡略版 p.12）。' });
+    out.push({ id:'age', why:'60歳以上の職員が' + old60 + '人います。高年齢の方の労働災害の防止・健康保持の取組が対象です（簡略版の一覧）。' });
+  }
+  if(emps.some(function(e){ return e.kid; })) out.push({ id:'ry5', why:'小学校に上がる前の子を育てている職員がいます。柔軟な働き方の制度を3つ以上入れて利用者が出ると対象です（簡略版 p.14）。' });
+  out.push({ id:'ry7', why:'不妊治療・月経・更年期の両立の制度を入れて利用者が出ると、各30万円です（簡略版 p.14）。' });
+  out.push({ id:'jinzai1', why:'賃金規定・人事評価・健康づくり等の制度や、負担を減らす機器を入れて離職率を下げると対象です（簡略版 p.11）。' });
+  out.push({ id:'kai1', why:'10時間以上の職場外訓練（OFF-JT）等を行うと対象です（簡略版 p.15）。' });
+  if(co.hire === '1'){
+    out.push({ id:'toku1', why:'これから雇う予定があります。60歳以上・母子家庭の母等を、ハローワーク等の紹介で継続して雇うと対象です。ハローワーク等の紹介を受けてから雇い入れる順番が大事です（簡略版 p.8）。' });
+    out.push({ id:'toku3', why:'35歳以上60歳未満で正社員の機会を逃した方を、紹介を受けて正社員として雇うと対象です（簡略版 p.8）。' });
+    out.push({ id:'trial1', why:'安定した就職が難しい方を、紹介を受けて試しに雇うと対象です（簡略版 p.9）。' });
+  }
+  if(co.minw) out.push({ id:'gyomu', why:'事業場で一番低い時給が ' + (+co.minw).toLocaleString() + '円です。これを引き上げて生産性を上げる設備投資等をすると対象です（簡略版 p.24）。地域別最低賃金との差の条件があるため、申請の前に確かめてください。' });
+  return out;
+}
+function jcFill(co){
+  co = co || {};
+  ['name','pref','city','n','teinen','keizoku','minw','memo'].forEach(function(k){ $('jc_c_' + k).value = co[k] == null ? '' : co[k]; });
+  $('jc_c_ind').value = co.ind || 'drive'; $('jc_c_sme').value = co.sme || '1';
+  ['rule','tayou','mgr','bonus','hire'].forEach(function(k){ $('jc_c_' + k).value = co[k] || ''; });
+  if(!$('jc_c_payD').options.length) $('jc_c_payD').innerHTML = Array.apply(null, Array(28)).map(function(_, i){ return '<option value="' + (i + 1) + '">' + (i + 1) + '日</option>'; }).join('') + '<option value="0">末日</option>';
+  $('jc_c_close').value = String(co.close || 0); $('jc_c_payM').value = String(co.payM == null ? 1 : co.payM); $('jc_c_payD').value = String(co.payD == null ? 25 : co.payD);
+  $('jc_c_prep').value = co.prep === '' || co.prep == null ? 30 : co.prep;
+}
+function jcEFill(e){
+  e = e || {};
+  $('jc_e_id').value = e.id || ''; $('jc_e_label').value = e.label || ''; $('jc_e_birth').value = e.birth || ''; $('jc_e_sex').value = e.sex || ''; $('jc_e_join').value = e.join || '';
+  $('jc_e_kind').value = e.kind || 'yf'; $('jc_e_wage').value = e.wage || ''; $('jc_e_shaho').value = e.shaho || '1'; $('jc_e_due').value = e.due || ''; $('jc_e_memo').value = e.memo || '';
+  ['p5','p1','here3','grad','kin','single','dis','care','kid'].forEach(function(k){ $('jc_e_' + k).checked = !!e[k]; });
+}
+var JC_KIND = { yf:'有期・フルタイム', yp:'有期・短時間', mf:'無期・フルタイム', mp:'無期・短時間', sei:'正社員' };
+/* 診断結果の本文（画面と提案書で同じものを使う） */
+function jcBody(co){
+  var emps = co.emps || [], h = '', sum = 0, sumN = 0;
+  var rows = emps.map(function(e){ return { e:e, r:jcEmp(co, e) }; });
+  h += '<h4>1. 職員ごとの見込みと時期</h4>';
+  if(!rows.length) h += '<p class="empty">職員がまだ入っていません。</p>';
+  rows.forEach(function(x, i){
+    var e = x.e, r = x.r;
+    h += '<div class="jcEmp"><p><b>' + (i + 1) + '. ' + esc(e.label || '（呼び名なし）') + '</b>　' + esc(JC_KIND[e.kind] || '') + (e.join ? '・雇い入れ ' + jsD(parseYmd(e.join)) : '') + (jcAge(e.birth, new Date()) != null ? '・' + jcAge(e.birth, new Date()) + '歳' : '') + '</p>';
+    r.warn.forEach(function(w){ h += '<p style="color:var(--red)">' + esc(w) + '</p>'; });
+    if(!r.items.length) h += '<p class="muted">入れていただいた情報では、職員ごとに判定できる制度は見つかりませんでした（会社としての候補は下の2をご覧ください）。</p>';
+    r.items.forEach(function(it){
+      h += '<div style="margin:4px 0 8px 12px"><p><b>' + esc(jcName(it.id)) + '</b>';
+      if(it.ng){ h += '　<span style="color:var(--red)">対象外の見込み</span></p>' + it.ng.map(function(s){ return '<p class="muted">' + esc(s) + '</p>'; }).join('') + '</div>'; return; }
+      if(it.amt !== '' && it.amt != null) h += '　見込み額 ' + esc(String(it.amt)) + '万円' + (it.ki ? '（' + (it.ki === 2 ? '2期に分けて' : '1期') + '）' : '');
+      h += '</p>';
+      if(it.id === 'cu1'){ sum += it.amt; sumN++; h += '<p>' + (it.heavy ? '重点支援対象者 ' + esc(it.heavy) : '重点支援対象者には当たらない見込み') + '</p>'; }
+      if(it.tl) h += '<table><tr><th>日付</th><th>すること</th></tr>' + it.tl.map(function(t){ return '<tr><td>' + jsD(t.d) + '</td><td>' + esc(t.t) + '</td></tr>'; }).join('') + '</table>';
+      if(it.alt) h += '<p><b>もう一つの案：</b>' + esc(it.alt.why) + '転換日 ' + jsD(it.alt.cv) + '・見込み額 ' + it.alt.amt + '万円（2期に分けて）。待つ間に退職されるおそれもあるため、どちらにするかは会社でお決めください。</p>';
+      (it.note || []).forEach(function(s){ h += '<p class="muted">' + esc(s) + '</p>'; });
+      h += '</div>';
+    });
+    h += '</div>';
+  });
+  if(sumN) h += '<p><b>キャリアアップ助成金（正社員化）の見込み額の合計：' + sum + '万円（' + sumN + '人・提案の転換日で要件をすべて満たした場合）</b>。会社としての加算は下の2のとおりです。</p>';
+  h += '<h4>2. 会社として取れる見込みのある制度</h4><table><tr><th>制度</th><th>中小企業の額（冊子の代表値）</th><th>理由・すること</th></tr>' + jcCo(co).map(function(x){
+    var r = jcRow(x.id) || [];
+    return '<tr><td>' + esc(jcName(x.id)) + (x.pre ? '<br><small>（はじめに必要な準備）</small>' : '') + '</td><td>' + (x.add ? '加算 ' + x.add + '万円' : esc(r[5] || '')) + '</td><td>' + esc(x.why) + '</td></tr>';
+  }).join('') + '</table>';
+  var pref = (co.pref || '').trim();
+  h += '<h4>3. 都道府県・市の支援機関</h4><p>' + (JC_SHINKO[pref] ? esc(JC_SHINKO[pref]) : (pref ? esc(pref) + 'の支援機関は、当社でまだ確かめていません。' : '所在地の都道府県が入っていません。')) + '　都道府県・市の助成金は、トライゲイトの発掘でその都度確かめます。</p>';
+  var hit = {}; rows.forEach(function(x){ x.r.items.forEach(function(it){ hit[it.id] = 1; }); }); jcCo(co).forEach(function(x){ hit[x.id] = 1; });
+  h += '<h4>4. 厚生労働省のそのほかの助成金（今回の情報では判定していない制度）</h4><p class="muted">採用・訓練・設備・制度づくりなど、これからの会社の動きによって対象になる制度です。</p><table><tr><th>制度</th><th>どんな取組で</th><th>中小企業の額（代表値）</th><th>窓口</th></tr>' + JC_ALL.filter(function(r){ return !hit[r[0]]; }).map(function(r){
+    return '<tr><td>' + esc(r[2] + (r[3] ? '（' + r[3] + '）' : '')) + '</td><td>' + esc(r[4]) + '</td><td>' + esc(r[5]) + '</td><td>' + esc(r[6]) + '</td></tr>';
+  }).join('') + '</table>';
+  h += '<p class="muted">' + esc(JC_NOTE) + '</p><p class="muted">' + esc(JC_SRC) + '</p>';
+  return h;
+}
+var JC_SHOWN = null;
+function jcRender(){
+  if(!$('cardJc')) return;
+  var list = jcAll(), cur = $('jc_sel').value;
+  $('jc_sel').innerHTML = (list.length ? list.map(function(c){ return '<option value="' + esc(c.id) + '">' + esc(c.name || '（名前なし）') + '</option>'; }).join('') : '<option value="">（まだありません。会社の情報を入れて「残す」を押してください）</option>') +
+    (cur === '__new' ? '<option value="__new">（新しいクライアント）</option>' : '');
+  if(cur && (cur === '__new' || list.some(function(c){ return c.id === cur; }))) $('jc_sel').value = cur;
+  if(cur === '__new') return;   /* 新しいクライアントを入れている途中は、入れかけの欄をそのままにする */
+  var co = jcCur();
+  /* 選んだクライアントが変わったときだけ欄を入れ替える（共有で画面が描き直されても、入れかけの欄を消さないため） */
+  var sid = co ? co.id : '';
+  if(JC_SHOWN !== sid){ jcFill(co); jcEFill(null); JC_SHOWN = sid; }
+  if(!co){ $('jc_eList').innerHTML = ''; $('jc_out').innerHTML = '<p class="empty">会社の情報を入れて「会社の情報を残す」を押すと、職員を入れられるようになります。</p>'; $('jc_eBox').style.display = 'none'; return; }
+  $('jc_eBox').style.display = '';
+  var emps = co.emps || [];
+  $('jc_eList').innerHTML = emps.length ? '<table><tr><th>職員</th><th>雇い方</th><th>雇い入れ</th><th>生年月日</th><th>月給</th><th></th></tr>' + emps.map(function(e){
+    return '<tr><td>' + esc(e.label) + '</td><td>' + esc(JC_KIND[e.kind] || '') + '</td><td>' + jsD(parseYmd(e.join)) + '</td><td>' + jsD(parseYmd(e.birth)) + '</td><td>' + (e.wage ? (+e.wage).toLocaleString() + '円' : '—') + '</td><td><button class="btn small sub" data-jced="' + esc(e.id) + '">直す</button> <button class="btn small sub" data-jcdel="' + esc(e.id) + '">消す</button></td></tr>';
+  }).join('') + '</table>' : '<p class="empty">職員はまだ入っていません。</p>';
+  $('jc_eList').querySelectorAll('[data-jced]').forEach(function(b){ b.onclick = function(){ jcEFill((jcCur().emps || []).filter(function(x){ return x.id === b.getAttribute('data-jced'); })[0]); $('jc_eBox').scrollIntoView({ behavior:'smooth', block:'start' }); }; });
+  $('jc_eList').querySelectorAll('[data-jcdel]').forEach(function(b){ b.onclick = function(){ var c = jcCur(), e = (c.emps || []).filter(function(x){ return x.id === b.getAttribute('data-jcdel'); })[0]; if(!e || !confirm(e.label + 'さんを消します。よろしいですか？')) return; c.emps = c.emps.filter(function(x){ return x !== e; }); jcSave(jcAll().map(function(x){ return x.id === c.id ? c : x; })); jcRender(); }; });
+  $('jc_out').innerHTML = jcBody(co);
+}
+function jcPrint(){
+  var co = jcCur(); if(!co) return;
+  var win = window.open('', '_blank'); if(!win){ alert('印刷用の画面を開けませんでした。ポップアップを許可してください。'); return; }
+  var title = '助成金活用のご提案（厚生労働省の助成金）';
+  var logo = new URL('TriSight_icon_512.png', location.href).href;
+  var css = '@page{size:A4;margin:10mm 12mm}body{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;font-size:10.5pt;color:#111;margin:0}' +
+    'table.pg{width:100%;border-collapse:collapse}table.pg>thead td,table.pg>tfoot td{border:none;padding:0}' +
+    '.lh{display:flex;align-items:center;gap:10px}.lh img{width:34px;height:34px}.lh .t{font-size:15pt;font-weight:bold}.lh .co{font-size:9pt;color:#333}.rule{border-bottom:1.5px solid #0f1d3a;margin:4px 0 10px}' +
+    '.ft{display:flex;align-items:center;gap:6px;border-top:1px solid #999;margin-top:10px;padding-top:4px;font-size:8pt;color:#444}.ft img{width:14px;height:14px}' +
+    'h4{font-size:11.5pt;margin:14px 0 6px;border-left:4px solid #0f1d3a;padding-left:6px}p{margin:3px 0;line-height:1.55}.muted{color:#444;font-size:9pt}.empty{color:#666}' +
+    '.body table{width:100%;border-collapse:collapse;margin:4px 0;font-size:9.5pt}.body th,.body td{border:1px solid #888;padding:3px 5px;vertical-align:top;text-align:left}.body th{background:#eef1f6}' +
+    '.jcEmp{break-inside:avoid;page-break-inside:avoid;margin-bottom:8px}tr{break-inside:avoid;page-break-inside:avoid}button{display:none}';
+  var head = '<div class="lh"><img src="' + logo + '" alt=""><div><div class="t">' + esc(title) + '</div><div class="co">合同会社トライサイト</div></div></div><div class="rule"></div>';
+  var foot = '<div class="ft"><img src="' + logo + '" alt=""><span>TriSight®　合同会社トライサイト　社外秘</span></div>';
+  var intro = '<p><b>' + esc(co.name || '') + '　御中</b></p><p>作成日：' + jsD(new Date()) + '</p><p>貴社の職員の皆さまの情報をもとに、厚生労働省の助成金のうち、取れる見込みのある制度と、準備の時期の目安をまとめました。</p>';
+  win.document.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>' + esc(title) + '</title><style>' + css + '</style></head><body><table class="pg"><thead><tr><td>' + head + '</td></tr></thead><tfoot><tr><td>' + foot + '</td></tr></tfoot><tbody><tr><td><div class="body">' + intro + jcBody(co) + '</div></td></tr></tbody></table><script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script></body></html>');
+  win.document.close();
+}
+(function(){
+  if(!$('cardJc')) return;
+  $('jc_sel').onchange = function(){ JC_SHOWN = null; jcRender(); };
+  $('jc_new').onclick = function(){ $('jc_sel').innerHTML += '<option value="__new" selected>（新しいクライアント）</option>'; $('jc_sel').value = '__new'; JC_SHOWN = '__new'; jcFill(null); jcEFill(null); $('jc_eBox').style.display = 'none'; $('jc_out').innerHTML = ''; $('jc_c_msg').textContent = '会社の情報を入れて「会社の情報を残す」を押してください。'; $('jc_c_name').focus(); };
+  $('jc_c_save').onclick = function(){
+    var list = jcAll().slice(), old = jcCur(), co = Object.assign({}, old || { id:uid(), emps:[] });
+    ['name','pref','city','memo'].forEach(function(k){ co[k] = $('jc_c_' + k).value.trim(); });
+    ['n','teinen','keizoku','minw','prep'].forEach(function(k){ co[k] = $('jc_c_' + k).value === '' ? '' : +$('jc_c_' + k).value; });
+    co.ind = $('jc_c_ind').value; co.sme = $('jc_c_sme').value;
+    ['rule','tayou','mgr','bonus','hire'].forEach(function(k){ co[k] = $('jc_c_' + k).value; });
+    co.close = +$('jc_c_close').value; co.payM = +$('jc_c_payM').value; co.payD = +$('jc_c_payD').value;
+    if(!co.name){ $('jc_c_msg').textContent = '会社の正式名称を入れてください。'; return; }
+    list = list.filter(function(x){ return x.id !== co.id; }); list.push(co); jcSave(list);
+    $('jc_sel').innerHTML += '<option value="' + esc(co.id) + '"></option>'; $('jc_sel').value = co.id; JC_SHOWN = co.id; jcRender(); $('jc_c_msg').textContent = co.name + 'の情報を残しました。';
+  };
+  $('jc_c_del').onclick = function(){ var co = jcCur(); if(!co || !confirm(co.name + 'と、その職員の情報をすべて消します。よろしいですか？')) return; jcSave(jcAll().filter(function(x){ return x.id !== co.id; })); $('jc_sel').value = ''; JC_SHOWN = null; jcRender(); };
+  $('jc_e_save').onclick = function(){
+    var co = jcCur(); if(!co){ $('jc_e_msg').textContent = '先に会社の情報を残してください。'; return; }
+    var e = { id:$('jc_e_id').value || uid(), label:$('jc_e_label').value.trim(), birth:$('jc_e_birth').value, sex:$('jc_e_sex').value, join:$('jc_e_join').value, kind:$('jc_e_kind').value, wage:$('jc_e_wage').value === '' ? '' : +$('jc_e_wage').value, shaho:$('jc_e_shaho').value, due:$('jc_e_due').value, memo:$('jc_e_memo').value.trim() };
+    ['p5','p1','here3','grad','kin','single','dis','care','kid'].forEach(function(k){ e[k] = $('jc_e_' + k).checked; });
+    if(!e.label){ $('jc_e_msg').textContent = '職員の呼び名（社員番号・イニシャル可）を入れてください。'; return; }
+    co.emps = (co.emps || []).filter(function(x){ return x.id !== e.id; }); co.emps.push(e);
+    jcSave(jcAll().map(function(x){ return x.id === co.id ? co : x; })); jcEFill(null); jcRender(); $('jc_e_msg').textContent = e.label + 'さんを残しました。';
+  };
+  $('jc_e_clear').onclick = function(){ jcEFill(null); $('jc_e_msg').textContent = ''; };
+  $('jc_print').onclick = jcPrint;
 })();
 
 /* ---- 配線 ---- */

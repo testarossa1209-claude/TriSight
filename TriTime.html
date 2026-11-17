@@ -292,6 +292,8 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   .npRule{display:block;margin:2px 0;padding:2px 5px;border-radius:5px;background:#eef1ea;font-size:11px;line-height:1.35}
   .npRule.off{background:#fde8e6;color:#9b2c22;font-weight:700}
   .npHol{color:#b3261e;font-size:11px;font-weight:700;margin-left:4px}
+  .npOffT{display:inline-block;margin-left:4px;padding:0 5px;border-radius:4px;background:#fde8e6;color:#9b2c22;font-size:11px;font-weight:700}
+  .npDay.hol{border:2px solid #b3261e}
   .npRuleT td, .npRuleT th{padding:4px 6px;font-size:13px}
   .npCard .npEd{margin-top:3px;font:inherit;font-size:12px;padding:1px 10px;border:1px solid #2b4a6f;background:#fff;color:#2b4a6f;border-radius:6px;cursor:pointer}
   .npTray{display:flex;flex-wrap:wrap;gap:6px;min-height:44px;padding:6px;border:1px dashed var(--line);border-radius:8px;margin:6px 0 10px}
@@ -8862,7 +8864,7 @@ function npRender(){
   var last = new Date(NP_MON.getFullYear(), NP_MON.getMonth() + 1, 0);
   for(var dd = mondayOf(NP_MON); dd <= last || dd.getDay() !== 1; dd = addDays(dd, 1)){
     var k = ymd(dd), list = (by[k] || []).sort(function(a, b){ return sk(a) - sk(b); });
-    h += '<div class="npDay' + (dd.getMonth() !== NP_MON.getMonth() ? ' out' : '') + (k === today ? ' today' : '') + '" data-npday="' + k + '"><div class="npD">' + dd.getDate() + (holidayName(k) ? '<span class="npHol">' + esc(holidayName(k)) + '</span>' : '') + '</div>' + npRuleHTML(k, D0.rules) + list.map(npCardHTML).join('') + '</div>';
+    h += '<div class="npDay' + (dd.getMonth() !== NP_MON.getMonth() ? ' out' : '') + (k === today ? ' today' : '') + (holidayName(k) ? ' hol' : '') + '" data-npday="' + k + '"><div class="npD">' + dd.getDate() + (holidayName(k) ? '<span class="npHol">' + esc(holidayName(k)) + '</span>' : '') + (npRuleOf(k, D0.rules) && npRuleOf(k, D0.rules).st === 'off' ? '<span class="npOffT">公休</span>' : '') + '</div>' + npRuleHTML(k, D0.rules) + list.map(npCardHTML).join('') + '</div>';
   }
   $('np_cal').innerHTML = h;
   [['np_oNoa','noa'],['np_oTri','tri']].forEach(function(p){ var el = $(p[0]); if(el && document.activeElement !== el) el.value = D0.origins[p[1]] || ''; });
@@ -8879,7 +8881,7 @@ function npRuleOf(date, rules){
 }
 function npRuleHTML(date, rules){
   var r = npRuleOf(date, rules); if(!r) return '';
-  if(r.st === 'off') return '<span class="npRule off">公休</span>';
+  if(r.st === 'off') return '';   /* 2026-11-18（宏史さんの指示）：公休は日付の行のいちばん最初に出す */
   return '<span class="npRule">' + esc(r.from || '') + (r.to ? '〜' + esc(r.to) : '') + ' ' + esc(NP_KIND[r.kind] || '') + ' ' + esc(r.purpose || '') + '</span>';
 }
 function npRuleRender(){

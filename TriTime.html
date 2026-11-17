@@ -294,6 +294,17 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   .npHol{color:#b3261e;font-size:11px;font-weight:700;margin-left:4px}
   .npOffT{display:inline-block;margin-left:4px;padding:0 5px;border-radius:4px;background:#fde8e6;color:#9b2c22;font-size:11px;font-weight:700}
   .npDay.hol{border:2px solid #b3261e}
+  /* 2026-11-18（宏史さん「内容を入れると予定表が間延びする」「カーソルをその予定におくと立ち上がるように」）：札は1行にし、中身はカーソルを置いたとき（タブレットは押したとき）に出す */
+  .npCard{position:relative}
+  .npCard .npL{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .npPop{display:none;position:absolute;left:0;top:100%;z-index:30;min-width:230px;max-width:300px;padding:8px 10px;background:#fff;border:1px solid #c9d6e4;border-radius:8px;box-shadow:0 6px 18px rgba(16,36,59,.18);white-space:normal;cursor:default;color:var(--ink,#222)}
+  .npCard:hover .npPop, .npCard.sel .npPop{display:block}
+  .npDay:nth-child(7n) .npPop, .npDay:nth-child(7n-1) .npPop{left:auto;right:0}
+  .npPop div{margin:2px 0}
+  .npMore{display:inline-block;font-size:11px;color:#2b4a6f;text-decoration:underline;cursor:pointer}
+  .npRule .npSkip{display:none}
+  .npRule:hover .npSkip{display:inline-block}
+  @media (hover:none){ .npRule .npSkip{display:inline-block} }
   .npSkip{margin-left:4px;font:inherit;font-size:10px;padding:0 6px;border:1px solid #999;background:#fff;color:#555;border-radius:5px;cursor:pointer}
   .npSkipped{display:block;margin:2px 0;font-size:10px;color:#888}
   .npRuleT td, .npRuleT th{padding:4px 6px;font-size:13px}
@@ -447,7 +458,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-18-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-18-05</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -8849,11 +8860,16 @@ function npPrevPlace(date, appo, selfId){
 function npFromLabel(x){ return x.from === 'tri' ? 'トライサイトから' : x.from === 'prev' ? '前の予定地から' : x.from === 'other' ? 'その他から' : 'ノアから'; }
 function npCardHTML(x){
   var dp = npDepart(x);
-  return '<span class="npCard' + (x.kind === 'go' ? ' go' : '') + (NP_PICK === x.id ? ' sel' : '') + '" draggable="true" data-np="' + esc(x.id) + '" title="ドラッグで日へ動かせます。「直す」ボタンで中身を直せます">' +
-    (dp ? '<span class="muted">' + esc(dp) + ' 出発（' + esc(npFromLabel(x)) + '・' + (x.mode === 'train' ? '電車' : '車') + '）</span><br>' : '') +
-    (x.appo ? esc(x.appo) + (x.end ? '〜' + esc(x.end) : '') + ' ' : '') + (x.purpose ? '［' + esc(x.purpose) + '］' : '') + '<span class="npT">' + esc(x.title || '（名前なし）') + '</span>' +
-    (x.kind && x.kind !== 'go' && NP_KIND[x.kind] ? ' <span class="muted">' + esc(NP_KIND[x.kind]) + '</span>' : '') + (x.memo ? '<br>' + esc(x.memo) : '') +
-    (x.place && x.kind === 'go' ? '<br><span class="muted">' + esc(x.place) + '</span>' : '') + '<br><button type="button" class="npEd" data-npedit="' + esc(x.id) + '">直す</button></span>';
+  var row = function(k, v){ return v ? '<div><span class="muted">' + k + '：</span>' + esc(v) + '</div>' : ''; };
+  return '<span class="npCard' + (x.kind === 'go' ? ' go' : '') + (NP_PICK === x.id ? ' sel' : '') + '" draggable="true" data-np="' + esc(x.id) + '">' +
+    '<span class="npL">' + (x.appo ? esc(x.appo) + ' ' : '') + '<span class="npT">' + esc(x.title || '（名前なし）') + '</span></span>' +
+    '<span class="npMore">要件はこちら</span>' +
+    '<span class="npPop">' +
+      '<div class="npT">' + esc(x.title || '（名前なし）') + '</div>' +
+      row('時刻', x.appo ? x.appo + (x.end ? '〜' + x.end : '') : '') + row('目的', x.purpose) + row('種類', NP_KIND[x.kind] || '') + row('内容', x.memo) +
+      (x.kind === 'go' ? row('行き先', x.place) + row('出発', dp ? dp + '（' + npFromLabel(x) + '・' + (x.mode === 'train' ? '電車' : '車') + (x.move ? '・移動' + x.move + '分' : '') + '）' : '') : '') +
+      '<div class="btns" style="margin-top:6px"><button type="button" class="npEd" data-npedit="' + esc(x.id) + '">直す</button></div>' +
+    '</span></span>';
 }
 function npRender(){
   if(!$('np_cal')) return;

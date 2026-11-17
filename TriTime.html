@@ -289,6 +289,7 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   .npCard.go{background:#fff4e2;border-color:#ecd2a2}
   .npCard.sel{outline:3px solid #993c1d}
   .npCard .npT{font-weight:700}
+  .npCard .npEd{margin-top:3px;font:inherit;font-size:12px;padding:1px 10px;border:1px solid #2b4a6f;background:#fff;color:#2b4a6f;border-radius:6px;cursor:pointer}
   .npTray{display:flex;flex-wrap:wrap;gap:6px;min-height:44px;padding:6px;border:1px dashed var(--line);border-radius:8px;margin:6px 0 10px}
   .npTray .npCard{margin:0;max-width:240px}
   .osCnt{position:absolute;top:-7px;right:-9px;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;background:var(--red);color:#fff;border-radius:9px;font-size:11px;font-weight:700;line-height:18px;text-align:center;box-shadow:0 0 0 2px #fff}
@@ -590,7 +591,7 @@ function tsPortalAsk(){
   <!-- 2026-11-18（宏史さんの指示）：野木画面の経営企画部ページの予定は、宏史さんが入れた予定を1か月で出す。札はドラッグで日へ置く・動かす -->
   <div class="card" id="cardNgPlan" style="display:none">
     <h2>野木の予定（1か月）</h2>
-    <p class="lead">下で札を作り、カレンダーの日へドラッグして置きます。置いた札もドラッグで別の日へ動かせます（タブレットでは、札を押してから日を押しても置けます）。札を2回押すと中身を直せます。外出の札には、アポの時刻とは別に「出発の時刻」が出ます。</p>
+    <p class="lead">下で札を作り、カレンダーの日へドラッグして置きます。置いた札もドラッグで別の日へ動かせます（タブレットでは、札を押してから日を押しても置けます）。札の中の「直す」ボタンで中身を直せます。外出の札には、アポの時刻とは別に「出発の時刻」が出ます。</p>
     <details id="np_new" open><summary id="np_formTitle">札を作る</summary>
       <div class="row">
         <div><label class="f" for="np_title">訪問先・相手の名前</label><input type="text" id="np_title" maxlength="100" placeholder="例：M&amp;M、今井タクシー"></div>
@@ -8832,11 +8833,11 @@ function npPrevPlace(date, appo, selfId){
 function npFromLabel(x){ return x.from === 'tri' ? 'トライサイトから' : x.from === 'prev' ? '前の予定地から' : x.from === 'other' ? 'その他から' : 'ノアから'; }
 function npCardHTML(x){
   var dp = npDepart(x);
-  return '<span class="npCard' + (x.kind === 'go' ? ' go' : '') + (NP_PICK === x.id ? ' sel' : '') + '" draggable="true" data-np="' + esc(x.id) + '" title="ドラッグで日へ動かせます。2回押すと中身を直せます">' +
+  return '<span class="npCard' + (x.kind === 'go' ? ' go' : '') + (NP_PICK === x.id ? ' sel' : '') + '" draggable="true" data-np="' + esc(x.id) + '" title="ドラッグで日へ動かせます。「直す」ボタンで中身を直せます">' +
     (dp ? '<span class="muted">' + esc(dp) + ' 出発（' + esc(npFromLabel(x)) + '・' + (x.mode === 'train' ? '電車' : '車') + '）</span><br>' : '') +
     (x.appo ? esc(x.appo) + (x.end ? '〜' + esc(x.end) : '') + ' ' : '') + (x.purpose ? '［' + esc(x.purpose) + '］' : '') + '<span class="npT">' + esc(x.title || '（名前なし）') + '</span>' +
     (x.kind && x.kind !== 'go' && NP_KIND[x.kind] ? ' <span class="muted">' + esc(NP_KIND[x.kind]) + '</span>' : '') + (x.memo ? '<br>' + esc(x.memo) : '') +
-    (x.place ? '<br><span class="muted">' + esc(x.place) + '</span>' : '') + '</span>';
+    (x.place ? '<br><span class="muted">' + esc(x.place) + '</span>' : '') + '<br><button type="button" class="npEd" data-npedit="' + esc(x.id) + '">直す</button></span>';
 }
 function npRender(){
   if(!$('np_cal')) return;
@@ -8868,6 +8869,8 @@ function npWire(){
       NP_PICK = id; npRender(); $('np_msg').textContent = '置きたい日を押してください（もう一度その札を押すと中身を直せます）。';
     });
   });
+  /* 2026-11-18（宏史さん「修正ができません」）：札を2回押す操作は分かりにくいので、札ごとに「直す」ボタンを付ける */
+  [].forEach.call(root.querySelectorAll('[data-npedit]'), function(b){ b.addEventListener('click', function(ev){ ev.stopPropagation(); NP_PICK = null; npEdit(b.getAttribute('data-npedit')); }); });
   [].forEach.call(root.querySelectorAll('[data-npday]'), function(c){
     c.addEventListener('dragover', function(ev){ ev.preventDefault(); c.classList.add('over'); });
     c.addEventListener('dragleave', function(){ c.classList.remove('over'); });

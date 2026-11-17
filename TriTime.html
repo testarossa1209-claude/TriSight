@@ -289,6 +289,12 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   .npCard.go{background:#fff4e2;border-color:#ecd2a2}
   .npCard.sel{outline:3px solid #993c1d}
   .npCard .npT{font-weight:700}
+  .npRule{display:block;margin:2px 0;padding:2px 5px;border-radius:5px;background:#eef1ea;font-size:11px;line-height:1.35}
+  .npRule.off{background:#fde8e6;color:#9b2c22;font-weight:700}
+  .npHol{color:#b3261e;font-size:11px;font-weight:700;margin-left:4px}
+  .npOffT{display:inline-block;margin-left:4px;padding:0 5px;border-radius:4px;background:#fde8e6;color:#9b2c22;font-size:11px;font-weight:700}
+  .npDay.hol{border:2px solid #b3261e}
+  .npRuleT td, .npRuleT th{padding:4px 6px;font-size:13px}
   .npCard .npEd{margin-top:3px;font:inherit;font-size:12px;padding:1px 10px;border:1px solid #2b4a6f;background:#fff;color:#2b4a6f;border-radius:6px;cursor:pointer}
   .npTray{display:flex;flex-wrap:wrap;gap:6px;min-height:44px;padding:6px;border:1px dashed var(--line);border-radius:8px;margin:6px 0 10px}
   .npTray .npCard{margin:0;max-width:240px}
@@ -439,7 +445,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-18-02</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-18-03</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -591,11 +597,11 @@ function tsPortalAsk(){
   <!-- 2026-11-18（宏史さんの指示）：野木画面の経営企画部ページの予定は、宏史さんが入れた予定を1か月で出す。札はドラッグで日へ置く・動かす -->
   <div class="card" id="cardNgPlan" style="display:none">
     <h2>野木の予定（1か月）</h2>
-    <p class="lead">下で札を作り、カレンダーの日へドラッグして置きます。置いた札もドラッグで別の日へ動かせます（タブレットでは、札を押してから日を押しても置けます）。札の中の「直す」ボタンで中身を直せます。外出の札には、アポの時刻とは別に「出発の時刻」が出ます。</p>
+    <p class="lead">下で札を作り、カレンダーの日へドラッグして置きます。公休や毎日の出勤の時間は「毎週の決まり」で一括で入れられます。祝日はカレンダーに赤い字で出ます。置いた札もドラッグで別の日へ動かせます（タブレットでは、札を押してから日を押しても置けます）。札の中の「直す」ボタンで中身を直せます。外出の札には、アポの時刻とは別に「出発の時刻」が出ます。外出先から次のアポ先へ行くときは、同じ日・後の時刻で外出の札を作ると、出発地が自動で「前の予定地から」になります。</p>
     <details id="np_new" open><summary id="np_formTitle">札を作る</summary>
       <div class="row">
         <div><label class="f" for="np_title">訪問先・相手の名前</label><input type="text" id="np_title" maxlength="100" placeholder="例：M&amp;M、今井タクシー"></div>
-        <div><label class="f" for="np_purpose">目的</label><select id="np_purpose"><option>営業</option><option>打ち合わせ</option><option>会議</option><option>役所の手続き</option><option>研修・セミナー</option><option>車・設備</option><option>私用</option><option>買い物</option><option>その他</option></select></div>
+        <div><label class="f" for="np_purpose">目的</label><select id="np_purpose"><option>通常の社内業務</option><option>営業</option><option>打ち合わせ</option><option>会議</option><option>役所の手続き</option><option>研修・セミナー</option><option>車・設備</option><option>私用</option><option>買い物</option><option>その他</option></select></div>
         <div><label class="f" for="np_date">日（空けると下の置き場へ）</label><input type="date" id="np_date"></div>
         <div><label class="f" for="np_appo">アポの時刻</label><input type="time" id="np_appo"></div>
         <div><label class="f" for="np_end">終わりの時刻</label><input type="time" id="np_end"></div>
@@ -618,6 +624,12 @@ function tsPortalAsk(){
         </div>
         <div class="btns"><button type="button" class="btn sub small" id="np_oSave">住所を保存する</button></div>
       </details>
+    </details>
+    <!-- 2026-11-18（宏史さんの指示「一括で入力できる項目」「水曜日と土曜日が公休日」「祭日はノア社内業務で6時〜15時」） -->
+    <details id="np_ruleBox" style="margin-top:8px"><summary>毎週の決まり（公休・出勤の時間を一括で入れる）</summary>
+      <p class="muted" style="margin:6px 0">曜日ごとと祝日に、公休か出勤かを決めておくと、カレンダーの全部の日に自動で出ます。祝日は曜日より優先します。「決めない」の曜日には何も出しません。</p>
+      <div class="tbl-scroll" id="np_ruleT"></div>
+      <div class="btns"><button type="button" class="btn" id="np_ruleSave">この決まりで保存する</button><span class="muted" id="np_ruleMsg"></span></div>
     </details>
     <h3 style="margin:12px 0 4px;font-size:15px">置き場（日の決まっていない札）</h3>
     <div class="npTray" id="np_tray"></div>
@@ -8809,7 +8821,7 @@ function rqBadge(){
 }
 setInterval(rqBadge, 60000);
 /* 野木の予定（1か月） */
-function npData(){ var it = live('mgmt').filter(function(x){ return x.id === NP_KEY; })[0] || { id:NP_KEY }; return { items:Array.isArray(it.items) ? it.items : [], origins:it.origins || {} }; }
+function npData(){ var it = live('mgmt').filter(function(x){ return x.id === NP_KEY; })[0] || { id:NP_KEY }; return { items:Array.isArray(it.items) ? it.items : [], origins:it.origins || {}, rules:it.rules || null }; }
 function npSave(patch){
   var all = live('mgmt'), i = -1; all.forEach(function(x, j){ if(x.id === NP_KEY) i = j; });
   var it = Object.assign({}, i >= 0 ? all[i] : { id:NP_KEY }, patch, { id:NP_KEY });
@@ -8837,7 +8849,7 @@ function npCardHTML(x){
     (dp ? '<span class="muted">' + esc(dp) + ' 出発（' + esc(npFromLabel(x)) + '・' + (x.mode === 'train' ? '電車' : '車') + '）</span><br>' : '') +
     (x.appo ? esc(x.appo) + (x.end ? '〜' + esc(x.end) : '') + ' ' : '') + (x.purpose ? '［' + esc(x.purpose) + '］' : '') + '<span class="npT">' + esc(x.title || '（名前なし）') + '</span>' +
     (x.kind && x.kind !== 'go' && NP_KIND[x.kind] ? ' <span class="muted">' + esc(NP_KIND[x.kind]) + '</span>' : '') + (x.memo ? '<br>' + esc(x.memo) : '') +
-    (x.place ? '<br><span class="muted">' + esc(x.place) + '</span>' : '') + '<br><button type="button" class="npEd" data-npedit="' + esc(x.id) + '">直す</button></span>';
+    (x.place && x.kind === 'go' ? '<br><span class="muted">' + esc(x.place) + '</span>' : '') + '<br><button type="button" class="npEd" data-npedit="' + esc(x.id) + '">直す</button></span>';
 }
 function npRender(){
   if(!$('np_cal')) return;
@@ -8852,12 +8864,49 @@ function npRender(){
   var last = new Date(NP_MON.getFullYear(), NP_MON.getMonth() + 1, 0);
   for(var dd = mondayOf(NP_MON); dd <= last || dd.getDay() !== 1; dd = addDays(dd, 1)){
     var k = ymd(dd), list = (by[k] || []).sort(function(a, b){ return sk(a) - sk(b); });
-    h += '<div class="npDay' + (dd.getMonth() !== NP_MON.getMonth() ? ' out' : '') + (k === today ? ' today' : '') + '" data-npday="' + k + '"><div class="npD">' + dd.getDate() + '</div>' + list.map(npCardHTML).join('') + '</div>';
+    h += '<div class="npDay' + (dd.getMonth() !== NP_MON.getMonth() ? ' out' : '') + (k === today ? ' today' : '') + (holidayName(k) ? ' hol' : '') + '" data-npday="' + k + '"><div class="npD">' + dd.getDate() + (holidayName(k) ? '<span class="npHol">' + esc(holidayName(k)) + '</span>' : '') + (npRuleOf(k, D0.rules) && npRuleOf(k, D0.rules).st === 'off' ? '<span class="npOffT">公休</span>' : '') + '</div>' + npRuleHTML(k, D0.rules) + list.map(npCardHTML).join('') + '</div>';
   }
   $('np_cal').innerHTML = h;
   [['np_oNoa','noa'],['np_oTri','tri']].forEach(function(p){ var el = $(p[0]); if(el && document.activeElement !== el) el.value = D0.origins[p[1]] || ''; });
   npWire();
+  if(!$('np_ruleT').firstChild) npRuleRender();
 }
+/* 毎週の決まり：rules[キー] = { st:'' | 'off' | 'work', kind:'noa'|'tri', from:'06:00', to:'15:00', purpose } 。キーは '1'〜'6'・'0'（日）・'hol'（祝日） */
+var NP_RULE_ROWS = [['1','月曜日'],['2','火曜日'],['3','水曜日'],['4','木曜日'],['5','金曜日'],['6','土曜日'],['0','日曜日'],['hol','祝日']];
+var NP_RULE_DEF = { '1':{ st:'work', kind:'noa', from:'06:00', to:'13:00', purpose:'通常の社内業務' }, '2':{ st:'work', kind:'noa', from:'06:00', to:'13:00', purpose:'通常の社内業務' }, '4':{ st:'work', kind:'noa', from:'06:00', to:'13:00', purpose:'通常の社内業務' }, '5':{ st:'work', kind:'noa', from:'06:00', to:'13:00', purpose:'通常の社内業務' }, '0':{ st:'work', kind:'noa', from:'06:00', to:'13:00', purpose:'通常の社内業務' }, '3':{ st:'off' }, '6':{ st:'off' }, hol:{ st:'work', kind:'noa', from:'06:00', to:'15:00', purpose:'通常の社内業務' } };   /* 保存する前の入り口の値（宏史さんの言った公休と祝日の勤務） */
+function npRuleOf(date, rules){
+  if(!rules) return null; var d = parseYmd(date); if(!d) return null;
+  if(holidayName(date) && rules.hol && rules.hol.st) return rules.hol;
+  var r = rules[String(d.getDay())]; return r && r.st ? r : null;
+}
+function npRuleHTML(date, rules){
+  var r = npRuleOf(date, rules); if(!r) return '';
+  if(r.st === 'off') return '';   /* 2026-11-18（宏史さんの指示）：公休は日付の行のいちばん最初に出す */
+  return '<span class="npRule">' + esc(r.from || '') + (r.to ? '〜' + esc(r.to) : '') + ' ' + esc(NP_KIND[r.kind] || '') + ' ' + esc(r.purpose || '') + '</span>';
+}
+function npRuleRender(){
+  var R0 = npData().rules || NP_RULE_DEF, box = $('np_ruleT'); if(!box) return;
+  var opt = function(v, cur, label){ return '<option value="' + v + '"' + (v === cur ? ' selected' : '') + '>' + label + '</option>'; };
+  box.innerHTML = '<table class="npRuleT"><tr><th></th><th>公休／出勤</th><th>場所</th><th>始まり</th><th>終わり</th><th>目的</th></tr>' + NP_RULE_ROWS.map(function(rw){
+    var r = R0[rw[0]] || {}, st = r.st || '';
+    return '<tr data-rule="' + rw[0] + '"><th>' + rw[1] + '</th>' +
+      '<td><select data-f="st">' + opt('', st, '決めない') + opt('off', st, '公休') + opt('work', st, '出勤') + '</select></td>' +
+      '<td><select data-f="kind">' + opt('noa', r.kind || 'noa', '社内（ノア）') + opt('tri', r.kind || 'noa', '社内（トライサイト）') + '</select></td>' +
+      '<td><input type="time" data-f="from" value="' + esc(r.from || '') + '"></td><td><input type="time" data-f="to" value="' + esc(r.to || '') + '"></td>' +
+      '<td><input type="text" data-f="purpose" maxlength="40" value="' + esc(r.purpose || '通常の社内業務') + '"></td></tr>';
+  }).join('') + '</table>';
+  var sync = function(tr){ var w = tr.querySelector('[data-f="st"]').value === 'work'; [].forEach.call(tr.querySelectorAll('[data-f="kind"],[data-f="from"],[data-f="to"],[data-f="purpose"]'), function(el){ el.disabled = !w; }); };
+  [].forEach.call(box.querySelectorAll('tr[data-rule]'), function(tr){ sync(tr); tr.querySelector('[data-f="st"]').addEventListener('change', function(){ sync(tr); }); });
+  $('np_ruleMsg').textContent = npData().rules ? '' : 'まだ保存していません（公休＝水・土、ふだんの出勤日＝ノアで6時〜13時、祝日＝ノアで6時〜15時を入れてあります）。';
+}
+$('np_ruleSave').addEventListener('click', function(){
+  var rules = {};
+  [].forEach.call($('np_ruleT').querySelectorAll('tr[data-rule]'), function(tr){
+    var g = function(f){ var el = tr.querySelector('[data-f="' + f + '"]'); return el ? el.value : ''; }, st = g('st');
+    rules[tr.getAttribute('data-rule')] = st === 'work' ? { st:'work', kind:g('kind'), from:g('from'), to:g('to'), purpose:g('purpose').trim() } : { st:st };
+  });
+  npSave({ rules:rules }); $('np_ruleMsg').textContent = '保存しました。カレンダーに出ています。'; npRender();
+});
 function npDropId(ev){ var id = ''; try{ id = ev.dataTransfer.getData('text/plain'); }catch(e){} return id; }
 function npWire(){
   var root = $('cardNgPlan');
@@ -8896,7 +8945,7 @@ function npForm(x){
   x = x || {};
   $('np_title').value = x.title || ''; $('np_date').value = x.date || ''; $('np_appo').value = x.appo || ''; $('np_end').value = x.end || '';
   $('np_kind').value = (x.kind && x.kind !== 'in') ? x.kind : (x.kind === 'in' ? 'noa' : 'go'); $('np_place').value = x.place || ''; $('np_from').value = x.from || 'noa'; $('np_mode').value = x.mode || 'car';
-  $('np_purpose').value = x.purpose || '営業'; $('np_fromOther').value = x.fromOther || '';
+  $('np_purpose').value = x.purpose || (x.kind && x.kind !== 'go' ? '通常の社内業務' : '営業'); $('np_fromOther').value = x.fromOther || '';
   $('np_move').value = (x.move != null && x.move !== '') ? x.move : ''; $('np_memo').value = x.memo || '';
   npDepShow();
 }
@@ -8921,6 +8970,13 @@ function npDepShow(){
   }
   $('np_depart').textContent = t;
 }
+/* 2026-11-18（宏史さん「外出先から次のアポ先への入力の仕方が不明」）：新しく外出の札を作るとき、同じ日のこのアポより前に外出の予定があれば、出発地を「前の予定地から」に自動で合わせる */
+function npAutoFrom(){
+  if(NP_EDIT || $('np_kind').value !== 'go') return;
+  var pv = npPrevPlace($('np_date').value, $('np_appo').value, null);
+  if(pv && pv.item.kind === 'go' && $('np_from').value !== 'other') $('np_from').value = 'prev';
+}
+['np_date','np_appo','np_kind'].forEach(function(id){ $(id).addEventListener('change', function(){ npAutoFrom(); npDepShow(); }); });
 ['np_kind','np_appo','np_move','np_from','np_date'].forEach(function(id){ $(id).addEventListener('input', npDepShow); $(id).addEventListener('change', npDepShow); });
 $('np_save').addEventListener('click', function(){
   var t = $('np_title').value.trim(); if(!t){ $('np_msg').textContent = '訪問先・相手の名前を入れてください。'; return; }

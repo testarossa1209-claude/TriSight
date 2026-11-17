@@ -439,7 +439,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-18-02</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-18-03</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -591,11 +591,11 @@ function tsPortalAsk(){
   <!-- 2026-11-18（宏史さんの指示）：野木画面の経営企画部ページの予定は、宏史さんが入れた予定を1か月で出す。札はドラッグで日へ置く・動かす -->
   <div class="card" id="cardNgPlan" style="display:none">
     <h2>野木の予定（1か月）</h2>
-    <p class="lead">下で札を作り、カレンダーの日へドラッグして置きます。置いた札もドラッグで別の日へ動かせます（タブレットでは、札を押してから日を押しても置けます）。札の中の「直す」ボタンで中身を直せます。外出の札には、アポの時刻とは別に「出発の時刻」が出ます。</p>
+    <p class="lead">下で札を作り、カレンダーの日へドラッグして置きます。置いた札もドラッグで別の日へ動かせます（タブレットでは、札を押してから日を押しても置けます）。札の中の「直す」ボタンで中身を直せます。外出の札には、アポの時刻とは別に「出発の時刻」が出ます。外出先から次のアポ先へ行くときは、同じ日・後の時刻で外出の札を作ると、出発地が自動で「前の予定地から」になります。</p>
     <details id="np_new" open><summary id="np_formTitle">札を作る</summary>
       <div class="row">
         <div><label class="f" for="np_title">訪問先・相手の名前</label><input type="text" id="np_title" maxlength="100" placeholder="例：M&amp;M、今井タクシー"></div>
-        <div><label class="f" for="np_purpose">目的</label><select id="np_purpose"><option>営業</option><option>打ち合わせ</option><option>会議</option><option>役所の手続き</option><option>研修・セミナー</option><option>車・設備</option><option>私用</option><option>買い物</option><option>その他</option></select></div>
+        <div><label class="f" for="np_purpose">目的</label><select id="np_purpose"><option>通常の社内業務</option><option>営業</option><option>打ち合わせ</option><option>会議</option><option>役所の手続き</option><option>研修・セミナー</option><option>車・設備</option><option>私用</option><option>買い物</option><option>その他</option></select></div>
         <div><label class="f" for="np_date">日（空けると下の置き場へ）</label><input type="date" id="np_date"></div>
         <div><label class="f" for="np_appo">アポの時刻</label><input type="time" id="np_appo"></div>
         <div><label class="f" for="np_end">終わりの時刻</label><input type="time" id="np_end"></div>
@@ -8837,7 +8837,7 @@ function npCardHTML(x){
     (dp ? '<span class="muted">' + esc(dp) + ' 出発（' + esc(npFromLabel(x)) + '・' + (x.mode === 'train' ? '電車' : '車') + '）</span><br>' : '') +
     (x.appo ? esc(x.appo) + (x.end ? '〜' + esc(x.end) : '') + ' ' : '') + (x.purpose ? '［' + esc(x.purpose) + '］' : '') + '<span class="npT">' + esc(x.title || '（名前なし）') + '</span>' +
     (x.kind && x.kind !== 'go' && NP_KIND[x.kind] ? ' <span class="muted">' + esc(NP_KIND[x.kind]) + '</span>' : '') + (x.memo ? '<br>' + esc(x.memo) : '') +
-    (x.place ? '<br><span class="muted">' + esc(x.place) + '</span>' : '') + '<br><button type="button" class="npEd" data-npedit="' + esc(x.id) + '">直す</button></span>';
+    (x.place && x.kind === 'go' ? '<br><span class="muted">' + esc(x.place) + '</span>' : '') + '<br><button type="button" class="npEd" data-npedit="' + esc(x.id) + '">直す</button></span>';
 }
 function npRender(){
   if(!$('np_cal')) return;
@@ -8896,7 +8896,7 @@ function npForm(x){
   x = x || {};
   $('np_title').value = x.title || ''; $('np_date').value = x.date || ''; $('np_appo').value = x.appo || ''; $('np_end').value = x.end || '';
   $('np_kind').value = (x.kind && x.kind !== 'in') ? x.kind : (x.kind === 'in' ? 'noa' : 'go'); $('np_place').value = x.place || ''; $('np_from').value = x.from || 'noa'; $('np_mode').value = x.mode || 'car';
-  $('np_purpose').value = x.purpose || '営業'; $('np_fromOther').value = x.fromOther || '';
+  $('np_purpose').value = x.purpose || (x.kind && x.kind !== 'go' ? '通常の社内業務' : '営業'); $('np_fromOther').value = x.fromOther || '';
   $('np_move').value = (x.move != null && x.move !== '') ? x.move : ''; $('np_memo').value = x.memo || '';
   npDepShow();
 }
@@ -8921,6 +8921,13 @@ function npDepShow(){
   }
   $('np_depart').textContent = t;
 }
+/* 2026-11-18（宏史さん「外出先から次のアポ先への入力の仕方が不明」）：新しく外出の札を作るとき、同じ日のこのアポより前に外出の予定があれば、出発地を「前の予定地から」に自動で合わせる */
+function npAutoFrom(){
+  if(NP_EDIT || $('np_kind').value !== 'go') return;
+  var pv = npPrevPlace($('np_date').value, $('np_appo').value, null);
+  if(pv && pv.item.kind === 'go' && $('np_from').value !== 'other') $('np_from').value = 'prev';
+}
+['np_date','np_appo','np_kind'].forEach(function(id){ $(id).addEventListener('change', function(){ npAutoFrom(); npDepShow(); }); });
 ['np_kind','np_appo','np_move','np_from','np_date'].forEach(function(id){ $(id).addEventListener('input', npDepShow); $(id).addEventListener('change', npDepShow); });
 $('np_save').addEventListener('click', function(){
   var t = $('np_title').value.trim(); if(!t){ $('np_msg').textContent = '訪問先・相手の名前を入れてください。'; return; }

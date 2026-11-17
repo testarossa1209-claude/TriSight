@@ -289,6 +289,7 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   .npCard.go{background:#fff4e2;border-color:#ecd2a2}
   .npCard.sel{outline:3px solid #993c1d}
   .npCard .npT{font-weight:700}
+  .npCard .npEd{margin-top:3px;font:inherit;font-size:12px;padding:1px 10px;border:1px solid #2b4a6f;background:#fff;color:#2b4a6f;border-radius:6px;cursor:pointer}
   .npTray{display:flex;flex-wrap:wrap;gap:6px;min-height:44px;padding:6px;border:1px dashed var(--line);border-radius:8px;margin:6px 0 10px}
   .npTray .npCard{margin:0;max-width:240px}
   .osCnt{position:absolute;top:-7px;right:-9px;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;background:var(--red);color:#fff;border-radius:9px;font-size:11px;font-weight:700;line-height:18px;text-align:center;box-shadow:0 0 0 2px #fff}
@@ -438,7 +439,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-18-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-18-02</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -590,23 +591,25 @@ function tsPortalAsk(){
   <!-- 2026-11-18（宏史さんの指示）：野木画面の経営企画部ページの予定は、宏史さんが入れた予定を1か月で出す。札はドラッグで日へ置く・動かす -->
   <div class="card" id="cardNgPlan" style="display:none">
     <h2>野木の予定（1か月）</h2>
-    <p class="lead">下で札を作り、カレンダーの日へドラッグして置きます。置いた札もドラッグで別の日へ動かせます（タブレットでは、札を押してから日を押しても置けます）。札を2回押すと中身を直せます。外出の札には、アポの時刻とは別に「出発の時刻」が出ます。</p>
+    <p class="lead">下で札を作り、カレンダーの日へドラッグして置きます。置いた札もドラッグで別の日へ動かせます（タブレットでは、札を押してから日を押しても置けます）。札の中の「直す」ボタンで中身を直せます。外出の札には、アポの時刻とは別に「出発の時刻」が出ます。</p>
     <details id="np_new" open><summary id="np_formTitle">札を作る</summary>
       <div class="row">
-        <div><label class="f" for="np_title">用件</label><input type="text" id="np_title" maxlength="100" placeholder="例：M&amp;Mで車検"></div>
+        <div><label class="f" for="np_title">訪問先・相手の名前</label><input type="text" id="np_title" maxlength="100" placeholder="例：M&amp;M、今井タクシー"></div>
+        <div><label class="f" for="np_purpose">目的</label><select id="np_purpose"><option>営業</option><option>打ち合わせ</option><option>会議</option><option>役所の手続き</option><option>研修・セミナー</option><option>車・設備</option><option>私用</option><option>買い物</option><option>その他</option></select></div>
         <div><label class="f" for="np_date">日（空けると下の置き場へ）</label><input type="date" id="np_date"></div>
         <div><label class="f" for="np_appo">アポの時刻</label><input type="time" id="np_appo"></div>
         <div><label class="f" for="np_end">終わりの時刻</label><input type="time" id="np_end"></div>
       </div>
       <div class="row">
-        <div><label class="f" for="np_kind">種類</label><select id="np_kind"><option value="in">社内・来客</option><option value="go">外出</option></select></div>
+        <div><label class="f" for="np_kind">種類</label><select id="np_kind"><option value="go">外出</option><option value="noa">社内（ノア）</option><option value="tri">社内（トライサイト）</option><option value="guest">来客</option><option value="web">オンライン</option></select></div>
         <div><label class="f" for="np_place">行き先（住所）</label><input type="text" id="np_place" maxlength="200" placeholder="例：横浜市○○区…"></div>
-        <div><label class="f" for="np_from">出発地</label><select id="np_from"><option value="noa">ノア</option><option value="tri">トライサイト</option></select></div>
+        <div><label class="f" for="np_from">出発地</label><select id="np_from"><option value="noa">ノア</option><option value="tri">トライサイト</option><option value="prev">前の予定地から</option><option value="other">その他（住所を入れる）</option></select></div>
+        <div id="np_fromOtherWrap" style="display:none"><label class="f" for="np_fromOther">出発地の住所</label><input type="text" id="np_fromOther" maxlength="200"></div>
         <div><label class="f" for="np_mode">交通手段</label><select id="np_mode"><option value="car">車</option><option value="train">電車</option></select></div>
         <div><label class="f" for="np_move">移動にかかる時間（分）</label><input type="number" id="np_move" min="0" max="600" step="5"></div>
       </div>
       <div class="btns"><button type="button" class="btn sub small" id="np_route">経路を見る（Googleマップ）</button><span class="muted" id="np_depart"></span></div>
-      <label class="f" for="np_memo">メモ</label><input type="text" id="np_memo" maxlength="300">
+      <label class="f" for="np_memo">内容（何をするか）</label><input type="text" id="np_memo" maxlength="300" placeholder="例：車検の受け取り、トライゲイトの説明">
       <div class="btns"><button type="button" class="btn" id="np_save">札を作る</button><button type="button" class="btn sub" id="np_cancel" style="display:none">直すのをやめる</button><button type="button" class="btn small danger" id="np_del" style="display:none">この札を消す</button><span class="muted" id="np_msg"></span></div>
       <details style="margin-top:8px"><summary>出発地の住所（経路を見るときに使います）</summary>
         <div class="row">
@@ -8816,19 +8819,32 @@ function npSave(patch){
 function npMin(t){ var m = /^(\d{1,2}):(\d{2})/.exec(t || ''); return m ? (+m[1]) * 60 + (+m[2]) : null; }
 function npHm(n){ if(n == null) return ''; n = ((n % 1440) + 1440) % 1440; return pad(Math.floor(n / 60)) + ':' + pad(n % 60); }
 function npDepart(x){ if(!x || x.kind !== 'go') return ''; var a = npMin(x.appo), mv = +x.move; if(a == null || !(mv > 0)) return ''; return npHm(a - mv); }
+/* 2026-11-18（宏史さんの指摘「出先から次の予定地に行くのが入力できない」「項目が粗い」）：出発地に「前の予定地から」「その他」、種類を5つ、用件を名前・目的・内容に分ける */
+var NP_KIND = { go:'外出', noa:'社内（ノア）', tri:'社内（トライサイト）', guest:'来客', web:'オンライン', 'in':'社内・来客' };
+function npSortKey(x){ var m = npMin(npDepart(x) || x.appo); return m == null ? 9999 : m; }
+/* その日の、この札より前の予定（時刻の早い順で一つ前）の行き先。外出でなければノア／トライサイトの住所 */
+function npPrevPlace(date, appo, selfId){
+  if(!date) return null; var D0 = npData(), a = npMin(appo); if(a == null) return null;
+  var prev = D0.items.filter(function(y){ return y.date === date && y.id !== selfId && npMin(y.appo) != null && npMin(y.appo) < a; }).sort(function(p, q){ return npMin(p.appo) - npMin(q.appo); }).pop();
+  if(!prev) return null;
+  var addr = prev.kind === 'go' ? prev.place : prev.kind === 'noa' ? D0.origins.noa : prev.kind === 'tri' ? D0.origins.tri : '';
+  return { item:prev, addr:addr || '' };
+}
+function npFromLabel(x){ return x.from === 'tri' ? 'トライサイトから' : x.from === 'prev' ? '前の予定地から' : x.from === 'other' ? 'その他から' : 'ノアから'; }
 function npCardHTML(x){
   var dp = npDepart(x);
-  return '<span class="npCard' + (x.kind === 'go' ? ' go' : '') + (NP_PICK === x.id ? ' sel' : '') + '" draggable="true" data-np="' + esc(x.id) + '" title="ドラッグで日へ動かせます。2回押すと中身を直せます">' +
-    (dp ? '<span class="muted">' + esc(dp) + ' 出発（' + (x.mode === 'train' ? '電車' : '車') + '）</span><br>' : '') +
-    (x.appo ? esc(x.appo) + (x.end ? '〜' + esc(x.end) : '') + ' ' : '') + '<span class="npT">' + esc(x.title || '（用件なし）') + '</span>' +
-    (x.place ? '<br><span class="muted">' + esc(x.place) + '</span>' : '') + '</span>';
+  return '<span class="npCard' + (x.kind === 'go' ? ' go' : '') + (NP_PICK === x.id ? ' sel' : '') + '" draggable="true" data-np="' + esc(x.id) + '" title="ドラッグで日へ動かせます。「直す」ボタンで中身を直せます">' +
+    (dp ? '<span class="muted">' + esc(dp) + ' 出発（' + esc(npFromLabel(x)) + '・' + (x.mode === 'train' ? '電車' : '車') + '）</span><br>' : '') +
+    (x.appo ? esc(x.appo) + (x.end ? '〜' + esc(x.end) : '') + ' ' : '') + (x.purpose ? '［' + esc(x.purpose) + '］' : '') + '<span class="npT">' + esc(x.title || '（名前なし）') + '</span>' +
+    (x.kind && x.kind !== 'go' && NP_KIND[x.kind] ? ' <span class="muted">' + esc(NP_KIND[x.kind]) + '</span>' : '') + (x.memo ? '<br>' + esc(x.memo) : '') +
+    (x.place ? '<br><span class="muted">' + esc(x.place) + '</span>' : '') + '<br><button type="button" class="npEd" data-npedit="' + esc(x.id) + '">直す</button></span>';
 }
 function npRender(){
   if(!$('np_cal')) return;
   var D0 = npData(), today = ymd(new Date());
   if(!NP_MON){ var n0 = new Date(); NP_MON = new Date(n0.getFullYear(), n0.getMonth(), 1); }
   $('np_month').textContent = NP_MON.getFullYear() + '年' + (NP_MON.getMonth() + 1) + '月';
-  var sk = function(x){ var m = npMin(npDepart(x) || x.appo); return m == null ? 9999 : m; };
+  var sk = npSortKey;
   var tray = D0.items.filter(function(x){ return !x.date; });
   $('np_tray').innerHTML = tray.length ? tray.map(npCardHTML).join('') : '<span class="muted">日の決まっていない札はありません。</span>';
   var by = {}; D0.items.forEach(function(x){ if(x.date) (by[x.date] = by[x.date] || []).push(x); });
@@ -8853,6 +8869,8 @@ function npWire(){
       NP_PICK = id; npRender(); $('np_msg').textContent = '置きたい日を押してください（もう一度その札を押すと中身を直せます）。';
     });
   });
+  /* 2026-11-18（宏史さん「修正ができません」）：札を2回押す操作は分かりにくいので、札ごとに「直す」ボタンを付ける */
+  [].forEach.call(root.querySelectorAll('[data-npedit]'), function(b){ b.addEventListener('click', function(ev){ ev.stopPropagation(); NP_PICK = null; npEdit(b.getAttribute('data-npedit')); }); });
   [].forEach.call(root.querySelectorAll('[data-npday]'), function(c){
     c.addEventListener('dragover', function(ev){ ev.preventDefault(); c.classList.add('over'); });
     c.addEventListener('dragleave', function(){ c.classList.remove('over'); });
@@ -8877,7 +8895,8 @@ function npMove(id, date){
 function npForm(x){
   x = x || {};
   $('np_title').value = x.title || ''; $('np_date').value = x.date || ''; $('np_appo').value = x.appo || ''; $('np_end').value = x.end || '';
-  $('np_kind').value = x.kind || 'in'; $('np_place').value = x.place || ''; $('np_from').value = x.from || 'noa'; $('np_mode').value = x.mode || 'car';
+  $('np_kind').value = (x.kind && x.kind !== 'in') ? x.kind : (x.kind === 'in' ? 'noa' : 'go'); $('np_place').value = x.place || ''; $('np_from').value = x.from || 'noa'; $('np_mode').value = x.mode || 'car';
+  $('np_purpose').value = x.purpose || '営業'; $('np_fromOther').value = x.fromOther || '';
   $('np_move').value = (x.move != null && x.move !== '') ? x.move : ''; $('np_memo').value = x.memo || '';
   npDepShow();
 }
@@ -8891,14 +8910,22 @@ function npEdit(id){
 }
 function npReset(){ NP_EDIT = null; npForm({}); $('np_formTitle').textContent = '札を作る'; $('np_save').textContent = '札を作る'; $('np_cancel').style.display = 'none'; $('np_del').style.display = 'none'; }
 function npDepShow(){
-  var x = { kind:$('np_kind').value, appo:$('np_appo').value, move:$('np_move').value }, dp = npDepart(x);
-  $('np_depart').textContent = x.kind !== 'go' ? '' : dp ? '出発の時刻：' + dp + '（アポ ' + x.appo + ' の ' + (+x.move) + '分前）' : 'アポの時刻と移動にかかる時間を入れると、出発の時刻が出ます。';
+  var x = { kind:$('np_kind').value, appo:$('np_appo').value, move:$('np_move').value }, dp = npDepart(x), go = x.kind === 'go';
+  ['np_place','np_from','np_mode','np_move'].forEach(function(id){ var w = $(id) && $(id).parentNode; if(w) w.style.display = go ? '' : 'none'; });
+  var fo = $('np_fromOtherWrap'); if(fo) fo.style.display = go && $('np_from').value === 'other' ? '' : 'none';
+  var rb = $('np_route'); if(rb) rb.style.display = go ? '' : 'none';
+  var t = '';
+  if(go){
+    t = dp ? '出発の時刻：' + dp + '（アポ ' + x.appo + ' の ' + (+x.move) + '分前）' : 'アポの時刻と移動にかかる時間を入れると、出発の時刻が出ます。';
+    if($('np_from').value === 'prev'){ var pv = npPrevPlace($('np_date').value, x.appo, NP_EDIT); t += pv ? '　出発地＝前の予定「' + (pv.item.title || '') + '」' + (pv.addr ? '（' + pv.addr + '）' : '（住所が入っていません）') : '　この日の、このアポより前の予定が見つかりません。'; }
+  }
+  $('np_depart').textContent = t;
 }
-['np_kind','np_appo','np_move'].forEach(function(id){ $(id).addEventListener('input', npDepShow); $(id).addEventListener('change', npDepShow); });
+['np_kind','np_appo','np_move','np_from','np_date'].forEach(function(id){ $(id).addEventListener('input', npDepShow); $(id).addEventListener('change', npDepShow); });
 $('np_save').addEventListener('click', function(){
-  var t = $('np_title').value.trim(); if(!t){ $('np_msg').textContent = '用件を入れてください。'; return; }
+  var t = $('np_title').value.trim(); if(!t){ $('np_msg').textContent = '訪問先・相手の名前を入れてください。'; return; }
   var mv = $('np_move').value === '' ? '' : Math.max(0, Math.round(+$('np_move').value || 0));
-  var rec = { title:t, date:$('np_date').value || '', appo:$('np_appo').value || '', end:$('np_end').value || '', kind:$('np_kind').value, place:$('np_place').value.trim(), from:$('np_from').value, mode:$('np_mode').value, move:mv, memo:$('np_memo').value.trim() };
+  var rec = { title:t, date:$('np_date').value || '', appo:$('np_appo').value || '', end:$('np_end').value || '', kind:$('np_kind').value, purpose:$('np_purpose').value, place:$('np_kind').value === 'go' ? $('np_place').value.trim() : '', from:$('np_from').value, fromOther:$('np_fromOther').value.trim(), mode:$('np_mode').value, move:mv, memo:$('np_memo').value.trim() };
   var D0 = npData(), wasEdit = !!NP_EDIT;
   if(wasEdit) D0.items = D0.items.map(function(x){ return x.id === NP_EDIT ? Object.assign({}, x, rec) : x; });
   else D0.items.push(Object.assign({ id:uid(), created:nowLocal() }, rec));
@@ -8914,9 +8941,11 @@ $('np_del').addEventListener('click', function(){
   npReset(); npRender(); $('np_msg').textContent = '消しました。';
 });
 $('np_route').addEventListener('click', function(){
-  var o = npData().origins, from = $('np_from').value, org = from === 'tri' ? o.tri : o.noa, dst = $('np_place').value.trim();
+  var o = npData().origins, from = $('np_from').value, dst = $('np_place').value.trim(), org = '';
   if(!dst){ $('np_msg').textContent = '行き先（住所）を入れてください。'; return; }
-  if(!org){ $('np_msg').textContent = 'この欄のいちばん下の「出発地の住所」に、' + (from === 'tri' ? 'トライサイト' : 'ノア') + 'の住所を入れて保存してください。'; return; }
+  if(from === 'prev'){ var pv = npPrevPlace($('np_date').value, $('np_appo').value, NP_EDIT); if(!pv || !pv.addr){ $('np_msg').textContent = '前の予定地の住所が分かりません。日とアポの時刻を入れ、前の予定に行き先の住所が入っているか確かめてください。'; return; } org = pv.addr; }
+  else if(from === 'other'){ org = $('np_fromOther').value.trim(); if(!org){ $('np_msg').textContent = '出発地の住所を入れてください。'; return; } }
+  else { org = from === 'tri' ? o.tri : o.noa; if(!org){ $('np_msg').textContent = 'この欄のいちばん下の「出発地の住所」に、' + (from === 'tri' ? 'トライサイト' : 'ノア') + 'の住所を入れて保存してください。'; return; } }
   var u = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(org) + '&destination=' + encodeURIComponent(dst) + '&travelmode=' + ($('np_mode').value === 'train' ? 'transit' : 'driving');
   window.open(u, '_blank', 'noopener');
   $('np_msg').textContent = '開いた地図に出た所要時間を「移動にかかる時間（分）」に入れてください。';

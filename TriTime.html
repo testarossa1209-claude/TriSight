@@ -273,6 +273,24 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   #rqBody section.tab{display:block}
   /* 2026-11-03 改め（宏史さん「お知らせだけファットで並びが悪い」）：残りの人数は、つまみの幅を変えないよう、右上の角に重ねた小さな赤い丸の数字で出す */
   #osTab{position:relative;overflow:visible}
+  /* 2026-11-18（宏史さんの指示）：野木画面の経営企画部ページ（ngMode）。左の引き出しを右へ集約し、右から開く */
+  #rqTab{position:relative;overflow:visible}
+  body.ngMode .ssPanel.lft{right:0;left:auto;border-right:0;border-left:1px solid var(--line);box-shadow:-8px 0 28px rgba(16,36,59,.14);transform:translateX(105%)}
+  @media (min-width:1240px){ body.ngMode.mnOpen, body.ngMode.rqOpen, body.ngMode.osOpen{padding-left:0;padding-right:600px} }
+  body.ngMode .sideTabs.lft{display:none}
+  .npCal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .npCal .npH{font-size:13px;font-weight:700;text-align:center;padding:4px 0;color:var(--ink-soft,#555)}
+  .npDay{min-height:96px;border:1px solid var(--line);border-radius:8px;padding:4px;background:#fff;cursor:pointer}
+  .npDay.out{background:#f6f6f4;color:#aaa}
+  .npDay.today{border:2px solid #2b4a6f}
+  .npDay.over{background:#eaf2fb;outline:2px dashed #2b4a6f}
+  .npDay .npD{font-size:12px;font-weight:700}
+  .npCard{display:block;margin:3px 0;padding:4px 6px;border-radius:6px;background:#eef3f8;border:1px solid #c9d6e4;font-size:12px;line-height:1.35;cursor:grab;user-select:none}
+  .npCard.go{background:#fff4e2;border-color:#ecd2a2}
+  .npCard.sel{outline:3px solid #993c1d}
+  .npCard .npT{font-weight:700}
+  .npTray{display:flex;flex-wrap:wrap;gap:6px;min-height:44px;padding:6px;border:1px dashed var(--line);border-radius:8px;margin:6px 0 10px}
+  .npTray .npCard{margin:0;max-width:240px}
   .osCnt{position:absolute;top:-7px;right:-9px;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;background:var(--red);color:#fff;border-radius:9px;font-size:11px;font-weight:700;line-height:18px;text-align:center;box-shadow:0 0 0 2px #fff}
   .mnToc{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
   .mnCh{border:1px solid var(--line);border-radius:10px;margin:6px 0;background:#fff}
@@ -420,7 +438,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-17-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-18-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -482,6 +500,7 @@ function tsPortalAsk(){
   <div class="ssHead"><h2>利用者さんへのお知らせ<small id="osSub"></small></h2><button type="button" class="ssClose" id="osClose" title="閉じる" aria-label="閉じる">×</button></div>
   <div class="ssNav"><input type="date" id="osDate" style="font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px"><button type="button" class="btn sub small" id="osToday">今日</button><button type="button" class="btn sub small" id="osTomorrow">明日</button></div>
   <div class="ssBody" id="osBody"></div>
+  <div class="ssBody" id="osNgBody" style="display:none"></div>
   <div class="ssFoot">「送る」を押すと、携帯のメッセージが宛先と文面の入った状態で開きます。送信を押すと届きます（ほかの利用者さんに番号が見えないよう、1人ずつ送ります）。送ったら「送った」に印が付きます。キャンセルの入った訪問は出しません。</div>
 </aside>
 <!-- 2026-10-29：使い方（右に立ち上がるサブ画面） -->
@@ -568,6 +587,40 @@ function tsPortalAsk(){
 
 <!-- ===== 予定係 ===== -->
 <section class="tab on" id="tab-plan">
+  <!-- 2026-11-18（宏史さんの指示）：野木画面の経営企画部ページの予定は、宏史さんが入れた予定を1か月で出す。札はドラッグで日へ置く・動かす -->
+  <div class="card" id="cardNgPlan" style="display:none">
+    <h2>野木の予定（1か月）</h2>
+    <p class="lead">下で札を作り、カレンダーの日へドラッグして置きます。置いた札もドラッグで別の日へ動かせます（タブレットでは、札を押してから日を押しても置けます）。札を2回押すと中身を直せます。外出の札には、アポの時刻とは別に「出発の時刻」が出ます。</p>
+    <details id="np_new" open><summary id="np_formTitle">札を作る</summary>
+      <div class="row">
+        <div><label class="f" for="np_title">用件</label><input type="text" id="np_title" maxlength="100" placeholder="例：M&amp;Mで車検"></div>
+        <div><label class="f" for="np_date">日（空けると下の置き場へ）</label><input type="date" id="np_date"></div>
+        <div><label class="f" for="np_appo">アポの時刻</label><input type="time" id="np_appo"></div>
+        <div><label class="f" for="np_end">終わりの時刻</label><input type="time" id="np_end"></div>
+      </div>
+      <div class="row">
+        <div><label class="f" for="np_kind">種類</label><select id="np_kind"><option value="in">社内・来客</option><option value="go">外出</option></select></div>
+        <div><label class="f" for="np_place">行き先（住所）</label><input type="text" id="np_place" maxlength="200" placeholder="例：横浜市○○区…"></div>
+        <div><label class="f" for="np_from">出発地</label><select id="np_from"><option value="noa">ノア</option><option value="tri">トライサイト</option></select></div>
+        <div><label class="f" for="np_mode">交通手段</label><select id="np_mode"><option value="car">車</option><option value="train">電車</option></select></div>
+        <div><label class="f" for="np_move">移動にかかる時間（分）</label><input type="number" id="np_move" min="0" max="600" step="5"></div>
+      </div>
+      <div class="btns"><button type="button" class="btn sub small" id="np_route">経路を見る（Googleマップ）</button><span class="muted" id="np_depart"></span></div>
+      <label class="f" for="np_memo">メモ</label><input type="text" id="np_memo" maxlength="300">
+      <div class="btns"><button type="button" class="btn" id="np_save">札を作る</button><button type="button" class="btn sub" id="np_cancel" style="display:none">直すのをやめる</button><button type="button" class="btn small danger" id="np_del" style="display:none">この札を消す</button><span class="muted" id="np_msg"></span></div>
+      <details style="margin-top:8px"><summary>出発地の住所（経路を見るときに使います）</summary>
+        <div class="row">
+          <div><label class="f" for="np_oNoa">ノアの住所</label><input type="text" id="np_oNoa" maxlength="200"></div>
+          <div><label class="f" for="np_oTri">トライサイトの住所</label><input type="text" id="np_oTri" maxlength="200"></div>
+        </div>
+        <div class="btns"><button type="button" class="btn sub small" id="np_oSave">住所を保存する</button></div>
+      </details>
+    </details>
+    <h3 style="margin:12px 0 4px;font-size:15px">置き場（日の決まっていない札）</h3>
+    <div class="npTray" id="np_tray"></div>
+    <div class="btns"><button type="button" class="btn sub small" id="np_prev">前の月</button><button type="button" class="btn sub small" id="np_this">今月</button><button type="button" class="btn sub small" id="np_next">次の月</button><b id="np_month" style="margin-left:8px;font-size:16px"></b></div>
+    <div class="npCal" id="np_cal"></div>
+  </div>
   <!-- 2026-11-15（宏史さん「管理者端末には当月の売り上げと目標までの残売り上げ（新規利用者週２回であと何人）を」）：管理者の端末の「予定」タブのいちばん上 -->
   <div class="card" id="cardGoalNow" style="display:none"><h2 id="gn_title">今月の売上と目標</h2><div id="gn_body"></div></div>
   <div class="card" id="cardToday">
@@ -605,7 +658,8 @@ function tsPortalAsk(){
     <div class="row"><div><label class="f" for="monStaff">表示する担当</label><select id="monStaff"></select></div></div>
     <div class="tbl-scroll" id="monBody"></div>
   </div>
-  <div class="card">
+  <span id="cardBoardHome" style="display:none"></span>
+  <div class="card" id="cardBoard">
     <h2 data-t="{board}">連絡板（事務局から看護部へ）</h2>
     <p class="lead">連絡事項・会議の案内・申し送りを、全員・部署ごと・一人ひとりあてに出せます。宛先の人の端末には知らせが出て、読んだかどうかがここで分かります。会議の案内は、その日の予定にも並びます。</p>
     <details id="nbNew"><summary>新しく出す</summary>
@@ -962,7 +1016,7 @@ function tsPortalAsk(){
     <div class="row"><div><label class="f" for="fx_show">表示する</label><select id="fx_show"><option value="open">まだ直していないもの</option><option value="all">すべて</option></select></div></div>
     <div id="fxList"></div>
   </div>
-  <div class="card">
+  <div class="card" id="rqFormCard">
     <h2>ご要望を残す</h2>
     <p class="lead">看護部の皆さんから聞いた「こうしてほしい」「ここが使いにくい」を、言われた言葉のまま残します。残したご要望は、まとめてトライタイムの作り直しに取り込みます。</p>
     <div class="row">
@@ -5060,6 +5114,7 @@ function applyDept(){
   if(document.body.classList.contains('kpOpen') && !(document.activeElement && $('kpBody').contains(document.activeElement) && document.activeElement.matches('input[type=time]'))) kpRender(); if(document.body.classList.contains('mnOpen')) mnRender(); if(document.body.classList.contains('nmOpen')) nmRender(); if(document.body.classList.contains('osOpen') && document.activeElement && document.activeElement.id !== 'osTpl') osRender();
   /* 2026-11-01：管理者の合言葉の枠は、管理者の印が付いた人の端末と、管理者の画面が出ている端末だけに出す（職員の端末には出さない） */
   show('cardMgrKey', !((R.lv === 'staff' || R.lv === 'office') && !R.noKey));
+  npApply(R, d);   /* 2026-11-18：野木画面の経営企画部ページ */
   roleNote(R); sharedBar();
   if(lgShould()) lgShow(); else { if(dev().share) sharedPick(false); stBar(); stPrompt(); }   /* 2026-11-09：開くたびのログイン画面（出ている間は、共用端末の窓とスタートの窓を出さない） */
 }
@@ -8326,7 +8381,7 @@ function sideOpen(k, on){
   if(on){ document.body.classList.remove('ssOpen', 'kpOpen', 'mnOpen', 'nmOpen', 'osOpen', 'rqOpen', 'jmOpen', 'jlOpen', 'hbOpen', 'auOpen', 'plOpen'); }
   if(!on && k === 'hb' && window.HB){ HB.on = false; HB.sel = null; }   /* 2026-11-08：手組みの引き出しを閉じたら下書きの表もしまう（下書きの中身は残る） */
   document.body.classList.toggle(k + 'Open', !!on);
-  if(on){ if(k === 'jm' || k === 'jl'){ jmRender(k); return; } if(k === 'pl'){ return; } if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else if(k === 'nm') nmRender(); else if(k === 'os') osRender(); else if(k === 'rq') rqOpenPanel(); else mnRender(); }
+  if(on){ if(k === 'jm' || k === 'jl'){ jmRender(k); return; } if(k === 'pl'){ return; } if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else if(k === 'nm') nmRender(); else if(k === 'os'){ if(NP_ON) renderBoard(); else osRender(); } else if(k === 'rq'){ rqOpenPanel(); if(NP_ON) npRqSeen(); } else mnRender(); }
 }
 /* 2026-11-03：利用者さんへのお知らせ。選んだ日の訪問（キャンセルを除く）を利用者さんごとに1行にまとめ、その日のいちばん早い時刻で定型文を作る。
    定型文は設定（settings.osText）に持ち、{時刻} をその人の時刻に置き換える。送ったら type "notify" を残す */
@@ -8357,7 +8412,7 @@ function osCollect(date){
 }
 function osLeft(){ var date = ymd(new Date()), by = osCollect(date), ev = events();
   return Object.keys(by).filter(function(no){ return osDest(by[no]._p) && !ev.some(function(e){ return e.type === 'notify' && e.patientNo === no && e.date === date; }); }).length; }
-function osBadge(){ var t = $('osTab'); if(!t) return; var n = osLeft(), b = t.querySelector('.osCnt');
+function osBadge(){ var t = $('osTab'); if(!t) return; if(NP_ON){ var b0 = t.querySelector('.osCnt'); if(b0) b0.style.display = 'none'; t.title = '職員へのお知らせ（連絡板）を右に開きます'; return; } var n = osLeft(), b = t.querySelector('.osCnt');
   if(!b){ b = document.createElement('span'); b.className = 'osCnt'; t.appendChild(b); }
   b.textContent = n ? String(n) : ''; b.style.display = n ? '' : 'none'; t.title = n ? '今日まだ知らせていない利用者さんが ' + n + '人います。押すと一覧が開きます' : '今日の訪問を、利用者さんへ携帯のメッセージで知らせます'; }
 function osText(){ var s0 = lj(K.settings, {}) || {}; return s0.osText || OS_DEF; }
@@ -8666,6 +8721,12 @@ function jmItems(){
 function jmRender(k){
   var box = $(k === 'jl' ? 'jlBody' : 'jmBody'); if(!box) return; var items = jmItems();
   box.innerHTML = items.length ? items.map(function(x, i){ return '<button type="button" class="btn sub jmGo" data-i="' + i + '">' + esc(x.t) + '</button>'; }).join('') : '<p class="empty">この画面に飛べる項目はありません。</p>';
+  /* 2026-11-18（宏史さんの指示）：野木画面の経営企画部ページでは、引き出しの名前も目次に並べ、押すとその引き出しを開く */
+  if(k === 'jm' && NP_ON){
+    var drw = [['mn','mnTab','使い方'],['os','osTab','お知らせ（職員へ）'],['rq','rqTab','ご要望']].filter(function(x){ var t = $(x[1]); return t && t.style.display !== 'none'; });
+    if(drw.length){ box.insertAdjacentHTML('beforeend', '<h3 style="margin:10px 0 2px;font-size:14px">引き出し</h3>' + drw.map(function(x){ return '<button type="button" class="btn sub jmSide" data-side="' + x[0] + '">' + esc(x[2]) + '</button>'; }).join(''));
+      [].forEach.call(box.querySelectorAll('.jmSide'), function(b){ b.onclick = function(){ sideOpen(b.getAttribute('data-side'), true); }; }); }
+  }
   [].forEach.call(box.querySelectorAll('.jmGo'), function(b){ b.onclick = function(){ var it = items[+b.getAttribute('data-i')]; sideOpen(k, false); if(it && it.el){ try{ it.el.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ it.el.scrollIntoView(); } } }; });
 }
 $('jmTab').addEventListener('click', function(){ sideOpen('jm', true); });
@@ -8693,6 +8754,177 @@ $('ssPrev').addEventListener('click', function(){ ssStart = addDays(ssStart || m
 $('ssNext').addEventListener('click', function(){ ssStart = addDays(ssStart || mondayOf(new Date()), 7); ssRender(); });
 $('ssThis').addEventListener('click', function(){ ssStart = parseYmd(ymd(new Date())); ssRender(); });
 $('ssFrom').addEventListener('change', function(){ ssStart = parseYmd(this.value) || parseYmd(ymd(new Date())); ssRender(); });   /* 2026-11-08：表の始まりの日を選ぶ */   /* 2026-11-08：今日から7日分に戻る */
+/* ===== 野木画面の経営企画部ページ（2026-11-18・宏史さんの指示）=====
+   ・左の引き出し（使い方・お知らせ・ご要望）を右へ集約し、右の目次にも名前を並べる。仮スケジュール表・対照表・2名体制・左の目次は出さない
+   ・「1日の予定と地図」は枠ごと出さず、予定タブの先頭に宏史さんの予定（1か月）を出す。札はドラッグで日へ置く・動かす
+   ・外出の札は、アポの時刻とは別に出発の時刻（アポ − 移動にかかる時間）を持つ。経路はGoogleマップを開いて確かめる
+   ・お知らせの引き出しは、職員へのお知らせ（連絡板：全員へ一括／一人ひとりのタブレットへ）に置き換える
+   ・ご要望は職員から届いたものの一覧。新しく届くと、つまみに赤い丸
+   ・予定は mgmt の 'own:ngplan' に置く（野木画面の合言葉で鍵をかけて、登録した2台だけで共有） */
+var NP_ON = false, NP_MON = null, NP_PICK = null, NP_EDIT = null, NP_KEY = 'own:ngplan', NP_SEEN = 'tritime_np_rqSeen';
+var NP_DOW = ['月','火','水','木','金','土','日'];
+function npApply(R, d){
+  var on = !!(R && R.zeus && d && d.kind === 'office'); NP_ON = on;
+  document.body.classList.toggle('ngMode', on);
+  var rt = document.querySelector('.sideTabs:not(.lft)'), lt = document.querySelector('.sideTabs.lft'), pl = $('plTab');
+  ['mnTab','osTab','rqTab'].forEach(function(id){ var t = $(id); if(!t) return;
+    if(on){ if(rt && t.parentNode !== rt) rt.appendChild(t); }
+    else if(lt && t.parentNode !== lt){ if(pl && pl.parentNode === lt) lt.insertBefore(t, pl); else lt.appendChild(t); } });
+  if(on){
+    ['ssTab','kpTab','nmTab','jlTab'].forEach(function(id){ var t = $(id); if(t) t.style.display = 'none'; });
+    ['kp','nm','jl'].forEach(function(k){ if(document.body.classList.contains(k + 'Open')) sideOpen(k, false); });
+    if(document.body.classList.contains('ssOpen')) ssOpen(false);
+  }
+  var ct = $('cardToday'); if(ct) ct.style.display = on ? 'none' : '';
+  var cp = $('cardNgPlan'); if(cp) cp.style.display = on ? '' : 'none';
+  var bd = $('cardBoard'), home = $('cardBoardHome'), nb = $('osNgBody');
+  if(on && bd && nb && bd.parentNode !== nb) nb.appendChild(bd);
+  if(!on && bd && home && bd.parentNode !== home.parentNode) home.parentNode.insertBefore(bd, home.nextSibling);
+  if(nb) nb.style.display = on ? '' : 'none';
+  var ob = $('osBody'); if(ob) ob.style.display = on ? 'none' : '';
+  var od = $('osDate'); if(od && od.parentNode) od.parentNode.style.display = on ? 'none' : '';
+  var op = $('osPanel');
+  if(op){
+    var ft = op.querySelector('.ssFoot'); if(ft) ft.style.display = on ? 'none' : '';
+    var h = op.querySelector('.ssHead h2'); if(h && h.childNodes[0] && h.childNodes[0].nodeType === 3) h.childNodes[0].nodeValue = on ? '職員へのお知らせ' : '利用者さんへのお知らせ';
+    var sb = $('osSub'); if(sb && on) sb.textContent = '全員へ一括、または一人ひとりのタブレットへ';
+    op.setAttribute('aria-label', on ? '職員へのお知らせ' : '利用者さんへのお知らせ');
+  }
+  var rf = $('rqFormCard'); if(rf) rf.style.display = on ? 'none' : '';
+  osBadge(); rqBadge();
+  if(on) npRender();
+}
+/* ご要望：まだ取り込んでいないもののうち、前に引き出しを開いたときより後に届いたものを赤い丸で数える */
+function npReqs(){ return events().filter(function(e){ return e.type === 'req' && reqOpen(e); }); }
+function npRqSeen(){ var mx = ''; npReqs().forEach(function(e){ if((e.created || '') > mx) mx = e.created || ''; }); try{ localStorage.setItem(NP_SEEN, mx); }catch(e){} rqBadge(); }
+function rqBadge(){
+  var t = $('rqTab'); if(!t) return; var b = t.querySelector('.osCnt');
+  if(!b){ b = document.createElement('span'); b.className = 'osCnt'; t.appendChild(b); }
+  var n = 0; if(NP_ON){ var s = ''; try{ s = localStorage.getItem(NP_SEEN) || ''; }catch(e){} n = npReqs().filter(function(e){ return (e.created || '') > s; }).length; }
+  b.textContent = n ? String(n) : ''; b.style.display = n ? '' : 'none';
+  t.title = n ? '職員から新しいご要望が ' + n + '件届いています。押すと一覧が開きます' : 'トライタイムへのご要望を開きます';
+}
+setInterval(rqBadge, 60000);
+/* 野木の予定（1か月） */
+function npData(){ var it = live('mgmt').filter(function(x){ return x.id === NP_KEY; })[0] || { id:NP_KEY }; return { items:Array.isArray(it.items) ? it.items : [], origins:it.origins || {} }; }
+function npSave(patch){
+  var all = live('mgmt'), i = -1; all.forEach(function(x, j){ if(x.id === NP_KEY) i = j; });
+  var it = Object.assign({}, i >= 0 ? all[i] : { id:NP_KEY }, patch, { id:NP_KEY });
+  if(i >= 0) all[i] = it; else all.push(it);
+  saveCol('mgmt', all); scheduleSync();
+}
+function npMin(t){ var m = /^(\d{1,2}):(\d{2})/.exec(t || ''); return m ? (+m[1]) * 60 + (+m[2]) : null; }
+function npHm(n){ if(n == null) return ''; n = ((n % 1440) + 1440) % 1440; return pad(Math.floor(n / 60)) + ':' + pad(n % 60); }
+function npDepart(x){ if(!x || x.kind !== 'go') return ''; var a = npMin(x.appo), mv = +x.move; if(a == null || !(mv > 0)) return ''; return npHm(a - mv); }
+function npCardHTML(x){
+  var dp = npDepart(x);
+  return '<span class="npCard' + (x.kind === 'go' ? ' go' : '') + (NP_PICK === x.id ? ' sel' : '') + '" draggable="true" data-np="' + esc(x.id) + '" title="ドラッグで日へ動かせます。2回押すと中身を直せます">' +
+    (dp ? '<span class="muted">' + esc(dp) + ' 出発（' + (x.mode === 'train' ? '電車' : '車') + '）</span><br>' : '') +
+    (x.appo ? esc(x.appo) + (x.end ? '〜' + esc(x.end) : '') + ' ' : '') + '<span class="npT">' + esc(x.title || '（用件なし）') + '</span>' +
+    (x.place ? '<br><span class="muted">' + esc(x.place) + '</span>' : '') + '</span>';
+}
+function npRender(){
+  if(!$('np_cal')) return;
+  var D0 = npData(), today = ymd(new Date());
+  if(!NP_MON){ var n0 = new Date(); NP_MON = new Date(n0.getFullYear(), n0.getMonth(), 1); }
+  $('np_month').textContent = NP_MON.getFullYear() + '年' + (NP_MON.getMonth() + 1) + '月';
+  var sk = function(x){ var m = npMin(npDepart(x) || x.appo); return m == null ? 9999 : m; };
+  var tray = D0.items.filter(function(x){ return !x.date; });
+  $('np_tray').innerHTML = tray.length ? tray.map(npCardHTML).join('') : '<span class="muted">日の決まっていない札はありません。</span>';
+  var by = {}; D0.items.forEach(function(x){ if(x.date) (by[x.date] = by[x.date] || []).push(x); });
+  var h = NP_DOW.map(function(w){ return '<div class="npH">' + w + '</div>'; }).join('');
+  var last = new Date(NP_MON.getFullYear(), NP_MON.getMonth() + 1, 0);
+  for(var dd = mondayOf(NP_MON); dd <= last || dd.getDay() !== 1; dd = addDays(dd, 1)){
+    var k = ymd(dd), list = (by[k] || []).sort(function(a, b){ return sk(a) - sk(b); });
+    h += '<div class="npDay' + (dd.getMonth() !== NP_MON.getMonth() ? ' out' : '') + (k === today ? ' today' : '') + '" data-npday="' + k + '"><div class="npD">' + dd.getDate() + '</div>' + list.map(npCardHTML).join('') + '</div>';
+  }
+  $('np_cal').innerHTML = h;
+  [['np_oNoa','noa'],['np_oTri','tri']].forEach(function(p){ var el = $(p[0]); if(el && document.activeElement !== el) el.value = D0.origins[p[1]] || ''; });
+  npWire();
+}
+function npDropId(ev){ var id = ''; try{ id = ev.dataTransfer.getData('text/plain'); }catch(e){} return id; }
+function npWire(){
+  var root = $('cardNgPlan');
+  [].forEach.call(root.querySelectorAll('[data-np]'), function(c){
+    c.addEventListener('dragstart', function(ev){ try{ ev.dataTransfer.setData('text/plain', c.getAttribute('data-np')); ev.dataTransfer.effectAllowed = 'move'; }catch(e){} });
+    c.addEventListener('click', function(ev){
+      ev.stopPropagation(); var id = c.getAttribute('data-np');
+      if(NP_PICK === id){ NP_PICK = null; npEdit(id); return; }
+      NP_PICK = id; npRender(); $('np_msg').textContent = '置きたい日を押してください（もう一度その札を押すと中身を直せます）。';
+    });
+  });
+  [].forEach.call(root.querySelectorAll('[data-npday]'), function(c){
+    c.addEventListener('dragover', function(ev){ ev.preventDefault(); c.classList.add('over'); });
+    c.addEventListener('dragleave', function(){ c.classList.remove('over'); });
+    c.addEventListener('drop', function(ev){ ev.preventDefault(); c.classList.remove('over'); var id = npDropId(ev); if(id) npMove(id, c.getAttribute('data-npday')); });
+    c.addEventListener('click', function(){
+      var day = c.getAttribute('data-npday');
+      if(NP_PICK){ npMove(NP_PICK, day); return; }
+      if(!NP_EDIT){ $('np_date').value = day; $('np_new').open = true; try{ $('np_title').focus(); }catch(e){} $('np_msg').textContent = jpDate(day) + 'の札を作ります。'; }
+    });
+  });
+  var tr = $('np_tray');
+  tr.ondragover = function(ev){ ev.preventDefault(); };
+  tr.ondrop = function(ev){ ev.preventDefault(); var id = npDropId(ev); if(id) npMove(id, ''); };
+  tr.onclick = function(ev){ if(NP_PICK && !ev.target.closest('[data-np]')) npMove(NP_PICK, ''); };
+}
+function npMove(id, date){
+  var D0 = npData(); D0.items.forEach(function(x){ if(x.id === id) x.date = date; });
+  NP_PICK = null; npSave({ items:D0.items });
+  $('np_msg').textContent = date ? jpDate(date) + 'に置きました。' : '置き場へ戻しました。';
+  npRender();
+}
+function npForm(x){
+  x = x || {};
+  $('np_title').value = x.title || ''; $('np_date').value = x.date || ''; $('np_appo').value = x.appo || ''; $('np_end').value = x.end || '';
+  $('np_kind').value = x.kind || 'in'; $('np_place').value = x.place || ''; $('np_from').value = x.from || 'noa'; $('np_mode').value = x.mode || 'car';
+  $('np_move').value = (x.move != null && x.move !== '') ? x.move : ''; $('np_memo').value = x.memo || '';
+  npDepShow();
+}
+function npEdit(id){
+  var x = npData().items.filter(function(y){ return y.id === id; })[0]; if(!x) return;
+  NP_EDIT = id; npForm(x); $('np_new').open = true;
+  $('np_formTitle').textContent = '札を直す'; $('np_save').textContent = 'この内容で直す'; $('np_cancel').style.display = ''; $('np_del').style.display = '';
+  $('np_msg').textContent = '';
+  try{ $('np_new').scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){}
+  npRender();
+}
+function npReset(){ NP_EDIT = null; npForm({}); $('np_formTitle').textContent = '札を作る'; $('np_save').textContent = '札を作る'; $('np_cancel').style.display = 'none'; $('np_del').style.display = 'none'; }
+function npDepShow(){
+  var x = { kind:$('np_kind').value, appo:$('np_appo').value, move:$('np_move').value }, dp = npDepart(x);
+  $('np_depart').textContent = x.kind !== 'go' ? '' : dp ? '出発の時刻：' + dp + '（アポ ' + x.appo + ' の ' + (+x.move) + '分前）' : 'アポの時刻と移動にかかる時間を入れると、出発の時刻が出ます。';
+}
+['np_kind','np_appo','np_move'].forEach(function(id){ $(id).addEventListener('input', npDepShow); $(id).addEventListener('change', npDepShow); });
+$('np_save').addEventListener('click', function(){
+  var t = $('np_title').value.trim(); if(!t){ $('np_msg').textContent = '用件を入れてください。'; return; }
+  var mv = $('np_move').value === '' ? '' : Math.max(0, Math.round(+$('np_move').value || 0));
+  var rec = { title:t, date:$('np_date').value || '', appo:$('np_appo').value || '', end:$('np_end').value || '', kind:$('np_kind').value, place:$('np_place').value.trim(), from:$('np_from').value, mode:$('np_mode').value, move:mv, memo:$('np_memo').value.trim() };
+  var D0 = npData(), wasEdit = !!NP_EDIT;
+  if(wasEdit) D0.items = D0.items.map(function(x){ return x.id === NP_EDIT ? Object.assign({}, x, rec) : x; });
+  else D0.items.push(Object.assign({ id:uid(), created:nowLocal() }, rec));
+  npSave({ items:D0.items });
+  if(rec.date){ var dd = parseYmd(rec.date); if(dd) NP_MON = new Date(dd.getFullYear(), dd.getMonth(), 1); }
+  npReset(); npRender();
+  $('np_msg').textContent = wasEdit ? '直しました。' : (rec.date ? jpDate(rec.date) + 'に置きました。' : '置き場に入れました。カレンダーの日へドラッグしてください。');
+});
+$('np_cancel').addEventListener('click', function(){ npReset(); npRender(); $('np_msg').textContent = ''; });
+$('np_del').addEventListener('click', function(){
+  if(!NP_EDIT || !confirm('この札を消しますか？')) return;
+  var id = NP_EDIT; npSave({ items:npData().items.filter(function(x){ return x.id !== id; }) });
+  npReset(); npRender(); $('np_msg').textContent = '消しました。';
+});
+$('np_route').addEventListener('click', function(){
+  var o = npData().origins, from = $('np_from').value, org = from === 'tri' ? o.tri : o.noa, dst = $('np_place').value.trim();
+  if(!dst){ $('np_msg').textContent = '行き先（住所）を入れてください。'; return; }
+  if(!org){ $('np_msg').textContent = 'この欄のいちばん下の「出発地の住所」に、' + (from === 'tri' ? 'トライサイト' : 'ノア') + 'の住所を入れて保存してください。'; return; }
+  var u = 'https://www.google.com/maps/dir/?api=1&origin=' + encodeURIComponent(org) + '&destination=' + encodeURIComponent(dst) + '&travelmode=' + ($('np_mode').value === 'train' ? 'transit' : 'driving');
+  window.open(u, '_blank', 'noopener');
+  $('np_msg').textContent = '開いた地図に出た所要時間を「移動にかかる時間（分）」に入れてください。';
+});
+$('np_oSave').addEventListener('click', function(){ npSave({ origins:{ noa:$('np_oNoa').value.trim(), tri:$('np_oTri').value.trim() } }); $('np_msg').textContent = '出発地の住所を保存しました。'; });
+$('np_prev').addEventListener('click', function(){ NP_MON = new Date(NP_MON.getFullYear(), NP_MON.getMonth() - 1, 1); npRender(); });
+$('np_next').addEventListener('click', function(){ NP_MON = new Date(NP_MON.getFullYear(), NP_MON.getMonth() + 1, 1); npRender(); });
+$('np_this').addEventListener('click', function(){ NP_MON = null; npRender(); });
 var refreshAll0 = refreshAll;
 /* ---- 翌月の予定の申告（2026-11-03・宏史さんの指示）----
    非常勤の人の、ある月の出られる日を type "avail" で持つ（同じ人・同じ月は新しいものを使う）。

@@ -8871,7 +8871,7 @@ function npRender(){
 }
 /* 毎週の決まり：rules[キー] = { st:'' | 'off' | 'work', kind:'noa'|'tri', from:'06:00', to:'15:00', purpose } 。キーは '1'〜'6'・'0'（日）・'hol'（祝日） */
 var NP_RULE_ROWS = [['1','月曜日'],['2','火曜日'],['3','水曜日'],['4','木曜日'],['5','金曜日'],['6','土曜日'],['0','日曜日'],['hol','祝日']];
-var NP_RULE_DEF = { '3':{ st:'off' }, '6':{ st:'off' }, hol:{ st:'work', kind:'noa', from:'06:00', to:'15:00', purpose:'通常の社内業務' } };   /* 保存する前の入り口の値（宏史さんの言った公休と祝日の勤務） */
+var NP_RULE_DEF = { '1':{ st:'work', kind:'noa', from:'06:00', to:'13:00', purpose:'通常の社内業務' }, '2':{ st:'work', kind:'noa', from:'06:00', to:'13:00', purpose:'通常の社内業務' }, '4':{ st:'work', kind:'noa', from:'06:00', to:'13:00', purpose:'通常の社内業務' }, '5':{ st:'work', kind:'noa', from:'06:00', to:'13:00', purpose:'通常の社内業務' }, '0':{ st:'work', kind:'noa', from:'06:00', to:'13:00', purpose:'通常の社内業務' }, '3':{ st:'off' }, '6':{ st:'off' }, hol:{ st:'work', kind:'noa', from:'06:00', to:'15:00', purpose:'通常の社内業務' } };   /* 保存する前の入り口の値（宏史さんの言った公休と祝日の勤務） */
 function npRuleOf(date, rules){
   if(!rules) return null; var d = parseYmd(date); if(!d) return null;
   if(holidayName(date) && rules.hol && rules.hol.st) return rules.hol;
@@ -8895,7 +8895,7 @@ function npRuleRender(){
   }).join('') + '</table>';
   var sync = function(tr){ var w = tr.querySelector('[data-f="st"]').value === 'work'; [].forEach.call(tr.querySelectorAll('[data-f="kind"],[data-f="from"],[data-f="to"],[data-f="purpose"]'), function(el){ el.disabled = !w; }); };
   [].forEach.call(box.querySelectorAll('tr[data-rule]'), function(tr){ sync(tr); tr.querySelector('[data-f="st"]').addEventListener('change', function(){ sync(tr); }); });
-  $('np_ruleMsg').textContent = npData().rules ? '' : 'まだ保存していません（公休＝水・土、祝日＝ノアで6時〜15時を入れてあります）。';
+  $('np_ruleMsg').textContent = npData().rules ? '' : 'まだ保存していません（公休＝水・土、ふだんの出勤日＝ノアで6時〜13時、祝日＝ノアで6時〜15時を入れてあります）。';
 }
 $('np_ruleSave').addEventListener('click', function(){
   var rules = {};

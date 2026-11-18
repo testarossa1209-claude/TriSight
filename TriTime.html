@@ -458,7 +458,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-18-05</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-18-06</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -649,6 +649,14 @@ function tsPortalAsk(){
     <div class="btns"><button type="button" class="btn sub small" id="np_prev">前の月</button><button type="button" class="btn sub small" id="np_this">今月</button><button type="button" class="btn sub small" id="np_next">次の月</button><b id="np_month" style="margin-left:8px;font-size:16px"></b></div>
     <div class="npCal" id="np_cal"></div>
     <!-- 2026-11-18（宏史さん「毎週の決まりは変更があるとき以外は必要ありませんので、常時表示はいりません」）：ふだんは隠し、変えるときだけ出す -->
+    <!-- 2026-11-18（宏史さんの指示「この予定表を外部に送信できるように」「人に送る」「iPhoneでSiriに共有させてアラートや情報の提供まで」） -->
+    <div class="btns" style="margin-top:10px;align-items:center"><b style="font-size:14px">表示中の月の予定を送る：</b>
+      <button type="button" class="btn sub small" id="np_shMail">メールで送る</button>
+      <button type="button" class="btn sub small" id="np_shLine">LINEで送る</button>
+      <button type="button" class="btn sub small" id="np_shPrint">印刷・PDF</button>
+      <button type="button" class="btn small" id="np_shIcs">iPhoneのカレンダーに入れる</button>
+    </div>
+    <p class="muted sm" style="margin:2px 0 0">「iPhoneのカレンダーに入れる」は、iPhoneのSafariで押すと「カレンダーに追加」の画面が出ます。入れた予定は、外出は出発の時刻に、そのほかはアポの15分前に知らせが出ます。Siriに「今日の予定は？」と聞くと読み上げます。</p>
     <div class="btns" style="margin-top:8px"><button type="button" class="btn sub small" id="np_ruleOpen">毎週の決まりを変える</button></div>
   </div>
   <!-- 2026-11-15（宏史さん「管理者端末には当月の売り上げと目標までの残売り上げ（新規利用者週２回であと何人）を」）：管理者の端末の「予定」タブのいちばん上 -->
@@ -8927,6 +8935,82 @@ $('np_ruleSave').addEventListener('click', function(){
     rules[tr.getAttribute('data-rule')] = st === 'work' ? { st:'work', kind:g('kind'), from:g('from'), to:g('to'), purpose:g('purpose').trim() } : { st:st };
   });
   npSave({ rules:rules }); $('np_msg').textContent = '毎週の決まりを保存しました。カレンダーに出ています。'; $('np_ruleBox').style.display = 'none'; $('np_ruleOpen').style.display = ''; npRender();
+});
+
+/* ---- 予定を外へ送る（2026-11-18・宏史さんの指示）：表示中の月の札と公休を、文面（メール・LINE）・印刷・iPhoneのカレンダー（.ics）で出す ---- */
+function npMonthItems(){
+  var D0 = npData(), y = NP_MON.getFullYear(), m = NP_MON.getMonth(), out = [];
+  var last = new Date(y, m + 1, 0).getDate();
+  for(var d = 1; d <= last; d++){
+    var k = ymd(new Date(y, m, d)), r = D0.skip.indexOf(k) < 0 ? npRuleOf(k, D0.rules) : null;
+    var its = D0.items.filter(function(x){ return x.date === k; }).sort(function(a, b){ return npSortKey(a) - npSortKey(b); });
+    if(r || its.length || holidayName(k)) out.push({ date:k, rule:r, hol:holidayName(k), items:its });
+  }
+  return out;
+}
+function npItemText(x){
+  var dp = npDepart(x), t = (x.appo ? x.appo + (x.end ? '〜' + x.end : '') + ' ' : '') + (x.purpose ? '［' + x.purpose + '］' : '') + (x.title || '');
+  if(x.kind === 'go'){ if(dp) t += '（' + dp + '出発・' + npFromLabel(x) + '・' + (x.mode === 'train' ? '電車' : '車') + '）'; if(x.place) t += '\n　　行き先：' + x.place; }
+  else if(NP_KIND[x.kind]) t += '（' + NP_KIND[x.kind] + '）';
+  if(x.memo) t += '\n　　内容：' + x.memo;
+  return t;
+}
+function npMonthText(){
+  var h = '野木の予定　' + NP_MON.getFullYear() + '年' + (NP_MON.getMonth() + 1) + '月\n';
+  npMonthItems().forEach(function(dy){
+    h += '\n■' + jpDate(dy.date) + (dy.hol ? '　' + dy.hol : '') + '\n';
+    if(dy.rule) h += dy.rule.st === 'off' ? '　公休\n' : '　' + (dy.rule.from || '') + '〜' + (dy.rule.to || '') + ' ' + (NP_KIND[dy.rule.kind] || '') + ' ' + (dy.rule.purpose || '') + '\n';
+    dy.items.forEach(function(x){ h += '　' + npItemText(x) + '\n'; });
+  });
+  return h;
+}
+$('np_shMail').addEventListener('click', function(){
+  var sub = '野木の予定（' + NP_MON.getFullYear() + '年' + (NP_MON.getMonth() + 1) + '月）';
+  location.href = 'mailto:?subject=' + encodeURIComponent(sub) + '&body=' + encodeURIComponent(npMonthText());
+});
+$('np_shLine').addEventListener('click', function(){ window.open('https://line.me/R/msg/text/?' + encodeURIComponent(npMonthText()), '_blank', 'noopener'); });
+$('np_shPrint').addEventListener('click', function(){
+  var rows = npMonthItems().map(function(dy){
+    var a = [];
+    if(dy.rule) a.push(dy.rule.st === 'off' ? '<b style="color:#9b2c22">公休</b>' : esc((dy.rule.from || '') + '〜' + (dy.rule.to || '') + ' ' + (NP_KIND[dy.rule.kind] || '') + ' ' + (dy.rule.purpose || '')));
+    dy.items.forEach(function(x){ a.push(esc(npItemText(x)).replace(/\n/g, '<br>')); });
+    return '<tr' + (dy.hol ? ' style="background:#fdeeee"' : '') + '><td style="white-space:nowrap">' + esc(jpDate(dy.date)) + (dy.hol ? '<br><span style="color:#b3261e;font-size:11px">' + esc(dy.hol) + '</span>' : '') + '</td><td>' + a.join('<br>') + '</td></tr>';
+  }).join('');
+  var w = window.open('', '_blank'); if(!w){ $('np_msg').textContent = '新しい窓が開けませんでした。ブラウザの「ポップアップを許可」をお願いします。'; return; }
+  w.document.write('<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>野木の予定</title><style>body{font-family:sans-serif;margin:16px}table{border-collapse:collapse;width:100%}td{border:1px solid #bbb;padding:5px 8px;font-size:13px;vertical-align:top}h1{font-size:18px}</style></head><body><h1>野木の予定　' + NP_MON.getFullYear() + '年' + (NP_MON.getMonth() + 1) + '月</h1><table>' + rows + '</table></body></html>');
+  w.document.close(); setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 300);
+});
+function npIcsEsc(s){ return String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n'); }
+function npIcsDT(date, hm){ return date.replace(/-/g, '') + 'T' + hm.replace(':', '') + '00'; }
+function npIcs(){
+  var L = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//TriSight//TriTime//JA','CALSCALE:GREGORIAN','X-WR-CALNAME:野木の予定','X-WR-TIMEZONE:Asia/Tokyo',
+    'BEGIN:VTIMEZONE','TZID:Asia/Tokyo','BEGIN:STANDARD','DTSTART:19700101T000000','TZOFFSETFROM:+0900','TZOFFSETTO:+0900','TZNAME:JST','END:STANDARD','END:VTIMEZONE'];
+  var stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+  npMonthItems().forEach(function(dy){
+    if(dy.rule && dy.rule.st === 'off'){
+      var nx = ymd(addDays(parseYmd(dy.date), 1)).replace(/-/g, '');
+      L.push('BEGIN:VEVENT','UID:ngoff-' + dy.date + '@trisight','DTSTAMP:' + stamp,'DTSTART;VALUE=DATE:' + dy.date.replace(/-/g, ''),'DTEND;VALUE=DATE:' + nx,'SUMMARY:公休','TRANSP:TRANSPARENT','END:VEVENT');
+    }
+    dy.items.forEach(function(x){
+      if(!x.appo) return;
+      var st = npDepart(x) || x.appo, en = x.end || npHm(npMin(x.appo) + 60);
+      var desc = [x.purpose ? '目的：' + x.purpose : '', x.memo ? '内容：' + x.memo : '', npDepart(x) ? 'アポ：' + x.appo + '（' + npDepart(x) + '出発・' + npFromLabel(x) + '・' + (x.mode === 'train' ? '電車' : '車') + '）' : ''].filter(Boolean).join('\n');
+      L.push('BEGIN:VEVENT','UID:' + x.id + '@trisight','DTSTAMP:' + stamp,'DTSTART;TZID=Asia/Tokyo:' + npIcsDT(dy.date, st),'DTEND;TZID=Asia/Tokyo:' + npIcsDT(dy.date, en),
+        'SUMMARY:' + npIcsEsc((x.purpose ? '［' + x.purpose + '］' : '') + (x.title || '')));
+      if(x.kind === 'go' && x.place) L.push('LOCATION:' + npIcsEsc(x.place));
+      if(desc) L.push('DESCRIPTION:' + npIcsEsc(desc));
+      L.push('BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:' + npIcsEsc((npDepart(x) ? '出発の時刻です：' : 'まもなく：') + (x.title || '')),'TRIGGER:' + (npDepart(x) ? 'PT0M' : '-PT15M'),'END:VALARM','END:VEVENT');
+    });
+  });
+  L.push('END:VCALENDAR');
+  return L.join('\r\n') + '\r\n';
+}
+$('np_shIcs').addEventListener('click', function(){
+  var ics = npIcs(), name = 'nogi_' + NP_MON.getFullYear() + '-' + pad(NP_MON.getMonth() + 1) + '.ics';
+  if(/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)){ location.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics); return; }
+  var b = new Blob([ics], { type:'text/calendar;charset=utf-8' }), a = document.createElement('a');
+  a.href = URL.createObjectURL(b); a.download = name; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  $('np_msg').textContent = name + ' を作りました。iPhoneへはメールで送って開くか、iPhoneのSafariでこのボタンを押してください。';
 });
 $('np_ruleOpen').addEventListener('click', function(){ npRuleRender(); $('np_ruleBox').style.display = ''; this.style.display = 'none'; try{ $('np_ruleBox').scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){} });
 function npDropId(ev){ var id = ''; try{ id = ev.dataTransfer.getData('text/plain'); }catch(e){} return id; }

@@ -3971,6 +3971,8 @@ window.tsSyncBanner = function(msg){
         compLabel();
         const st = document.getElementById("digStatus");
         if(st) st.textContent = "診断する会社を「"+nm+"」に切り替えました。あらためて「新着探索」を押してください。";
+        /* 2026-11-18：会社を切り替えたら、自動発掘の知らせもその会社に合わせる */
+        if(typeof window.tsNightBannerRefresh === "function") window.tsNightBannerRefresh();
       });
     }
     const compDel = document.getElementById("digCompanyDel");
@@ -4730,8 +4732,14 @@ window.tsSyncBanner = function(msg){
           night: nightNow,
           nightAt: nightNow ? nowIso : ((prevSv && prevSv.nightAt) || null),
           nightNote: nightNow ? String(window.__tsNightNote || "") : ((prevSv && prevSv.nightNote) || ""),
+          /* 2026-11-18：自動発掘をどの会社で回したかも控える。見本交通を手で掘った一覧の上に、
+             ノアの自動発掘の知らせ（東村山市・介護保険の入口など）が出ていたため（宏史さんの指摘）。 */
+          nightCompany: nightNow ? (typeof tsCompanyName === "function" ? String(tsCompanyName() || "") : "")
+                                 : ((prevSv && prevSv.nightCompany) || ""),
           rows: slim
         }));
+        /* 2026-11-18：手で掘り直したら、自動発掘の知らせをいまの会社に合わせて出し直す */
+        if(!nightNow && typeof window.tsNightBannerRefresh === "function") window.tsNightBannerRefresh();
       }catch(_){}
     }
 
@@ -8358,7 +8366,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-11-18-01';
+  const TRIGATE_VERSION = '2026-11-18-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -8482,6 +8490,15 @@ window.tsSyncBanner = function(msg){
     var sv = null;
     try{ sv = JSON.parse(localStorage.getItem("trisight_dig_saved") || "null"); }catch(_){ sv = null; }
     if(!sv || !sv.nightAt) return;   /* 一度も動いていない（自動発掘を設定していない）利用者には何も出さない */
+    /* 2026-11-18：自動発掘を回した会社と、いま選んでいる会社が違うときは出さない（出ていれば消す）。
+       控えに会社名が無い古い分は、自動発掘に登録されている会社の名前で見る。 */
+    var nightCo = String(sv.nightCompany || (window.__tsAutoReg && window.__tsAutoReg.name) || "");
+    var curCo = (typeof window.tsCompanyName === "function") ? String(window.tsCompanyName() || "") : "";
+    if(nightCo && curCo && nightCo !== curCo){
+      var old = document.getElementById("nightBanner");
+      if(old && old.parentNode) old.parentNode.removeChild(old);
+      return;
+    }
     var b = bannerEl(); if(!b) return;
     var hours = (Date.now() - new Date(sv.nightAt).getTime()) / 3600000;
     if(!(hours <= 30)){
@@ -8617,6 +8634,7 @@ window.tsSyncBanner = function(msg){
     say("自動発掘が終わりました（" + fmt(new Date().toISOString()) + "）。" + window.__tsNightNote, "ok");
     document.title = "TriGate 自動発掘 完了";
   }
+  window.tsNightBannerRefresh = function(){ if(!isNight) showMorning(); };
   var go = function(){ if(isNight) runNight(); else showMorning(); };
   var ready = window.tsBoxReady, went = false;
   var go1 = function(){ if(went) return; went = true; go(); };

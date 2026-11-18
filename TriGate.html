@@ -4520,15 +4520,10 @@ window.tsSyncBanner = function(msg){
 
     function digRowsHtml(rows){
       let html = '<table class="digtbl"><thead><tr><th>案件名</th><th>上限額</th><th>受付期間の終わり</th><th>対象地域</th><th></th></tr></thead><tbody>';
-      /* 2026-09-29：朝に呼び戻して見る一覧（夜の自動発掘の結果）にも、施主向けを最後に回した見出しを出す */
+      /* 2026-11-18：呼び戻す一覧でも、会社の申請先を探す回の施主向けは外す（以前の控えに残っている分も含む） */
       const __ownN = rows.filter(function(x){ return x && x.__ownerOff; }).length;
-      let __ownSep = false;
+      rows = rows.filter(function(x){ return !(x && x.__ownerOff); });
       for(const it of rows){
-        if(it && it.__ownerOff && !__ownSep){
-          __ownSep = true;
-          html += '<tr class="digsep"><td colspan="5" style="background:#f6f7f9;font-weight:600;padding:6px 8px">'
-            + '施主（個人）が受け取る制度　※会社の申請先を探す回のため、最後に回しています（' + __ownN + '件）</td></tr>';
-        }
         html += '<tr data-id="'+e(it.id||"")+'" data-title="'+e(it.title||it.name||"")+'"'
               + ' data-steady="'+e(it.__steady||"")+'" data-work="'+e(it.__work||"")+'"' + tsRowDataAttrs(it) + '>'
               + "<td>"+e(it.title || it.name || "（名称不明）")+tsSrcBadge(it.id)
@@ -4543,7 +4538,8 @@ window.tsSyncBanner = function(msg){
               + "<td>"+e(it.target_area_search || "—")+"</td>"
               + "<td>"+(it.id ? '<button class="dbtn" data-act="detail">詳細</button>' : "")+"</td></tr>";
       }
-      return html + "</tbody></table>" + "<div class='digNote'>国土交通省・厚生労働省・自治体の制度は、検索する語では絞っていません。業種・規模・地域で当てています（語で絞ると、業種から当たる制度を取りこぼすため）。／受付期間の終わりは掲載元（Jグランツ等）の表記をそのまま表示しています。申請の締切と異なる場合があります。</div>";
+      return html + "</tbody></table>" + "<div class='digNote'>国土交通省・厚生労働省・自治体の制度は、検索する語では絞っていません。業種・規模・地域で当てています（語で絞ると、業種から当たる制度を取りこぼすため）。／受付期間の終わりは掲載元（Jグランツ等）の表記をそのまま表示しています。申請の締切と異なる場合があります。"
+        + (__ownN ? "／施主（個人）が受け取る制度 " + __ownN + "件は、会社の申請先を探す回のため一覧から外しています。" : "") + "</div>";
     }
 
     /* ===== 検査（2026-09-16） ==========================================
@@ -4764,7 +4760,7 @@ window.tsSyncBanner = function(msg){
         return false;
       }
       out.innerHTML = digRowsHtml(sv.rows);
-      lastShow = sv.rows;
+      lastShow = sv.rows.filter(function(x){ return !(x && x.__ownerOff); });
       if(fullGateBtn) fullGateBtn.style.display = "";
       { const cb = document.getElementById("digClearBtn"); if(cb) cb.style.display = ""; }
       let when = "";
@@ -5220,6 +5216,11 @@ window.tsSyncBanner = function(msg){
         const __shuEl = document.getElementById("digShunushi");
         const __wantShu = !!(__shuEl && __shuEl.checked);
         show.forEach(it => { it.__ownerOff = (!__wantShu && !!it.__shunushi); });
+        /* 2026-11-18：最後に回すだけでは、タクシーの補助金を探した回にも前に掘った太陽光・蓄電池の
+           施主向けが並び続けた（宏史さんの指摘「タクシーとは関係ないので外せないか」）。
+           ①を選んでいない回は、施主向けを一覧から外し、外した件数だけ注記に出す。台帳の中身は消さない。 */
+        const __ownCut = show.filter(it => it.__ownerOff).length;
+        show = show.filter(it => !it.__ownerOff);
         /* 2026-09-29：病院向けの制度（救命救急・医師派遣など）と、選んだ市区町村以外の市区町村の制度に、
            「事業外の可能性」「地域外の可能性」を付けて下へ回す。消しはしない。印は「この判定を外す」で取り消せる。 */
         {
@@ -5372,13 +5373,10 @@ window.tsSyncBanner = function(msg){
           /* 施主向けは上で出しているので、ここでは残りだけ出す（2026-09-01） */
           rest.forEach(it => { html += rowOf(it); });
         }
-        /* 2026-09-29：会社自身の申請先を探す回では、施主向けを最後に見出し付きで出す */
-        if(grpO.length){
-          html += sepOf("施主（個人）が受け取る制度　※今回は会社の申請先を探す回のため、最後に回しています", grpO.length);
-          grpO.forEach(it => { html += rowOf(it); });
-        }
+        /* 2026-11-18：施主向けは一覧から外したため、最後に回す見出しは出さない（件数は下の注記に出す） */
         html += "</tbody></table>" + "<div class='digNote'>国土交通省・厚生労働省・自治体の制度は、検索する語では絞っていません。業種・規模・地域で当てています（語で絞ると、業種から当たる制度を取りこぼすため）。／受付期間の終わりは掲載元（Jグランツ等）の表記をそのまま表示しています。申請の締切と異なる場合があります。"
               + e(webNote)
+              + (__ownCut ? "／施主（個人）が受け取る制度 " + __ownCut + "件は、今回は会社の申請先を探す回のため一覧から外しています（「① 施主（個人）が受け取る制度を探す」にチェックを入れて掘ると出ます）。" : "")
               + (cutByClosed ? "／受付が終わっている制度 " + cutByClosed + "件を一覧から外しています。" : "")
               + (selPref ? "／地域は「" + e(selArea) + "」で絞っています（全国区と" + e(selPref) + "の制度は残しています"
                   + (cutByArea ? "。" + cutByArea + "件を地域で除外" : "") + "）。" : "") + "</div>"
@@ -8360,7 +8358,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-11-13-02';
+  const TRIGATE_VERSION = '2026-11-18-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

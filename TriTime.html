@@ -463,7 +463,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-20-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-20-05</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -2377,6 +2377,10 @@ function renderPlan(){
       if(v.moved) tags += '<span class="tag green">組み換え（元 ' + esc(v.moved.from) + (v.moved.fromStaff !== v.staffId ? '・' + esc(staffName(v.moved.fromStaff)) : '') + '）</span> <button class="btn small sub" data-unmove="' + esc(v.moved.id) + '">組み換えを取り消す</button>';
       if(trustOf(v.no).lv === '低') tags += trustTag(v.no);
       var offw = v.cx ? '' : offWhy(v.staffId, v.date); if(offw) tags += '<span class="tag red">' + (offw === '退職' ? '要調整：担当が退職' : '要調整：担当が休み（' + esc(offw) + '）') + '</span>';
+      /* 2026-11-20（宏史さんの指示）：同行者もその日の出勤（申告・休みの届け・公休）で見る。休みなら要調整と、その時間に空いている代わりの同行の候補を出す */
+      if(!v.cx && v.withId && !isTbd(v.withId)){ var offx = offWhy(v.withId, v.date); if(offx) tags += '<span class="tag red">要調整：同行者が休み（' + esc(offx) + '）</span>' + withAltHTML(v); }
+      var pv2 = v.cx ? [] : [v.staffId, v.withId].filter(function(id){ return id && !isTbd(id) && provDay(id, v.date); });
+      if(pv2.length) tags += '<span class="tag gray">仮：' + esc(pv2.map(staffName).join('・')) + 'さんの出勤予定が未提出</span>';
       var pp = patient(v.no) || {}, pw = pp.wish; if(pp.preCall && !v.cx) tags += '<span class="tag amber">訪問前に連絡：' + esc(pp.preCall.replace(/^要/, '')) + '</span>'; if(pw && !v.cx && Math.abs(toMin(pw) - toMin(v.time)) > 30) tags += '<span class="tag amber">本人の希望は ' + esc(pw) + '</span>';
       var chg = chgOf(v), chgP = chgPending(chg), red = chgP.length || (chg && chg.consent === false);
       if(chgP.length) tags += '<span class="tag red">事務所へ要連絡（' + esc(chgP.map(staffName).join('・')) + '）</span>';
@@ -7289,6 +7293,20 @@ function isIrreg(s){ return !!(s && s.emp === '非常勤' && s.irreg); }
 function availRec(sid, ym){ var a = events().filter(function(e){ return e.type === 'avail' && e.staffId === sid && e.ym === ym; }); return a.length ? a[a.length - 1] : null; }
 function availOf(sid, ym){ var r = availRec(sid, ym); return r ? (r.days || []) : null; }
 function ymNext(){ var d = new Date(); return ymd(new Date(d.getFullYear(), d.getMonth() + 1, 1)).slice(0, 7); }
+/* 2026-11-20（宏史さんの指示）：非常勤は本業の病院の予定が出てから当社の出勤日を決め、申告の出る時期がまちまち。
+   申告がまだの月は「仮の出勤日」で予定に組み込む＝前月の申告で出た曜日。前月の申告も無ければ、これまでどおり公休の曜日で見る。
+   対象は申告を出す非常勤（不定期の印がある人、または前月に申告を出した人）。申告が届いたら、その日付だけで見る（仮は外れる） */
+function withAltHTML(v){
+  var a = toMin(v.time), b = a + (+v.min || 30), day = visitsOn(v.date).filter(function(x){ return !x.cx && x !== v; });
+  var c = deptStaff(null, v.date).filter(function(s){ if(s.id === v.staffId || s.id === v.withId || staffOrphan(s) || jobOf(s) === '事務局') return false; if(offWhy(s.id, v.date)) return false;
+    return !day.some(function(x){ if(x.staffId !== s.id && x.withId !== s.id) return false; var p = toMin(x.time), q = p + (+x.min || 30); return p < b && a < q; }); });
+  return '<br><small>' + (c.length ? '代わりの同行の候補（その日出勤で、この時間に空いている人）：' + esc(c.slice(0, 5).map(function(s){ return s.name; }).join('・')) : 'この時間に空いている、その日出勤の人がいません') + '</small>';
+}
+function ymPrev(ym){ var m = String(ym || '').match(/^(\d{4})-(\d{2})/); if(!m) return ''; return ymd(new Date(+m[1], +m[2] - 2, 1)).slice(0, 7); }
+function provDows(s, ym){ if(!s || s.emp !== '非常勤' || availRec(s.id, ym)) return null; var pv = availOf(s.id, ymPrev(ym)); if(!pv || !pv.length) return null;
+  var o = {}; pv.forEach(function(x){ var d = parseYmd(x); if(d) o[String(d.getDay())] = 1; }); return Object.keys(o); }
+function provDay(sid, date){ var s = staff().filter(function(x){ return x.id === sid; })[0]; if(!s || s.emp !== '非常勤') return false; var ym = String(date).slice(0, 7);
+  return !availRec(s.id, ym) && (isIrreg(s) || !!availRec(s.id, ymPrev(ym))); }
 function leaves(){ return events().filter(function(e){ return e.type === 'leave'; }); }
 function workOn(sid, date){ return events().some(function(e){ return e.type === 'work' && e.staffId === sid && e.date === date; }); }
 /* その日、その職員が休みか。休みなら理由（公休／祝日／届けの種類）を返す */
@@ -7298,7 +7316,8 @@ function offWhy(staffId, date){
   var lv = leaves().filter(function(e){ return e.staffId === staffId && e.date === date; })[0]; if(lv) return lv.kind || '休み';
   /* 2026-11-03（宏史さん「祭日に島さんと佐野（夫）さんが全員を回った。要調整の直し方は」）：この日は出勤（type "work"）が付いた日は、公休・祝日・申告外でも休みにしない */
   if(workOn(staffId, date)) return '';
-  if(s.emp === '非常勤'){ var av = availOf(s.id, date.slice(0, 7)); if(av) return av.indexOf(date) >= 0 ? '' : '申告外'; }
+  if(s.emp === '非常勤'){ var av = availOf(s.id, date.slice(0, 7)); if(av) return av.indexOf(date) >= 0 ? '' : '申告外';
+    var pd = provDows(s, date.slice(0, 7)); if(pd){ var dd = parseYmd(date); return dd && pd.indexOf(String(dd.getDay())) >= 0 ? '' : '仮の休み'; } }   /* 2026-11-20：申告がまだの月は仮の出勤日で見る */
   var d = parseYmd(date); if(d && staffOff(s).indexOf(String(d.getDay())) >= 0) return '公休';
   if(s.holOff && holidayName(date)) return '祝日';
   return '';
@@ -8658,6 +8677,7 @@ var MN_MARKS = [
     ['2名体制の合流のしかた', '「予定」タブの1日の予定の下に出ます。1名体制から2名体制に日の途中で変わるとき、事務所で合流・現地で合流（それぞれ移動）・1件目の家に自転車を置いて車で回る（その日のうちに回収／次の訪問で回収）を、2人分の移動の時間（目安）で比べ、少ない案に◎を付けます。自転車の案は、利用者登録で「自転車を置かせてもらえる」に印がある家だけです。了承は担当看護師が取ります。その日のうちに回収するなら電池は付けたまま・鍵は掛ける、後日回収なら鍵を掛け電池は持ち帰ります。'],
     ['同じ升の中で順番を入れ替える', '本スケジュール表の札を、同じ人・同じ日の升の中で上下に引っぱり、別の札の上（または下）で離すと、その並びの位置の時刻に自動で書き換わります。時刻は、その升に入っている時刻の枠を上から付け直すので、1日の流れは崩れません。小窓で「この日だけ入れ替える」か「毎週の予定を変える」かを選びます。遠回りになるときは赤字で出ます。'],
     ['空いている曜日と時間帯', '利用者登録の「予定の希望」の「空いている曜日と時間帯を見る」を押すと、月〜土の午前・午後ごとに「入れます／少し空き／埋まっています」と、空いている看護師が出ます。「人気」は、いまの利用者さんの希望が集まっている時間帯です。希望の曜日・時間帯を入れてから押すと、そこが太枠になり、埋まっているときは新しい利用者さんへのご案内の文（読み上げ用）が出ます。'],
+    ['仮（出勤予定が未提出）', '翌月の出勤予定の申告がまだの非常勤は、前月の申告で出た曜日を「仮の出勤日」として予定に組み込みます。その人の訪問・同行には灰色の「仮」の印が付きます。申告が届くと仮は外れ、出られない日の訪問・同行には「要調整」の印と代わりの候補が出ます。25日を過ぎても申告が無い人は、事務局・管理者の画面に知らせが出ます。'],
     ['空き案内', '右の引き出し「空き案内」。新規の利用者さんの住所・希望の曜日・時刻を入れて「空きを探す」を押すと、空きがあるかと、埋まっていれば寄り道の少ない代わりの曜日・時刻、読み上げる案内の文が出ます。希望の時刻は早い者勝ちです。'],
     ['予定の評価', '右の引き出し「予定の評価」。いまの週間予定の週の移動距離と、AIが考えた組み替え（担当の付け替え・入れ替え、回る順の入れ替え）を、減る距離と一緒に出します。選んだ提案は下書きに入り、仮スケジュール表で確かめてから確定します。'],
     ['IT導入責任者', '職員名簿の印。管理者ではないが、仮スケジュール・空き案内・予定の評価など予定を組む引き出しを、管理者と同じように使えます。売上・評価・管理者の窓・職員名簿は出ません。合言葉は要りません。訪問件数は職員と同じです。'],
@@ -9228,12 +9248,12 @@ function avRender(){
   };
   avAlert();
 }
-/* 月末が近い（20日以降）のに翌月の申告がまだの非常勤がいるとき、事務局・管理者の画面の上に知らせる */
+/* 月末が近い（25日以降。2026-11-20 宏史さん「翌月の出勤日は概ね前月の25日に決まる」で20日から改め）のに翌月の申告がまだの非常勤がいるとき、事務局・管理者の画面の上に知らせる */
 function avAlert(){
   var box = $('avAlert'); if(!box) return;
-  var R = role(); if(R.lv === 'staff' || R.lv === 'none' || D().kind !== 'visit' || new Date().getDate() < 20){ box.innerHTML = ''; return; }
+  var R = role(); if(R.lv === 'staff' || R.lv === 'none' || D().kind !== 'visit' || new Date().getDate() < 25){ box.innerHTML = ''; return; }
   var ym = ymNext(), not = deptStaff().filter(function(x){ return x.emp === '非常勤' && !staffOrphan(x) && !availRec(x.id, ym); });
-  box.innerHTML = not.length ? '<div class="alert"><b>' + esc(ym.replace('-', '年').replace(/年0?/, '年')) + '月の予定の申告がまだの非常勤の人がいます</b>：' + esc(not.map(function(x){ return x.name; }).join('・')) + '<div class="btns"><button type="button" class="btn small" id="avGo">申告の画面を開く</button></div></div>' : '';
+  box.innerHTML = not.length ? '<div class="alert"><b>' + esc(ym.replace('-', '年').replace(/年0?/, '年')) + '月の予定の申告がまだの非常勤の人がいます（申告が届くまでは、前月の申告の曜日で「仮」として組み込んでいます）</b>：' + esc(not.map(function(x){ return x.name; }).join('・')) + '<div class="btns"><button type="button" class="btn small" id="avGo">申告の画面を開く</button></div></div>' : '';
   if($('avGo')) $('avGo').onclick = function(){ document.querySelector('#tabs button[data-tab=setup]').click(); $('av_ym').value = ym; avRender(); if($('cardAvail').scrollIntoView) $('cardAvail').scrollIntoView({ behavior:'smooth', block:'start' }); };
 }
 $('av_ym').addEventListener('change', function(){ avRender.ym = ''; avRender(); });

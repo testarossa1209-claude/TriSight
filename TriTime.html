@@ -458,7 +458,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-20-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-20-02</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -3712,12 +3712,18 @@ function sheetPull(opt){
   if(!o){ msg.textContent = 'この端末のトライシートに、自社がまだ登録されていません。「トライシートの職員名簿を開く」から会社を入れてください。看護師さんの端末では、共有を設定すると事務局の端末から名簿が届きます。'; return; }
   if(!ro.length){ msg.textContent = 'トライシートの「' + sheetName(o) + '」に、職員名簿がまだありません。「トライシートの職員名簿を開く」から一人ずつ入れてから、もう一度押してください。'; return; }
   var tt = staff(), add = 0, upd = 0;
+  /* 2026-11-20（宏史さんの指摘「一端は管理者画面が出るが、トライタイムを開くと職員画面に戻る」）：
+     開いたときの自動の読み込みで、端末の中の古い名簿が、ほかの端末で直した職員（管理者の印など）を毎回上書きして元に戻していた。
+     自動の読み込みでは、名簿の行が前回この端末で読んだときから変わっていない人は上書きしない（名簿の側で直された行だけを取り込む）。
+     初めてこの版で開いたときは、いまの名簿を「読んだもの」として控えるだけで上書きしない。人が「トライシートから読み込む」を押したときは、これまでどおり全部読む */
+  var RH_KEY = 'tritime_sheetRowH', rhOld = lj(RH_KEY, null), rhNew = {}, rhFirst = !rhOld; rhOld = rhOld || {};
   ro.forEach(function(r, ri){
+    var rh = JSON.stringify(r); rhNew[r.id] = rh;
     /* 2026-10-27：名簿にもう無い行（まとめて消した会社の行など）につながっている職員は、同じ名前なら付け替える（二重にしない） */
     var ids = {}; ro.forEach(function(y){ ids[y.id] = 1; });
     var st = tt.filter(function(x){ return x.sheetId === r.id; })[0] || tt.filter(function(x){ return (!x.sheetId || !ids[x.sheetId]) && normName(x.name) === normName(r.name); })[0];
     if(!st){ st = { id:'sh-' + r.id }; tt.push(st); add++; }
-    else upd++;
+    else { if(silent && st.sheetId === r.id && (rhFirst || rhOld[r.id] === rh)) return; upd++; }
     st.sheetId = r.id; st.name = String(r.name).trim();
     if(st.ord !== ri) st.ord = ri;   /* 2026-11-02：名簿の順を職員に持たせて共有する（基本情報シートの無いiPadでも名簿の順に並べるため） */
     if(r.job){ st.job = r.job; delete st.role; }
@@ -3737,6 +3743,7 @@ function sheetPull(opt){
      古い名簿を持った端末でトライタイムを開いただけで、その古い名簿が「新しく保存した版」として共有され、
      ほかの端末で入れた職員名簿（34名）を3名の版で上書きした（2026-10-27 宏史さんの指摘）。
      外す・書き戻すのは、人が「トライシートから読み込む」を押したときと、トライタイムで職員を直したときだけ。 */
+  try{ localStorage.setItem(RH_KEY, JSON.stringify(rhNew)); }catch(e){}
   var keep = silent ? tt : tt.filter(function(x){ return !x.sheetId || ro.some(function(r){ return r.id === x.sheetId; }); });
   var rem = tt.length - keep.length;
   var only = keep.filter(function(x){ return !x.sheetId; }).length;

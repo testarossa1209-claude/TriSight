@@ -334,6 +334,11 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   .mnCard p{margin:0;font-size:13.5px;line-height:1.7}
   .mnHit{background:#fff3c4}
   @media print{ .ssTab,.ssPanel,.sideTabs{display:none} }
+  /* 2026-11-20（宏史さんの指示）：計算に時間がかかる間は「動いています」の印（砂時計と回る輪）を出す */
+  .ttWait{position:fixed;inset:0;z-index:9999;background:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center}
+  .ttWait .box{background:#fff;border:2px solid #0f1d3a;border-radius:12px;padding:18px 24px;font-size:17px;font-weight:700;color:#0f1d3a;display:flex;align-items:center;gap:14px;box-shadow:0 4px 18px rgba(0,0,0,.18)}
+  .ttSpin{width:30px;height:30px;border:4px solid #c9d3e6;border-top-color:#0f1d3a;border-radius:50%;animation:ttSpin 0.9s linear infinite;flex:none}
+  @keyframes ttSpin{to{transform:rotate(360deg)}}
   @media print{ nav.tabs,.note,.btns,.mic{display:none} section.tab{display:none} section.tab.on{display:block} .card{box-shadow:none} }
 </style>
 <style>html.openLocked body>*:not(#openGate){display:none!important}html.openLocked body>#openGate{display:flex!important}</style>
@@ -458,7 +463,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-20-03</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-20-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -6958,7 +6963,7 @@ if(!$('pr_date').value) $('pr_date').value = ymd(new Date());
 prRender();
 ['td_date','td_staff'].forEach(function(id){ $(id).addEventListener('change', renderToday); });
 $('td_geo').addEventListener('click', geoFillAll);
-$('au_make').addEventListener('click', function(){ ssdLoad(); if(SSD) ssdWith(function(){ auMake(); }); else auMake(); });
+$('au_make').addEventListener('click', function(){ ttWait('予定を組んでいます', function(){ ssdLoad(); if(SSD) ssdWith(function(){ auMake(); }); else auMake(); }); });   /* 2026-11-20：組む間は砂時計を出す */
 $('au_apply').addEventListener('click', function(){ ssdLoad(); if(!SSD) ssdStart(); ssdWith(auApply); });   /* 2026-11-08：AIのベースは下書きに入れる */
 $('au_undo').addEventListener('click', auUndo);
 $('pt_load').addEventListener('click', function(){ ptLoad(keyNo($('pt_no').value)); });
@@ -8178,7 +8183,7 @@ function ssRender(){
     }
     if(wkEmpty && $('ssAi')) $('ssAi').open = true;
   });
-  $('ssd_remake').onclick = function(){ auMake(); if(auPlan && auPlan.rows.length){ ssdLoad(); if(!SSD) ssdStart(); ssdWith(auApply); } else if($('ssAi')){ $('ssAi').open = true; } };
+  $('ssd_remake').onclick = function(){ ttWait('予定を組み直しています', function(){ auMake(); if(auPlan && auPlan.rows.length){ ssdLoad(); if(!SSD) ssdStart(); ssdWith(auApply); } else if($('ssAi')){ $('ssAi').open = true; }  }); };
   $('ssd_commit').onclick = function(){
     var n = ssdCount(); if(!n) return;
     if(!confirm('変えた ' + n + '件で予定を確定します。確定すると、担当者の画面の予定が変わります。確定しますか。')) return;
@@ -8455,7 +8460,7 @@ function sideOpen(k, on){
   if(on){ document.body.classList.remove('ssOpen', 'kpOpen', 'mnOpen', 'nmOpen', 'osOpen', 'rqOpen', 'jmOpen', 'jlOpen', 'hbOpen', 'auOpen', 'plOpen', 'nvOpen', 'evOpen'); }
   if(!on && k === 'hb' && window.HB){ HB.on = false; HB.sel = null; }   /* 2026-11-08：手組みの引き出しを閉じたら下書きの表もしまう（下書きの中身は残る） */
   document.body.classList.toggle(k + 'Open', !!on);
-  if(on){ if(k === 'jm' || k === 'jl'){ jmRender(k); return; } if(k === 'pl'){ return; } if(k === 'nv'){ try{ $('nv_len').value = $('nv_len').value || workRule().visit; }catch(e){} return; } if(k === 'ev'){ evRender(); return; } if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else if(k === 'nm') nmRender(); else if(k === 'os'){ if(NP_ON) renderBoard(); else osRender(); } else if(k === 'rq'){ rqOpenPanel(); if(NP_ON) npRqSeen(); } else mnRender(); }
+  if(on){ if(k === 'jm' || k === 'jl'){ jmRender(k); return; } if(k === 'pl'){ return; } if(k === 'nv'){ try{ $('nv_len').value = $('nv_len').value || workRule().visit; }catch(e){} return; } if(k === 'ev'){ var eb = $('evBody'); if(eb) eb.innerHTML = '<p class="muted"><span class="ttSpin" style="display:inline-block;vertical-align:middle;width:18px;height:18px;border-width:3px"></span> ⌛ 計算しています。画面が出るまでお待ちください。</p>'; ttWait('予定の評価を計算しています', evRender); return; } if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else if(k === 'nm') nmRender(); else if(k === 'os'){ if(NP_ON) renderBoard(); else osRender(); } else if(k === 'rq'){ rqOpenPanel(); if(NP_ON) npRqSeen(); } else mnRender(); }
 }
 /* 2026-11-03：利用者さんへのお知らせ。選んだ日の訪問（キャンセルを除く）を利用者さんごとに1行にまとめ、その日のいちばん早い時刻で定型文を作る。
    定型文は設定（settings.osText）に持ち、{時刻} をその人の時刻に置き換える。送ったら type "notify" を残す */
@@ -10113,6 +10118,15 @@ function fsRender(){
   h += '<p class="muted sm">空きは、いまの週間予定と1日の件数の上限（常勤' + (+auCaps().f || 9) + '件・非常勤' + (+auCaps().p || 5) + '件）から数えたおおよその数です。「人気」は、いまの利用者さんの希望が集まっている時間帯です。</p>';
   box.innerHTML = h;
 }
+
+/* ==== 2026-11-20（宏史さんの指示「画面の表示が完成するまで、動いているという印に砂時計などを出してほしい。待っていればいいのか、指示を出し直すのかが分からない」）====
+   時間のかかる計算の間は、画面の真ん中に砂時計と回る輪と「◯◯しています。画面が出るまでお待ちください」を出す。終わったら消す。
+   計算の途中で止まったときは、印を消して、止まったことと理由を出す（白紙のまま残さない） */
+var TT_WAIT_N = 0;
+function ttWaitOn(msg){ TT_WAIT_N++; var el = document.getElementById('ttWait'); if(!el){ el = document.createElement('div'); el.id = 'ttWait'; el.className = 'ttWait'; document.body.appendChild(el); }
+  el.innerHTML = '<div class="box"><span class="ttSpin"></span><span>⌛ ' + esc(msg || '計算しています') + '<br><small style="font-weight:400">画面が出るまでお待ちください</small></span></div>'; el.style.display = 'flex'; }
+function ttWaitOff(){ TT_WAIT_N = Math.max(0, TT_WAIT_N - 1); if(TT_WAIT_N) return; var el = document.getElementById('ttWait'); if(el) el.style.display = 'none'; }
+function ttWait(msg, fn){ ttWaitOn(msg); setTimeout(function(){ try{ fn(); } catch(e){ alert('途中で止まりました。もう一度押しても同じなら、この画面の写真をなぎさへ送ってください。\n（理由：' + (e && e.message || e) + '）'); } finally{ ttWaitOff(); } }, 60); }
 /* ==== 2026-11-20（島さんのRQ・宏史さんの指示）：新規の利用者さんへの空きの案内（右の引き出し「空き案内」） ====
    契約のその場で、聞いた希望の曜日・時刻に空きがあるかを見て、埋まっていれば代わりの曜日・時刻を出す。
    空きは、いまの週間予定の訪問と訪問のすき間（移動の時間を含めて入るところ）。新しい利用者さんの住所の位置から、
@@ -10166,7 +10180,9 @@ function nvRun(){
   var days = [].map.call(document.querySelectorAll('#nv_days input:checked'), function(c){ return String(c.value); });
   var wt = $('nv_time').value, band = $('nv_band').value, len = +$('nv_len').value || workRule().visit;
   box.innerHTML = '<p class="muted">' + (addr ? '住所の位置を調べてから、空きを探しています…' : '空きを探しています…') + '</p>';
-  (addr ? geoFind(addr) : Promise.resolve(null)).then(function(g){
+  ttWaitOn('空きを探しています');
+  (addr ? geoFind(addr) : Promise.resolve(null)).then(function(g){ try{ nvShow(g); } catch(e){ box.innerHTML = '<div class="judge ng"><b>空きの計算が途中で止まりました。</b>理由：' + esc(e && e.message || e) + '</div>'; } finally{ ttWaitOff(); } });
+  function nvShow(g){
     var q = { g:g, days:days, wish:wt ? toMin(wt) : null, band:band === '午前' ? 'am' : band === '午後' ? 'pm' : '', len:len };
     var R = nvSlots(q), DN = ['日', '月', '火', '水', '木', '金', '土'];
     var wl = (days.length ? days.map(function(d){ return DN[+d] + '曜'; }).join('・') + 'の' : '') + (wt ? nvTimeJp(toMin(wt)) + 'ごろ' : band ? band : 'お時間');
@@ -10182,7 +10198,7 @@ function nvRun(){
     h += '<div class="tbl-scroll"><table class="sm"><tr><th>曜日・時刻</th><th>担当</th><th>前後の訪問</th><th>寄り道</th></tr>' + hit.slice(0, 5).concat(alt.slice(0, hit.length ? 5 : 8)).map(row).join('') + '</table></div>';
     h += '<p class="muted sm">緑の行が、ご希望どおりの空きです。並びは、ご希望に近い順、同じくらいなら前後の訪問からの寄り道（km）が少ない順です。空きは、いまの週間予定と1日の件数の上限、移動の時間（' + workRule().mvMin + '〜' + workRule().mvMax + '分）から数えています。決まった時間は、利用者登録で希望の時刻として入れると、自動の振り分けで動かさずに組みます。</p>';
     box.innerHTML = h;
-  });
+  }
 }
 
 /* ==== 2026-11-20（島さんのRQ・宏史さんの指示）：組んだ予定表の評価と、効率のよい組み替えの提案（右の引き出し「予定の評価」） ====
@@ -10270,6 +10286,9 @@ function evPropose(rows0){
 }
 function evRender(){
   var box = $('evBody'); if(!box) return;
+  try{ evRender0(box); } catch(e){ box.innerHTML = '<div class="judge ng" style="margin:6px 0"><b>予定の評価の計算が途中で止まりました。</b><br>理由：' + esc(e && e.message || e) + '<br><small>この画面の写真をなぎさへ送ってください。</small></div>'; }
+}
+function evRender0(box){
   var wk = weekly(); if(!wk.length){ box.innerHTML = '<p class="empty">週間予定がまだありません。</p>'; return; }
   var cur = evTotal(wk), R = evPropose(wk), aft = evTotal(R.after); EV_PROPS = R.props;
   var miss = wk.filter(function(v){ return !evLL(v.no); }).length, sv = cur.km - aft.km;
@@ -10302,7 +10321,7 @@ function evApply(){
     });
     saveCol('weekly', all);
   });
-  refreshAll(); evRender();
+  refreshAll(); ttWait('予定の評価を計算し直しています', evRender);
   var m = $('evMsg'); if(m) m.textContent = '';
   alert('下書きに ' + done + '件を入れました。' + (skip ? '\n' + skip + '件は、前の提案を外したため組み合わせが変わり、入れていません（引き出しを開き直すと、いまの下書きで提案を出し直します）。' : '') + '\n仮スケジュール表で確かめてから確定してください。');
 }

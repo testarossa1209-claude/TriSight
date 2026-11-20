@@ -247,8 +247,8 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   /* 2026-10-29：情報の引き出し（右端のつまみを縦に並べる：仮スケジュール表・対照表・使い方） */
   .sideTabs{position:fixed;right:0;top:30%;z-index:60;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
   .sideTabs .ssTab{position:static}
-  body.ssOpen .sideTabs .ssTab, body.kpOpen .sideTabs .ssTab, body.mnOpen .sideTabs .ssTab, body.nmOpen .sideTabs .ssTab, body.osOpen .sideTabs .ssTab, body.rqOpen .sideTabs .ssTab, body.jmOpen .sideTabs .ssTab, body.jlOpen .sideTabs .ssTab, body.hbOpen .sideTabs .ssTab, body.auOpen .sideTabs .ssTab, body.plOpen .sideTabs .ssTab{display:none}
-  body.kpOpen #kpPanel, body.mnOpen #mnPanel, body.nmOpen #nmPanel, body.osOpen #osPanel, body.rqOpen #rqPanel, body.jmOpen #jmPanel, body.jlOpen #jlPanel, body.hbOpen #hbPanel, body.auOpen #auPanel, body.plOpen #plPanel{transform:none}
+  body.ssOpen .sideTabs .ssTab, body.kpOpen .sideTabs .ssTab, body.mnOpen .sideTabs .ssTab, body.nmOpen .sideTabs .ssTab, body.osOpen .sideTabs .ssTab, body.rqOpen .sideTabs .ssTab, body.jmOpen .sideTabs .ssTab, body.jlOpen .sideTabs .ssTab, body.hbOpen .sideTabs .ssTab, body.auOpen .sideTabs .ssTab, body.plOpen .sideTabs .ssTab, body.nvOpen .sideTabs .ssTab, body.evOpen .sideTabs .ssTab{display:none}
+  body.kpOpen #kpPanel, body.mnOpen #mnPanel, body.nmOpen #nmPanel, body.osOpen #osPanel, body.rqOpen #rqPanel, body.jmOpen #jmPanel, body.jlOpen #jlPanel, body.hbOpen #hbPanel, body.auOpen #auPanel, body.plOpen #plPanel, body.nvOpen #nvPanel, body.evOpen #evPanel{transform:none}
   /* 2026-11-08：引き出しに入れた枠は、枠の飾りを外して引き出しの中にそのまま並べる。手組みの表は曜日が7列あるので広めに開く */
   #ssAi .card, #plPanel .card{box-shadow:none;border:0;padding:6px 0;margin:0}
   /* 2026-11-08：仮スケジュール表の下書きの帯 */
@@ -262,7 +262,7 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   .jmList{display:flex;flex-direction:column;gap:8px;padding:12px}
   .jmList .btn{text-align:left;font-size:16px;padding:12px 14px}
   .sideTabs .ssTab.jm{background:#2b4a6f;color:#fff}
-  @media (min-width:1240px){ body.kpOpen, body.nmOpen{padding-right:600px} body.mnOpen, body.rqOpen, body.osOpen{padding-left:600px} }   /* 2026-11-03：お知らせも左（宏史さん「お知らせ引き出しは左がいい。左右のバランスが良くなる」） */
+  @media (min-width:1240px){ body.kpOpen, body.nmOpen, body.nvOpen, body.evOpen{padding-right:600px} body.mnOpen, body.rqOpen, body.osOpen{padding-left:600px} }   /* 2026-11-03：お知らせも左（宏史さん「お知らせ引き出しは左がいい。左右のバランスが良くなる」） */
   /* 2026-11-03：左の引き出し（使い方・ご要望）。つまみは小さめにし、画面の上の方から並べる（ラップトップで下が切れないように） */
   .sideTabs{top:84px}
   .sideTabs .ssTab{font-size:13px;padding:9px 7px;line-height:1.2}
@@ -458,7 +458,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-18-06</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-20-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -467,6 +467,9 @@ function tsPortalAsk(){
 <button type="button" class="ssTab" id="ssTab" title="仮スケジュール表を右に開きます" aria-label="仮スケジュール表"><span>仮</span><span>ス</span><span>ケ</span><span>ジ</span><span>ュ</span><span class="bar">ー</span><span>ル</span><span>表</span></button>
 <button type="button" class="ssTab" id="kpTab" title="番号と氏名の対照表を右に開きます" aria-label="対照表"><span>対</span><span>照</span><span>表</span></button>
 <button type="button" class="ssTab" id="nmTab" title="2名体制の利用者の一覧を右に開きます" aria-label="2名体制"><span>２</span><span>名</span><span>体</span><span>制</span></button>
+<!-- 2026-11-20（島さんのRQ）：新規の利用者さんへの空きの案内と、組んだ予定表の評価・提案（予定を組む人の端末だけ） -->
+<button type="button" class="ssTab" id="nvTab" title="新規の利用者さんの希望に空きがあるかと、代わりの曜日・時刻を右に開きます" aria-label="空き案内"><span>空</span><span>き</span><span>案</span><span>内</span></button>
+<button type="button" class="ssTab" id="evTab" title="いまの週間予定の移動の距離と、AIの組み替えの提案を右に開きます" aria-label="予定の評価"><span>予</span><span>定</span><span>の</span><span>評</span><span>価</span></button>
 <!-- 2026-11-08（宏史さんの指示「ゼロから作る下書きならば引き出しへ」「自動の振り分けも、今週の訪問予定も引き出し情報でいい」）：予定タブの下の大きな表を引き出しへ移し、スクロールを減らす -->
 </div>
 <!-- 2026-11-03（宏史さん「ラップトップだと横の引き出しの使い方が見えなくなる。左にも引き出しを作っていい。ご要望は職員のトライタイムへの要望が主なので引き出しへ」）：
@@ -508,6 +511,25 @@ function tsPortalAsk(){
   <div class="ssFoot">いま使っている部署の利用者を、ふりがなのあいうえお順に並べています（ふりがなが未入力の人は末尾）。契約終了（死亡を含む）の人は、上の「契約終了の人も出す」に印を付けたときだけ出ます。ほかの部署の利用者は、上の「○○の一覧」のボタンを押したときだけ出ます。いま使っている部署の分を紙に出すときは <button type="button" class="btn sub small" id="kpPrint">対照表を印刷する</button> <span id="kpMsg"></span></div>
 </aside>
 <!-- 2026-11-03：2名体制名簿（右に立ち上がるサブ画面。宏史さんの指示「対照表の下に2名体制名簿として、引き出しに分けて」） -->
+<aside class="ssPanel" id="nvPanel" aria-label="空き案内">
+  <div class="ssHead"><h2>空き案内<small>新規の利用者さんの希望に空きがあるか・代わりの曜日と時刻</small></h2><button type="button" class="ssClose" id="nvClose" title="閉じる" aria-label="閉じる">×</button></div>
+  <div class="ssBody">
+    <p class="lead">契約のその場で、聞いた希望の曜日と時刻を入れて「空きを探す」を押します。埋まっていれば、住所から寄り道の少ない代わりの曜日・時刻と、読み上げる案内の文が出ます。</p>
+    <label class="f" for="nv_addr">住所（番地まで）</label><input type="text" id="nv_addr" placeholder="例：東村山市本町2-3-4">
+    <label class="f">希望の曜日</label><div id="nv_days" style="display:flex;gap:10px;flex-wrap:wrap"><label><input type="checkbox" value="1"> 月</label><label><input type="checkbox" value="2"> 火</label><label><input type="checkbox" value="3"> 水</label><label><input type="checkbox" value="4"> 木</label><label><input type="checkbox" value="5"> 金</label><label><input type="checkbox" value="6"> 土</label></div>
+    <div class="row">
+      <div><label class="f" for="nv_time">希望の時刻</label><input type="time" id="nv_time"></div>
+      <div><label class="f" for="nv_band">または時間帯</label><select id="nv_band"><option value="">指定なし</option><option>午前</option><option>午後</option></select></div>
+      <div><label class="f" for="nv_len">訪問の長さ（分）</label><input type="number" id="nv_len" min="20" max="120" step="10" value="30"></div>
+    </div>
+    <div class="btns"><button type="button" class="btn" id="nvRun">空きを探す</button><button type="button" class="btn sub" id="nvFromPt">利用者登録で入れている内容で探す</button></div>
+    <div id="nvOut"></div>
+  </div>
+</aside>
+<aside class="ssPanel" id="evPanel" aria-label="予定の評価">
+  <div class="ssHead"><h2>予定の評価<small>いまの週間予定の移動と、AIの組み替えの提案</small></h2><button type="button" class="ssClose" id="evClose" title="閉じる" aria-label="閉じる">×</button></div>
+  <div class="ssBody" id="evBody"></div>
+</aside>
 <aside class="ssPanel" id="nmPanel" aria-label="2名体制名簿">
   <div class="ssHead"><h2>2名体制名簿<small id="nmSub"></small></h2><button type="button" class="ssClose" id="nmClose" title="閉じる" aria-label="閉じる">×</button></div>
   <div class="ssNav"><input type="search" class="kpFind" id="nmFind" placeholder="番号・氏名・職員名の一部で絞る"></div>
@@ -1563,7 +1585,7 @@ function tsPortalAsk(){
       <div><label class="f" for="st_dept">所属部門</label><select id="st_dept"><option value="">（職種から当てる）</option><option>訪問看護部</option><option>訪問介護部</option><option>特定障害相談部</option><option>居宅介護支援部</option><option>経営企画事務職</option><option>管理部門</option></select></div>
       <div><label class="f" for="st_emp">雇用形態</label><select id="st_emp"><option>常勤</option><option>非常勤</option></select></div>
       <div><label class="f" for="st_sex">性別（「男性の看護師は嫌」などの要望を予定に生かすときだけ使います）</label><select id="st_sex"><option value="">入れない</option><option>男性</option><option>女性</option></select></div>
-      <div><label class="f">&nbsp;</label><label><input type="checkbox" id="st_mgr"> 管理者</label></div>
+      <div><label class="f">&nbsp;</label><label><input type="checkbox" id="st_mgr"> 管理者</label><br><label class="sm" title="管理者の画面を使いながら、自動の振り分けでは職員と同じ件数で組む（2026-11-20）"><input type="checkbox" id="st_capSame"> 訪問件数は職員と同じ</label></div>
       <div><label class="f" for="st_out">退職日（退職した人だけ）</label><input type="date" id="st_out"></div>
       <div><label class="f" for="st_tel">携帯電話番号（キャンセル・予定変更の連絡先）</label><input type="tel" id="st_tel" inputmode="tel" placeholder="090-1234-5678" autocomplete="off"></div>
       <div><label class="f" for="st_mail">メールアドレス（全職員への周知・連絡先）</label><input type="email" id="st_mail" inputmode="email" placeholder="name@example.jp" autocomplete="off"></div>
@@ -3758,7 +3780,7 @@ function renderSetup(){
 
   $('stList').querySelectorAll('[data-stedit]').forEach(function(b){ b.addEventListener('click', function(){
     var s = staff().filter(function(x){ return x.id === b.getAttribute('data-stedit'); })[0]; if(!s) return;
-    $('st_id').value = s.id; $('st_name').value = s.name; (function(){ var sj = $('st_job'), jv = jobOf(s) || 'その他'; [].slice.call(sj.querySelectorAll('option[data-old]')).forEach(function(o){ o.remove(); }); if(![].some.call(sj.options, function(o){ return o.value === jv; })){ var op = document.createElement('option'); op.textContent = jv; op.dataset.old = '1'; sj.appendChild(op); } sj.value = jv; })(); $('st_dept').value = s.dept || ''; stSubDraw(staffSub(s)); stOffDraw(staffOff(s)); $('st_hol').checked = !!s.holOff; $('st_kengyo').value = s.kengyo || ''; $('st_meyasu').value = s.meyasu || ''; $('st_irreg').checked = !!s.irreg; $('st_standby').checked = !!s.standby; $('st_drive').checked = !!s.drive; $('st_move').value = s.move || '徒歩'; stMoveShow(); $('st_emp').value = s.emp || '常勤'; stHjShow(); $('st_mgr').checked = isMgr(s);   /* 2026-11-03：雇用形態を入れてから「非常勤の勤め方」の枠を出し分ける（先に呼んでいたため、直すで開いた非常勤の人に枠が出なかった） */
+    $('st_id').value = s.id; $('st_name').value = s.name; (function(){ var sj = $('st_job'), jv = jobOf(s) || 'その他'; [].slice.call(sj.querySelectorAll('option[data-old]')).forEach(function(o){ o.remove(); }); if(![].some.call(sj.options, function(o){ return o.value === jv; })){ var op = document.createElement('option'); op.textContent = jv; op.dataset.old = '1'; sj.appendChild(op); } sj.value = jv; })(); $('st_dept').value = s.dept || ''; stSubDraw(staffSub(s)); stOffDraw(staffOff(s)); $('st_hol').checked = !!s.holOff; $('st_kengyo').value = s.kengyo || ''; $('st_meyasu').value = s.meyasu || ''; $('st_irreg').checked = !!s.irreg; $('st_standby').checked = !!s.standby; $('st_drive').checked = !!s.drive; $('st_move').value = s.move || '徒歩'; stMoveShow(); $('st_emp').value = s.emp || '常勤'; stHjShow(); $('st_mgr').checked = isMgr(s); $('st_capSame').checked = !!s.capSame;   /* 2026-11-03：雇用形態を入れてから「非常勤の勤め方」の枠を出し分ける（先に呼んでいたため、直すで開いた非常勤の人に枠が出なかった） */
     $('st_out').value = s.out || ''; $('st_sex').value = s.sex || ''; $('st_tel').value = s.tel || ''; $('st_mail').value = s.mail || ''; $('st_add').textContent = 'この内容で直す'; $('st_cancel').style.display = ''; $('st_name').focus();
   }); });
   $('stList').querySelectorAll('[data-stdel]').forEach(function(b){ b.addEventListener('click', function(){
@@ -5149,6 +5171,9 @@ function applyDept(){
   show('rqTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('rqOpen')) sideOpen('rq', false);
   show('osTab', R.lv !== 'none' && R.lv !== 'staff'); osBadge(); if((R.lv === 'none' || R.lv === 'staff') && document.body.classList.contains('osOpen')) sideOpen('os', false);   /* 利用者さんへのお知らせは、事務局・管理者が送る */
   show('nmTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('nmOpen')) sideOpen('nm', false);
+  /* 2026-11-20（島さんのRQ）：空き案内・予定の評価は、予定を組む人の端末（職員の端末以外）で、訪問の部署のときだけ */
+  var nvOn = !ssHide && d.kind === 'visit'; show('nvTab', nvOn); show('evTab', nvOn);
+  if(!nvOn){ if(document.body.classList.contains('nvOpen')) sideOpen('nv', false); if(document.body.classList.contains('evOpen')) sideOpen('ev', false); }
   if(document.body.classList.contains('kpOpen') && !(document.activeElement && $('kpBody').contains(document.activeElement) && document.activeElement.matches('input[type=time]'))) kpRender(); if(document.body.classList.contains('mnOpen')) mnRender(); if(document.body.classList.contains('nmOpen')) nmRender(); if(document.body.classList.contains('osOpen') && document.activeElement && document.activeElement.id !== 'osTpl') osRender();
   /* 2026-11-01：管理者の合言葉の枠は、管理者の印が付いた人の端末と、管理者の画面が出ている端末だけに出す（職員の端末には出さない） */
   show('cardMgrKey', !((R.lv === 'staff' || R.lv === 'office') && !R.noKey));
@@ -5843,7 +5868,7 @@ function auTidy(tl){
 /* 端末で覚えた件数の上限。2026-11-07：常勤の基準を9件にしたので、前に覚えた8件（n9の印なし）は9件に読み替える */
 /* 2026-11-07（宏史さんの指示）：管理者はマネジメント・管理にも時間を割くので、直接の訪問は一般の職員を100として70くらいにする（1日の件数の上限に掛ける） */
 function auMgrPct(){ var m = +(auCaps().m); return m >= 10 && m <= 100 ? m : 70; }
-function auMgrCap(s, cap){ return isMgr(s) ? Math.max(1, Math.round(cap * auMgrPct() / 100)) : cap; }
+function auMgrCap(s, cap){ return (isMgr(s) && !s.capSame) ?   /* 2026-11-20：「訪問件数は職員と同じ」の印のある管理者は減らさない（島さん） */ Math.max(1, Math.round(cap * auMgrPct() / 100)) : cap; }
 function auCaps(){ var c = lj('tritime_au_caps', {}) || {}; if(+c.f === 8 && !c.n9) c.f = 9; return c; }
 var AU_HALF = 720;   /* 12:00 より前を午前、以後を午後（1日の流れの枠 mhDay の昼休みの始まりと同じ） */
 function auLoop(arr){ var off = officeGeo(), sum = 0, prev = off; arr.forEach(function(o){ var ll = auLL(o); if(prev && ll) sum += kmBetween(prev, ll) || 0; if(ll) prev = ll; }); if(off && prev && arr.length) sum += kmBetween(prev, off) || 0; return sum; }
@@ -6973,7 +6998,7 @@ function stSubVal(){ var main = $('st_dept').value; return [].slice.call($('st_s
 $('st_dept').addEventListener('change', function(){ stSubDraw(stSubVal()); });
 stSubDraw([]);
 function stMoveShow(){ var b = $('st_moveBox'); if(b) b.style.display = $('st_drive').checked ? 'none' : ''; }
-function stFormReset(){ $('st_drive').checked = false; $('st_move').value = '徒歩'; stMoveShow(); $('st_id').value = ''; $('st_name').value = ''; $('st_sex').value = ''; $('st_mgr').checked = false; $('st_out').value = ''; $('st_tel').value = ''; $('st_mail').value = ''; $('st_kengyo').value = ''; $('st_meyasu').value = ''; $('st_irreg').checked = false; $('st_standby').checked = false; stSubDraw([]); if($('st_off')) stOffDraw([]); if($('st_hol')) $('st_hol').checked = $('st_emp').value === '常勤'; $('st_add').textContent = '追加する'; $('st_cancel').style.display = 'none'; stHjShow(); }
+function stFormReset(){ $('st_drive').checked = false; $('st_move').value = '徒歩'; stMoveShow(); $('st_id').value = ''; $('st_name').value = ''; $('st_sex').value = ''; $('st_mgr').checked = false; $('st_capSame').checked = false; $('st_out').value = ''; $('st_tel').value = ''; $('st_mail').value = ''; $('st_kengyo').value = ''; $('st_meyasu').value = ''; $('st_irreg').checked = false; $('st_standby').checked = false; stSubDraw([]); if($('st_off')) stOffDraw([]); if($('st_hol')) $('st_hol').checked = $('st_emp').value === '常勤'; $('st_add').textContent = '追加する'; $('st_cancel').style.display = 'none'; stHjShow(); }
 $('st_cancel').addEventListener('click', stFormReset);
 $('st_allBtn').addEventListener('click', function(){ try{ localStorage.setItem(STALL_KEY, stAll() ? '0' : '1'); }catch(e){} refreshAll(); });
 $('st_add').addEventListener('click', function(){
@@ -6982,7 +7007,7 @@ $('st_add').addEventListener('click', function(){
   if(tel && !telOk(tel)){ alert('携帯電話番号の桁が合いません。090-1234-5678 のように、10桁か11桁の番号を入れてください。'); $('st_tel').focus(); return; }
   if(mail && !mailOk(mail)){ alert('メールアドレスの形が合いません。name@example.jp のように、＠の入った形で入れてください。'); $('st_mail').focus(); return; }
   var a = staff(), id = $('st_id').value;
-  var rec = { name:n, job:$('st_job').value, dept:$('st_dept').value, sub:stSubVal(), off:stOffVal(), holOff:$('st_hol').checked, emp:$('st_emp').value, mgr:$('st_mgr').checked, out:$('st_out').value || '', sex:$('st_sex').value, tel:tel, mail:mail };
+  var rec = { name:n, job:$('st_job').value, dept:$('st_dept').value, sub:stSubVal(), off:stOffVal(), holOff:$('st_hol').checked, emp:$('st_emp').value, mgr:$('st_mgr').checked, capSame:$('st_mgr').checked && $('st_capSame').checked, out:$('st_out').value || '', sex:$('st_sex').value, tel:tel, mail:mail };
   /* 2026-11-03：非常勤の勤め方（常勤に直したときは消す） */
   var hj = rec.emp === '非常勤';
   rec.drive = $('st_drive').checked; rec.move = rec.drive ? '' : $('st_move').value;
@@ -8416,10 +8441,10 @@ function ssMoveDo(v, sid, date, weeklyToo){
 /* ---- 情報の引き出し（2026-10-29・宏史さんの発案「画面を変えたり、情報を探したりする必要がなくなる」）----
    右端のつまみから、対照表と使い方を、いまの画面のまま横に開く。 */
 function sideOpen(k, on){
-  if(on){ document.body.classList.remove('ssOpen', 'kpOpen', 'mnOpen', 'nmOpen', 'osOpen', 'rqOpen', 'jmOpen', 'jlOpen', 'hbOpen', 'auOpen', 'plOpen'); }
+  if(on){ document.body.classList.remove('ssOpen', 'kpOpen', 'mnOpen', 'nmOpen', 'osOpen', 'rqOpen', 'jmOpen', 'jlOpen', 'hbOpen', 'auOpen', 'plOpen', 'nvOpen', 'evOpen'); }
   if(!on && k === 'hb' && window.HB){ HB.on = false; HB.sel = null; }   /* 2026-11-08：手組みの引き出しを閉じたら下書きの表もしまう（下書きの中身は残る） */
   document.body.classList.toggle(k + 'Open', !!on);
-  if(on){ if(k === 'jm' || k === 'jl'){ jmRender(k); return; } if(k === 'pl'){ return; } if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else if(k === 'nm') nmRender(); else if(k === 'os'){ if(NP_ON) renderBoard(); else osRender(); } else if(k === 'rq'){ rqOpenPanel(); if(NP_ON) npRqSeen(); } else mnRender(); }
+  if(on){ if(k === 'jm' || k === 'jl'){ jmRender(k); return; } if(k === 'pl'){ return; } if(k === 'nv'){ try{ $('nv_len').value = $('nv_len').value || workRule().visit; }catch(e){} return; } if(k === 'ev'){ evRender(); return; } if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else if(k === 'nm') nmRender(); else if(k === 'os'){ if(NP_ON) renderBoard(); else osRender(); } else if(k === 'rq'){ rqOpenPanel(); if(NP_ON) npRqSeen(); } else mnRender(); }
 }
 /* 2026-11-03：利用者さんへのお知らせ。選んだ日の訪問（キャンセルを除く）を利用者さんごとに1行にまとめ、その日のいちばん早い時刻で定型文を作る。
    定型文は設定（settings.osText）に持ち、{時刻} をその人の時刻に置き換える。送ったら type "notify" を残す */
@@ -8617,6 +8642,9 @@ var MN_MARKS = [
     ['2名体制の合流のしかた', '「予定」タブの1日の予定の下に出ます。1名体制から2名体制に日の途中で変わるとき、事務所で合流・現地で合流（それぞれ移動）・1件目の家に自転車を置いて車で回る（その日のうちに回収／次の訪問で回収）を、2人分の移動の時間（目安）で比べ、少ない案に◎を付けます。自転車の案は、利用者登録で「自転車を置かせてもらえる」に印がある家だけです。了承は担当看護師が取ります。その日のうちに回収するなら電池は付けたまま・鍵は掛ける、後日回収なら鍵を掛け電池は持ち帰ります。'],
     ['同じ升の中で順番を入れ替える', '本スケジュール表の札を、同じ人・同じ日の升の中で上下に引っぱり、別の札の上（または下）で離すと、その並びの位置の時刻に自動で書き換わります。時刻は、その升に入っている時刻の枠を上から付け直すので、1日の流れは崩れません。小窓で「この日だけ入れ替える」か「毎週の予定を変える」かを選びます。遠回りになるときは赤字で出ます。'],
     ['空いている曜日と時間帯', '利用者登録の「予定の希望」の「空いている曜日と時間帯を見る」を押すと、月〜土の午前・午後ごとに「入れます／少し空き／埋まっています」と、空いている看護師が出ます。「人気」は、いまの利用者さんの希望が集まっている時間帯です。希望の曜日・時間帯を入れてから押すと、そこが太枠になり、埋まっているときは新しい利用者さんへのご案内の文（読み上げ用）が出ます。'],
+    ['空き案内', '右の引き出し「空き案内」。新規の利用者さんの住所・希望の曜日・時刻を入れて「空きを探す」を押すと、空きがあるかと、埋まっていれば寄り道の少ない代わりの曜日・時刻、読み上げる案内の文が出ます。希望の時刻は早い者勝ちです。'],
+    ['予定の評価', '右の引き出し「予定の評価」。いまの週間予定の週の移動距離と、AIが考えた組み替え（担当の付け替え・入れ替え、回る順の入れ替え）を、減る距離と一緒に出します。選んだ提案は下書きに入り、仮スケジュール表で確かめてから確定します。'],
+    ['訪問件数は職員と同じ', '職員名簿の「管理者」の下の印。管理者の画面を使いながら、自動の振り分けでは管理者の割合で件数を減らさず、職員と同じ件数で組みます。'],
     ['条項表', 'H&Nパトリオットが確かめに使う線です（全端末に共有）。'],
     ['事業所の都合', 'キャンセル受付の理由の分類に「事業所の都合（職員の休み・調整）」を足しました。キャンセル料はかからず、利用者の信用度も下がりません。条項表の「事業所の都合による休み・変更」に数えます。'],
     ['伝票', '「伝票」タブで、カイポケの実績（伝票）のCSVを読み込んで月ごとに保管し、予定・看護記録・伝票の三つを突き合わせます。元のCSVは保管フォルダの slips／年-月 に残ります。']
@@ -8781,6 +8809,12 @@ $('osToday').addEventListener('click', function(){ $('osDate').value = ymd(new D
 $('osTomorrow').addEventListener('click', function(){ $('osDate').value = ymd(addDays(new Date(), 1)); osRender(); });
 $('nmTab').addEventListener('click', function(){ sideOpen('nm', true); });
 $('nmClose').addEventListener('click', function(){ sideOpen('nm', false); });
+$('nvTab').addEventListener('click', function(){ sideOpen('nv', true); });
+$('nvClose').addEventListener('click', function(){ sideOpen('nv', false); });
+$('nvRun').addEventListener('click', nvRun);
+$('nvFromPt').addEventListener('click', nvFromPt);
+$('evTab').addEventListener('click', function(){ sideOpen('ev', true); });
+$('evClose').addEventListener('click', function(){ sideOpen('ev', false); });
 $('nmFind').addEventListener('input', nmRender);
 $('mnTab').addEventListener('click', function(){ sideOpen('mn', true); });
 $('mnClose').addEventListener('click', function(){ sideOpen('mn', false); });
@@ -10067,6 +10101,200 @@ function fsRender(){
   h += '<p class="muted sm">空きは、いまの週間予定と1日の件数の上限（常勤' + (+auCaps().f || 9) + '件・非常勤' + (+auCaps().p || 5) + '件）から数えたおおよその数です。「人気」は、いまの利用者さんの希望が集まっている時間帯です。</p>';
   box.innerHTML = h;
 }
+/* ==== 2026-11-20（島さんのRQ・宏史さんの指示）：新規の利用者さんへの空きの案内（右の引き出し「空き案内」） ====
+   契約のその場で、聞いた希望の曜日・時刻に空きがあるかを見て、埋まっていれば代わりの曜日・時刻を出す。
+   空きは、いまの週間予定の訪問と訪問のすき間（移動の時間を含めて入るところ）。新しい利用者さんの住所の位置から、
+   前後の訪問からの寄り道が少ないところを先に並べる（住所を見て効率よく組む前提）。希望の時刻は早い者勝ち。 */
+function nvTrav(s, a, b){ var w = workRule(), k = kmBetween(a, b); if(k == null) return w.mvStd; return Math.max(w.mvMin, Math.min(w.mvMax, Math.round(k * JN_MIN[jnMode(s)]))); }
+function nvWin(){ var w = workRule(), lb = 12 * 60; return { am:[toMin(w.start), lb], pm:[lb + (w.brk || 0), toMin(w.end) - (w.inner || 0)] }; }
+function nvSlots(q){
+  var caps = auCaps(), wk = weekly(), off = officeGeo(), W = nvWin(), wr = workRule(), out = [];
+  var far = !!(q.g && off && kmBetween(off, q.g) > wr.farKm);
+  var ST = deptStaff().filter(function(s){ return canSolo(s) && !isStandby(s) && !staffOrphan(s); });
+  ['1','2','3','4','5','6'].forEach(function(d){
+    ST.forEach(function(s){
+      if(staffOff(s).indexOf(d) >= 0) return;
+      if(far && !canDrive(s)) return;   /* 遠方は運転できる人だけ */
+      var hc = fsHalfCap(auMgrCap(s, s.emp === '常勤' ? (+caps.f || 9) : (+caps.p || 5)));
+      var mine = wk.filter(function(v){ return String(v.dow) === d && (v.staffId === s.id || v.withId === s.id) && toMin(v.time) != null; }).sort(function(a, b){ return toMin(a.time) - toMin(b.time); });
+      ['am', 'pm'].forEach(function(k){
+        var win = W[k]; if(!(win[1] > win[0])) return;
+        var hv = mine.filter(function(v){ return (toMin(v.time) < AU_HALF) === (k === 'am'); });
+        if(hv.length >= hc[k]) return;   /* その時間帯の件数の上限まで入っている */
+        var nodes = [{ ll:off, e:win[0], nm:'事業所' }].concat(hv.map(function(v){ var p = patient(v.no) || {}, t = toMin(v.time); return { ll:auLL(p), s:t, e:t + (+v.min || 30), nm:dnn(v.no) }; })).concat([{ ll:off, s:win[1], nm:'事業所' }]);
+        for(var i = 0; i < nodes.length - 1; i++){
+          var A = nodes[i], B = nodes[i + 1];
+          var t0 = Math.ceil((A.e + nvTrav(s, A.ll, q.g)) / 5) * 5, t1 = Math.floor((B.s - nvTrav(s, q.g, B.ll) - q.len) / 5) * 5;
+          if(t0 > t1) continue;
+          var t = q.wish != null ? Math.min(t1, Math.max(t0, Math.round(q.wish / 5) * 5)) : t0;
+          var ka = kmBetween(A.ll, q.g), kb = kmBetween(q.g, B.ll), kab = kmBetween(A.ll, B.ll);
+          var det = (ka == null || kb == null) ? null : Math.max(0, ka + kb - (kab == null ? 0 : kab));
+          var dayOk = q.days.length ? q.days.indexOf(d) >= 0 : true;
+          var tOk = q.wish != null ? Math.abs(t - q.wish) <= 15 : (q.band ? q.band === k : true);
+          var sc = (dayOk ? 0 : 100) + (q.wish != null ? Math.abs(t - q.wish) / 5 : (tOk ? 0 : 30)) + (det == null ? 10 : det * 6);
+          out.push({ d:d, k:k, t:t, s:s, det:det, A:A.nm, B:B.nm, ok:dayOk && tOk, sc:sc });
+        }
+      });
+    });
+  });
+  out.sort(function(a, b){ return a.sc - b.sc; });
+  var seen = {}; return out.filter(function(o){ var key = o.d + o.k + o.s.id; if(seen[key]) return false; seen[key] = 1; return true; });
+}
+function nvTimeJp(t){ var h = Math.floor(t / 60), m = t % 60; return h + '時' + (m ? m + '分' : ''); }
+function nvFromPt(){
+  if($('pt_addr')) $('nv_addr').value = $('pt_addr').value || '';
+  var want = [].map.call(document.querySelectorAll('#pt_wDays input:checked'), function(c){ return String(c.value); });
+  [].forEach.call(document.querySelectorAll('#nv_days input'), function(c){ c.checked = want.indexOf(String(c.value)) >= 0; });
+  $('nv_time').value = ($('pt_wish') && $('pt_wish').value) || '';
+  var b = $('pt_wBand') ? $('pt_wBand').value : ''; $('nv_band').value = (b === '午前' || b === '午後') ? b : '';
+  nvRun();
+}
+function nvRun(){
+  var addr = $('nv_addr').value.trim(), box = $('nvOut');
+  var days = [].map.call(document.querySelectorAll('#nv_days input:checked'), function(c){ return String(c.value); });
+  var wt = $('nv_time').value, band = $('nv_band').value, len = +$('nv_len').value || workRule().visit;
+  box.innerHTML = '<p class="muted">' + (addr ? '住所の位置を調べてから、空きを探しています…' : '空きを探しています…') + '</p>';
+  (addr ? geoFind(addr) : Promise.resolve(null)).then(function(g){
+    var q = { g:g, days:days, wish:wt ? toMin(wt) : null, band:band === '午前' ? 'am' : band === '午後' ? 'pm' : '', len:len };
+    var R = nvSlots(q), DN = ['日', '月', '火', '水', '木', '金', '土'];
+    var wl = (days.length ? days.map(function(d){ return DN[+d] + '曜'; }).join('・') + 'の' : '') + (wt ? nvTimeJp(toMin(wt)) + 'ごろ' : band ? band : 'お時間');
+    var hit = R.filter(function(o){ return o.ok; }), alt = R.filter(function(o){ return !o.ok; });
+    var lab = function(o){ return DN[+o.d] + '曜の' + nvTimeJp(o.t); };
+    var row = function(o){ return '<tr' + (o.ok ? ' style="background:#eaf6ec"' : '') + '><td><b>' + DN[+o.d] + '</b> ' + hm(o.t) + '〜</td><td>' + esc(o.s.name) + '</td><td class="sm">' + esc(o.A) + ' → <b>新規</b> → ' + esc(o.B) + '</td><td>' + (o.det == null ? '－' : o.det.toFixed(1) + 'km') + '</td></tr>'; };
+    var h = '';
+    if(addr && !g) h += '<div class="judge fee" style="margin:6px 0">住所の位置が取れませんでした。寄り道の距離は見ずに、空いている時間だけで並べています（番地まで入れると位置が取れます）。</div>';
+    if(!R.length){ box.innerHTML = h + '<div class="judge ng" style="margin:6px 0"><b>空いている時間がありません。</b>月〜土のどの日も、件数の上限まで入っているか、移動の時間を入れると入るすき間がありません。<br><small>ご案内（読み上げ用）：「あいにく、いまは空きがございません。空きが出ましたら、こちらからご連絡いたします。」</small></div>'; return; }
+    var pick = []; (hit.length ? hit : alt).forEach(function(o){ if(pick.length < 3 && !pick.some(function(x){ return x.d === o.d && Math.abs(x.t - o.t) < 60; })) pick.push(o); });
+    if(hit.length) h += '<div class="judge free" style="margin:6px 0"><b>ご希望どおりに伺えます。</b><br><small>ご案内（読み上げ用）：「ご希望の' + esc(wl) + 'で伺えます。' + (pick.length > 1 ? 'ほかに' + esc(pick.slice(1).map(lab).join('、')) + 'も空いております。' : '') + '」</small></div>';
+    else h += '<div class="judge fee" style="margin:6px 0"><b>ご希望の時間は埋まっています。代わりの候補です。</b><br><small>ご案内（読み上げ用）：「ご希望の' + esc(wl) + 'は、あいにく埋まっております。' + esc(pick.map(lab).join('、')) + 'でしたら伺えます。いかがでしょうか。」</small></div>';
+    h += '<div class="tbl-scroll"><table class="sm"><tr><th>曜日・時刻</th><th>担当</th><th>前後の訪問</th><th>寄り道</th></tr>' + hit.slice(0, 5).concat(alt.slice(0, hit.length ? 5 : 8)).map(row).join('') + '</table></div>';
+    h += '<p class="muted sm">緑の行が、ご希望どおりの空きです。並びは、ご希望に近い順、同じくらいなら前後の訪問からの寄り道（km）が少ない順です。空きは、いまの週間予定と1日の件数の上限、移動の時間（' + workRule().mvMin + '〜' + workRule().mvMax + '分）から数えています。決まった時間は、利用者登録で希望の時刻として入れると、自動の振り分けで動かさずに組みます。</p>';
+    box.innerHTML = h;
+  });
+}
+
+/* ==== 2026-11-20（島さんのRQ・宏史さんの指示）：組んだ予定表の評価と、効率のよい組み替えの提案（右の引き出し「予定の評価」） ====
+   いまの週間予定（下書きを開いているときは下書き）の、担当ごと・曜日ごと・午前午後ごとの回り方（事業所を出て事業所へ戻る）の距離を出し、
+   距離が減る組み替えを提案する。提案は2種類：
+   ①担当の付け替え・入れ替え（同じ曜日・同じ時間帯。入れ替えは時刻の差が30分以内。希望の時刻が決まっている人は時刻を動かさない）
+   ②回る順の入れ替え（同じ人・同じ時間帯の中で、時刻の枠はそのまま順番だけ替える。希望の時刻が決まっている人は動かさない）
+   2名体制（同行あり）の訪問・拒否の記録がある組み合わせ・遠方で運転できない人への付け替えは提案しない。選んだ提案は下書きに入れる。 */
+var EV_PROPS = [];
+function evLL(no){ return auLL(patient(no) || {}); }
+function evKm(list){ var off = officeGeo(), pts = [off].concat(list.map(function(v){ return evLL(v.no); })).concat([off]), km = 0; for(var i = 0; i < pts.length - 1; i++){ var k = kmBetween(pts[i], pts[i + 1]); if(k != null) km += k; } return km; }
+function evHalf(t){ return toMin(t) < AU_HALF ? 'am' : 'pm'; }
+function evGroups(rows){ var g = {}; rows.forEach(function(v){ if(toMin(v.time) == null) return; [v.staffId, v.withId].forEach(function(sid){ if(!sid || TBD[sid]) return; var k = sid + '|' + v.dow + '|' + evHalf(v.time); (g[k] = g[k] || []).push(v); }); }); Object.keys(g).forEach(function(k){ g[k].sort(function(a, b){ return toMin(a.time) - toMin(b.time); }); }); return g; }
+function evTotal(rows){ var g = evGroups(rows), by = {}, tot = 0; Object.keys(g).forEach(function(k){ var sid = k.split('|')[0], km = evKm(g[k]); tot += km; by[sid] = by[sid] || { km:0, n:0 }; by[sid].km += km; }); rows.forEach(function(v){ if(by[v.staffId]) by[v.staffId].n++; }); return { km:tot, by:by }; }
+function evFits(list){ var w = workRule(), a = list.slice().sort(function(x, y){ return toMin(x.time) - toMin(y.time); }); for(var i = 0; i < a.length - 1; i++){ if(toMin(a[i].time) + (+a[i].min || 30) + w.mvMin > toMin(a[i + 1].time)) return false; } return true; }
+function evPropose(rows0){
+  var rows = rows0.map(function(v){ return { id:v.id, dow:String(v.dow), time:v.time, min:+v.min || 30, no:v.no, staffId:v.staffId, withId:v.withId || '' }; }).filter(function(v){ return toMin(v.time) != null; });
+  var caps = auCaps(), props = [], S = {};
+  deptStaff().filter(function(s){ return canSolo(s) && !isStandby(s) && !staffOrphan(s); }).forEach(function(s){ S[s.id] = s; });
+  var refusals = events().filter(function(e){ return e.type === 'refusal' && e.kind === 'staff' && e.status === '有効' && e.staffId; });
+  var bad = function(sid, no){ var s = S[sid]; if(!s) return true; if(refusals.some(function(e){ return e.patientNo === no && e.staffId === sid; })) return true; return ptFar(patient(no)) && !canDrive(s); };
+  var fixedT = function(no){ return !!((patient(no) || {}).wish); };
+  var capH = function(sid, half){ var s = S[sid]; return fsHalfCap(auMgrCap(s, s.emp === '常勤' ? (+caps.f || 9) : (+caps.p || 5)))[half]; };
+  var grp = function(sid, dow, half, rs){ return (rs || rows).filter(function(v){ return v.dow === dow && (v.staffId === sid || v.withId === sid) && evHalf(v.time) === half; }); };
+  var desc = function(v){ return esc(dnn(v.no)); };
+  var DN = ['日', '月', '火', '水', '木', '金', '土'], HN = { am:'午前', pm:'午後' };
+  /* ① 担当の付け替え・入れ替え（いちばん減るものから、ひとつずつ） */
+  for(var it = 0; it < 40; it++){
+    var best = null;
+    rows.forEach(function(v){
+      if(v.withId || !S[v.staffId]) return;
+      var a = v.staffId, h = evHalf(v.time), ga = grp(a, v.dow, h), base0 = evKm(ga), gaL = ga.filter(function(x){ return x !== v; });
+      Object.keys(S).forEach(function(b){
+        if(b === a || staffOff(S[b]).indexOf(v.dow) >= 0 || bad(b, v.no)) return;
+        var gb = grp(b, v.dow, h), base = base0 + evKm(gb);
+        /* 付け替え：同じ時刻のまま担当だけ替える */
+        if(gb.length < capH(b, h)){ var nb = gb.concat([v]); if(evFits(nb)){ var g1 = base - evKm(gaL) - evKm(nb.sort(function(x, y){ return toMin(x.time) - toMin(y.time); })); if(g1 > 0.5 && (!best || g1 > best.g)) best = { g:g1, t:'move', v:v, b:b }; } }
+        /* 入れ替え：担当どうしで1件ずつ交換し、時刻の枠も入れ替える */
+        gb.forEach(function(u){
+          if(u.withId || u.staffId !== b || bad(a, u.no)) return;
+          var dt = Math.abs(toMin(u.time) - toMin(v.time)); if(dt > 30) return;
+          if(dt && (fixedT(u.no) || fixedT(v.no))) return;
+          var v2 = { no:v.no, min:v.min, time:u.time }, u2 = { no:u.no, min:u.min, time:v.time };
+          var na = gaL.concat([u2]), nb2 = gb.filter(function(x){ return x !== u; }).concat([v2]);
+          if(!evFits(na) || !evFits(nb2)) return;
+          var srt = function(l){ return l.sort(function(x, y){ return toMin(x.time) - toMin(y.time); }); };
+          var g2 = base - evKm(srt(na)) - evKm(srt(nb2));
+          if(g2 > 0.5 && (!best || g2 > best.g)) best = { g:g2, t:'swap', v:v, u:u, b:b };
+        });
+      });
+    });
+    if(!best) break;
+    var v = best.v, w = DN[+v.dow] + '曜 ' + HN[evHalf(v.time)];
+    if(best.t === 'move'){
+      props.push({ g:best.g, txt:w + '：' + desc(v) + '（' + v.time + '）の担当を ' + esc(staffName(v.staffId)) + 'さん → <b>' + esc(staffName(best.b)) + 'さん</b>', ch:[{ id:v.id, b:{ staffId:v.staffId, time:v.time }, a:{ staffId:best.b, time:v.time } }] });
+      v.staffId = best.b;
+    } else {
+      var u = best.u, ta = v.time, tb = u.time, sa = v.staffId;
+      props.push({ g:best.g, txt:w + '：' + desc(v) + '（' + esc(staffName(sa)) + 'さん ' + ta + '）と ' + desc(u) + '（' + esc(staffName(best.b)) + 'さん ' + tb + '）の担当を入れ替え<br><small>→ ' + desc(v) + '＝' + esc(staffName(best.b)) + 'さん ' + tb + '、' + desc(u) + '＝' + esc(staffName(sa)) + 'さん ' + ta + '</small>',
+        ch:[{ id:v.id, b:{ staffId:sa, time:ta }, a:{ staffId:best.b, time:tb } }, { id:u.id, b:{ staffId:best.b, time:tb }, a:{ staffId:sa, time:ta } }] });
+      v.staffId = best.b; v.time = tb; u.staffId = sa; u.time = ta;
+    }
+  }
+  /* ② 回る順の入れ替え（同じ人・同じ時間帯。時刻の枠はそのまま） */
+  var G = evGroups(rows);
+  Object.keys(G).forEach(function(k){
+    var g = G[k], sid = k.split('|')[0];
+    if(g.length < 3 || g.length > 7 || g.some(function(v){ return v.withId || v.staffId !== sid; })) return;
+    var T = g.map(function(v){ return v.time; }), pin = g.map(function(v){ return fixedT(v.no); }), free = g.filter(function(v, i){ return !pin[i]; });
+    if(free.length < 2) return;
+    var cur = evKm(g), bestO = null, bestK = cur;
+    var perm = function(a, n, fn){ if(n <= 1){ fn(a); return; } for(var i = 0; i < n; i++){ perm(a, n - 1, fn); var j = n % 2 ? 0 : i, t = a[j]; a[j] = a[n - 1]; a[n - 1] = t; } };
+    perm(free.slice(), free.length, function(o){
+      var fi = 0, seq = g.map(function(v, i){ return pin[i] ? v : o[fi++]; });
+      var tr = seq.map(function(v, i){ return { no:v.no, min:v.min, time:T[i] }; });
+      if(!evFits(tr)) return; var km = evKm(tr); if(km < bestK - 1e-9){ bestK = km; bestO = seq.slice(); }
+    });
+    if(!bestO || cur - bestK <= 0.5) return;
+    var ch = []; bestO.forEach(function(v, i){ if(v.time !== T[i]) ch.push({ id:v.id, b:{ staffId:v.staffId, time:v.time }, a:{ staffId:v.staffId, time:T[i] } }); });
+    var p = k.split('|');
+    props.push({ g:cur - bestK, txt:DN[+p[1]] + '曜 ' + HN[p[2]] + '：' + esc(staffName(sid)) + 'さんの回る順を入れ替え<br><small>いま：' + g.map(desc).join(' → ') + '<br>提案：' + bestO.map(function(v, i){ return T[i] + ' ' + desc(v); }).join(' → ') + '</small>', ch:ch });
+    bestO.forEach(function(v, i){ v.time = T[i]; });
+  });
+  return { props:props, after:rows };
+}
+function evRender(){
+  var box = $('evBody'); if(!box) return;
+  var wk = weekly(); if(!wk.length){ box.innerHTML = '<p class="empty">週間予定がまだありません。</p>'; return; }
+  var cur = evTotal(wk), R = evPropose(wk), aft = evTotal(R.after); EV_PROPS = R.props;
+  var miss = wk.filter(function(v){ return !evLL(v.no); }).length, sv = cur.km - aft.km;
+  var h = '<div class="judge ' + (R.props.length ? 'fee' : 'free') + '" style="margin:6px 0"><b>いまの週間予定の移動：週 ' + cur.km.toFixed(1) + 'km</b>（担当ごと・曜日ごとに、午前・午後それぞれ事業所を出て事業所へ戻る回り方の合計）' +
+    (R.props.length ? '<br>下の提案をすべて入れると <b>週 ' + aft.km.toFixed(1) + 'km（' + sv.toFixed(1) + 'km 減）</b>になります。' : '<br>距離が0.5km以上減る組み替えは見つかりませんでした。いまの組み方で効率は取れています。') + '</div>';
+  if(miss) h += '<p class="muted sm">住所の位置が取れていない訪問が ' + miss + '件あり、その分は距離に入っていません（利用者登録で番地まで入れると入ります）。</p>';
+  h += '<details style="margin:6px 0"><summary>担当ごとの移動を見る</summary><table class="sm"><tr><th>担当</th><th>週の件数</th><th>週の移動</th><th>1件あたり</th></tr>' + Object.keys(cur.by).sort(function(a, b){ return cur.by[b].km - cur.by[a].km; }).map(function(sid){ var o = cur.by[sid]; return '<tr><td>' + esc(staffName(sid)) + '</td><td>' + o.n + '</td><td>' + o.km.toFixed(1) + 'km</td><td>' + (o.n ? (o.km / o.n).toFixed(1) + 'km' : '－') + '</td></tr>'; }).join('') + '</table></details>';
+  if(R.props.length){
+    h += '<h3 style="margin:10px 0 4px;font-size:15px">AIの提案（減る距離の大きい順に考えた組み替え）</h3><ol style="margin:0 0 0 20px;padding:0">' + R.props.map(function(p, i){ return '<li style="margin:6px 0"><label><input type="checkbox" class="evPick" value="' + i + '" checked> ' + p.txt + ' <span class="tag green">週 ' + p.g.toFixed(1) + 'km 減</span></label></li>'; }).join('') + '</ol>' +
+      '<div class="btns"><button type="button" class="btn" id="evApply">選んだ提案を下書きに入れる</button></div><p class="muted sm" id="evMsg"></p>' +
+      '<p class="muted sm">提案は上から順に考えています。下書きに入れたあと、仮スケジュール表で確かめてから「この内容で予定を確定する」を押します。希望の時刻が決まっている人の時刻、2名体制の訪問、拒否の記録がある担当、遠方で運転できない人への付け替えは提案に入れていません。</p>';
+  }
+  h += '<div class="btns" style="margin-top:8px"><button type="button" class="btn sub small" id="evAiBtn">参考：AIがゼロから組んだ場合の距離を見る</button></div><div id="evAi"></div>';
+  box.innerHTML = h;
+  var ap = $('evApply'); if(ap) ap.addEventListener('click', evApply);
+  $('evAiBtn').addEventListener('click', function(){ var rows = cmpAiRows(); $('evAi').innerHTML = rows.length ? '<p class="sm">AIが担当の引き継ぎも曜日の据え置きもせず、効率だけでゼロから組むと <b>週 ' + evTotal(rows.map(function(r){ return { dow:String(r.dow), time:r.time, min:r.min || 30, no:r.no, staffId:r.staffId, withId:r.withId || '' }; })).km.toFixed(1) + 'km</b> です（いまの利用者さんの曜日・担当が大きく変わるため、参考の数字です。組み直すときは「自動の振り分け」から）。</p>' : '<p class="muted sm">AIの組み直しができませんでした（職員名簿・利用者登録を確かめてください）。</p>'; });
+}
+function evApply(){
+  var sel = [].filter.call(document.querySelectorAll('.evPick'), function(c){ return c.checked; }).map(function(c){ return EV_PROPS[+c.value]; }).filter(Boolean);
+  if(!sel.length){ alert('入れる提案に印を付けてください。'); return; }
+  if(!confirm('選んだ提案 ' + sel.length + '件を、下書きの週間予定に入れます。確定は、仮スケジュール表で確かめてから行います。')) return;
+  ssdLoad(); if(!SSD) ssdStart();
+  var done = 0, skip = 0;
+  ssdWith(function(){
+    var all = live('weekly'), by = {}; all.forEach(function(v){ by[v.id] = v; });
+    sel.forEach(function(p){
+      var ok = p.ch.every(function(c){ var v = by[c.id]; return v && v.staffId === c.b.staffId && v.time === c.b.time; });
+      if(!ok){ skip++; return; }
+      p.ch.forEach(function(c){ by[c.id].staffId = c.a.staffId; by[c.id].time = c.a.time; }); done++;
+    });
+    saveCol('weekly', all);
+  });
+  refreshAll(); evRender();
+  var m = $('evMsg'); if(m) m.textContent = '';
+  alert('下書きに ' + done + '件を入れました。' + (skip ? '\n' + skip + '件は、前の提案を外したため組み合わせが変わり、入れていません（引き出しを開き直すと、いまの下書きで提案を出し直します）。' : '') + '\n仮スケジュール表で確かめてから確定してください。');
+}
+
 function cmpRender(m, opt){
   opt = opt || {};
   var vH = visitsOn, rows = cmpAiRows(), vA = cmpVisitsFn(rows), rules = ptrRules();

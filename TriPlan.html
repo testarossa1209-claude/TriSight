@@ -58,6 +58,26 @@
 </style>
 </head>
 <body>
+<div id="tsBackBar" data-guard="0" style="padding:8px 16px 4px;box-sizing:border-box;text-align:left;width:100%;align-self:stretch"><button type="button" onclick="tsGoBack()" title="ひとつ前に開いていた画面へ戻ります" style="font-family:inherit;font-size:13px;line-height:1.4;color:#1f2328;background:#ffffff;border:1px solid #afb8c1;border-radius:999px;padding:4px 14px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.12)">‹ 前のページに戻る</button></div>
+<style>@media print{#tsBackBar{display:none !important}}</style>
+<script>
+function tsGoBack(){
+  var b=document.getElementById("tsBackBar");
+  if(b&&b.getAttribute("data-guard")==="1"){
+    var typed=[].some.call(document.querySelectorAll("textarea,input[type=text],input:not([type])"),function(e){return e.value&&e.value.trim();});
+    if(typed&&!confirm("この画面に入力した内容は保存されていません。前のページに戻ると消えます。戻りますか？"))return;
+  }
+  var r="";try{r=document.referrer?new URL(document.referrer).origin:"";}catch(e){}
+  if(history.length>1&&r===location.origin){history.back();}else{location.href="index.html";}
+}
+/* 2026-11-06（宏史さんの指示）：前の画面が無いとき（タブレットのアイコンから直接開いたときなど）は、ボタン自体を出さない。
+   トライサイトを契約していない人には表札へ行く道は要らないため */
+(function(){
+  var r="",rp="";try{if(document.referrer){var u=new URL(document.referrer);r=u.origin;rp=u.pathname;}}catch(e){}
+  /* 自分自身を読み直したとき（前の画面が自分）も、前の画面が無いものとして扱う（戻るの判定と同じ） */
+  if(!(history.length>1&&r===location.origin)||rp===location.pathname){var b=document.getElementById("tsBackBar");if(b)b.style.display="none";}
+})();
+</script>
 <div class="bar">
   <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-21-01</span></span>
   <label class="btn main">受給計画データを読み込む<input type="file" id="file" accept=".json,application/json" style="display:none"></label>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script src="TriDevice.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>受給計画書 — TriSight®</title>
+<!--
+  TriPlan.html — 補助金・助成金 受給計画書（2026-11-21 新設・宏史さんの決定）
+  ・決裁者が「どれを取るか」を決める材料。1ページ目＝一覧と判断欄／2ページ目＝時系列／以降＝制度ごとの詳細・確認待ち・見送り・約束ごと
+  ・中身は「受給計画データ」（JSON）を読み込んで出す。会社の情報は公開の場所（GitHub）に置かない（基礎情報シートと同じ扱い）
+  ・判断欄で「進める」にした制度は、そのまま獲得スケジュールに載せる（受け渡し箱 tritask_inbox に入れ、決裁の印 tg_kessai を go にする）
+    宏史さんの判断（2026-11-21）「受給計画で決済が取れた最終的な助成金で獲得スケジュールを組んだ方が確実」
+  ・全ページの頭と最終行に当社のマークを入れる（レターヘッドの決まり 2026-09-02・11-08）
+-->
+<style>
+  :root{--ink:#16213a;--line:#d7dce6;--muted:#5b6478;--go:#1e6b34;--stop:#8a5a00;--bg:#f4f6fa}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;font-size:14px;line-height:1.7}
+  .bar{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .bar b{font-size:15px}
+  .bar .ver{font-size:12px;color:var(--muted)}
+  .btn{font:inherit;font-size:13px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 14px;cursor:pointer;color:var(--ink)}
+  .btn.main{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .msg{font-size:12.5px;color:var(--muted)}
+  .page{background:#fff;width:210mm;min-height:297mm;margin:16px auto;padding:14mm 14mm 18mm;box-shadow:0 2px 10px rgba(22,33,58,.08);position:relative}
+  .lh{display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--ink);padding-bottom:6px;margin-bottom:12px}
+  .lh img{width:34px;height:34px}
+  .lh .t{font-size:17px;font-weight:bold}
+  .lh .co{font-size:10.5px;color:var(--muted)}
+  .lh .right{margin-left:auto;text-align:right;font-size:11px;color:var(--muted)}
+  .ft{position:absolute;left:14mm;right:14mm;bottom:8mm;border-top:1px solid var(--line);padding-top:4px;font-size:10px;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+  .ft img{width:14px;height:14px;vertical-align:middle;margin-right:4px}
+  h2{font-size:15px;margin:14px 0 6px;border-left:4px solid var(--ink);padding-left:8px}
+  h3{font-size:14px;margin:10px 0 4px}
+  table{border-collapse:collapse;width:100%;font-size:12px}
+  th,td{border:1px solid var(--line);padding:5px 6px;vertical-align:top;text-align:left}
+  th{background:#eef1f6;font-weight:bold}
+  .note{font-size:11.5px;color:var(--muted)}
+  .dec button{font:inherit;font-size:12px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:2px 10px;cursor:pointer;margin:1px 0;display:block;width:100%}
+  .dec button.on.go{background:var(--go);color:#fff;border-color:var(--go)}
+  .dec button.on.stop{background:#fff4e0;color:var(--stop);border-color:#e8c17a}
+  .dec .pr{display:none}
+  .box{border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin:8px 0}
+  .warn{color:var(--stop)}
+  ul{margin:4px 0 4px 1.2em;padding:0}
+  .empty{max-width:720px;margin:40px auto;background:#fff;padding:24px;border-radius:10px;box-shadow:0 2px 10px rgba(22,33,58,.08)}
+  .avoid{break-inside:avoid;page-break-inside:avoid}
+  @media print{
+    @page{size:A4;margin:0}
+    body{background:#fff}
+    .bar,.noprint{display:none!important}
+    .page{margin:0;box-shadow:none;page-break-after:always;break-after:page}
+    .page:last-child{page-break-after:auto;break-after:auto}
+    .dec button{display:none}
+    .dec .pr{display:block}
+  }
+</style>
+</head>
+<body>
+<div class="bar">
+  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-21-01</span></span>
+  <label class="btn main">受給計画データを読み込む<input type="file" id="file" accept=".json,application/json" style="display:none"></label>
+  <button class="btn" id="print" type="button">印刷する</button>
+  <a class="btn" href="TriGate.html" style="text-decoration:none">トライゲイトへ戻る</a>
+  <span class="msg" id="msg"></span>
+</div>
+<div id="out"></div>
+<script>
+(function(){
+  'use strict';
+  var KEY = 'triplan_last', DKEY = 'triplan_decisions';
+  function $(i){ return document.getElementById(i); }
+  function esc(t){ return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function lj(k, d){ try{ var v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; }catch(e){ return d; } }
+  function sj(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
+  function arr(x){ return Array.isArray(x) ? x : (x == null || x === '' ? [] : [x]); }
+  function jd(s){ var m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? (+m[1]) + '年' + (+m[2]) + '月' + (+m[3]) + '日' : String(s || ''); }
+  function jm(s){ var m = String(s || '').match(/^(\d{4})-(\d{2})/); return m ? (+m[1]) + '年' + (+m[2]) + '月' : String(s || ''); }
+  var P = null;
+
+  /* ---- 判断（進める／見送る）＝獲得スケジュールとつなぐ ---- */
+  function decs(){ var d = lj(DKEY, {}); return (d && typeof d === 'object') ? d : {}; }
+  function cardId(g){ return 'TP-' + String(P['計画番号'] || 'plan') + '-' + String(g.id); }
+  function setDecision(g, v){
+    var co = P['宛先']['会社名'], all = decs(); all[co] = all[co] || {}; all[co][g.id] = v; sj(DKEY, all);
+    var id = cardId(g), ks = lj('tg_kessai', {}); if(!ks || typeof ks !== 'object') ks = {};
+    if(v === 'go'){
+      var list = lj('tritask_inbox', []); if(!Array.isArray(list)) list = [];
+      if(!list.some(function(x){ return x && x.id === id; })){
+        var code = ''; try{ code = localStorage.getItem('trisight_access_code') || ''; }catch(e){}
+        list.push({
+          id:id, created_at:new Date().toISOString(), source_product:'TriGate®', source_detail:'受給計画書（TriPlan）',
+          auth_code:code, company_name:co, program_name:g['名称'], issuer:g['発出元'] || '', summary:g['使い道'] || '',
+          deadlines:g['締切'] ? [g['締切']] : [], reverse_tasks:[], required_documents:arr(g['ご準備いただくこと']), verify_items:[],
+          contact:'', amount_expected:null, status:'未着手', paid_confirmed_at:null
+        });
+        sj('tritask_inbox', list);
+      }
+      ks[id] = 'go';
+    }else if(v === 'stop'){ ks[id] = 'stop'; }
+    else { ks[id] = ''; }
+    sj('tg_kessai', ks);
+    render();
+    $('msg').textContent = v === 'go' ? '「' + g['名称'] + '」を進めることにしました。トライゲイトの獲得スケジュールに載ります。'
+      : v === 'stop' ? '「' + g['名称'] + '」を見送りにしました。' : '「' + g['名称'] + '」の判断を取り消しました。';
+  }
+
+  /* ---- 描画 ---- */
+  var LOGO = 'TriSight_icon_512.png';
+  function head(title, sub){
+    return '<div class="lh"><img src="' + LOGO + '" alt=""><div><div class="t">' + esc(title) + '</div><div class="co">合同会社トライサイト</div></div>' +
+      '<div class="right">' + esc(P['宛先']['会社名']) + ' 様<br>' + esc(sub || ('作成日 ' + jd(P['作成日']))) + '</div></div>';
+  }
+  function foot(n){ return '<div class="ft"><span><img src="' + LOGO + '" alt="">TriSight® 合同会社トライサイト</span><span>社外秘・他言無用</span><span>' + n + '</span></div>'; }
+  function page(title, body, n){ return '<section class="page">' + head(title) + body + foot(n) + '</section>'; }
+
+  function render(){
+    if(!P){ $('out').innerHTML = '<div class="empty"><h2>受給計画データを読み込んでください</h2><p>上の「受給計画データを読み込む」を押して、会社ごとの受給計画データ（○○_受給計画.json）を選ぶと、計画書が出ます。</p><p class="note">会社の情報はこの端末の中だけで扱い、公開の場所や当社のサーバーには置きません。</p></div>'; return; }
+    var co = P['宛先']['会社名'], dd = (decs()[co] || {}), G = arr(P['制度']), n = 0, html = '';
+    /* 1ページ目：一覧と判断欄 */
+    var rows = G.map(function(g){
+      var v = dd[g.id] || '';
+      return '<tr class="avoid"><td><b>' + esc(g['名称']) + '</b><div class="note">' + esc(g['発出元'] || '') + '</div></td>' +
+        '<td>' + esc(g['使い道'] || '') + '</td><td>' + esc(g['金額の見込み'] || g['上限額'] || '') + '</td>' +
+        '<td>' + esc(g['締切表示'] || jd(g['締切'])) + '</td><td>' + esc(g['支給の決まり方'] || '') + '</td>' +
+        '<td>' + arr(g['ご準備いただくこと']).slice(0, 3).map(esc).join('<br>') + '</td>' +
+        '<td class="dec" style="width:84px"><button type="button" class="go' + (v === 'go' ? ' on' : '') + '" data-id="' + esc(g.id) + '" data-v="go">進める</button>' +
+        '<button type="button" class="stop' + (v === 'stop' ? ' on' : '') + '" data-id="' + esc(g.id) + '" data-v="stop">見送る</button>' +
+        (v ? '<button type="button" data-id="' + esc(g.id) + '" data-v="">取り消す</button>' : '') +
+        '<div class="pr">□ 進める<br>□ 見送る</div></td></tr>';
+    }).join('');
+    html += page('補助金・助成金 受給計画書',
+      '<p>' + esc(P['宛先']['会社名']) + ' ' + esc(P['宛先']['代表者'] || '') + '</p>' +
+      '<p>' + esc(P['はじめに'] || '') + '</p>' +
+      '<h2>1. 取りにいく候補とご判断</h2>' +
+      '<table><tr><th style="width:24%">制度</th><th>使い道</th><th style="width:12%">金額の見込み</th><th style="width:12%">締切</th><th style="width:11%">支給の決まり方</th><th style="width:17%">ご準備いただくこと（主なもの）</th><th>ご判断</th></tr>' + rows + '</table>' +
+      '<p class="note">「進める」にした制度は、トライゲイトの「獲得スケジュール」に載り、書類をそろえ終える日・最終確認の日・入金の予想が出ます。金額は制度の上限・定額で、満額の受給を保証するものではありません。</p>' +
+      '<p class="note">作成の前提：' + arr(P['前提']).map(esc).join('／') + '</p>', ++n);
+    /* 2ページ目：時系列 */
+    var ev = [];
+    G.forEach(function(g){ arr(g['時系列']).forEach(function(t){ ev.push({ m:String(t['時期'] || ''), t:t['内容'] || '', g:g['名称'], pay:!!t['入金'] }); }); });
+    ev.sort(function(a, b){ return a.m < b.m ? -1 : a.m > b.m ? 1 : 0; });
+    var months = {}; ev.forEach(function(e){ (months[e.m.slice(0, 7)] = months[e.m.slice(0, 7)] || []).push(e); });
+    var tl = Object.keys(months).sort().map(function(m){
+      return '<tr class="avoid"><td style="width:16%"><b>' + esc(jm(m)) + '</b></td><td>' + months[m].map(function(e){
+        return (e.pay ? '<span class="warn">【入金の予想】</span>' : '') + '<b>' + esc(e.g) + '</b>：' + esc(e.t);
+      }).join('<br>') + '</td></tr>';
+    }).join('');
+    html += page('補助金・助成金 受給計画書　時系列',
+      '<h2>2. いつ何をするか（予定）</h2><table><tr><th>時期</th><th>やること</th></tr>' + tl + '</table>' +
+      '<p class="note warn">入金の時期は予想です。支給の時期は審査をする行政側で決まり、遅れることがあります。資金調達の1番目にはせず、別途、資金調達をお考えください。支給決定通知書が届いた後は、通知書の受領日から1か月以内を目安に入金の見込みを確定させます（当社の目安）。</p>', ++n);
+    /* 3ページ目以降：制度ごと */
+    G.forEach(function(g){
+      var src = arr(g['出所']).map(function(s){ return esc(s['名'] || s) + (s['確認日'] ? '（' + esc(s['確認日']) + '確認）' : '') + (s['URL'] ? '<br><span class="note">' + esc(s['URL']) + '</span>' : ''); }).join('<br>');
+      html += page('補助金・助成金 受給計画書　制度ごとのご案内',
+        '<h2>' + esc(g['名称']) + '</h2><div class="note">' + esc(g['発出元'] || '') + '／' + esc(g['区分'] || '') + '</div>' +
+        '<table class="avoid"><tr><th style="width:22%">目的・使い道</th><td>' + esc(g['使い道'] || '') + '</td></tr>' +
+        '<tr><th>金額</th><td>' + esc(g['金額の説明'] || g['金額の見込み'] || '') + '</td></tr>' +
+        '<tr><th>締切・受付</th><td>' + esc(g['受付の説明'] || g['締切表示'] || '') + '</td></tr>' +
+        '<tr><th>御社の当てはまり</th><td>' + esc(g['御社の当てはまり'] || '') + '</td></tr>' +
+        '<tr><th>ご準備いただくこと</th><td><ul>' + arr(g['ご準備いただくこと']).map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td></tr>' +
+        '<tr><th>流れ</th><td><ul>' + arr(g['流れ']).map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td></tr>' +
+        '<tr><th>当社が受け持つこと</th><td>' + esc(g['当社の受け持ち'] || P['当社の受け持ち'] || '') + '</td></tr>' +
+        '<tr><th>当社が受け持たないこと</th><td>' + esc(P['当社が受け持たないこと'] || '') + '</td></tr>' +
+        '<tr><th>情報の出所</th><td class="note">' + src + '</td></tr></table>' +
+        (g['注意'] ? '<div class="box warn">' + arr(g['注意']).map(esc).join('<br>') + '</div>' : ''), ++n);
+    });
+    /* 確認待ち・見送り・約束ごと */
+    html += page('補助金・助成金 受給計画書　確認待ちと見送り',
+      '<h2>確認待ちの事項（確かめれば取れるかどうかが決まるもの）</h2><table><tr><th style="width:34%">確認すること</th><th>分かると決まること</th><th style="width:20%">確認先</th></tr>' +
+      arr(P['確認待ち']).map(function(c){ return '<tr class="avoid"><td>' + esc(c['項目']) + '</td><td>' + esc(c['決まること'] || '') + '</td><td>' + esc(c['確認先'] || '') + '</td></tr>'; }).join('') + '</table>' +
+      '<h2>今回は見送る制度・次年度に回す制度</h2><table><tr><th style="width:34%">制度</th><th>理由</th><th style="width:20%">次の機会</th></tr>' +
+      arr(P['見送り']).map(function(c){ return '<tr class="avoid"><td>' + esc(c['名称']) + '</td><td>' + esc(c['理由'] || '') + '</td><td>' + esc(c['次の機会'] || '') + '</td></tr>'; }).join('') + '</table>' +
+      '<h2>お約束ごと</h2><ul>' + arr(P['約束ごと']).map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>', ++n);
+    $('out').innerHTML = html;
+  }
+
+  $('out').addEventListener('click', function(ev){
+    var b = ev.target; if(!b || !b.getAttribute || b.getAttribute('data-v') == null || !P) return;
+    var g = arr(P['制度']).filter(function(x){ return String(x.id) === b.getAttribute('data-id'); })[0];
+    if(g) setDecision(g, b.getAttribute('data-v'));
+  });
+  $('file').addEventListener('change', function(){
+    var f = this.files && this.files[0]; if(!f) return;
+    var r = new FileReader();
+    r.onload = function(){
+      try{
+        var d = JSON.parse(r.result);
+        if(!d || !d['宛先'] || !d['宛先']['会社名'] || !Array.isArray(d['制度'])) throw new Error('受給計画データの形ではありません（宛先・制度がありません）');
+        P = d; sj(KEY, d); render(); $('msg').textContent = '「' + f.name + '」を読み込みました。';
+      }catch(e){ $('msg').textContent = '読み込めませんでした：' + e.message; }
+    };
+    r.readAsText(f, 'utf-8');
+    this.value = '';
+  });
+  $('print').addEventListener('click', function(){ window.print(); });
+  P = lj(KEY, null); render();
+})();
+</script>
+</body>
+</html>

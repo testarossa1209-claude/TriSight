@@ -464,7 +464,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-21-02</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-21-03</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -6318,6 +6318,18 @@ function jsAll(){ var g = mgOf('josei'), c = Object.assign({ close:0, payM:1, pa
    ・締切（キャリアアップは第1期の申請締切）＋人が入れた月数＝入金の見込み。月数が空なら出さない（確かめていない数字を出さない）
    ・どこに出すときも「見込み・確定ではない」と添える */
 var JS_PAYNOTE = '入金の見込みは、入れた月数から出した目安です。支給の時期は審査をする行政側で決まるため、確定ではありません。このスケジュールは、書類を作る時期の目安を出すためのものです。';
+/* 予想と確定の二段（2026-11-21-03・宏史さん「支給決定通知書の受領をもって最終の予想日を決める」「予想と確定の2段構えでの表示が必要」）
+   ・トライゲイトの制度ごとに「支給決定通知書を受け取った日」を持つ。入れたら確定の段＝受領日から1か月以内（当社の目安・JS_KETTEI_DAYS）
+   ・受領日はトライゲイトの引き出しと同じ箱 tg_kettei に置き、経営企画事務職の管理者のほかの端末へは josei.tgKettei で届ける
+   ・予想の段には常に「資金調達の1番目にはせず、別途、資金調達をお考えください」を添える */
+var JS_KETTEI_DAYS = 30;
+var JS_FUNDWARN = '予想の日付です。資金調達の1番目にはせず、別途、資金調達をお考えください。';
+function jsKettei(){ var a = {}, b = {}; try{ a = mgOf('josei').tgKettei || {}; }catch(e){} try{ b = JSON.parse(localStorage.getItem('tg_kettei') || '{}') || {}; }catch(e){} return Object.assign({}, a, b); }
+function jsKetteiSet(id, v){
+  var k = jsKettei(); if(v) k[id] = v; else delete k[id];
+  try{ localStorage.setItem('tg_kettei', JSON.stringify(k)); }catch(e){}
+  jsPut({ tgKettei:k });
+}
 function jsPayEst(due, n){ var d = parseYmd(due); if(!d || n === '' || n == null || isNaN(+n)) return null; return jsAddMon(d, +n); }
 function jsEst(d){ return d ? (d.getFullYear() + '年' + (d.getMonth() + 1) + '月ごろ（見込み）') : '—'; }
 /* トライゲイトで掘った制度（2026-11-09・宏史さんの指示「トライゲイトで発掘した助成金補助金情報の獲得スケジュールも自動でトライタイムと連動して、その取得のスケジュールを予定表に組み込む」）
@@ -6417,7 +6429,9 @@ function jsEvents(){
     if(+A.cfg.tgDocs) out.push({ d:ymd(addDays(due, -A.cfg.tgDocs)), t:'書類をそろえ終える（トライゲイト）', who:who });
     if(+A.cfg.tgFinal) out.push({ d:ymd(addDays(due, -A.cfg.tgFinal)), t:'申請書を最終確認する（トライゲイト）', who:who });
     out.push({ d:g.due, t:'申請締切（トライゲイト）', who:who, todo:true });
-    var pe = jsPayEst(g.due, A.tgPay[g.id]); if(pe) out.push({ d:ymd(pe), t:'入金の見込み（確定ではありません）', who:who, pay:true });
+    var kd = parseYmd(jsKettei()[g.id]);
+    if(kd) out.push({ d:ymd(addDays(kd, JS_KETTEI_DAYS)), t:'入金の見込み（確定・支給決定通知書の受領日から1か月以内）', who:who, pay:true });
+    else { var pe = jsPayEst(g.due, A.tgPay[g.id]); if(pe) out.push({ d:ymd(pe), t:'入金の予想（確定ではありません。資金調達の1番目にはしないでください）', who:who, pay:true }); }
   });
   A.etc.forEach(function(e){
     if(e.st !== '準備中') return;
@@ -6496,15 +6510,19 @@ function jsRender(){
   $('jsCuList').querySelectorAll('[data-jsdel]').forEach(function(b){ b.onclick = function(){ var A2 = jsAll(), r = A2.cu.filter(function(x){ return x.id === b.getAttribute('data-jsdel'); })[0]; if(!r || !confirm(jsWho(r) + 'さんの予定を消します。よろしいですか？')) return; jsPut({ cu:A2.cu.filter(function(x){ return x !== r; }) }); jsRender(); }; });
   $('jt_docs').value = A.cfg.tgDocs; $('jt_final').value = A.cfg.tgFinal;
   var tg = A.tg.slice().sort(function(a, b){ return (a.status === '完了') - (b.status === '完了') || ((a.due || '9') < (b.due || '9') ? -1 : 1); });
-  $('jsTgList').innerHTML = tg.length ? '<table><tr><th>制度</th><th>会社</th><th>締切</th><th>書類をそろえ終える</th><th>最終確認</th><th>入金まで<br><small>締切から何か月</small></th><th>入金の見込み</th><th>トライタスクの進み</th></tr>' + tg.map(function(g){
-    var due = parseYmd(g.due), open = g.status !== '完了';
+  $('jsTgList').innerHTML = tg.length ? '<table><tr><th>制度</th><th>会社</th><th>締切</th><th>書類をそろえ終える</th><th>最終確認</th><th>入金まで<br><small>締切から何か月</small></th><th>支給決定通知書を<br>受け取った日</th><th>入金の見込み</th><th>トライタスクの進み</th></tr>' + tg.map(function(g){
+    var due = parseYmd(g.due), open = g.status !== '完了', kt = jsKettei(), kd = parseYmd(kt[g.id]);
+    var payCell = kd ? '<b>' + jsD(addDays(kd, JS_KETTEI_DAYS)) + 'まで</b><br><small style="color:#1e6b34">確定（受領日から1か月以内・当社の目安）</small>'
+      : jsEst(jsPayEst(g.due, A.tgPay[g.id])).replace('（見込み）', '（予想）') + '<br><small style="color:#8a5a00">' + esc(JS_FUNDWARN) + '</small>';
     var dd = function(n){ return (due && +n) ? red(jsD(addDays(due, -n)), open && ymd(addDays(due, -n)) < today) : '—'; };
     return '<tr' + (open ? '' : ' style="opacity:.55"') + '><td>' + esc(g.name) + (g.issuer ? '<br><small class="muted">' + esc(g.issuer) + '</small>' : '') + '</td><td>' + esc(g.company || '') + '</td>' +
       '<td>' + (due ? red(jsD(due), open && g.due < today) : '<small style="color:var(--red)">締切が日付で読めません' + (g.dueText ? '（' + esc(g.dueText) + '）' : '') + '</small>') + '</td>' +
       '<td>' + dd(A.cfg.tgDocs) + '</td><td>' + dd(A.cfg.tgFinal) + '</td>' +
-      '<td><input type="number" min="0" max="24" style="width:5em" data-tgpay="' + esc(g.id) + '" value="' + esc(A.tgPay[g.id] == null ? '' : A.tgPay[g.id]) + '"></td><td>' + jsEst(jsPayEst(g.due, A.tgPay[g.id])) + '</td>' +
+      '<td><input type="number" min="0" max="24" style="width:5em" data-tgpay="' + esc(g.id) + '" value="' + esc(A.tgPay[g.id] == null ? '' : A.tgPay[g.id]) + '"></td>' +
+      '<td><input type="date" data-tgkettei="' + esc(g.id) + '" value="' + esc(kd ? ymd(kd) : '') + '"></td><td>' + payCell + '</td>' +
       '<td>' + esc(g.status) + (g.total ? '（' + g.done + '/' + g.total + '工程）' : '') + '</td></tr>';
-  }).join('') + '</table><p class="muted">' + esc(JS_PAYNOTE) + '</p>' : '<p class="empty">トライゲイトから送られた制度はまだありません。トライゲイトで掘った制度の「トライタスクへ送る」を押すと、ここに入ります。トライゲイトを使っていない場合は、下の「そのほかの助成金・補助金の予定」に制度の名前と締切を入れると、同じ獲得スケジュール（書類をそろえ終える日・最終確認の日・入金の見込み）が出ます。</p>';
+  }).join('') + '</table><p class="muted">' + esc(JS_PAYNOTE) + '支給決定通知書を受け取った日を入れると、その制度の入金の見込みは「確定」（受領日から1か月以内・当社の目安）に変わります。</p>' : '<p class="empty">トライゲイトから送られた制度はまだありません。トライゲイトで掘った制度の「トライタスクへ送る」を押すと、ここに入ります。トライゲイトを使っていない場合は、下の「そのほかの助成金・補助金の予定」に制度の名前と締切を入れると、同じ獲得スケジュール（書類をそろえ終える日・最終確認の日・入金の見込み）が出ます。</p>';
+  $('jsTgList').querySelectorAll('[data-tgkettei]').forEach(function(inp){ inp.onchange = function(){ jsKetteiSet(inp.getAttribute('data-tgkettei'), inp.value); jsRender(); }; });
   $('jsTgList').querySelectorAll('[data-tgpay]').forEach(function(inp){ inp.onchange = function(){ var m = Object.assign({}, jsAll().tgPay), v = inp.value; if(v === '') delete m[inp.getAttribute('data-tgpay')]; else m[inp.getAttribute('data-tgpay')] = Math.max(0, +v); jsPut({ tgPay:m }); jsRender(); }; });
   var etc = A.etc.slice().sort(function(a, b){ return (a.to || '9') < (b.to || '9') ? -1 : 1; });
   $('jsEtcList').innerHTML = etc.length ? '<table><tr><th>制度</th><th>区分</th><th>受付の始まり</th><th>書類をそろえ終える</th><th>最終確認</th><th>締切</th><th>入金の見込み</th><th>提出先</th><th>段階</th><th></th></tr>' + etc.map(function(e){

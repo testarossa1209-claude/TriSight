@@ -3,6 +3,7 @@
 ・受給計画データを読み込むと、一覧（1ページ目）・時系列・制度ごと・確認待ちのページが出る
 ・「進める」を押すと、受け渡し箱（tritask_inbox）に宛先の会社名で入り、決裁の印（tg_kessai）が go になる
 ・「見送る」を押すと、決裁の印が stop になる
+・2026-11-22-04：「保留」「再検討」は計画書の記録だけで区別し、決裁の印は空（トライゲイトでは決裁待ち）
 ・2026-11-22-01：1ページ目に「AIアドバイス判定」の欄があり（11-22-03で改名）、「支給の決まり方」の欄は無い。［この制度の詳細］を押すと、判断材料と支給の決まり方が出る
 試験の計画データは架空の会社（実在の会社の情報は使わない）。"""
 import sys, os, json
@@ -56,6 +57,13 @@ async def test(p):
         await pg.click('button[data-id="b"][data-v="stop"]'); await pg.wait_for_timeout(300)
         ks = json.loads(await pg.evaluate("localStorage.getItem('tg_kessai')") or '{}')
         assert ks.get('TP-TEST-01-b') == 'stop', '「見送る」を押しても決裁の印が stop になりません'
+        await pg.click('button[data-id="b"][data-v="hold"]'); await pg.wait_for_timeout(300)
+        ks = json.loads(await pg.evaluate("localStorage.getItem('tg_kessai')") or '{}')
+        dc = json.loads(await pg.evaluate("localStorage.getItem('triplan_decisions')") or '{}')
+        assert ks.get('TP-TEST-01-b') == '' and dc['試験交通株式会社']['b'] == 'hold', '「保留」で、計画書の記録が hold・決裁の印が空（決裁待ち）になりません'
+        await pg.click('button[data-id="b"][data-v="rethink"]'); await pg.wait_for_timeout(300)
+        dc = json.loads(await pg.evaluate("localStorage.getItem('triplan_decisions')") or '{}')
+        assert dc['試験交通株式会社']['b'] == 'rethink', '「再検討」が計画書の記録に残りません'
         assert not s.errs, '画面の中で誤りが出ています：' + ' / '.join(s.errs)
         await s.shot('#out', 'TriPlan_kessai.png')
     finally:

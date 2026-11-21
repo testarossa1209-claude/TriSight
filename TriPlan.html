@@ -16,6 +16,7 @@
   ・2026-11-22-01：1ページ目の「支給の決まり方」の欄を「AIの判定（取るべきか）」に替えた。誰が行うか・時間と手間・費用・戻る額・御社の負担・支給の決まり方は、制度名の下の［この制度の詳細］ボタンの中へ（宏史さん「全部読んで決めるのは決裁者の負荷。AIの判定で背中を押す」）
   ・2026-11-22-02：ボタンの中身と3ページ目以降が同じ情報に見えるため、ボタンを「この制度の簡易詳細」、3ページ目以降を「制度ごとの詳しいご案内」と呼び分け、簡易詳細の頭に詳しいご案内のページ番号を出す（宏史さんの指示）
   ・2026-11-22-03：「AIの判定」を「AIアドバイス判定」に改名。最初に結論（取る／検討／見送り）と札（作業が多い・期間が長い等）、続けて取りやすさ・書類の量・期間・御社の負担・戻る額を一目で、最後に理由を一言（宏史さんの指示「簡単にどうするかを決められるように」）
+  ・2026-11-22-04：ご判断に「保留」「再検討」を追加（宏史さんの指示）。トライゲイト・トライタイムは印を go／stop／空でしか読まないため、保留・再検討は計画書の記録（triplan_decisions）だけで区別し、決裁の印（tg_kessai）は空＝「決裁待ち」として渡す
 -->
 <style>
   :root{--ink:#16213a;--line:#d7dce6;--muted:#5b6478;--go:#1e6b34;--stop:#8a5a00;--bg:#f4f6fa}
@@ -44,6 +45,8 @@
   .dec button{font:inherit;font-size:12px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:2px 10px;cursor:pointer;margin:1px 0;display:block;width:100%}
   .dec button.on.go{background:var(--go);color:#fff;border-color:var(--go)}
   .dec button.on.stop{background:#fff4e0;color:var(--stop);border-color:#e8c17a}
+  .dec button.on.hold{background:#eef1f6;color:var(--ink);border-color:#9aa5b8}
+  .dec button.on.rethink{background:#eef1f6;color:var(--ink);border-color:#9aa5b8}
   .dec .pr{display:none}
   .dtb{font:inherit;font-size:11.5px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:1px 10px;cursor:pointer;margin-top:4px;color:var(--ink)}
   .dtb.on{background:#eef1f6}
@@ -96,7 +99,7 @@ function tsGoBack(){
 })();
 </script>
 <div class="bar">
-  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-22-03</span></span>
+  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-22-04</span></span>
   <label class="btn main">受給計画データを読み込む<input type="file" id="file" accept=".json,application/json" style="display:none"></label>
   <button class="btn" id="print" type="button">印刷する</button>
   <a class="btn" href="TriGate.html" style="text-decoration:none">トライゲイトへ戻る</a>
@@ -150,11 +153,14 @@ function tsGoBack(){
       }
       ks[id] = 'go';
     }else if(v === 'stop'){ ks[id] = 'stop'; }
-    else { ks[id] = ''; }
+    else { ks[id] = ''; }  /* 保留・再検討・取り消し＝トライゲイトでは「決裁待ち」 */
     sj('tg_kessai', ks);
     render();
     $('msg').textContent = v === 'go' ? '「' + g['名称'] + '」を進めることにしました。トライゲイトの獲得スケジュールに載ります。'
-      : v === 'stop' ? '「' + g['名称'] + '」を見送りにしました。' : '「' + g['名称'] + '」の判断を取り消しました。';
+      : v === 'stop' ? '「' + g['名称'] + '」を見送りにしました。'
+      : v === 'hold' ? '「' + g['名称'] + '」を保留にしました。トライゲイトでは「決裁待ち」に出ます。'
+      : v === 'rethink' ? '「' + g['名称'] + '」を再検討にしました。トライゲイトでは「決裁待ち」に出ます。'
+      : '「' + g['名称'] + '」の判断を取り消しました。';
   }
 
   /* ---- 描画 ---- */
@@ -179,9 +185,11 @@ function tsGoBack(){
         '<td>' + esc(g['締切表示'] || jd(g['締切'])) + '</td><td>' + aiCell(g) + '</td>' +
         '<td>' + arr(g['ご準備いただくこと']).slice(0, 3).map(esc).join('<br>') + '</td>' +
         '<td class="dec" style="width:84px"><button type="button" class="go' + (v === 'go' ? ' on' : '') + '" data-id="' + esc(g.id) + '" data-v="go">進める</button>' +
+        '<button type="button" class="hold' + (v === 'hold' ? ' on' : '') + '" data-id="' + esc(g.id) + '" data-v="hold">保留</button>' +
+        '<button type="button" class="rethink' + (v === 'rethink' ? ' on' : '') + '" data-id="' + esc(g.id) + '" data-v="rethink">再検討</button>' +
         '<button type="button" class="stop' + (v === 'stop' ? ' on' : '') + '" data-id="' + esc(g.id) + '" data-v="stop">見送る</button>' +
         (v ? '<button type="button" data-id="' + esc(g.id) + '" data-v="">取り消す</button>' : '') +
-        '<div class="pr">□ 進める<br>□ 見送る</div></td></tr>' +
+        '<div class="pr">□ 進める<br>□ 保留<br>□ 再検討<br>□ 見送る</div></td></tr>' +
         (op ? '<tr class="dt"><td colspan="7"><div class="note"><b>この制度の簡易詳細</b>（判断に要る点だけ。目的・流れ・出所などは ' + (gi + 3) + 'ページ目の「制度ごとの詳しいご案内」に）</div><table>' + (zairyo(g) || '<tr><td class="note">この制度の簡易詳細は、まだ入っていません。</td></tr>') + '</table></td></tr>' : '');
     }).join('');
     html += page('補助金・助成金 受給計画書',

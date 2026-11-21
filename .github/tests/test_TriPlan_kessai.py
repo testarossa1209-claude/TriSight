@@ -37,7 +37,8 @@ async def test(p):
         assert '試験の理由' in await pg.evaluate("document.querySelector('#out section.page').innerText"), 'AIの判定の理由が1ページ目に出ていません'
         await pg.click('button[data-dt="a"]'); await pg.wait_for_timeout(300)
         dt = await pg.evaluate("(document.querySelector('#out tr.dt')||{}).innerText||''")
-        assert '試験の講師' in dt and '試験の先着' in dt, '［この制度の詳細］を押しても、判断材料と支給の決まり方が出ません'
+        assert '試験の講師' in dt and '試験の先着' in dt, '［この制度の簡易詳細］を押しても、判断材料と支給の決まり方が出ません'
+        assert '3ページ目' in dt, '簡易詳細に、詳しいご案内のページ番号が出ていません'
         await pg.click('button[data-id="a"][data-v="go"]'); await pg.wait_for_timeout(300)
         inbox = json.loads(await pg.evaluate("localStorage.getItem('tritask_inbox')") or '[]')
         card = [x for x in inbox if x.get('id') == 'TP-TEST-01-a']

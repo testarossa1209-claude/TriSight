@@ -92,7 +92,7 @@
         list.push({
           id:id, created_at:new Date().toISOString(), source_product:'TriGate®', source_detail:'受給計画書（TriPlan）',
           auth_code:code, company_name:co, program_name:g['名称'], issuer:g['発出元'] || '', summary:g['使い道'] || '',
-          deadlines:g['締切'] ? [g['締切']] : [], reverse_tasks:[], required_documents:arr(g['ご準備いただくこと']), verify_items:[],
+          deadlines:(g['締切'] || g['獲得スケジュールの締切']) ? [g['締切'] || g['獲得スケジュールの締切']] : [], reverse_tasks:[], required_documents:arr(g['ご準備いただくこと']), verify_items:[],
           contact:'', amount_expected:null, status:'未着手', paid_confirmed_at:null
         });
         sj('tritask_inbox', list);

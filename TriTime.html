@@ -172,6 +172,7 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   .ssTab span.bar{transform:rotate(90deg)}
   .ssTab:hover{background:var(--ink-soft)}
   body.ssOpen .ssTab{display:none}
+  .leaflet-container{z-index:0}   /* 2026-11-21（宏史さん「本ページの地図が優先され評価ページが消えています」）：地図の部品（400〜1000）が右の引き出し（70）の上にかぶさらないよう、地図を一つの重なりにまとめる */
   .ssPanel{position:fixed;top:0;right:0;bottom:0;width:min(600px,100vw);z-index:70;background:var(--white);border-left:1px solid var(--line);box-shadow:-8px 0 28px rgba(16,36,59,.14);transform:translateX(105%);transition:transform .22s ease;display:flex;flex-direction:column}
   body.ssOpen #ssPanel{transform:none}   /* 2026-11-03：#ssPanel だけを開く（.ssPanel だと左の引き出しも一緒に開いていた） */
   @media (min-width:1240px){ body.ssOpen{padding-right:600px} }
@@ -463,7 +464,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-21-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-21-02</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -571,7 +572,7 @@ function tsPortalAsk(){
   <div class="ssFoot">上の目次の章を押すと、その章が開きます。1〜9は仕事の順番、「いま開いている画面の説明」は画面に書いてある説明、「10. 画面に出る印の意味」は印が付く決まりです。言葉を打つと、当たる所だけを全部の章から出します。</div>
 </aside>
 <aside class="ssPanel" id="ssPanel" aria-label="仮スケジュール表">
-  <div class="ssHead"><h2 id="ssTitle">仮スケジュール表</h2><button type="button" class="ssClose" id="ssClose" title="閉じる" aria-label="閉じる">×</button></div>
+  <div class="ssHead"><h2 id="ssTitle">仮スケジュール表</h2><button type="button" class="btn sub small" id="ssEvBtn" title="この仮スケジュール表（下書き）を、AIならどうするかと比べて評価します" style="margin-left:auto;white-space:nowrap">予定の評価</button><button type="button" class="ssClose" id="ssClose" title="閉じる" aria-label="閉じる">×</button></div>
   <div class="ssNav"><b id="ssWeek"></b><input type="date" id="ssFrom" title="表の始まりの日（この日から7日分を出します）" style="font:inherit;font-size:13px;padding:3px 6px"><button type="button" class="btn sub small" id="ssPrev">前の週</button><button type="button" class="btn sub small" id="ssThis">今日から</button><button type="button" class="btn sub small" id="ssNext">次の週</button></div>
   <div class="ssBody" id="ssBody"><div id="ssGrid"></div>
     <!-- 2026-11-08：AIのベース（地区で寄せる組み方）は、仮スケジュール表の中で組み直す（自動組みの引き出しはやめた） -->
@@ -5191,7 +5192,7 @@ function applyDept(){
   show('osTab', R.lv !== 'none' && R.lv !== 'staff'); osBadge(); if((R.lv === 'none' || R.lv === 'staff') && document.body.classList.contains('osOpen')) sideOpen('os', false);   /* 利用者さんへのお知らせは、事務局・管理者が送る */
   show('nmTab', R.lv !== 'none'); if(R.lv === 'none' && document.body.classList.contains('nmOpen')) sideOpen('nm', false);
   /* 2026-11-20（島さんのRQ）：空き案内・予定の評価は、予定を組む人の端末（職員の端末以外）で、訪問の部署のときだけ */
-  var nvOn = !ssHide && d.kind === 'visit'; show('nvTab', nvOn); show('evTab', nvOn);
+  var nvOn = !ssHide && d.kind === 'visit'; show('nvTab', nvOn); show('evTab', nvOn); show('ssEvBtn', nvOn);   /* 2026-11-21：仮スケジュール表の見出しの「予定の評価」も同じ条件 */
   if(!nvOn){ if(document.body.classList.contains('nvOpen')) sideOpen('nv', false); if(document.body.classList.contains('evOpen')) sideOpen('ev', false); }
   if(document.body.classList.contains('kpOpen') && !(document.activeElement && $('kpBody').contains(document.activeElement) && document.activeElement.matches('input[type=time]'))) kpRender(); if(document.body.classList.contains('mnOpen')) mnRender(); if(document.body.classList.contains('nmOpen')) nmRender(); if(document.body.classList.contains('osOpen') && document.activeElement && document.activeElement.id !== 'osTpl') osRender();
   /* 2026-11-01：管理者の合言葉の枠は、管理者の印が付いた人の端末と、管理者の画面が出ている端末だけに出す（職員の端末には出さない） */
@@ -8851,6 +8852,8 @@ $('nvClose').addEventListener('click', function(){ sideOpen('nv', false); });
 $('nvRun').addEventListener('click', nvRun);
 $('nvFromPt').addEventListener('click', nvFromPt);
 $('evTab').addEventListener('click', function(){ sideOpen('ev', true); });
+/* 2026-11-21（宏史さん「仮スケジュール表を開いていると予定の評価ボタンは出ません」）：仮スケジュール表の見出しから評価を開く */
+$('ssEvBtn').addEventListener('click', function(){ sideOpen('ev', true); });
 $('evClose').addEventListener('click', function(){ sideOpen('ev', false); });
 $('nmFind').addEventListener('input', nmRender);
 $('mnTab').addEventListener('click', function(){ sideOpen('mn', true); });
@@ -10242,7 +10245,7 @@ function evPropose(rows0){
   var bad = function(sid, no){ var s = S[sid]; if(!s) return true; if(refusals.some(function(e){ return e.patientNo === no && e.staffId === sid; })) return true; return ptFar(patient(no)) && !canDrive(s); };
   var fixedT = function(no){ return !!((patient(no) || {}).wish); };
   var capH = function(sid, half){ var s = S[sid]; return fsHalfCap(auMgrCap(s, s.emp === '常勤' ? (+caps.f || 9) : (+caps.p || 5)))[half]; };
-  var grp = function(sid, dow, half, rs){ return (rs || rows).filter(function(v){ return v.dow === dow && (v.staffId === sid || v.withId === sid) && evHalf(v.time) === half; }); };
+  var grp = function(sid, dow, half, rs){ return (rs || rows).filter(function(v){ return v.dow === dow && (v.staffId === sid || v.withId === sid) && evHalf(v.time) === half; }).sort(function(x, y){ return toMin(x.time) - toMin(y.time); }); };   /* 2026-11-21：時刻の順に並べてから距離を出す（並べずに出していたため、実際には減らない組み替えを「減る」と出していた） */
   var desc = function(v){ return esc(dnn(v.no)); };
   var DN = ['日', '月', '火', '水', '木', '金', '土'], HN = { am:'午前', pm:'午後' };
   /* ① 担当の付け替え・入れ替え（いちばん減るものから、ひとつずつ） */
@@ -10333,7 +10336,7 @@ function evSummary(wk, cur, aft, R){
   /* 直すともっと良くなる所（効果の大きい2件だけ） */
   var top = R.props.slice().sort(function(a, b){ return b.g - a.g; }).slice(0, 2);
   evHistAdd({ day:day, src:src, km:+cur.km.toFixed(1), aft:+aft.km.toFixed(1), score:score, n:R.props.length, fp:fp, rep:rep });
-  var h = '<div class="judge free" style="margin:6px 0"><b>予定の評価（AIならどうするか）</b>　<small>評価したもの：' + srcName + '</small><br>' +
+  var h = '<div class="judge free" style="margin:6px 0"><b>予定の評価（AIならどうするか）</b>　<small>評価したもの：' + srcName + '</small>' + (src === 'weekly' ? '<br><small>仮スケジュール表（下書き）が無いため、本体の週間予定を評価しています。</small>' : '') + '<br>' +
     '<span style="font-size:20px;font-weight:700">' + score + '点</span> <small>（AIが同じ担当の枠の中で組み替えた後を100点としたとき）</small></div>';
   h += '<div style="margin:6px 0;padding:8px 12px;border-left:4px solid #2e7d32;background:#eef7ee"><b>よかった所</b><ul style="margin:4px 0 0 18px;padding:0">' + praise.map(function(t){ return '<li style="margin:3px 0">' + t + '</li>'; }).join('') + '</ul></div>';
   if(top.length) h += '<div style="margin:6px 0;padding:8px 12px;border-left:4px solid #1565c0;background:#eef3fb"><b>ここを変えると、もっと良くなります</b><ol style="margin:4px 0 0 18px;padding:0">' + top.map(function(p){ return '<li style="margin:4px 0">' + p.txt + ' <span class="tag green">週 ' + p.g.toFixed(1) + 'km 減</span></li>'; }).join('') + '</ol>' +
@@ -10342,7 +10345,8 @@ function evSummary(wk, cur, aft, R){
 }
 function evPlanRender(){
   var box = $('evPlanBody'); if(!box) return;
-  try{ evPlanRender0(box); } catch(e){ box.innerHTML = '<div class="judge ng" style="margin:6px 0"><b>予定の評価の計算が途中で止まりました。</b><br>理由：' + esc(e && e.message || e) + '<br><small>この画面の写真をなぎさへ送ってください。</small></div>'; }
+  /* 2026-11-21：下書き（仮スケジュール表）があるときは、下書きを評価する */
+  try{ if(ssdLoad()) ssdWith(function(){ evPlanRender0(box); }); else evPlanRender0(box); } catch(e){ box.innerHTML = '<div class="judge ng" style="margin:6px 0"><b>予定の評価の計算が途中で止まりました。</b><br>理由：' + esc(e && e.message || e) + '<br><small>この画面の写真をなぎさへ送ってください。</small></div>'; }
 }
 function evPlanRender0(box){
   var wk = weekly(); if(!wk.length){ box.innerHTML = '<p class="empty">週間予定がまだありません。</p>'; return; }
@@ -10357,9 +10361,10 @@ function evPlanRender0(box){
       '<div class="btns"><button type="button" class="btn" id="evApply">選んだ提案を下書きに入れる</button></div><p class="muted sm" id="evMsg"></p>' +
       '<p class="muted sm">提案は上から順に考えています。下書きに入れたあと、仮スケジュール表で確かめてから「この内容で予定を確定する」を押します。希望の時刻が決まっている人の時刻、2名体制の訪問、拒否の記録がある担当、遠方で運転できない人への付け替えは提案に入れていません。</p></details>';
   }
-  h += '<div class="btns" style="margin-top:8px"><button type="button" class="btn sub small" id="evAiBtn">参考：AIがゼロから組んだ場合の距離を見る</button></div><div id="evAi"></div>';
+  h += '<div class="btns" style="margin-top:8px"><button type="button" class="btn small" id="evBackSs">仮スケジュール表へ戻る</button><button type="button" class="btn sub small" id="evAiBtn">参考：AIがゼロから組んだ場合の距離を見る</button></div><div id="evAi"></div>';
   box.innerHTML = h;
   var ap = $('evApply'); if(ap) ap.addEventListener('click', evApply);
+  $('evBackSs').addEventListener('click', function(){ sideOpen('ev', false); ssOpen(true); });
   $('evAiBtn').addEventListener('click', function(){ var rows = cmpAiRows(); $('evAi').innerHTML = rows.length ? '<p class="sm">AIが担当の引き継ぎも曜日の据え置きもせず、効率だけでゼロから組むと <b>週 ' + evTotal(rows.map(function(r){ return { dow:String(r.dow), time:r.time, min:r.min || 30, no:r.no, staffId:r.staffId, withId:r.withId || '' }; })).km.toFixed(1) + 'km</b> です（いまの利用者さんの曜日・担当が大きく変わるため、参考の数字です。組み直すときは「自動の振り分け」から）。</p>' : '<p class="muted sm">AIの組み直しができませんでした（職員名簿・利用者登録を確かめてください）。</p>'; });
 }
 function evApply(){

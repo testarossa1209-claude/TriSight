@@ -172,6 +172,7 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   .ssTab span.bar{transform:rotate(90deg)}
   .ssTab:hover{background:var(--ink-soft)}
   body.ssOpen .ssTab{display:none}
+  .leaflet-container{z-index:0}   /* 2026-11-21（宏史さん「本ページの地図が優先され評価ページが消えています」）：地図の部品（400〜1000）が右の引き出し（70）の上にかぶさらないよう、地図を一つの重なりにまとめる */
   .ssPanel{position:fixed;top:0;right:0;bottom:0;width:min(600px,100vw);z-index:70;background:var(--white);border-left:1px solid var(--line);box-shadow:-8px 0 28px rgba(16,36,59,.14);transform:translateX(105%);transition:transform .22s ease;display:flex;flex-direction:column}
   body.ssOpen #ssPanel{transform:none}   /* 2026-11-03：#ssPanel だけを開く（.ssPanel だと左の引き出しも一緒に開いていた） */
   @media (min-width:1240px){ body.ssOpen{padding-right:600px} }
@@ -10244,7 +10245,7 @@ function evPropose(rows0){
   var bad = function(sid, no){ var s = S[sid]; if(!s) return true; if(refusals.some(function(e){ return e.patientNo === no && e.staffId === sid; })) return true; return ptFar(patient(no)) && !canDrive(s); };
   var fixedT = function(no){ return !!((patient(no) || {}).wish); };
   var capH = function(sid, half){ var s = S[sid]; return fsHalfCap(auMgrCap(s, s.emp === '常勤' ? (+caps.f || 9) : (+caps.p || 5)))[half]; };
-  var grp = function(sid, dow, half, rs){ return (rs || rows).filter(function(v){ return v.dow === dow && (v.staffId === sid || v.withId === sid) && evHalf(v.time) === half; }); };
+  var grp = function(sid, dow, half, rs){ return (rs || rows).filter(function(v){ return v.dow === dow && (v.staffId === sid || v.withId === sid) && evHalf(v.time) === half; }).sort(function(x, y){ return toMin(x.time) - toMin(y.time); }); };   /* 2026-11-21：時刻の順に並べてから距離を出す（並べずに出していたため、実際には減らない組み替えを「減る」と出していた） */
   var desc = function(v){ return esc(dnn(v.no)); };
   var DN = ['日', '月', '火', '水', '木', '金', '土'], HN = { am:'午前', pm:'午後' };
   /* ① 担当の付け替え・入れ替え（いちばん減るものから、ひとつずつ） */

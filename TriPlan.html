@@ -12,6 +12,7 @@
   ・判断欄で「進める」にした制度は、そのまま獲得スケジュールに載せる（受け渡し箱 tritask_inbox に入れ、決裁の印 tg_kessai を go にする）
     宏史さんの判断（2026-11-21）「受給計画で決済が取れた最終的な助成金で獲得スケジュールを組んだ方が確実」
   ・全ページの頭と最終行に当社のマークを入れる（レターヘッドの決まり 2026-09-02・11-08）
+  ・2026-11-21-02：A4横向きに変更（宏史さんの指示「シートを横書きに。幅が狭い」）。時系列を制度ごとに分けた
 -->
 <style>
   :root{--ink:#16213a;--line:#d7dce6;--muted:#5b6478;--go:#1e6b34;--stop:#8a5a00;--bg:#f4f6fa}
@@ -23,7 +24,7 @@
   .btn{font:inherit;font-size:13px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 14px;cursor:pointer;color:var(--ink)}
   .btn.main{background:var(--ink);color:#fff;border-color:var(--ink)}
   .msg{font-size:12.5px;color:var(--muted)}
-  .page{background:#fff;width:210mm;min-height:297mm;margin:16px auto;padding:14mm 14mm 18mm;box-shadow:0 2px 10px rgba(22,33,58,.08);position:relative}
+  .page{background:#fff;width:297mm;min-height:210mm;margin:16px auto;padding:14mm 14mm 18mm;box-shadow:0 2px 10px rgba(22,33,58,.08);position:relative}
   .lh{display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--ink);padding-bottom:6px;margin-bottom:12px}
   .lh img{width:34px;height:34px}
   .lh .t{font-size:17px;font-weight:bold}
@@ -47,7 +48,7 @@
   .empty{max-width:720px;margin:40px auto;background:#fff;padding:24px;border-radius:10px;box-shadow:0 2px 10px rgba(22,33,58,.08)}
   .avoid{break-inside:avoid;page-break-inside:avoid}
   @media print{
-    @page{size:A4;margin:0}
+    @page{size:A4 landscape;margin:0}
     body{background:#fff}
     .bar,.noprint{display:none!important}
     .page{margin:0;box-shadow:none;page-break-after:always;break-after:page}
@@ -79,7 +80,7 @@ function tsGoBack(){
 })();
 </script>
 <div class="bar">
-  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-21-01</span></span>
+  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-21-02</span></span>
   <label class="btn main">受給計画データを読み込む<input type="file" id="file" accept=".json,application/json" style="display:none"></label>
   <button class="btn" id="print" type="button">印刷する</button>
   <a class="btn" href="TriGate.html" style="text-decoration:none">トライゲイトへ戻る</a>
@@ -157,18 +158,18 @@ function tsGoBack(){
       '<table><tr><th style="width:24%">制度</th><th>使い道</th><th style="width:12%">金額の見込み</th><th style="width:12%">締切</th><th style="width:11%">支給の決まり方</th><th style="width:17%">ご準備いただくこと（主なもの）</th><th>ご判断</th></tr>' + rows + '</table>' +
       '<p class="note">「進める」にした制度は、トライゲイトの「獲得スケジュール」に載り、書類をそろえ終える日・最終確認の日・入金の予想が出ます。金額は制度の上限・定額で、満額の受給を保証するものではありません。</p>' +
       '<p class="note">作成の前提：' + arr(P['前提']).map(esc).join('／') + '</p>', ++n);
-    /* 2ページ目：時系列 */
-    var ev = [];
-    G.forEach(function(g){ arr(g['時系列']).forEach(function(t){ ev.push({ m:String(t['時期'] || ''), t:t['内容'] || '', g:g['名称'], pay:!!t['入金'] }); }); });
-    ev.sort(function(a, b){ return a.m < b.m ? -1 : a.m > b.m ? 1 : 0; });
-    var months = {}; ev.forEach(function(e){ (months[e.m.slice(0, 7)] = months[e.m.slice(0, 7)] || []).push(e); });
-    var tl = Object.keys(months).sort().map(function(m){
-      return '<tr class="avoid"><td style="width:16%"><b>' + esc(jm(m)) + '</b></td><td>' + months[m].map(function(e){
-        return (e.pay ? '<span class="warn">【入金の予想】</span>' : '') + '<b>' + esc(e.g) + '</b>：' + esc(e.t);
-      }).join('<br>') + '</td></tr>';
+    /* 2ページ目：時系列（2026-11-21-02・宏史さん「助成金や補助金毎に分けて。全部一つの助成金に見える」）＝制度ごとに見出しを立て、その中を月で区切る */
+    var tl = G.map(function(g, k){
+      var ev = arr(g['時系列']).slice().sort(function(a, b){ return String(a['時期']) < String(b['時期']) ? -1 : 1; });
+      if(!ev.length) return '';
+      var mm = {}; ev.forEach(function(t){ var m = String(t['時期'] || '').slice(0, 7); (mm[m] = mm[m] || []).push(t); });
+      return '<div class="avoid" style="margin:0 0 10px"><h3 style="margin:8px 0 4px">' + (k + 1) + '. ' + esc(g['名称']) + '<span class="note">（' + esc(g['発出元'] || '') + '）</span></h3>' +
+        '<table><tr><th style="width:14%">時期</th><th>やること</th></tr>' + Object.keys(mm).sort().map(function(m){
+          return '<tr><td><b>' + esc(jm(m)) + '</b></td><td>' + mm[m].map(function(t){ return (t['入金'] ? '<span class="warn">【入金の予想】</span>' : '') + esc(t['内容'] || ''); }).join('<br>') + '</td></tr>';
+        }).join('') + '</table></div>';
     }).join('');
     html += page('補助金・助成金 受給計画書　時系列',
-      '<h2>2. いつ何をするか（予定）</h2><table><tr><th>時期</th><th>やること</th></tr>' + tl + '</table>' +
+      '<h2>2. いつ何をするか（制度ごとの予定）</h2>' + tl +
       '<p class="note warn">入金の時期は予想です。支給の時期は審査をする行政側で決まり、遅れることがあります。資金調達の1番目にはせず、別途、資金調達をお考えください。支給決定通知書が届いた後は、通知書の受領日から1か月以内を目安に入金の見込みを確定させます（当社の目安）。</p>', ++n);
     /* 3ページ目以降：制度ごと */
     G.forEach(function(g){

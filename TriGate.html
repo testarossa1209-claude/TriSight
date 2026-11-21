@@ -435,6 +435,7 @@ function tsPortalAsk(){
       <h1>TriGate<span class="reg">®</span></h1>
       <span class="sub">補助金・助成金の門 ／ 受付・仕分け</span>
     </div>
+    <a class="famlink" href="TriPlan.html" id="planLink" style="margin-right:8px">受給計画書を開く &rsaquo;</a>
     <a class="famlink" href="TriTask.html" id="taskLink">TriTask で進捗を管理する &rsaquo;</a>
     <a class="famlink" href="index.html" id="famLink" onclick="tsPortalAsk();return false;">TriSight ファミリーへ &rsaquo;</a>
         <a class="famlink" href="TriRobo.html?s=trigate" id="roboLink" target="_blank" rel="noopener" style="margin-left:8px">使い方（トライサイトロボ） &rsaquo;</a>
@@ -8398,7 +8399,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-11-21-04';
+  const TRIGATE_VERSION = '2026-11-21-05';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

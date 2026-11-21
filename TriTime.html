@@ -463,7 +463,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-20-05</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-21-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -533,7 +533,7 @@ function tsPortalAsk(){
 </aside>
 <aside class="ssPanel" id="evPanel" aria-label="予定の評価">
   <div class="ssHead"><h2>予定の評価<small>いまの週間予定の移動と、AIの組み替えの提案</small></h2><button type="button" class="ssClose" id="evClose" title="閉じる" aria-label="閉じる">×</button></div>
-  <div class="ssBody" id="evBody"></div>
+  <div class="ssBody" id="evPlanBody"></div>
 </aside>
 <aside class="ssPanel" id="nmPanel" aria-label="2名体制名簿">
   <div class="ssHead"><h2>2名体制名簿<small id="nmSub"></small></h2><button type="button" class="ssClose" id="nmClose" title="閉じる" aria-label="閉じる">×</button></div>
@@ -8479,7 +8479,7 @@ function sideOpen(k, on){
   if(on){ document.body.classList.remove('ssOpen', 'kpOpen', 'mnOpen', 'nmOpen', 'osOpen', 'rqOpen', 'jmOpen', 'jlOpen', 'hbOpen', 'auOpen', 'plOpen', 'nvOpen', 'evOpen'); }
   if(!on && k === 'hb' && window.HB){ HB.on = false; HB.sel = null; }   /* 2026-11-08：手組みの引き出しを閉じたら下書きの表もしまう（下書きの中身は残る） */
   document.body.classList.toggle(k + 'Open', !!on);
-  if(on){ if(k === 'jm' || k === 'jl'){ jmRender(k); return; } if(k === 'pl'){ return; } if(k === 'nv'){ try{ $('nv_len').value = $('nv_len').value || workRule().visit; }catch(e){} return; } if(k === 'ev'){ var eb = $('evBody'); if(eb) eb.innerHTML = '<p class="muted"><span class="ttSpin" style="display:inline-block;vertical-align:middle;width:18px;height:18px;border-width:3px"></span> ⌛ 計算しています。画面が出るまでお待ちください。</p>'; ttWait('予定の評価を計算しています', evRender); return; } if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else if(k === 'nm') nmRender(); else if(k === 'os'){ if(NP_ON) renderBoard(); else osRender(); } else if(k === 'rq'){ rqOpenPanel(); if(NP_ON) npRqSeen(); } else mnRender(); }
+  if(on){ if(k === 'jm' || k === 'jl'){ jmRender(k); return; } if(k === 'pl'){ return; } if(k === 'nv'){ try{ $('nv_len').value = $('nv_len').value || workRule().visit; }catch(e){} return; } if(k === 'ev'){ var eb = $('evPlanBody'); if(eb) eb.innerHTML = '<p class="muted"><span class="ttSpin" style="display:inline-block;vertical-align:middle;width:18px;height:18px;border-width:3px"></span> ⌛ 計算しています。画面が出るまでお待ちください。</p>'; ttWait('予定の評価を計算しています', evPlanRender); return; } if(k === 'kp'){ KP_D = null; kpRender(); try{ $('kpFind').focus(); }catch(e){} } else if(k === 'nm') nmRender(); else if(k === 'os'){ if(NP_ON) renderBoard(); else osRender(); } else if(k === 'rq'){ rqOpenPanel(); if(NP_ON) npRqSeen(); } else mnRender(); }
 }
 /* 2026-11-03：利用者さんへのお知らせ。選んだ日の訪問（キャンセルを除く）を利用者さんごとに1行にまとめ、その日のいちばん早い時刻で定型文を作る。
    定型文は設定（settings.osText）に持ち、{時刻} をその人の時刻に置き換える。送ったら type "notify" を残す */
@@ -8679,7 +8679,7 @@ var MN_MARKS = [
     ['空いている曜日と時間帯', '利用者登録の「予定の希望」の「空いている曜日と時間帯を見る」を押すと、月〜土の午前・午後ごとに「入れます／少し空き／埋まっています」と、空いている看護師が出ます。「人気」は、いまの利用者さんの希望が集まっている時間帯です。希望の曜日・時間帯を入れてから押すと、そこが太枠になり、埋まっているときは新しい利用者さんへのご案内の文（読み上げ用）が出ます。'],
     ['仮（出勤予定が未提出）', '翌月の出勤予定の申告がまだの非常勤は、前月の申告で出た曜日を「仮の出勤日」として予定に組み込みます。その人の訪問・同行には灰色の「仮」の印が付きます。申告が届くと仮は外れ、出られない日の訪問・同行には「要調整」の印と代わりの候補が出ます。25日を過ぎても申告が無い人は、事務局・管理者の画面に知らせが出ます。'],
     ['空き案内', '右の引き出し「空き案内」。新規の利用者さんの住所・希望の曜日・時刻を入れて「空きを探す」を押すと、空きがあるかと、埋まっていれば寄り道の少ない代わりの曜日・時刻、読み上げる案内の文が出ます。希望の時刻は早い者勝ちです。'],
-    ['予定の評価', '右の引き出し「予定の評価」。いまの週間予定の週の移動距離と、AIが考えた組み替え（担当の付け替え・入れ替え、回る順の入れ替え）を、減る距離と一緒に出します。選んだ提案は下書きに入り、仮スケジュール表で確かめてから確定します。'],
+    ['予定の評価', '右の引き出し「予定の評価」。仮スケジュール表（下書きを開いているときは下書き）を、AIならどうするかと比べて点数を付け、よかった所を先に、直すともっと良くなる所を効果の大きい2件だけ出します。前回の評価より進んだ所も出します。続けて、週の移動距離と、AIが考えた組み替え（担当の付け替え・入れ替え、回る順の入れ替え）を、減る距離と一緒に出します。選んだ提案は下書きに入り、仮スケジュール表で確かめてから確定します。'],
     ['IT導入責任者', '職員名簿の印。管理者ではないが、仮スケジュール・空き案内・予定の評価など予定を組む引き出しを、管理者と同じように使えます。売上・評価・管理者の窓・職員名簿は出ません。合言葉は要りません。訪問件数は職員と同じです。'],
     ['訪問件数は職員と同じ', '職員名簿の「管理者」の下の印。管理者の画面を使いながら、自動の振り分けでは管理者の割合で件数を減らさず、職員と同じ件数で組みます。'],
     ['条項表', 'H&Nパトリオットが確かめに使う線です（全端末に共有）。'],
@@ -10304,22 +10304,58 @@ function evPropose(rows0){
   });
   return { props:props, after:rows };
 }
-function evRender(){
-  var box = $('evBody'); if(!box) return;
-  try{ evRender0(box); } catch(e){ box.innerHTML = '<div class="judge ng" style="margin:6px 0"><b>予定の評価の計算が途中で止まりました。</b><br>理由：' + esc(e && e.message || e) + '<br><small>この画面の写真をなぎさへ送ってください。</small></div>'; }
+/* ==== 2026-11-21（島さんの提案・宏史さんの指示）：予定表の評価（AIならどうするか） ====
+   仮スケジュール表（下書きを開いているときは下書き、ないときは本体の週間予定）を、AIの組み替えと比べて評価する。
+   出す順番：①点数 ②よかった所（実際の数字から） ③直すともっと良くなる所（効果の大きい2件だけ） 。
+   評価はこの端末に日ごとに残し、前回の評価との比べ（進歩）に使う。同じ組み替えを何度も提案された回数（rep）も残す（野木画面の評価で使う）。 */
+var EV_HIST = 'tritime_ev_hist';
+function evHistAll(){ var h = lj(EV_HIST, []); return Array.isArray(h) ? h : []; }
+function evHistAdd(rec){ var h = evHistAll(), last = h[h.length - 1]; if(last && last.day === rec.day && last.src === rec.src) h[h.length - 1] = rec; else h.push(rec); if(h.length > 120) h = h.slice(-120); try{ sj(EV_HIST, h); }catch(e){} }
+function evHistPrev(day, src){ var h = evHistAll(); for(var i = h.length - 1; i >= 0; i--){ if(h[i] && h[i].src === src && h[i].day < day) return h[i]; } return null; }
+function evSummary(wk, cur, aft, R){
+  var src = ssdOn() ? 'draft' : 'weekly', srcName = src === 'draft' ? '仮スケジュール表（下書き）' : '本体の週間予定';
+  var score = cur.km > 0 ? Math.max(0, Math.min(100, Math.round(100 * aft.km / cur.km))) : 100;
+  var d = new Date(), day = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  var prev = evHistPrev(day, src);
+  /* 組み替えの提案が入った回り方（担当・曜日・午前午後）を数える */
+  var ids = {}; R.props.forEach(function(p){ (p.ch || []).forEach(function(c){ ids[c.id] = 1; }); });
+  var G = evGroups(wk), keys = Object.keys(G), touched = keys.filter(function(k){ return G[k].some(function(v){ return ids[v.id]; }); }).length, good = keys.length - touched;
+  var fp = Object.keys(ids).sort(), rep = prev && Array.isArray(prev.fp) ? fp.filter(function(x){ return prev.fp.indexOf(x) >= 0; }).length : 0;
+  /* よかった所（実際の数字から） */
+  var praise = [];
+  if(keys.length && good > 0) praise.push('午前・午後の回り方 ' + keys.length + '回のうち <b>' + good + '回</b>は、AIが考えてもこれ以上短くできない組み方です。');
+  var best = null; Object.keys(cur.by).forEach(function(sid){ var o = cur.by[sid]; if(o.n >= 3 && (!best || o.km / o.n < best.k)) best = { sid:sid, k:o.km / o.n }; });
+  if(best && Object.keys(cur.by).length > 1) praise.push(esc(staffName(best.sid)) + 'さんの担当は1件あたり <b>' + best.k.toFixed(1) + 'km</b> で、いちばん無駄の少ない回り方になっています。');
+  if(prev && prev.km - cur.km >= 0.5) praise.push('前回の評価（' + esc(prev.day) + '）より、週の移動が <b>' + (prev.km - cur.km).toFixed(1) + 'km 減りました</b>。');
+  else if(prev && score > prev.score) praise.push('前回の評価（' + esc(prev.day) + '）より、点数が <b>' + (score - prev.score) + '点上がりました</b>。');
+  if(!R.props.length) praise.push('AIが組み替えを考えても、週の移動が0.5km以上減る所は見つかりませんでした。');
+  if(!praise.length) praise.push('全員分の予定（週 ' + wk.length + '件）を組み終えています。');
+  /* 直すともっと良くなる所（効果の大きい2件だけ） */
+  var top = R.props.slice().sort(function(a, b){ return b.g - a.g; }).slice(0, 2);
+  evHistAdd({ day:day, src:src, km:+cur.km.toFixed(1), aft:+aft.km.toFixed(1), score:score, n:R.props.length, fp:fp, rep:rep });
+  var h = '<div class="judge free" style="margin:6px 0"><b>予定の評価（AIならどうするか）</b>　<small>評価したもの：' + srcName + '</small><br>' +
+    '<span style="font-size:20px;font-weight:700">' + score + '点</span> <small>（AIが同じ担当の枠の中で組み替えた後を100点としたとき）</small></div>';
+  h += '<div style="margin:6px 0;padding:8px 12px;border-left:4px solid #2e7d32;background:#eef7ee"><b>よかった所</b><ul style="margin:4px 0 0 18px;padding:0">' + praise.map(function(t){ return '<li style="margin:3px 0">' + t + '</li>'; }).join('') + '</ul></div>';
+  if(top.length) h += '<div style="margin:6px 0;padding:8px 12px;border-left:4px solid #1565c0;background:#eef3fb"><b>ここを変えると、もっと良くなります</b><ol style="margin:4px 0 0 18px;padding:0">' + top.map(function(p){ return '<li style="margin:4px 0">' + p.txt + ' <span class="tag green">週 ' + p.g.toFixed(1) + 'km 減</span></li>'; }).join('') + '</ol>' +
+    (R.props.length > 2 ? '<small class="muted">ほかの提案は、下の「AIの提案をすべて見る」に入っています。</small>' : '') + '</div>';
+  return h;
 }
-function evRender0(box){
+function evPlanRender(){
+  var box = $('evPlanBody'); if(!box) return;
+  try{ evPlanRender0(box); } catch(e){ box.innerHTML = '<div class="judge ng" style="margin:6px 0"><b>予定の評価の計算が途中で止まりました。</b><br>理由：' + esc(e && e.message || e) + '<br><small>この画面の写真をなぎさへ送ってください。</small></div>'; }
+}
+function evPlanRender0(box){
   var wk = weekly(); if(!wk.length){ box.innerHTML = '<p class="empty">週間予定がまだありません。</p>'; return; }
   var cur = evTotal(wk), R = evPropose(wk), aft = evTotal(R.after); EV_PROPS = R.props;
   var miss = wk.filter(function(v){ return !evLL(v.no); }).length, sv = cur.km - aft.km;
-  var h = '<div class="judge ' + (R.props.length ? 'fee' : 'free') + '" style="margin:6px 0"><b>いまの週間予定の移動：週 ' + cur.km.toFixed(1) + 'km</b>（担当ごと・曜日ごとに、午前・午後それぞれ事業所を出て事業所へ戻る回り方の合計）' +
+  var h = evSummary(wk, cur, aft, R) + '<div class="judge ' + (R.props.length ? 'fee' : 'free') + '" style="margin:6px 0"><b>いまの週間予定の移動：週 ' + cur.km.toFixed(1) + 'km</b>（担当ごと・曜日ごとに、午前・午後それぞれ事業所を出て事業所へ戻る回り方の合計）' +
     (R.props.length ? '<br>下の提案をすべて入れると <b>週 ' + aft.km.toFixed(1) + 'km（' + sv.toFixed(1) + 'km 減）</b>になります。' : '<br>距離が0.5km以上減る組み替えは見つかりませんでした。いまの組み方で効率は取れています。') + '</div>';
   if(miss) h += '<p class="muted sm">住所の位置が取れていない訪問が ' + miss + '件あり、その分は距離に入っていません（利用者登録で番地まで入れると入ります）。</p>';
   h += '<details style="margin:6px 0"><summary>担当ごとの移動を見る</summary><table class="sm"><tr><th>担当</th><th>週の件数</th><th>週の移動</th><th>1件あたり</th></tr>' + Object.keys(cur.by).sort(function(a, b){ return cur.by[b].km - cur.by[a].km; }).map(function(sid){ var o = cur.by[sid]; return '<tr><td>' + esc(staffName(sid)) + '</td><td>' + o.n + '</td><td>' + o.km.toFixed(1) + 'km</td><td>' + (o.n ? (o.km / o.n).toFixed(1) + 'km' : '－') + '</td></tr>'; }).join('') + '</table></details>';
   if(R.props.length){
-    h += '<h3 style="margin:10px 0 4px;font-size:15px">AIの提案（減る距離の大きい順に考えた組み替え）</h3><ol style="margin:0 0 0 20px;padding:0">' + R.props.map(function(p, i){ return '<li style="margin:6px 0"><label><input type="checkbox" class="evPick" value="' + i + '" checked> ' + p.txt + ' <span class="tag green">週 ' + p.g.toFixed(1) + 'km 減</span></label></li>'; }).join('') + '</ol>' +
+    h += '<details style="margin:10px 0"><summary><b>AIの提案をすべて見る（' + R.props.length + '件）・選んで下書きに入れる</b></summary><ol style="margin:0 0 0 20px;padding:0">' + R.props.map(function(p, i){ return '<li style="margin:6px 0"><label><input type="checkbox" class="evPick" value="' + i + '" checked> ' + p.txt + ' <span class="tag green">週 ' + p.g.toFixed(1) + 'km 減</span></label></li>'; }).join('') + '</ol>' +
       '<div class="btns"><button type="button" class="btn" id="evApply">選んだ提案を下書きに入れる</button></div><p class="muted sm" id="evMsg"></p>' +
-      '<p class="muted sm">提案は上から順に考えています。下書きに入れたあと、仮スケジュール表で確かめてから「この内容で予定を確定する」を押します。希望の時刻が決まっている人の時刻、2名体制の訪問、拒否の記録がある担当、遠方で運転できない人への付け替えは提案に入れていません。</p>';
+      '<p class="muted sm">提案は上から順に考えています。下書きに入れたあと、仮スケジュール表で確かめてから「この内容で予定を確定する」を押します。希望の時刻が決まっている人の時刻、2名体制の訪問、拒否の記録がある担当、遠方で運転できない人への付け替えは提案に入れていません。</p></details>';
   }
   h += '<div class="btns" style="margin-top:8px"><button type="button" class="btn sub small" id="evAiBtn">参考：AIがゼロから組んだ場合の距離を見る</button></div><div id="evAi"></div>';
   box.innerHTML = h;
@@ -10341,7 +10377,7 @@ function evApply(){
     });
     saveCol('weekly', all);
   });
-  refreshAll(); ttWait('予定の評価を計算し直しています', evRender);
+  refreshAll(); ttWait('予定の評価を計算し直しています', evPlanRender);
   var m = $('evMsg'); if(m) m.textContent = '';
   alert('下書きに ' + done + '件を入れました。' + (skip ? '\n' + skip + '件は、前の提案を外したため組み合わせが変わり、入れていません（引き出しを開き直すと、いまの下書きで提案を出し直します）。' : '') + '\n仮スケジュール表で確かめてから確定してください。');
 }

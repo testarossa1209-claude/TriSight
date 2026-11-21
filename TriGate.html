@@ -3669,6 +3669,30 @@ window.tsSyncBanner = function(msg){
     }
     tsRenderPrefSel();
     tsRenderCitySel();
+    /* 2026-11-21：診断する会社を選び直したとき、前の会社の検索語・地域が残ったまま
+       発掘してしまう恐れがあった。検索語は空に戻し、地域はいま選んだ会社の本店所在地
+       （都道府県・市区町村）に入れ直す。所在地が入っていない会社は「全国」に戻す。
+       発掘の目的の印（①②③）も外す。 */
+    window.tsDigResetForCompany = function(){
+      const kw = document.getElementById("digKeyword");
+      if(kw) kw.value = "";
+      /* 発掘の目的の印（①②③）も前の会社のものなので外す。注記の出し入れは各印の処理に任せ、
+         その処理が書く知らせの一文は元に戻す（切り替えの知らせは呼び出し側が書く） */
+      const st0 = document.getElementById("digStatus");
+      const st0Text = st0 ? st0.textContent : "";
+      ["digShunushi", "digShinchi", "digTeikyou"].forEach(function(id){
+        const el = document.getElementById(id);
+        if(el && el.checked){ el.checked = false; try{ el.dispatchEvent(new Event("change")); }catch(_){} }
+      });
+      if(st0) st0.textContent = st0Text;
+      if(prefSel) prefSel.value = "";
+      if(citySel) citySel.value = "";
+      tsRenderPrefSel();
+      tsRenderCitySel();
+      const p = prefSel ? prefSel.value : "";
+      const c = (citySel && !citySel.disabled) ? citySel.value : "";
+      return p ? (p + c) : "全国（所在地が登録されていません）";
+    };
     /* 2026-09-09：入口の4分類。印の付け外しで注記・案内を出し入れする。 */
     (function(){
       const sc   = document.getElementById("digShinchi");
@@ -3929,6 +3953,7 @@ window.tsSyncBanner = function(msg){
             }
             tsLibSave(nm0, company);
             compLabel();
+            compSt.textContent += tsDigResetNote();
           }catch(_){
             compSt.textContent = "JSONの読み込みに失敗しました。ファイルの形式を確認してください。";
           }
@@ -3955,8 +3980,13 @@ window.tsSyncBanner = function(msg){
         company = pick.gateJSON;
         try{ localStorage.setItem("trisight_dig_company", JSON.stringify(company)); }catch(_){}
         compLabel();
-        compSt.textContent = "基本情報シートから " + orgs.length + " 社を取り込みました。選択中：" + tsCompanyName();
+        compSt.textContent = "基本情報シートから " + orgs.length + " 社を取り込みました。選択中：" + tsCompanyName() + tsDigResetNote();
       });
+    }
+    function tsDigResetNote(){
+      if(typeof window.tsDigResetForCompany !== "function") return "";
+      const a = window.tsDigResetForCompany();
+      return "　検索する語を空にし、発掘の目的の印を外し、地域を「" + a + "」にしました。";
     }
     /* 会社の切替（2026-08-13追加）：登録済みの会社を選ぶと、基礎情報も見込み額もその会社のものに入れ替わる */
     const compSel = document.getElementById("digCompanySel");
@@ -3970,7 +4000,8 @@ window.tsSyncBanner = function(msg){
         try{ localStorage.setItem("trisight_dig_company", JSON.stringify(company)); }catch(e){}
         compLabel();
         const st = document.getElementById("digStatus");
-        if(st) st.textContent = "診断する会社を「"+nm+"」に切り替えました。あらためて「新着探索」を押してください。";
+        const rn = tsDigResetNote();
+        if(st) st.textContent = "診断する会社を「"+nm+"」に切り替えました。" + rn + "あらためて「新着探索」を押してください。";
         /* 2026-11-18：会社を切り替えたら、自動発掘の知らせもその会社に合わせる */
         if(typeof window.tsNightBannerRefresh === "function") window.tsNightBannerRefresh();
       });
@@ -3992,6 +4023,7 @@ window.tsSyncBanner = function(msg){
           compSt.textContent = "未読み込み（機械足切りに必要です）";
         }
         compLabel();
+        if(company) compSt.textContent += tsDigResetNote();
       });
     }
 
@@ -8366,7 +8398,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-11-18-02';
+  const TRIGATE_VERSION = '2026-11-21-02';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

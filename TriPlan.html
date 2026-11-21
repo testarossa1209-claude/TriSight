@@ -12,6 +12,7 @@
   ・判断欄で「進める」にした制度は、そのまま獲得スケジュールに載せる（受け渡し箱 tritask_inbox に入れ、決裁の印 tg_kessai を go にする）
     宏史さんの判断（2026-11-21）「受給計画で決済が取れた最終的な助成金で獲得スケジュールを組んだ方が確実」
   ・全ページの頭と最終行に当社のマークを入れる（レターヘッドの決まり 2026-09-02・11-08）
+  ・2026-11-21-02：A4横向きに変更（宏史さんの指示「シートを横書きに。幅が狭い」）
 -->
 <style>
   :root{--ink:#16213a;--line:#d7dce6;--muted:#5b6478;--go:#1e6b34;--stop:#8a5a00;--bg:#f4f6fa}
@@ -23,7 +24,7 @@
   .btn{font:inherit;font-size:13px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 14px;cursor:pointer;color:var(--ink)}
   .btn.main{background:var(--ink);color:#fff;border-color:var(--ink)}
   .msg{font-size:12.5px;color:var(--muted)}
-  .page{background:#fff;width:210mm;min-height:297mm;margin:16px auto;padding:14mm 14mm 18mm;box-shadow:0 2px 10px rgba(22,33,58,.08);position:relative}
+  .page{background:#fff;width:297mm;min-height:210mm;margin:16px auto;padding:14mm 14mm 18mm;box-shadow:0 2px 10px rgba(22,33,58,.08);position:relative}
   .lh{display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--ink);padding-bottom:6px;margin-bottom:12px}
   .lh img{width:34px;height:34px}
   .lh .t{font-size:17px;font-weight:bold}
@@ -47,7 +48,7 @@
   .empty{max-width:720px;margin:40px auto;background:#fff;padding:24px;border-radius:10px;box-shadow:0 2px 10px rgba(22,33,58,.08)}
   .avoid{break-inside:avoid;page-break-inside:avoid}
   @media print{
-    @page{size:A4;margin:0}
+    @page{size:A4 landscape;margin:0}
     body{background:#fff}
     .bar,.noprint{display:none!important}
     .page{margin:0;box-shadow:none;page-break-after:always;break-after:page}
@@ -79,7 +80,7 @@ function tsGoBack(){
 })();
 </script>
 <div class="bar">
-  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-21-01</span></span>
+  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-21-02</span></span>
   <label class="btn main">受給計画データを読み込む<input type="file" id="file" accept=".json,application/json" style="display:none"></label>
   <button class="btn" id="print" type="button">印刷する</button>
   <a class="btn" href="TriGate.html" style="text-decoration:none">トライゲイトへ戻る</a>

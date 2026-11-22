@@ -107,7 +107,7 @@ async def test(p):
         n = await pg.evaluate("document.querySelectorAll('#out section.page').length")
         assert n == 7, '来期候補があるときのページ数が合いません（来期の一覧と詳しいご案内で2ページ増えて7のはず）：%s' % n
         p2 = await pg.evaluate("document.querySelectorAll('#out section.page')[1].innerText")
-        assert '来期に取りにいく候補' in p2 and '試験の来期補助金' in p2, '2ページ目に来期に取りにいく候補が出ていません'
+        assert '来期に取りに行く予定の候補' in p2 and '試験の来期補助金' in p2, '2ページ目に来期に取りに行く予定の候補が出ていません'
         assert '試験の来期の整えること' in p2, '来期の候補に、取るために整えることが出ていません'
         await pg.click('button[data-dt="k"]'); await pg.wait_for_timeout(300)
         dt = await pg.evaluate("[].map.call(document.querySelectorAll('#out tr.dt'), function(e){ return e.innerText; }).join(' / ')")

@@ -20,6 +20,7 @@
   ・2026-11-22-05：AIアドバイス判定の最後に「次の一手」（当社AIがやること／御社にお願いすること／いつまでに）を出す。理由は手間と見返りの比べ方で書く（宏史さん「検討ばかりでは何のために候補に出したか分からない。検討ならAIの作業と人間の作業を入れる」）
   ・2026-11-22-06：「来期に取りにいく候補（今期の受付は終了）」のページを1ページ目の次に追加（計画データの『来期候補』）。AIアドバイス判定・ご判断の欄は今期と同じ。簡易詳細と詳しいご案内に『事前準備（いつ・何を・誰が）』を出す（宏史さん「締切が到来したため今期ではないが、来期に取るべきものはAI判断のもと情報提供し、事前準備にも言及する」）
   ・2026-11-22-07：「次の一手」は進めると決めた後の情報のため、判定の欄からは外し、「進める」を押した制度だけ判定の欄の下に出す。詳しいご案内には「進めた場合の役割分担」として常に載せる（宏史さん「次の一手は進めるの中の情報。前段では入れなくてよい」）
+  ・2026-11-22-08：進めるを取り消す・見送る・保留・再検討に変えたとき、受け渡し箱のカードがまだ手付かず（未着手）なら取り除く。作業が始まっていれば残す
 -->
 <style>
   :root{--ink:#16213a;--line:#d7dce6;--muted:#5b6478;--go:#1e6b34;--stop:#8a5a00;--bg:#f4f6fa}
@@ -104,7 +105,7 @@ function tsGoBack(){
 })();
 </script>
 <div class="bar">
-  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-22-07</span></span>
+  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-22-08</span></span>
   <label class="btn main">受給計画データを読み込む<input type="file" id="file" accept=".json,application/json" style="display:none"></label>
   <button class="btn" id="print" type="button">印刷する</button>
   <a class="btn" href="TriGate.html" style="text-decoration:none">トライゲイトへ戻る</a>
@@ -171,8 +172,13 @@ function tsGoBack(){
         sj('tritask_inbox', list);
       }
       ks[id] = 'go';
-    }else if(v === 'stop'){ ks[id] = 'stop'; }
-    else { ks[id] = ''; }  /* 保留・再検討・取り消し＝トライゲイトでは「決裁待ち」 */
+    }else{
+      /* 2026-11-22-08：進める以外に変えたら、手付かずのカードは受け渡し箱から取り除く（作業が始まっていれば残す） */
+      var lb = lj('tritask_inbox', []);
+      if(Array.isArray(lb)){ var nb = lb.filter(function(x){ return !(x && x.id === id && (x.status || '未着手') === '未着手'); }); if(nb.length !== lb.length) sj('tritask_inbox', nb); }
+    }
+    if(v === 'stop'){ ks[id] = 'stop'; }
+    else if(v !== 'go'){ ks[id] = ''; }  /* 保留・再検討・取り消し＝トライゲイトでは「決裁待ち」 */
     sj('tg_kessai', ks);
     render();
     $('msg').textContent = v === 'go' ? '「' + g['名称'] + '」を進めることにしました。トライゲイトの獲得スケジュールに載ります。'

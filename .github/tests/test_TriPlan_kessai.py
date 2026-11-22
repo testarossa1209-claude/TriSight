@@ -20,7 +20,7 @@ PLAN = {
   "前提": ["試験用"], "当社の受け持ち": "試験", "当社が受け持たないこと": "試験",
   "制度": [
     {"id": "a", "名称": "試験の助成金A", "発出元": "厚生労働省", "使い道": "試験", "締切": "2026-12-25", "支給の決まり方": "試験の先着",
-     "判断材料": {"誰が": "試験の講師", "費用": "試験の費用"}, "AIアドバイス": {"判定": "取る", "札": ["期間が長い"], "項目": [{"名": "取りやすさ", "値": "高"}], "理由": "試験の理由", "次の一手": {"当社AI": ["試験のAI作業"], "御社": ["試験の御社作業"], "いつまでに": "試験の期限"}},
+     "判断材料": {"誰が": "試験の講師", "費用": "試験の費用"}, "AIアドバイス": {"判定": "取ることをお勧めします", "札": ["期間が長い"], "項目": [{"名": "取りやすさ", "値": "高"}], "理由": "試験の理由", "次の一手": {"当社AI": ["試験のAI作業"], "御社": ["試験の御社作業"], "いつまでに": "試験の期限"}},
      "時系列": [{"時期": "2026-12-25", "内容": "締切"}], "出所": [{"名": "試験", "確認日": "2026-11-21"}]},
     {"id": "b", "名称": "試験の補助金B", "発出元": "国土交通省", "使い道": "試験", "獲得スケジュールの締切": "2027-09-30",
      "時系列": [{"時期": "2027-09-30", "内容": "申請"}]}
@@ -30,11 +30,24 @@ PLAN = {
   "約束ごと": ["試験"]
 }
 
+async def drawn(pg):
+    # 計画書のページが描かれるまで待つ（画面の描き替えの合図を待つ方式はヘッドレスで来ないことがあるため、一定間隔で数える）
+    for _ in range(50):
+        if await pg.evaluate("document.querySelectorAll('#out section.page').length") > 0: return
+        await pg.wait_for_timeout(300)
+
+async def load(pg, plan):
+    # 計画データを、利用者と同じく「受給計画データを読み込む」からファイルとして読み込ませる
+    import tempfile
+    f = os.path.join(tempfile.mkdtemp(), 'test_受給計画.json')
+    with open(f, 'w', encoding='utf-8') as w: json.dump(plan, w, ensure_ascii=False)
+    await pg.set_input_files('#file', f); await drawn(pg)
+
 async def test(p):
     s = Screen(); pg = await s.open(p, 'TriPlan.html')
     try:
-        await pg.evaluate("localStorage.setItem('triplan_last', %s); localStorage.removeItem('tritask_inbox'); localStorage.removeItem('tg_kessai'); localStorage.removeItem('triplan_decisions');" % json.dumps(json.dumps(PLAN, ensure_ascii=False)))
-        await pg.reload(); await pg.wait_for_function("document.querySelectorAll('#out section.page').length > 0", timeout=15000)
+        await pg.evaluate("localStorage.removeItem('triplan_last'); localStorage.removeItem('tritask_inbox'); localStorage.removeItem('tg_kessai'); localStorage.removeItem('triplan_decisions');")
+        await load(pg, PLAN)
         n = await pg.evaluate("document.querySelectorAll('#out section.page').length")
         assert n == 5, '計画書のページ数が合いません（一覧・時系列・制度2件・確認待ちの5ページのはず）：%s' % n
         h1 = await pg.evaluate("document.querySelector('#out section.page table').rows[0].innerText")
@@ -79,15 +92,15 @@ async def test(p):
         # 来期候補（2026-11-22-06）
         P2 = dict(PLAN); P2['来期候補'] = [{"id": "k", "名称": "試験の来期補助金", "発出元": "国土交通省", "使い道": "試験", "締切表示": "今期は終了",
             "獲得スケジュールの締切": "2027-02-12", "事前準備": [{"時期": "2027年1月", "内容": "試験の事前準備", "誰が": "御社"}],
-            "AIアドバイス": {"判定": "取る（来期）", "理由": "試験"}}]
-        await pg.evaluate("localStorage.setItem('triplan_last', %s)" % json.dumps(json.dumps(P2, ensure_ascii=False)))
-        await pg.reload(); await pg.wait_for_function("document.querySelectorAll('#out section.page').length > 0", timeout=15000)
+            "AIアドバイス": {"判定": "条件が合えば取ることをお勧めします（来期）", "条件": "試験の条件", "理由": "試験"}}]
+        await load(pg, P2)
         n = await pg.evaluate("document.querySelectorAll('#out section.page').length")
         assert n == 7, '来期候補があるときのページ数が合いません（来期の一覧と詳しいご案内で2ページ増えて7のはず）：%s' % n
         p2 = await pg.evaluate("document.querySelectorAll('#out section.page')[1].innerText")
         assert '来期に取りにいく候補' in p2 and '試験の来期補助金' in p2, '2ページ目に来期に取りにいく候補が出ていません'
+        assert '条件：試験の条件' in p2, '条件付きで取るの「条件」が出ていません'
         await pg.click('button[data-dt="k"]'); await pg.wait_for_timeout(300)
-        dt = await pg.evaluate("(document.querySelector('#out tr.dt')||{}).innerText||''")
+        dt = await pg.evaluate("[].map.call(document.querySelectorAll('#out tr.dt'), function(e){ return e.innerText; }).join(' / ')")
         assert '試験の事前準備' in dt and '6ページ目' in dt, '来期候補の簡易詳細に事前準備、または正しいページ番号が出ていません：' + dt
         await pg.click('button[data-id="k"][data-v="go"]'); await pg.wait_for_timeout(300)
         inbox = json.loads(await pg.evaluate("localStorage.getItem('tritask_inbox')") or '[]')

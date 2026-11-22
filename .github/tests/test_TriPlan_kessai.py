@@ -3,6 +3,7 @@
 ・受給計画データを読み込むと、一覧（1ページ目）・時系列・制度ごと・確認待ちのページが出る
 ・「進める」を押すと、受け渡し箱（tritask_inbox）に宛先の会社名で入り、決裁の印（tg_kessai）が go になる
 ・「見送る」を押すと、決裁の印が stop になる
+・2026-11-22-07：次の一手は進める前は出さず、「進める」を押すと判定の欄に出る。詳しいご案内には常に「進めた場合の役割分担」
 ・2026-11-22-06：来期候補があると「来期に取りにいく候補」のページが増え、事前準備が簡易詳細に出て、「進める」で受け渡し箱に入る
 ・2026-11-22-04：「保留」「再検討」は計画書の記録だけで区別し、決裁の印は空（トライゲイトでは決裁待ち）
 ・2026-11-22-01：1ページ目に「AIアドバイス判定」の欄があり（11-22-03で改名）、「支給の決まり方」の欄は無い。［この制度の詳細］を押すと、判断材料と支給の決まり方が出る
@@ -31,19 +32,22 @@ async def test(p):
     s = Screen(); pg = await s.open(p, 'TriPlan.html')
     try:
         await pg.evaluate("localStorage.setItem('triplan_last', %s); localStorage.removeItem('tritask_inbox'); localStorage.removeItem('tg_kessai'); localStorage.removeItem('triplan_decisions');" % json.dumps(json.dumps(PLAN, ensure_ascii=False)))
-        await pg.reload(); await pg.wait_for_timeout(800)
+        await pg.reload(); await pg.wait_for_function("document.querySelectorAll('#out section.page').length > 0", timeout=15000)
         n = await pg.evaluate("document.querySelectorAll('#out section.page').length")
         assert n == 5, '計画書のページ数が合いません（一覧・時系列・制度2件・確認待ちの5ページのはず）：%s' % n
         h1 = await pg.evaluate("document.querySelector('#out section.page table').rows[0].innerText")
         assert 'AIアドバイス判定' in h1 and '支給の決まり方' not in h1, '1ページ目の欄が「AIアドバイス判定」に替わっていません：' + h1
         t1 = await pg.evaluate("document.querySelector('#out section.page').innerText")
-        assert '試験のAI作業' in t1 and '試験の御社作業' in t1 and '進めるために' in t1, '次の一手（当社AI／御社）が出ていません'
+        assert '試験のAI作業' not in t1, '進める前なのに、判定の欄に次の一手が出ています'
         assert '試験の理由' in t1 and '期間が長い' in t1 and '取りやすさ' in t1, 'AIアドバイス判定の結論・札・項目・理由が1ページ目に出ていません'
         await pg.click('button[data-dt="a"]'); await pg.wait_for_timeout(300)
         dt = await pg.evaluate("(document.querySelector('#out tr.dt')||{}).innerText||''")
         assert '試験の講師' in dt and '試験の先着' in dt, '［この制度の簡易詳細］を押しても、判断材料と支給の決まり方が出ません'
         assert '3ページ目' in dt, '簡易詳細に、詳しいご案内のページ番号が出ていません'
         await pg.click('button[data-id="a"][data-v="go"]'); await pg.wait_for_timeout(300)
+        t1 = await pg.evaluate("document.querySelector('#out section.page').innerText")
+        assert '試験のAI作業' in t1 and '試験の御社作業' in t1, '「進める」を押しても、次の一手（当社AI／御社）が出ません'
+        assert '進めた場合の役割分担' in await pg.evaluate("document.getElementById('out').innerText"), '詳しいご案内に「進めた場合の役割分担」が出ていません'
         inbox = json.loads(await pg.evaluate("localStorage.getItem('tritask_inbox')") or '[]')
         card = [x for x in inbox if x.get('id') == 'TP-TEST-01-a']
         assert card, '「進める」を押しても受け渡し箱に入りません'
@@ -71,7 +75,7 @@ async def test(p):
             "獲得スケジュールの締切": "2027-02-12", "事前準備": [{"時期": "2027年1月", "内容": "試験の事前準備", "誰が": "御社"}],
             "AIアドバイス": {"判定": "取る（来期）", "理由": "試験"}}]
         await pg.evaluate("localStorage.setItem('triplan_last', %s)" % json.dumps(json.dumps(P2, ensure_ascii=False)))
-        await pg.reload(); await pg.wait_for_timeout(800)
+        await pg.reload(); await pg.wait_for_function("document.querySelectorAll('#out section.page').length > 0", timeout=15000)
         n = await pg.evaluate("document.querySelectorAll('#out section.page').length")
         assert n == 7, '来期候補があるときのページ数が合いません（来期の一覧と詳しいご案内で2ページ増えて7のはず）：%s' % n
         p2 = await pg.evaluate("document.querySelectorAll('#out section.page')[1].innerText")

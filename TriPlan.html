@@ -26,6 +26,7 @@
   ・2026-11-22-09：判定の札（お勧めします等）は出さない。取りにいく候補なのだから全部お勧めで、書く意味がない。代わりに「取るために整えること」（データの『整えること』）を欄の頭に出す（宏史さん「候補なのだから、条件を整える作業が何かを知りたいだけ」）
   ・2026-11-22-10：AIアドバイスの欄の一番下に「ひとことで：」として、取りやすさ・作業負荷・補助の大きさ・自己負担の大きさの札を出す（データの『評価』＝[{語, 良否: 良／注意／中}]）。良は緑、注意は黄、中は灰（宏史さん「枠の一番下に余裕があるので、取りやすい・作業負荷が多い・補助金が少ない・自己負担が大きいなどを入れられないか」）
   ・2026-11-22-11：「ひとことで」をAIアドバイスの欄から外し、左端の制度の欄（制度名・発出元・簡易詳細ボタンの下の余白）へ移した（宏史さん「ひとことでは制度の余白に。AIアドバイスが少し短くなる」）
+  ・2026-11-22-16：一覧（今期・来期）のページを詰めて組み、1ページに2件ほど入るようにした。紙からはみ出す分は、頭と足の付いた次のページへ表の見出しごと送り、ページ番号を振り直す。印刷のときは開いている簡易詳細を閉じてから印刷する（宏史さん「3pと4pは紙がもったいない」「5pと6pは説明が途中で切れている」）
   ・2026-11-22-15：「今回は見送る制度」と「お約束ごと」を、確認待ちの次のページに分けた（宏史さん「今回は見送る制度がちょん切れて見にくい」）
   ・2026-11-22-14：時系列と制度ごとの詳しいご案内は、「進める」に決まった制度だけ出す。判断前の計画書は、一覧（今期・来期）と確認待ちだけになる（宏史さん「取る取らないが決まってないのに必要ありますか」「取らないものの説明なんか読んでも意味がない」）
   ・2026-11-22-13：「取りにいく候補」「来期に取るべき」を「今期／来期に取りに行く予定の候補」に改めた。取るかどうかの判断は御社（宏史さん「とるという判断はあくまでも相模原交通側です。来期の分も同様です」）
@@ -89,6 +90,20 @@
   ul{margin:4px 0 4px 1.2em;padding:0}
   .empty{max-width:720px;margin:40px auto;background:#fff;padding:24px;border-radius:10px;box-shadow:0 2px 10px rgba(22,33,58,.08)}
   .avoid{break-inside:avoid;page-break-inside:avoid}
+  /* 2026-11-22-16：一覧のページは詰めて組む（宏史さん「紙がもったいない」）。画面と印刷で同じ寸法にして、ページ割りの計算と印刷を一致させる */
+  .page.lst{line-height:1.45}
+  .page.lst table{font-size:10.5px}
+  .page.lst th,.page.lst td{padding:3px 5px}
+  .page.lst table.adv{font-size:10px;margin:2px 0}
+  .page.lst table.adv th,.page.lst table.adv td{padding:1px 4px}
+  .page.lst .hk{margin-top:4px;padding:3px 5px}
+  .page.lst .hk .bn{font-size:10.5px}
+  .page.lst .hk .mk{font-size:15px}
+  .page.lst .hy{font-size:9.5px;margin:1px 2px 0 0}
+  .page.lst .tag{font-size:9.5px}
+  .page.lst .note,.page.lst .nx{font-size:10px}
+  .page.lst ol,.page.lst ul{margin:2px 0 2px 1.2em}
+  .page.lst p{margin:6px 0}
   @media print{
     @page{size:A4 landscape;margin:0}
     body{background:#fff}
@@ -122,7 +137,7 @@ function tsGoBack(){
 })();
 </script>
 <div class="bar">
-  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-22-15</span></span>
+  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-22-16</span></span>
   <label class="btn main">受給計画データを読み込む<input type="file" id="file" accept=".json,application/json" style="display:none"></label>
   <button class="btn" id="save" type="button">判断を入れて保存する</button>
   <button class="btn" id="print" type="button">印刷する</button>
@@ -224,7 +239,35 @@ function tsGoBack(){
       '<div class="right">' + esc(P['宛先']['会社名']) + ' 様<br>' + esc(sub || ('作成日 ' + jd(P['作成日']))) + '</div></div>';
   }
   function foot(n){ return '<div class="ft"><span><img src="' + LOGO + '" alt="">TriSight® 合同会社トライサイト</span><span>社外秘・他言無用</span><span>' + n + '</span></div>'; }
-  function page(title, body, n){ return '<section class="page">' + head(title) + body + foot(n) + '</section>'; }
+  function page(title, body, n, cls){ return '<section class="page' + (cls ? ' ' + cls : '') + '" data-title="' + esc(title) + '">' + head(title) + body + foot(n) + '</section>'; }
+  /* 2026-11-22-16：一覧のページが紙からはみ出したら、はみ出した行と注記を、頭と足の付いた次のページへ送る（宏史さん「説明が途中で切れている」）。
+     表の見出しの行は次のページにも付ける。最後にページ番号を振り直す。 */
+  function paginate(){
+    var MM = 96 / 25.4, LIM = (210 - 18) * MM;
+    function over(sec){ var ft = sec.querySelector('.ft'), last = ft && ft.previousElementSibling; return last ? (last.getBoundingClientRect().bottom - sec.getBoundingClientRect().top) > LIM : false; }
+    var list = [].slice.call(document.querySelectorAll('#out section.page.lst')), guard = 0;
+    while(list.length && guard++ < 50){
+      var sec = list.shift(); if(!over(sec)) continue;
+      var tb = sec.querySelector(':scope > table'); if(!tb) continue;
+      var nw = document.createElement('section'); nw.className = sec.className; nw.setAttribute('data-title', sec.getAttribute('data-title'));
+      nw.innerHTML = head(sec.getAttribute('data-title') + '（続き）') + '<table></table>' + foot('');
+      sec.parentNode.insertBefore(nw, sec.nextSibling);
+      var nt = nw.querySelector('table'), nft = nw.querySelector('.ft'), hrow = tb.rows[0];
+      nt.appendChild(hrow.cloneNode(true));
+      while(over(sec)){
+        var tail = sec.querySelector('.ft').previousElementSibling;
+        if(tail && tail !== tb){ nw.insertBefore(tail, nt.nextSibling); continue; }
+        var rs = tb.rows; if(rs.length <= 2) break;
+        var r = rs[rs.length - 1], grp = [r];
+        if(r.classList.contains('dt') && rs.length > 3) grp.unshift(rs[rs.length - 2]);
+        var at = nt.rows[1] || null;
+        grp.forEach(function(x){ nt.tBodies[0] ? nt.tBodies[0].insertBefore(x, at) : nt.insertBefore(x, at); });
+      }
+      if(nt.rows.length <= 1) nt.parentNode.removeChild(nt);
+      list.unshift(nw);
+    }
+    [].forEach.call(document.querySelectorAll('#out section.page .ft'), function(f, i){ f.lastElementChild.textContent = i + 1; });
+  }
 
   function render(){
     if(!P){ $('out').innerHTML = '<div class="empty"><h2>受給計画データを読み込んでください</h2><p>上の「受給計画データを読み込む」を押して、会社ごとの受給計画データ（○○_受給計画.json）を選ぶと、計画書が出ます。</p><p class="note">会社の情報はこの端末の中だけで扱い、公開の場所や当社のサーバーには置きません。</p></div>'; return; }
@@ -258,13 +301,13 @@ function tsGoBack(){
       '<p class="note">ここに載せた制度は、ヒアリングシートと公的な資料をもとに当社AIがお勧めする、今期に取りに行く予定の候補です。AIアドバイスの欄には、取るために整えることと、手間・期間・見返りの目安を載せています。お金と作業のご負担を伴うため、取るかどうかは御社でご判断ください（取りやすさ等は段階で示し、確かめていない数字は出しません）。制度の欄の印は、当社AIのおすすめの度合いです（◎イチオシ／○おすすめ／△条件が合えばおすすめ）。「この制度の簡易詳細」で、誰が行うか・時間と手間・費用・戻ってくる額・御社の負担・支給の決まり方をご覧いただけます。制度の目的・流れ・情報の出所までを含めた詳しいご案内と、いつ何をするかの時系列は、「進める」に決まった制度についてだけお出しします。</p>' +
       '<p class="note">「進める」にした制度は、トライゲイトの「獲得スケジュール」に載り、書類をそろえ終える日・最終確認の日・入金の予想が出ます。金額は制度の上限・定額で、満額の受給を保証するものではありません。</p>' +
       '<p class="note">作成の前提：' + arr(P['前提']).map(esc).join('／') + '</p>' +
-      (K.length ? '<p class="note">今期の受付が終わっている制度のうち、来期に取りに行く予定の候補は、次のページ「来期に取りに行く予定の候補」に載せています。</p>' : ''), ++n);
+      (K.length ? '<p class="note">今期の受付が終わっている制度のうち、来期に取りに行く予定の候補は、次のページ「来期に取りに行く予定の候補」に載せています。</p>' : ''), ++n, 'lst');
     if(K.length){
       html += page('補助金・助成金 受給計画書　来期に取りに行く予定の候補',
         '<h2>1-2. 来期に取りに行く予定の候補（今期の受付は終了）</h2>' +
         '<p>' + esc(P['来期候補の説明'] || '今期の受付はすでに終わっていますが、来期に取りに行く予定の候補です。取るかどうかは御社でご判断ください。取りこぼさないよう、来期の受付が始まる前の準備を「事前準備」として書いています。') + '</p>' +
         '<table>' + HEAD('今期の状況・来期の目安') + K.map(row).join('') + '</table>' +
-        '<p class="note">来期の日程は、まだ発表されていません。今期の日程から当社が見込んだ目安で、発表があり次第、当社が確かめて改めてお知らせします。「進める」にした制度は、トライゲイトの獲得スケジュールに載り、当社が受付の開始を見張ります。</p>', ++n);
+        '<p class="note">来期の日程は、まだ発表されていません。今期の日程から当社が見込んだ目安で、発表があり次第、当社が確かめて改めてお知らせします。「進める」にした制度は、トライゲイトの獲得スケジュールに載り、当社が受付の開始を見張ります。</p>', ++n, 'lst');
     }
     /* 2ページ目：時系列（2026-11-21-02・宏史さん「助成金や補助金毎に分けて。全部一つの助成金に見える」）＝制度ごとに見出しを立て、その中を月で区切る */
     var tl = GO.map(function(g, k){
@@ -308,6 +351,7 @@ function tsGoBack(){
       arr(P['見送り']).map(function(c){ return '<tr class="avoid"><td>' + esc(c['名称']) + '</td><td>' + esc(c['理由'] || '') + '</td><td>' + esc(c['次の機会'] || '') + '</td></tr>'; }).join('') + '</table>' +
       '<h2>お約束ごと</h2><ul>' + arr(P['約束ごと']).map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>', ++n);
     $('out').innerHTML = html;
+    paginate();
   }
 
   $('out').addEventListener('click', function(ev){
@@ -345,7 +389,7 @@ function tsGoBack(){
     document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
     $('msg').textContent = '「' + name + '」を保存しました。ダウンロードのフォルダから、SSDの同じ名前のファイルに上書きしてください。';
   });
-  $('print').addEventListener('click', function(){ window.print(); });
+  $('print').addEventListener('click', function(){ var k; for(k in OPEN){ if(OPEN[k]){ OPEN = {}; render(); break; } } window.print(); });
   P = lj(KEY, null); render();
 })();
 </script>

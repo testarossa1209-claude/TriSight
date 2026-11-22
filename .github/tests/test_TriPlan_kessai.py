@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """受給計画書（TriPlan）の試験（2026-11-21・宏史さん「受給計画で決裁が取れた最終的な助成金で獲得スケジュールを組む」）
-・受給計画データを読み込むと、一覧（1ページ目）・時系列・制度ごと・確認待ちのページが出る
+・受給計画データを読み込むと、一覧（1ページ目）と確認待ちのページが出る。時系列と制度ごとの詳しいご案内は「進める」にした制度だけ出る（2026-11-22-14）
 ・「進める」を押すと、受け渡し箱（tritask_inbox）に宛先の会社名で入り、決裁の印（tg_kessai）が go になる
 ・「見送る」を押すと、決裁の印が stop になる
 ・2026-11-22-12：制度の欄に、おすすめの印（◎○△）と背中を押す一言
@@ -53,7 +53,7 @@ async def test(p):
         await pg.evaluate("localStorage.removeItem('triplan_last'); localStorage.removeItem('tritask_inbox'); localStorage.removeItem('tg_kessai'); localStorage.removeItem('triplan_decisions');")
         await load(pg, PLAN)
         n = await pg.evaluate("document.querySelectorAll('#out section.page').length")
-        assert n == 5, '計画書のページ数が合いません（一覧・時系列・制度2件・確認待ちの5ページのはず）：%s' % n
+        assert n == 2, '判断前の計画書のページ数が合いません（一覧・確認待ちの2ページのはず。時系列と詳しいご案内は進めると決めた後）：%s' % n
         h1 = await pg.evaluate("document.querySelector('#out section.page table').rows[0].innerText")
         assert 'AIアドバイス（取るために整えること）' in h1 and '支給の決まり方' not in h1, '1ページ目の欄の見出しが「AIアドバイス（取るために整えること）」になっていません：' + h1
         t1 = await pg.evaluate("document.querySelector('#out section.page').innerText")
@@ -68,11 +68,13 @@ async def test(p):
         await pg.click('button[data-dt="a"]'); await pg.wait_for_timeout(300)
         dt = await pg.evaluate("(document.querySelector('#out tr.dt')||{}).innerText||''")
         assert '試験の講師' in dt and '試験の先着' in dt, '［この制度の簡易詳細］を押しても、判断材料と支給の決まり方が出ません'
-        assert '3ページ目' in dt, '簡易詳細に、詳しいご案内のページ番号が出ていません'
+        assert '「進める」に決まった後にお出しします' in dt, '判断前の簡易詳細に、詳しいご案内は進めると決めた後に出す旨が出ていません'
         await pg.click('button[data-id="a"][data-v="go"]'); await pg.wait_for_timeout(300)
         t1 = await pg.evaluate("document.querySelector('#out section.page').innerText")
         assert '試験のAI作業' in t1 and '試験の御社作業' in t1, '「進める」を押しても、次の一手（当社AI／御社）が出ません'
         assert '進めた場合の役割分担' in await pg.evaluate("document.getElementById('out').innerText"), '詳しいご案内に「進めた場合の役割分担」が出ていません'
+        n = await pg.evaluate("document.querySelectorAll('#out section.page').length")
+        assert n == 4, '「進める」1件のときのページ数が合いません（一覧・時系列・その制度の詳しいご案内・確認待ちの4ページのはず）：%s' % n
         inbox = json.loads(await pg.evaluate("localStorage.getItem('tritask_inbox')") or '[]')
         card = [x for x in inbox if x.get('id') == 'TP-TEST-01-a']
         assert card, '「進める」を押しても受け渡し箱に入りません'
@@ -105,16 +107,18 @@ async def test(p):
             "AIアドバイス": {"整えること": ["試験の来期の整えること"], "理由": "試験"}}]
         await load(pg, P2)
         n = await pg.evaluate("document.querySelectorAll('#out section.page').length")
-        assert n == 7, '来期候補があるときのページ数が合いません（来期の一覧と詳しいご案内で2ページ増えて7のはず）：%s' % n
+        assert n == 3, '来期候補があるときの判断前のページ数が合いません（一覧・来期の一覧・確認待ちの3ページのはず）：%s' % n
         p2 = await pg.evaluate("document.querySelectorAll('#out section.page')[1].innerText")
         assert '来期に取りに行く予定の候補' in p2 and '試験の来期補助金' in p2, '2ページ目に来期に取りに行く予定の候補が出ていません'
         assert '試験の来期の整えること' in p2, '来期の候補に、取るために整えることが出ていません'
         await pg.click('button[data-dt="k"]'); await pg.wait_for_timeout(300)
         dt = await pg.evaluate("[].map.call(document.querySelectorAll('#out tr.dt'), function(e){ return e.innerText; }).join(' / ')")
-        assert '試験の事前準備' in dt and '6ページ目' in dt, '来期候補の簡易詳細に事前準備、または正しいページ番号が出ていません：' + dt
+        assert '試験の事前準備' in dt, '来期候補の簡易詳細に事前準備が出ていません：' + dt
         await pg.click('button[data-id="k"][data-v="go"]'); await pg.wait_for_timeout(300)
         inbox = json.loads(await pg.evaluate("localStorage.getItem('tritask_inbox')") or '[]')
         ck = [x for x in inbox if x.get('id') == 'TP-TEST-01-k']
+        n = await pg.evaluate("document.querySelectorAll('#out section.page').length")
+        assert n == 5, '来期候補を「進める」にしたときのページ数が合いません（時系列とその制度の詳しいご案内が増えて5のはず）：%s' % n
         assert ck and ck[0]['deadlines'] == ['2027-02-12'], '来期候補の「進める」で受け渡し箱に入りません'
         assert not s.errs, '画面の中で誤りが出ています：' + ' / '.join(s.errs)
         await s.shot('#out', 'TriPlan_kessai.png')

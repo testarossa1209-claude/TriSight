@@ -17,6 +17,7 @@
   ・2026-11-22-02：ボタンの中身と3ページ目以降が同じ情報に見えるため、ボタンを「この制度の簡易詳細」、3ページ目以降を「制度ごとの詳しいご案内」と呼び分け、簡易詳細の頭に詳しいご案内のページ番号を出す（宏史さんの指示）
   ・2026-11-22-03：「AIの判定」を「AIアドバイス判定」に改名。最初に結論（取る／検討／見送り）と札（作業が多い・期間が長い等）、続けて取りやすさ・書類の量・期間・御社の負担・戻る額を一目で、最後に理由を一言（宏史さんの指示「簡単にどうするかを決められるように」）
   ・2026-11-22-04：ご判断に「保留」「再検討」を追加（宏史さんの指示）。トライゲイト・トライタイムは印を go／stop／空でしか読まないため、保留・再検討は計画書の記録（triplan_decisions）だけで区別し、決裁の印（tg_kessai）は空＝「決裁待ち」として渡す
+  ・2026-11-22-05：AIアドバイス判定の最後に「次の一手」（当社AIがやること／御社にお願いすること／いつまでに）を出す。理由は手間と見返りの比べ方で書く（宏史さん「検討ばかりでは何のために候補に出したか分からない。検討ならAIの作業と人間の作業を入れる」）
 -->
 <style>
   :root{--ink:#16213a;--line:#d7dce6;--muted:#5b6478;--go:#1e6b34;--stop:#8a5a00;--bg:#f4f6fa}
@@ -57,6 +58,8 @@
   .ai.k2{background:#fff4e0;color:var(--stop)}
   .ai.k3{background:#eef1f6;color:var(--muted)}
   .ai.big{font-size:14px;padding:1px 10px}
+  .nx{margin-top:4px;border-top:1px solid var(--line);padding-top:3px;font-size:11.5px}
+  .nx b{color:var(--ink)}
   .tag{display:inline-block;font-size:11px;border:1px solid #e8c17a;color:var(--stop);border-radius:999px;padding:0 7px;margin:0 2px 2px 0}
   table.adv{margin:4px 0;font-size:11.5px}
   table.adv th,table.adv td{padding:2px 5px;border:none;border-bottom:1px dotted var(--line);background:none}
@@ -99,7 +102,7 @@ function tsGoBack(){
 })();
 </script>
 <div class="bar">
-  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-22-04</span></span>
+  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-22-05</span></span>
   <label class="btn main">受給計画データを読み込む<input type="file" id="file" accept=".json,application/json" style="display:none"></label>
   <button class="btn" id="print" type="button">印刷する</button>
   <a class="btn" href="TriGate.html" style="text-decoration:none">トライゲイトへ戻る</a>
@@ -130,7 +133,13 @@ function tsGoBack(){
     var k = /見送/.test(h) ? 'k3' : /検討/.test(h) ? 'k2' : 'k1';
     return '<span class="ai big ' + k + '">' + esc(h) + '</span> ' + arr(a['札']).map(function(t){ return '<span class="tag">' + esc(t) + '</span>'; }).join('') +
       '<table class="adv">' + arr(a['項目']).map(function(x){ return '<tr><th>' + esc(x['名']) + '</th><td><b>' + esc(x['値']) + '</b>' + (x['説明'] ? '<span class="note">（' + esc(x['説明']) + '）</span>' : '') + '</td></tr>'; }).join('') + '</table>' +
-      (a['理由'] ? '<div>' + esc(a['理由']) + '</div>' : '');
+      (a['理由'] ? '<div>' + esc(a['理由']) + '</div>' : '') +
+      (a['次の一手'] ? (function(n){
+        return '<div class="nx"><b>次の一手（' + (/取る/.test(h) ? '進めるために' : /見送/.test(h) ? '見送るにあたって' : '決めるために') + '）</b>' +
+          (arr(n['当社AI']).length ? '<div>当社AIがやること：' + arr(n['当社AI']).map(esc).join('／') + '</div>' : '') +
+          (arr(n['御社']).length ? '<div>御社にお願いすること：' + arr(n['御社']).map(esc).join('／') + '</div>' : '') +
+          (n['いつまでに'] ? '<div>いつまでに：' + esc(n['いつまでに']) + '</div>' : '') + '</div>';
+      })(a['次の一手']) : '');
   }
 
   /* ---- 判断（進める／見送る）＝獲得スケジュールとつなぐ ---- */

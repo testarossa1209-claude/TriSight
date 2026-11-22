@@ -3,6 +3,7 @@
 ・受給計画データを読み込むと、一覧（1ページ目）・時系列・制度ごと・確認待ちのページが出る
 ・「進める」を押すと、受け渡し箱（tritask_inbox）に宛先の会社名で入り、決裁の印（tg_kessai）が go になる
 ・「見送る」を押すと、決裁の印が stop になる
+・2026-11-22-06：来期候補があると「来期に取りにいく候補」のページが増え、事前準備が簡易詳細に出て、「進める」で受け渡し箱に入る
 ・2026-11-22-04：「保留」「再検討」は計画書の記録だけで区別し、決裁の印は空（トライゲイトでは決裁待ち）
 ・2026-11-22-01：1ページ目に「AIアドバイス判定」の欄があり（11-22-03で改名）、「支給の決まり方」の欄は無い。［この制度の詳細］を押すと、判断材料と支給の決まり方が出る
 試験の計画データは架空の会社（実在の会社の情報は使わない）。"""
@@ -65,6 +66,23 @@ async def test(p):
         await pg.click('button[data-id="b"][data-v="rethink"]'); await pg.wait_for_timeout(300)
         dc = json.loads(await pg.evaluate("localStorage.getItem('triplan_decisions')") or '{}')
         assert dc['試験交通株式会社']['b'] == 'rethink', '「再検討」が計画書の記録に残りません'
+        # 来期候補（2026-11-22-06）
+        P2 = dict(PLAN); P2['来期候補'] = [{"id": "k", "名称": "試験の来期補助金", "発出元": "国土交通省", "使い道": "試験", "締切表示": "今期は終了",
+            "獲得スケジュールの締切": "2027-02-12", "事前準備": [{"時期": "2027年1月", "内容": "試験の事前準備", "誰が": "御社"}],
+            "AIアドバイス": {"判定": "取る（来期）", "理由": "試験"}}]
+        await pg.evaluate("localStorage.setItem('triplan_last', %s)" % json.dumps(json.dumps(P2, ensure_ascii=False)))
+        await pg.reload(); await pg.wait_for_timeout(800)
+        n = await pg.evaluate("document.querySelectorAll('#out section.page').length")
+        assert n == 7, '来期候補があるときのページ数が合いません（来期の一覧と詳しいご案内で2ページ増えて7のはず）：%s' % n
+        p2 = await pg.evaluate("document.querySelectorAll('#out section.page')[1].innerText")
+        assert '来期に取りにいく候補' in p2 and '試験の来期補助金' in p2, '2ページ目に来期に取りにいく候補が出ていません'
+        await pg.click('button[data-dt="k"]'); await pg.wait_for_timeout(300)
+        dt = await pg.evaluate("(document.querySelector('#out tr.dt')||{}).innerText||''")
+        assert '試験の事前準備' in dt and '6ページ目' in dt, '来期候補の簡易詳細に事前準備、または正しいページ番号が出ていません：' + dt
+        await pg.click('button[data-id="k"][data-v="go"]'); await pg.wait_for_timeout(300)
+        inbox = json.loads(await pg.evaluate("localStorage.getItem('tritask_inbox')") or '[]')
+        ck = [x for x in inbox if x.get('id') == 'TP-TEST-01-k']
+        assert ck and ck[0]['deadlines'] == ['2027-02-12'], '来期候補の「進める」で受け渡し箱に入りません'
         assert not s.errs, '画面の中で誤りが出ています：' + ' / '.join(s.errs)
         await s.shot('#out', 'TriPlan_kessai.png')
     finally:

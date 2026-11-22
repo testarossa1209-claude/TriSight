@@ -3,6 +3,7 @@
 ・受給計画データを読み込むと、一覧（1ページ目）・時系列・制度ごと・確認待ちのページが出る
 ・「進める」を押すと、受け渡し箱（tritask_inbox）に宛先の会社名で入り、決裁の印（tg_kessai）が go になる
 ・「見送る」を押すと、決裁の印が stop になる
+・2026-11-22-11：「ひとことで」は制度の欄（左端）の余白へ移した
 ・2026-11-22-10：AIアドバイスの欄の一番下に「ひとことで：」の札
 ・2026-11-22-09：判定の札は出さず、AIアドバイスの欄の頭に「取るために整えること」
 ・2026-11-22-08：判断は計画データの中（判断）にも書き込まれる
@@ -56,7 +57,10 @@ async def test(p):
         assert 'AIアドバイス（取るために整えること）' in h1 and '支給の決まり方' not in h1, '1ページ目の欄の見出しが「AIアドバイス（取るために整えること）」になっていません：' + h1
         t1 = await pg.evaluate("document.querySelector('#out section.page').innerText")
         assert '試験のAI作業' not in t1, '進める前なのに、判定の欄に次の一手が出ています'
-        assert 'ひとことで：' in t1 and '試験の取りやすい' in t1 and '試験の負担大' in t1, '欄の一番下に「ひとことで：」の札が出ていません'
+        c0 = await pg.evaluate("document.querySelector('#out section.page table').rows[1].cells[0].innerText")
+        c4 = await pg.evaluate("document.querySelector('#out section.page table').rows[1].cells[4].innerText")
+        assert 'ひとことで' in c0 and '試験の取りやすい' in c0 and '試験の負担大' in c0, '制度の欄の余白に「ひとことで」の札が出ていません'
+        assert 'ひとことで' not in c4, 'AIアドバイスの欄に「ひとことで」が残っています'
         assert '試験の整えること' in t1 and 'お勧めします' not in t1, '取るために整えることが出ていない、または判定の札が残っています'
         assert '試験の理由' in t1 and '期間が長い' in t1 and '取りやすさ' in t1, 'AIアドバイス判定の結論・札・項目・理由が1ページ目に出ていません'
         await pg.click('button[data-dt="a"]'); await pg.wait_for_timeout(300)

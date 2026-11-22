@@ -24,6 +24,7 @@
   ・2026-11-22-08：判断（進める等）を計画データの中（『判断』）にも書き込み、「判断を入れて保存する」でファイルに保存できるようにした。読み込むと、ファイルの判断どおりに受け渡し箱・決裁の印を整える。SSDの計画データが正本になり、どのPCでも同じ状態に戻る（宏史さん「全タクのコンサルはトライサイトの業務。トライサイトメインPCかラップトップで。情報はどこでも仕事ができるようSSD保管」）
   ・2026-11-22-08：判定の言い方は決めつけにしない（宏史さん「責任を取らないAIが決めつけで指示すると、失敗したとき『AIが言ったからやったのに』となる」）。見送りを勧めるものは候補に出さず、見送りの表へ
   ・2026-11-22-09：判定の札（お勧めします等）は出さない。取りにいく候補なのだから全部お勧めで、書く意味がない。代わりに「取るために整えること」（データの『整えること』）を欄の頭に出す（宏史さん「候補なのだから、条件を整える作業が何かを知りたいだけ」）
+  ・2026-11-22-10：AIアドバイスの欄の一番下に「ひとことで：」として、取りやすさ・作業負荷・補助の大きさ・自己負担の大きさの札を出す（データの『評価』＝[{語, 良否: 良／注意／中}]）。良は緑、注意は黄、中は灰（宏史さん「枠の一番下に余裕があるので、取りやすい・作業負荷が多い・補助金が少ない・自己負担が大きいなどを入れられないか」）
 -->
 <style>
   :root{--ink:#16213a;--line:#d7dce6;--muted:#5b6478;--go:#1e6b34;--stop:#8a5a00;--bg:#f4f6fa}
@@ -66,6 +67,9 @@
   .ai.big{font-size:14px;padding:1px 10px}
   .nx{margin-top:4px;border-top:1px solid var(--line);padding-top:3px;font-size:11.5px}
   .nx b{color:var(--ink)}
+  .hy{display:inline-block;font-size:11px;border-radius:4px;padding:0 6px;margin:2px 3px 0 0;border:1px solid var(--line);background:#eef1f6;color:var(--muted)}
+  .hy.g{background:#e3f4ea;color:var(--go);border-color:#b9e0c8}
+  .hy.w{background:#fff4e0;color:var(--stop);border-color:#e8c17a}
   .tag{display:inline-block;font-size:11px;border:1px solid #e8c17a;color:var(--stop);border-radius:999px;padding:0 7px;margin:0 2px 2px 0}
   table.adv{margin:4px 0;font-size:11.5px}
   table.adv th,table.adv td{padding:2px 5px;border:none;border-bottom:1px dotted var(--line);background:none}
@@ -108,7 +112,7 @@ function tsGoBack(){
 })();
 </script>
 <div class="bar">
-  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-22-09</span></span>
+  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-22-10</span></span>
   <label class="btn main">受給計画データを読み込む<input type="file" id="file" accept=".json,application/json" style="display:none"></label>
   <button class="btn" id="save" type="button">判断を入れて保存する</button>
   <button class="btn" id="print" type="button">印刷する</button>
@@ -154,6 +158,7 @@ function tsGoBack(){
     return (t.length ? '<div><b>取るために整えること</b><ol style="margin:2px 0 4px 1.3em;padding:0">' + t.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ol></div>' : '') + arr(a['札']).map(function(t){ return '<span class="tag">' + esc(t) + '</span>'; }).join('') +
       '<table class="adv">' + arr(a['項目']).map(function(x){ return '<tr><th>' + esc(x['名']) + '</th><td><b>' + esc(x['値']) + '</b>' + (x['説明'] ? '<span class="note">（' + esc(x['説明']) + '）</span>' : '') + '</td></tr>'; }).join('') + '</table>' +
       (a['理由'] ? '<div>' + esc(a['理由']) + '</div>' : '') +
+      (arr(a['評価']).length ? '<div style="margin-top:4px"><b>ひとことで：</b>' + arr(a['評価']).map(function(x){ var r = String(x['良否'] || ''); return '<span class="hy' + (r === '良' ? ' g' : r === '注意' ? ' w' : '') + '">' + esc(x['語'] || '') + '</span>'; }).join('') + '</div>' : '') +
       (((decs()[P['宛先']['会社名']] || {})[g.id] === 'go') ? nextStep(g, '進めると決まりました。次の一手') : '');
   }
 

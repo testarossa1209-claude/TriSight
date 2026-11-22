@@ -26,6 +26,7 @@
   ・2026-11-22-09：判定の札（お勧めします等）は出さない。取りにいく候補なのだから全部お勧めで、書く意味がない。代わりに「取るために整えること」（データの『整えること』）を欄の頭に出す（宏史さん「候補なのだから、条件を整える作業が何かを知りたいだけ」）
   ・2026-11-22-10：AIアドバイスの欄の一番下に「ひとことで：」として、取りやすさ・作業負荷・補助の大きさ・自己負担の大きさの札を出す（データの『評価』＝[{語, 良否: 良／注意／中}]）。良は緑、注意は黄、中は灰（宏史さん「枠の一番下に余裕があるので、取りやすい・作業負荷が多い・補助金が少ない・自己負担が大きいなどを入れられないか」）
   ・2026-11-22-11：「ひとことで」をAIアドバイスの欄から外し、左端の制度の欄（制度名・発出元・簡易詳細ボタンの下の余白）へ移した（宏史さん「ひとことでは制度の余白に。AIアドバイスが少し短くなる」）
+  ・2026-11-22-12：「ひとことで」の頭に、AIのおすすめの印（◎イチオシ／○おすすめ／△条件が合えばおすすめ）と背中を押す一言を出す（データの『AIアドバイス.ひとこと』＝{印, 見出し, 文}）。札はその下に（宏史さん「ひとことコメントが刺さらない。AIのおすすめとかマーク付きで、取った方がいいよという感じを」）
 -->
 <style>
   :root{--ink:#16213a;--line:#d7dce6;--muted:#5b6478;--go:#1e6b34;--stop:#8a5a00;--bg:#f4f6fa}
@@ -68,6 +69,11 @@
   .ai.big{font-size:14px;padding:1px 10px}
   .nx{margin-top:4px;border-top:1px solid var(--line);padding-top:3px;font-size:11.5px}
   .nx b{color:var(--ink)}
+  .hk{margin-top:6px;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:#fbfcfe}
+  .hk .mk{font-size:18px;font-weight:bold;margin-right:4px;vertical-align:-2px}
+  .hk .mk.m1{color:var(--go)} .hk .mk.m2{color:#2b6cb0} .hk .mk.m3{color:var(--stop)}
+  .hk .hd{font-weight:bold}
+  .hk .bn{font-size:12px;margin:2px 0 3px}
   .hy{display:inline-block;font-size:11px;border-radius:4px;padding:0 6px;margin:2px 3px 0 0;border:1px solid var(--line);background:#eef1f6;color:var(--muted)}
   .hy.g{background:#e3f4ea;color:var(--go);border-color:#b9e0c8}
   .hy.w{background:#fff4e0;color:var(--stop);border-color:#e8c17a}
@@ -113,7 +119,7 @@ function tsGoBack(){
 })();
 </script>
 <div class="bar">
-  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-22-11</span></span>
+  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-22-12</span></span>
   <label class="btn main">受給計画データを読み込む<input type="file" id="file" accept=".json,application/json" style="display:none"></label>
   <button class="btn" id="save" type="button">判断を入れて保存する</button>
   <button class="btn" id="print" type="button">印刷する</button>
@@ -155,8 +161,9 @@ function tsGoBack(){
   }
   /* ひとことで（2026-11-22-11：制度の欄の余白に出す） */
   function hitokoto(g){
-    var h = arr((g['AIアドバイス'] || {})['評価']); if(!h.length) return '';
-    return '<div style="margin-top:6px"><div class="note"><b>ひとことで</b></div>' + h.map(function(x){ var r = String(x['良否'] || ''); return '<span class="hy' + (r === '良' ? ' g' : r === '注意' ? ' w' : '') + '">' + esc(x['語'] || '') + '</span>'; }).join('') + '</div>';
+    var a = g['AIアドバイス'] || {}, h = arr(a['評価']), k = a['ひとこと'] || {}; if(!h.length && !k['文']) return '';
+    var m = String(k['印'] || ''), mc = m === '◎' ? 'm1' : m === '○' ? 'm2' : 'm3';
+    return '<div class="hk">' + (k['文'] ? '<div><span class="mk ' + mc + '">' + esc(m) + '</span><span class="hd">' + esc(k['見出し'] || 'AIのおすすめ') + '</span></div><div class="bn">' + esc(k['文']) + '</div>' : '<div class="note"><b>ひとことで</b></div>') + h.map(function(x){ var r = String(x['良否'] || ''); return '<span class="hy' + (r === '良' ? ' g' : r === '注意' ? ' w' : '') + '">' + esc(x['語'] || '') + '</span>'; }).join('') + '</div>';
   }
   function aiCell(g){
     var a = g['AIアドバイス'] || {}; if(!a['理由'] && !arr(a['整えること']).length) return '<span class="note">—</span>';
@@ -245,7 +252,7 @@ function tsGoBack(){
       '<p>' + esc(P['はじめに'] || '') + '</p>' +
       '<h2>1. 取りにいく候補とご判断</h2>' +
       '<table>' + HEAD('締切') + rows + '</table>' +
-      '<p class="note">ここに載せた制度は、ヒアリングシートと公的な資料をもとに当社AIが取りにいくことをお勧めする候補です。AIアドバイスの欄には、取るために整えることと、手間・期間・見返りの目安を載せています。お金と作業のご負担を伴うため、取るかどうかは御社でご判断ください（取りやすさ等は段階で示し、確かめていない数字は出しません）。「この制度の簡易詳細」で、誰が行うか・時間と手間・費用・戻ってくる額・御社の負担・支給の決まり方をご覧いただけます。制度の目的・流れ・情報の出所までを含めた詳しい内容は、' + D0 + 'ページ目以降の「制度ごとの詳しいご案内」に載せています。</p>' +
+      '<p class="note">ここに載せた制度は、ヒアリングシートと公的な資料をもとに当社AIが取りにいくことをお勧めする候補です。AIアドバイスの欄には、取るために整えることと、手間・期間・見返りの目安を載せています。お金と作業のご負担を伴うため、取るかどうかは御社でご判断ください（取りやすさ等は段階で示し、確かめていない数字は出しません）。制度の欄の印は、当社AIのおすすめの度合いです（◎イチオシ／○おすすめ／△条件が合えばおすすめ）。「この制度の簡易詳細」で、誰が行うか・時間と手間・費用・戻ってくる額・御社の負担・支給の決まり方をご覧いただけます。制度の目的・流れ・情報の出所までを含めた詳しい内容は、' + D0 + 'ページ目以降の「制度ごとの詳しいご案内」に載せています。</p>' +
       '<p class="note">「進める」にした制度は、トライゲイトの「獲得スケジュール」に載り、書類をそろえ終える日・最終確認の日・入金の予想が出ます。金額は制度の上限・定額で、満額の受給を保証するものではありません。</p>' +
       '<p class="note">作成の前提：' + arr(P['前提']).map(esc).join('／') + '</p>' +
       (K.length ? '<p class="note">今期の受付が終わっている制度のうち、来期に取るべきものは、次のページ「来期に取りにいく候補」に載せています。</p>' : ''), ++n);

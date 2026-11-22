@@ -21,6 +21,7 @@
   ・2026-11-22-06：「来期に取りにいく候補（今期の受付は終了）」のページを1ページ目の次に追加（計画データの『来期候補』）。AIアドバイス判定・ご判断の欄は今期と同じ。簡易詳細と詳しいご案内に『事前準備（いつ・何を・誰が）』を出す（宏史さん「締切が到来したため今期ではないが、来期に取るべきものはAI判断のもと情報提供し、事前準備にも言及する」）
   ・2026-11-22-07：「次の一手」は進めると決めた後の情報のため、判定の欄からは外し、「進める」を押した制度だけ判定の欄の下に出す。詳しいご案内には「進めた場合の役割分担」として常に載せる（宏史さん「次の一手は進めるの中の情報。前段では入れなくてよい」）
   ・2026-11-22-08：進めるを取り消す・見送る・保留・再検討に変えたとき、受け渡し箱のカードがまだ手付かず（未着手）なら取り除く。作業が始まっていれば残す
+  ・2026-11-22-08：判断（進める等）を計画データの中（『判断』）にも書き込み、「判断を入れて保存する」でファイルに保存できるようにした。読み込むと、ファイルの判断どおりに受け渡し箱・決裁の印を整える。SSDの計画データが正本になり、どのPCでも同じ状態に戻る（宏史さん「全タクのコンサルはトライサイトの業務。トライサイトメインPCかラップトップで。情報はどこでも仕事ができるようSSD保管」）
 -->
 <style>
   :root{--ink:#16213a;--line:#d7dce6;--muted:#5b6478;--go:#1e6b34;--stop:#8a5a00;--bg:#f4f6fa}
@@ -107,6 +108,7 @@ function tsGoBack(){
 <div class="bar">
   <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-22-08</span></span>
   <label class="btn main">受給計画データを読み込む<input type="file" id="file" accept=".json,application/json" style="display:none"></label>
+  <button class="btn" id="save" type="button">判断を入れて保存する</button>
   <button class="btn" id="print" type="button">印刷する</button>
   <a class="btn" href="TriGate.html" style="text-decoration:none">トライゲイトへ戻る</a>
   <span class="msg" id="msg"></span>
@@ -156,7 +158,11 @@ function tsGoBack(){
   /* ---- 判断（進める／見送る）＝獲得スケジュールとつなぐ ---- */
   function decs(){ var d = lj(DKEY, {}); return (d && typeof d === 'object') ? d : {}; }
   function cardId(g){ return 'TP-' + String(P['計画番号'] || 'plan') + '-' + String(g.id); }
-  function setDecision(g, v){
+  function setDecision(g, v, quiet){
+    /* 判断は計画データの中にも書く（SSDのファイルが正本・2026-11-22-08） */
+    P['判断'] = (P['判断'] && typeof P['判断'] === 'object') ? P['判断'] : {};
+    if(v) P['判断'][g.id] = v; else delete P['判断'][g.id];
+    sj(KEY, P);
     var co = P['宛先']['会社名'], all = decs(); all[co] = all[co] || {}; all[co][g.id] = v; sj(DKEY, all);
     var id = cardId(g), ks = lj('tg_kessai', {}); if(!ks || typeof ks !== 'object') ks = {};
     if(v === 'go'){
@@ -180,6 +186,7 @@ function tsGoBack(){
     if(v === 'stop'){ ks[id] = 'stop'; }
     else if(v !== 'go'){ ks[id] = ''; }  /* 保留・再検討・取り消し＝トライゲイトでは「決裁待ち」 */
     sj('tg_kessai', ks);
+    if(quiet) return;
     render();
     $('msg').textContent = v === 'go' ? '「' + g['名称'] + '」を進めることにしました。トライゲイトの獲得スケジュールに載ります。'
       : v === 'stop' ? '「' + g['名称'] + '」を見送りにしました。'
@@ -293,11 +300,26 @@ function tsGoBack(){
       try{
         var d = JSON.parse(r.result);
         if(!d || !d['宛先'] || !d['宛先']['会社名'] || !Array.isArray(d['制度'])) throw new Error('受給計画データの形ではありません（宛先・制度がありません）');
-        P = d; sj(KEY, d); render(); $('msg').textContent = '「' + f.name + '」を読み込みました。';
+        P = d; sj(KEY, d);
+        /* ファイルに書かれた判断どおりに、受け渡し箱と決裁の印を整える */
+        var J = (d['判断'] && typeof d['判断'] === 'object') ? d['判断'] : {}, cnt = 0;
+        var old = decs()[d['宛先']['会社名']] || {};
+        arr(d['制度']).concat(arr(d['来期候補'])).forEach(function(g){
+          if(J[g.id]){ setDecision(g, J[g.id], true); cnt++; }
+          else if(old[g.id]){ setDecision(g, '', true); }  /* ファイルが正本：ファイルに無い判断は外す */
+        });
+        render(); $('msg').textContent = '「' + f.name + '」を読み込みました。' + (cnt ? 'ファイルに書かれた判断' + cnt + '件を反映しました。' : '');
       }catch(e){ $('msg').textContent = '読み込めませんでした：' + e.message; }
     };
     r.readAsText(f, 'utf-8');
     this.value = '';
+  });
+  $('save').addEventListener('click', function(){
+    if(!P){ $('msg').textContent = '先に受給計画データを読み込んでください。'; return; }
+    var name = String(P['宛先']['会社名']).replace(/[\\/:*?"<>|\s]/g, '').replace(/^株式会社|株式会社$/g, '') + '_受給計画.json';
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(P, null, 1)], {type:'application/json'})); a.download = name;
+    document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    $('msg').textContent = '「' + name + '」を保存しました。ダウンロードのフォルダから、SSDの同じ名前のファイルに上書きしてください。';
   });
   $('print').addEventListener('click', function(){ window.print(); });
   P = lj(KEY, null); render();

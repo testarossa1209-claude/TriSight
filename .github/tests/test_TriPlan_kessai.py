@@ -3,6 +3,7 @@
 ・受給計画データを読み込むと、一覧（1ページ目）・時系列・制度ごと・確認待ちのページが出る
 ・「進める」を押すと、受け渡し箱（tritask_inbox）に宛先の会社名で入り、決裁の印（tg_kessai）が go になる
 ・「見送る」を押すと、決裁の印が stop になる
+・2026-11-22-08：判断は計画データの中（判断）にも書き込まれる
 ・2026-11-22-08：進めるを見送る等に変えたら、手付かずのカードは受け渡し箱から消える
 ・2026-11-22-07：次の一手は進める前は出さず、「進める」を押すと判定の欄に出る。詳しいご案内には常に「進めた場合の役割分担」
 ・2026-11-22-06：来期候補があると「来期に取りにいく候補」のページが増え、事前準備が簡易詳細に出て、「進める」で受け渡し箱に入る
@@ -66,6 +67,8 @@ async def test(p):
         assert ks.get('TP-TEST-01-b') == 'stop', '「見送る」を押しても決裁の印が stop になりません'
         inbox = json.loads(await pg.evaluate("localStorage.getItem('tritask_inbox')") or '[]')
         assert not [x for x in inbox if x.get('id') == 'TP-TEST-01-b'], '進めるから見送るに変えても、手付かずのカードが受け渡し箱に残っています'
+        tp = json.loads(await pg.evaluate("localStorage.getItem('triplan_last')") or '{}')
+        assert tp.get('判断', {}).get('a') == 'go' and tp['判断'].get('b') == 'stop', '判断が計画データの中（判断）に書き込まれていません'
         await pg.click('button[data-id="b"][data-v="hold"]'); await pg.wait_for_timeout(300)
         ks = json.loads(await pg.evaluate("localStorage.getItem('tg_kessai')") or '{}')
         dc = json.loads(await pg.evaluate("localStorage.getItem('triplan_decisions')") or '{}')

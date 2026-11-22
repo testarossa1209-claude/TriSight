@@ -14,6 +14,9 @@
   ・全ページの頭と最終行に当社のマークを入れる（レターヘッドの決まり 2026-09-02・11-08）
   ・2026-11-21-02：A4横向きに変更（宏史さんの指示「シートを横書きに。幅が狭い」）。時系列を制度ごとに分けた
   ・2026-11-22-01：1ページ目の「支給の決まり方」の欄を「AIの判定（取るべきか）」に替えた。誰が行うか・時間と手間・費用・戻る額・御社の負担・支給の決まり方は、制度名の下の［この制度の詳細］ボタンの中へ（宏史さん「全部読んで決めるのは決裁者の負荷。AIの判定で背中を押す」）
+  ・2026-11-22-02：ボタンの中身と3ページ目以降が同じ情報に見えるため、ボタンを「この制度の簡易詳細」、3ページ目以降を「制度ごとの詳しいご案内」と呼び分け、簡易詳細の頭に詳しいご案内のページ番号を出す（宏史さんの指示）
+  ・2026-11-22-03：「AIの判定」を「AIアドバイス判定」に改名。最初に結論（取る／検討／見送り）と札（作業が多い・期間が長い等）、続けて取りやすさ・書類の量・期間・御社の負担・戻る額を一目で、最後に理由を一言（宏史さんの指示「簡単にどうするかを決められるように」）
+  ・2026-11-22-04：ご判断に「保留」「再検討」を追加（宏史さんの指示）。トライゲイト・トライタイムは印を go／stop／空でしか読まないため、保留・再検討は計画書の記録（triplan_decisions）だけで区別し、決裁の印（tg_kessai）は空＝「決裁待ち」として渡す
 -->
 <style>
   :root{--ink:#16213a;--line:#d7dce6;--muted:#5b6478;--go:#1e6b34;--stop:#8a5a00;--bg:#f4f6fa}
@@ -42,6 +45,8 @@
   .dec button{font:inherit;font-size:12px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:2px 10px;cursor:pointer;margin:1px 0;display:block;width:100%}
   .dec button.on.go{background:var(--go);color:#fff;border-color:var(--go)}
   .dec button.on.stop{background:#fff4e0;color:var(--stop);border-color:#e8c17a}
+  .dec button.on.hold{background:#eef1f6;color:var(--ink);border-color:#9aa5b8}
+  .dec button.on.rethink{background:#eef1f6;color:var(--ink);border-color:#9aa5b8}
   .dec .pr{display:none}
   .dtb{font:inherit;font-size:11.5px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:1px 10px;cursor:pointer;margin-top:4px;color:var(--ink)}
   .dtb.on{background:#eef1f6}
@@ -51,6 +56,11 @@
   .ai.k1{background:#e3f4ea;color:var(--go)}
   .ai.k2{background:#fff4e0;color:var(--stop)}
   .ai.k3{background:#eef1f6;color:var(--muted)}
+  .ai.big{font-size:14px;padding:1px 10px}
+  .tag{display:inline-block;font-size:11px;border:1px solid #e8c17a;color:var(--stop);border-radius:999px;padding:0 7px;margin:0 2px 2px 0}
+  table.adv{margin:4px 0;font-size:11.5px}
+  table.adv th,table.adv td{padding:2px 5px;border:none;border-bottom:1px dotted var(--line);background:none}
+  table.adv th{width:5.5em;color:var(--muted);font-weight:normal;white-space:nowrap}
   .box{border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin:8px 0}
   .warn{color:var(--stop)}
   ul{margin:4px 0 4px 1.2em;padding:0}
@@ -89,7 +99,7 @@ function tsGoBack(){
 })();
 </script>
 <div class="bar">
-  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-22-01</span></span>
+  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-22-04</span></span>
   <label class="btn main">受給計画データを読み込む<input type="file" id="file" accept=".json,application/json" style="display:none"></label>
   <button class="btn" id="print" type="button">印刷する</button>
   <a class="btn" href="TriGate.html" style="text-decoration:none">トライゲイトへ戻る</a>
@@ -114,10 +124,13 @@ function tsGoBack(){
     return L.filter(function(x){ return z[x[1]]; }).map(function(x){ return '<tr><th>' + x[0] + '</th><td>' + esc(z[x[1]]) + '</td></tr>'; }).join('') +
       (g['支給の決まり方'] ? '<tr><th>支給の決まり方</th><td>' + esc(g['支給の決まり方']) + '</td></tr>' : '');
   }
+  /* AIアドバイス判定（2026-11-22-03）：結論→札→一目の項目→理由の順 */
   function aiCell(g){
-    var a = g['AIの判定'] || {}, h = String(a['判定'] || ''); if(!h) return '<span class="note">—</span>';
-    var k = /見送|様子/.test(h) ? 'k3' : /条件|確認/.test(h) ? 'k2' : 'k1';
-    return '<span class="ai ' + k + '">' + esc(h) + '</span><div>' + esc(a['理由'] || '') + '</div>';
+    var a = g['AIアドバイス'] || {}, h = String(a['判定'] || ''); if(!h) return '<span class="note">—</span>';
+    var k = /見送/.test(h) ? 'k3' : /検討/.test(h) ? 'k2' : 'k1';
+    return '<span class="ai big ' + k + '">' + esc(h) + '</span> ' + arr(a['札']).map(function(t){ return '<span class="tag">' + esc(t) + '</span>'; }).join('') +
+      '<table class="adv">' + arr(a['項目']).map(function(x){ return '<tr><th>' + esc(x['名']) + '</th><td><b>' + esc(x['値']) + '</b>' + (x['説明'] ? '<span class="note">（' + esc(x['説明']) + '）</span>' : '') + '</td></tr>'; }).join('') + '</table>' +
+      (a['理由'] ? '<div>' + esc(a['理由']) + '</div>' : '');
   }
 
   /* ---- 判断（進める／見送る）＝獲得スケジュールとつなぐ ---- */
@@ -140,11 +153,14 @@ function tsGoBack(){
       }
       ks[id] = 'go';
     }else if(v === 'stop'){ ks[id] = 'stop'; }
-    else { ks[id] = ''; }
+    else { ks[id] = ''; }  /* 保留・再検討・取り消し＝トライゲイトでは「決裁待ち」 */
     sj('tg_kessai', ks);
     render();
     $('msg').textContent = v === 'go' ? '「' + g['名称'] + '」を進めることにしました。トライゲイトの獲得スケジュールに載ります。'
-      : v === 'stop' ? '「' + g['名称'] + '」を見送りにしました。' : '「' + g['名称'] + '」の判断を取り消しました。';
+      : v === 'stop' ? '「' + g['名称'] + '」を見送りにしました。'
+      : v === 'hold' ? '「' + g['名称'] + '」を保留にしました。トライゲイトでは「決裁待ち」に出ます。'
+      : v === 'rethink' ? '「' + g['名称'] + '」を再検討にしました。トライゲイトでは「決裁待ち」に出ます。'
+      : '「' + g['名称'] + '」の判断を取り消しました。';
   }
 
   /* ---- 描画 ---- */
@@ -160,26 +176,28 @@ function tsGoBack(){
     if(!P){ $('out').innerHTML = '<div class="empty"><h2>受給計画データを読み込んでください</h2><p>上の「受給計画データを読み込む」を押して、会社ごとの受給計画データ（○○_受給計画.json）を選ぶと、計画書が出ます。</p><p class="note">会社の情報はこの端末の中だけで扱い、公開の場所や当社のサーバーには置きません。</p></div>'; return; }
     var co = P['宛先']['会社名'], dd = (decs()[co] || {}), G = arr(P['制度']), n = 0, html = '';
     /* 1ページ目：一覧と判断欄 */
-    var rows = G.map(function(g){
+    var rows = G.map(function(g, gi){
       var v = dd[g.id] || '';
       var op = !!OPEN[g.id];
       return '<tr class="avoid"><td><b>' + esc(g['名称']) + '</b><div class="note">' + esc(g['発出元'] || '') + '</div>' +
-        '<button type="button" class="dtb' + (op ? ' on' : '') + '" data-dt="' + esc(g.id) + '">' + (op ? 'この制度の詳細を閉じる' : 'この制度の詳細 ›') + '</button></td>' +
+        '<button type="button" class="dtb' + (op ? ' on' : '') + '" data-dt="' + esc(g.id) + '">' + (op ? '簡易詳細を閉じる' : 'この制度の簡易詳細 ›') + '</button></td>' +
         '<td>' + esc(g['使い道'] || '') + '</td><td>' + esc(g['金額の見込み'] || g['上限額'] || '') + '</td>' +
         '<td>' + esc(g['締切表示'] || jd(g['締切'])) + '</td><td>' + aiCell(g) + '</td>' +
         '<td>' + arr(g['ご準備いただくこと']).slice(0, 3).map(esc).join('<br>') + '</td>' +
         '<td class="dec" style="width:84px"><button type="button" class="go' + (v === 'go' ? ' on' : '') + '" data-id="' + esc(g.id) + '" data-v="go">進める</button>' +
+        '<button type="button" class="hold' + (v === 'hold' ? ' on' : '') + '" data-id="' + esc(g.id) + '" data-v="hold">保留</button>' +
+        '<button type="button" class="rethink' + (v === 'rethink' ? ' on' : '') + '" data-id="' + esc(g.id) + '" data-v="rethink">再検討</button>' +
         '<button type="button" class="stop' + (v === 'stop' ? ' on' : '') + '" data-id="' + esc(g.id) + '" data-v="stop">見送る</button>' +
         (v ? '<button type="button" data-id="' + esc(g.id) + '" data-v="">取り消す</button>' : '') +
-        '<div class="pr">□ 進める<br>□ 見送る</div></td></tr>' +
-        (op ? '<tr class="dt"><td colspan="7"><table>' + (zairyo(g) || '<tr><td class="note">この制度の詳細は、まだ入っていません。</td></tr>') + '</table></td></tr>' : '');
+        '<div class="pr">□ 進める<br>□ 保留<br>□ 再検討<br>□ 見送る</div></td></tr>' +
+        (op ? '<tr class="dt"><td colspan="7"><div class="note"><b>この制度の簡易詳細</b>（判断に要る点だけ。目的・流れ・出所などは ' + (gi + 3) + 'ページ目の「制度ごとの詳しいご案内」に）</div><table>' + (zairyo(g) || '<tr><td class="note">この制度の簡易詳細は、まだ入っていません。</td></tr>') + '</table></td></tr>' : '');
     }).join('');
     html += page('補助金・助成金 受給計画書',
       '<p>' + esc(P['宛先']['会社名']) + ' ' + esc(P['宛先']['代表者'] || '') + '</p>' +
       '<p>' + esc(P['はじめに'] || '') + '</p>' +
       '<h2>1. 取りにいく候補とご判断</h2>' +
-      '<table><tr><th style="width:20%">制度</th><th>使い道</th><th style="width:12%">金額の見込み</th><th style="width:12%">締切</th><th style="width:22%">AIの判定（取るべきか）</th><th style="width:14%">ご準備いただくこと（主なもの）</th><th>ご判断</th></tr>' + rows + '</table>' +
-      '<p class="note">AIの判定は、ヒアリングシートと公的な資料をもとにした当社AIの見立てです。最終のご判断は御社でお願いします。「この制度の詳細」で、誰が行うか・時間と手間・費用・戻ってくる額・御社の負担・支給の決まり方をご覧いただけます。</p>' +
+      '<table><tr><th style="width:17%">制度</th><th>使い道</th><th style="width:10%">金額の見込み</th><th style="width:10%">締切</th><th style="width:33%">AIアドバイス判定</th><th style="width:12%">ご準備いただくこと（主なもの）</th><th>ご判断</th></tr>' + rows + '</table>' +
+      '<p class="note">AIアドバイス判定は、ヒアリングシートと公的な資料をもとにした当社AIの見立てです（取りやすさ等は段階で示し、確かめていない数字は出しません）。最終のご判断は御社でお願いします。「この制度の簡易詳細」で、誰が行うか・時間と手間・費用・戻ってくる額・御社の負担・支給の決まり方をご覧いただけます。制度の目的・流れ・情報の出所までを含めた詳しい内容は、3ページ目以降の「制度ごとの詳しいご案内」に載せています。</p>' +
       '<p class="note">「進める」にした制度は、トライゲイトの「獲得スケジュール」に載り、書類をそろえ終える日・最終確認の日・入金の予想が出ます。金額は制度の上限・定額で、満額の受給を保証するものではありません。</p>' +
       '<p class="note">作成の前提：' + arr(P['前提']).map(esc).join('／') + '</p>', ++n);
     /* 2ページ目：時系列（2026-11-21-02・宏史さん「助成金や補助金毎に分けて。全部一つの助成金に見える」）＝制度ごとに見出しを立て、その中を月で区切る */
@@ -198,14 +216,14 @@ function tsGoBack(){
     /* 3ページ目以降：制度ごと */
     G.forEach(function(g){
       var src = arr(g['出所']).map(function(s){ return esc(s['名'] || s) + (s['確認日'] ? '（' + esc(s['確認日']) + '確認）' : '') + (s['URL'] ? '<br><span class="note">' + esc(s['URL']) + '</span>' : ''); }).join('<br>');
-      html += page('補助金・助成金 受給計画書　制度ごとのご案内',
+      html += page('補助金・助成金 受給計画書　制度ごとの詳しいご案内',
         '<h2>' + esc(g['名称']) + '</h2><div class="note">' + esc(g['発出元'] || '') + '／' + esc(g['区分'] || '') + '</div>' +
         '<table class="avoid"><tr><th style="width:22%">目的・使い道</th><td>' + esc(g['使い道'] || '') + '</td></tr>' +
         '<tr><th>金額</th><td>' + esc(g['金額の説明'] || g['金額の見込み'] || '') + '</td></tr>' +
         '<tr><th>締切・受付</th><td>' + esc(g['受付の説明'] || g['締切表示'] || '') + '</td></tr>' +
         '<tr><th>御社の当てはまり</th><td>' + esc(g['御社の当てはまり'] || '') + '</td></tr>' +
         zairyo(g) +
-        (g['AIの判定'] ? '<tr><th>AIの判定</th><td>' + aiCell(g) + '</td></tr>' : '') +
+        (g['AIアドバイス'] ? '<tr><th>AIアドバイス判定</th><td>' + aiCell(g) + '</td></tr>' : '') +
         '<tr><th>ご準備いただくこと</th><td><ul>' + arr(g['ご準備いただくこと']).map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td></tr>' +
         '<tr><th>流れ</th><td><ul>' + arr(g['流れ']).map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></td></tr>' +
         '<tr><th>当社が受け持つこと</th><td>' + esc(g['当社の受け持ち'] || P['当社の受け持ち'] || '') + '</td></tr>' +

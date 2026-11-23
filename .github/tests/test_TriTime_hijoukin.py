@@ -49,6 +49,8 @@ async def test(p):
         await s.shot('#cardStaff', 'TriTime_hj_staff.png')
 
         today = datetime.date.today(); mon = today + datetime.timedelta(days=(7 - today.weekday()))   # 来週の月曜
+        # 2026-11-23：来週の月曜と火曜が月をまたぐ日（例：11/30と12/1）は、火曜が翌月の申告の外になり試験が成り立たないため、さらに1週先の月曜を使う
+        if (mon + datetime.timedelta(days=1)).month != mon.month: mon = mon + datetime.timedelta(days=7)
         tue = mon + datetime.timedelta(days=1)
         await pg.evaluate("""(function(){
           var st = JSON.parse(localStorage.getItem('tritime_staff')), sid = st.filter(function(s){ return s.name === '常勤 一子'; })[0].id, t = Date.now();

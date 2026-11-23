@@ -27,6 +27,7 @@
   ・2026-11-22-10：AIアドバイスの欄の一番下に「ひとことで：」として、取りやすさ・作業負荷・補助の大きさ・自己負担の大きさの札を出す（データの『評価』＝[{語, 良否: 良／注意／中}]）。良は緑、注意は黄、中は灰（宏史さん「枠の一番下に余裕があるので、取りやすい・作業負荷が多い・補助金が少ない・自己負担が大きいなどを入れられないか」）
   ・2026-11-22-11：「ひとことで」をAIアドバイスの欄から外し、左端の制度の欄（制度名・発出元・簡易詳細ボタンの下の余白）へ移した（宏史さん「ひとことでは制度の余白に。AIアドバイスが少し短くなる」）
   ・2026-11-22-16：一覧（今期・来期）のページを詰めて組み、1ページに2件ほど入るようにした。紙からはみ出す分は、頭と足の付いた次のページへ表の見出しごと送り、ページ番号を振り直す。印刷のときは開いている簡易詳細を閉じてから印刷する（宏史さん「3pと4pは紙がもったいない」「5pと6pは説明が途中で切れている」）
+  ・2026-11-23-02：確認待ちと見送りのページも一覧と同じ詰めた組み方にして、確認待ちを1枚に収める。ページ送りで注記だけの紙ができるときは、前のページの最後の行を連れていく（宏史さん「5pは何？」「10pと11p、1pにして何か問題ありますか」）
   ・2026-11-23-01：ページ送りを一覧以外（確認待ち・見送りとお約束ごと）にも広げた。ページ割りは印刷と同じ見た目（画面だけのボタンを隠した状態）で測り、紙の下端に約1cmの余裕を残す（端末の字体の差で、画面では収まっても紙ではみ出すため）（宏史さん「4pと5p」「10pと11pはちょん切れてる」）
   ・2026-11-22-15：「今回は見送る制度」と「お約束ごと」を、確認待ちの次のページに分けた（宏史さん「今回は見送る制度がちょん切れて見にくい」）
   ・2026-11-22-14：時系列と制度ごとの詳しいご案内は、「進める」に決まった制度だけ出す。判断前の計画書は、一覧（今期・来期）と確認待ちだけになる（宏史さん「取る取らないが決まってないのに必要ありますか」「取らないものの説明なんか読んでも意味がない」）
@@ -140,7 +141,7 @@ function tsGoBack(){
 })();
 </script>
 <div class="bar">
-  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-23-01</span></span>
+  <b>補助金・助成金 受給計画書</b><span class="ver">版 <span id="ver">2026-11-23-02</span></span>
   <label class="btn main">受給計画データを読み込む<input type="file" id="file" accept=".json,application/json" style="display:none"></label>
   <button class="btn" id="save" type="button">判断を入れて保存する</button>
   <button class="btn" id="print" type="button">印刷する</button>
@@ -268,6 +269,12 @@ function tsGoBack(){
         var at = nt.rows[1] || null;
         grp.forEach(function(x){ nt.tBodies[0] ? nt.tBodies[0].insertBefore(x, at) : nt.insertBefore(x, at); });
       }
+      /* 2026-11-23-02：注記だけの紙を作らない。次のページに行が1つも無ければ、前のページの最後の行を連れていく（宏史さん「5pは何？」） */
+      if(nt.rows.length <= 1 && tb.rows.length > 2){
+        var r2 = tb.rows[tb.rows.length - 1], g2 = [r2];
+        if(r2.classList.contains('dt') && tb.rows.length > 3) g2.unshift(tb.rows[tb.rows.length - 2]);
+        g2.forEach(function(x){ nt.tBodies[0] ? nt.tBodies[0].appendChild(x) : nt.appendChild(x); });
+      }
       if(nt.rows.length <= 1) nt.parentNode.removeChild(nt);
       list.unshift(nw);
     }
@@ -350,12 +357,12 @@ function tsGoBack(){
     /* 確認待ち・見送り・約束ごと */
     html += page('補助金・助成金 受給計画書　確認待ち',
       '<h2>確認待ちの事項（確かめれば取れるかどうかが決まるもの）</h2><table><tr><th style="width:34%">確認すること</th><th>分かると決まること</th><th style="width:20%">確認先</th></tr>' +
-      arr(P['確認待ち']).map(function(c){ return '<tr class="avoid"><td>' + esc(c['項目']) + '</td><td>' + esc(c['決まること'] || '') + '</td><td>' + esc(c['確認先'] || '') + '</td></tr>'; }).join('') + '</table>', ++n);
+      arr(P['確認待ち']).map(function(c){ return '<tr class="avoid"><td>' + esc(c['項目']) + '</td><td>' + esc(c['決まること'] || '') + '</td><td>' + esc(c['確認先'] || '') + '</td></tr>'; }).join('') + '</table>', ++n, 'lst');
     /* 2026-11-22-15：見送りとお約束ごとは次のページに分ける（宏史さん「今回は見送る制度がちょん切れて見にくい」） */
     html += page('補助金・助成金 受給計画書　見送りとお約束ごと',
       '<h2>今回は見送る制度・次年度に回す制度</h2><table><tr><th style="width:34%">制度</th><th>理由</th><th style="width:20%">次の機会</th></tr>' +
       arr(P['見送り']).map(function(c){ return '<tr class="avoid"><td>' + esc(c['名称']) + '</td><td>' + esc(c['理由'] || '') + '</td><td>' + esc(c['次の機会'] || '') + '</td></tr>'; }).join('') + '</table>' +
-      '<h2>お約束ごと</h2><ul>' + arr(P['約束ごと']).map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>', ++n);
+      '<h2>お約束ごと</h2><ul>' + arr(P['約束ごと']).map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>', ++n, 'lst');
     $('out').innerHTML = html;
     paginate();
   }

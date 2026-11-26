@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script src="TriDevice.js"></script>
+<script>
+/* 中継へ送るときに、この画面の製品の名前（?p=）を付ける（他の画面と同じ。トライトークはトライサイト本体の契約で使う） */
+(function(){var P="trisight",f=window.fetch;if(!f)return;window.fetch=function(u,o){try{var s=typeof u==="string"?u:(u&&u.url)||"";if(s.indexOf("trisight-relay.vercel.app/api/")>=0&&!/[?&]p=/.test(s)){var n=s+(s.indexOf("?")>=0?"&":"?")+"p="+P;u=(typeof u==="string")?n:new Request(n,u);}}catch(e){}return f.call(this,u,o);};})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TriTalk（トライトーク）　秘書と自由に話す｜TriSight®</title>
+<link rel="icon" href="favicon-32.png">
+<!-- ============================================================
+     TriTalk（トライトーク）＝ 秘書（あずさ・なぎさ・つかさ）と自由に話す画面の製品版（2026-11-26 宏史さんの決定）
+     ・試作品は本体（TriSight_v5.html）左下の「💬 秘書と話す」。12/2の全タク説明用は TriYorozu.html（大きな画面用）。
+     ・秘書の役割・声・名前での指名・返答の取り方は TriSecretaries.js（3画面で共通）。聞き取りと声は TriVoiceEngine.js。
+     ・製品版で足したもの：
+         ① 独立した画面（表札から直接入れる）
+         ② 「みんな」＝ 一つの問いに あずさ→なぎさ→つかさ の順で、それぞれの立場から答える（前の人の話を受けて重ねない）
+         ③ 会話をこの端末に残す・過去の会話を開いて続ける・TXTで書き出す・印刷（レターヘッド付き）
+         ④ 読み上げを途中で止める・声を出さず文字だけにする切り替え
+         ⑤ 「ほかの秘書も意見を出す」＝ 指名した秘書が答えたあと、残りの2人がその答えを聞いたうえで「（自分の名前）はこのように考えます」と人間に向けて別の提案を出す。
+            秘書どうしの意見交換ではなく一方通行：後の秘書は前の秘書の答えを聞いたうえで、人間に向けて自分の意見を言う（前の秘書には話しかけない）。
+            付け加えることが無い秘書は「パス」と返し、画面には出さない（宏史さんの案・2026-11-26）
+            開いたときは切り（指名した秘書だけが答える。指名の意味を残すため・宏史さんの決定 2026-11-26）
+         ⑥ 名前での指名は TriSecretaries.js の takeName（呼びかけ・敬称・表記揺れ）。「みんな」も同じ呼びかけを受ける
+     ・会話はこの端末（ブラウザ）の中にだけ残り、当社のサーバーには残さない。
+     ============================================================ -->
+<style>
+  :root{--navy:#0f1d3a;--gold:#c9a84c;--paper:#f7f5ef;--line:#e1dccb;--soft:#5b6680}
+  html,body{height:100%}
+  body{margin:0;background:var(--paper);color:#1f2328;font-family:'Zen Kaku Gothic New','Hiragino Sans','Yu Gothic',sans-serif;display:flex;flex-direction:column}
+  .lh{display:flex;align-items:center;gap:12px;padding:4px 22px 0}
+  .lh .logo{display:flex;flex-direction:column;align-items:center;gap:2px}
+  .lh .logo img{width:40px;height:40px}
+  .lh .logo span{font-size:9px;color:var(--navy);white-space:nowrap}
+  .lh h1{margin:0;font-size:22px;color:var(--navy);letter-spacing:.03em}
+  .lh h1 small{font-size:13px;color:var(--soft);font-weight:400;margin-left:10px}
+  .rule{height:0;border-top:2px solid var(--navy);margin:8px 22px 0}
+  .secs{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:12px 22px 6px}
+  .sec{border:1px solid var(--line);border-radius:12px;padding:8px 12px;cursor:pointer;background:#fff;text-align:left;font:inherit;color:inherit;transition:.15s}
+  .sec .nm{font-size:18px;font-weight:700;color:var(--navy)}
+  .sec .rl{display:inline-block;margin-left:8px;font-size:12px;color:var(--navy);background:#efe4c2;border-radius:999px;padding:1px 10px;vertical-align:2px}
+  .sec .tg{font-size:12px;color:var(--soft);margin-top:3px;line-height:1.5}
+  .sec.on{border:2px solid var(--gold);padding:7px 11px;background:#fffbef;box-shadow:0 0 0 3px rgba(201,168,76,.25)}
+  .sec.talk{animation:glow 1s infinite}
+  @keyframes glow{50%{box-shadow:0 0 0 7px rgba(201,168,76,.18)}}
+  .tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px 22px 8px;font-size:13px}
+  .tools button,.tools select{font:inherit;font-size:13px;padding:5px 12px;border-radius:999px;border:1px solid #afb8c1;background:#fff;color:#1f2328;cursor:pointer}
+  .tools select{max-width:min(360px,60vw)}
+  .tools label{display:inline-flex;align-items:center;gap:5px;cursor:pointer;margin-left:auto;color:var(--navy);font-weight:700}
+  .tools label input{width:18px;height:18px;accent-color:var(--navy)}
+  #log{flex:1;overflow-y:auto;padding:12px 22px 16px;font-size:16px;line-height:1.75;background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .msg{max-width:82%;margin:0 0 12px;padding:9px 14px;border-radius:14px;white-space:pre-wrap;word-break:break-word}
+  .me{margin-left:auto;background:var(--navy);color:#fff;border-bottom-right-radius:4px}
+  .ai{background:var(--paper);border:1px solid var(--line);border-bottom-left-radius:4px}
+  .ai b{display:block;font-size:12px;color:#8a6d1f;margin-bottom:2px}
+  .hint{color:var(--soft);text-align:center;font-size:14px;margin:18px 0;line-height:1.8}
+  #st{min-height:1.6em;font-size:13px;color:var(--soft);padding:5px 22px}
+  #st.warn{color:#b42318}
+  .bottom{display:flex;gap:8px;align-items:flex-end;padding:4px 22px 6px}
+  #txt{flex:1;font:inherit;font-size:16px;resize:none;height:48px;padding:10px;border:1px solid #afb8c1;border-radius:10px;box-sizing:border-box}
+  .btn{font:inherit;font-weight:700;border:0;border-radius:10px;cursor:pointer;height:48px;padding:0 16px;white-space:nowrap}
+  #send{background:var(--navy);color:#fff}
+  #hush{background:#fff;color:#b42318;border:1px solid #b42318;display:none}
+  #hush.show{display:inline-block}
+  #talk{background:#c0392b;color:#fff;font-size:16px;padding:0 22px}
+  #talk.on{background:#e74c3c;animation:glow 1s infinite}
+  .foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:11px;color:#8a93a6;padding:2px 22px 10px}
+  .pr-head,.pr-foot{display:none}
+  @media (max-width:760px){
+    .secs{grid-template-columns:repeat(2,1fr)}
+    .sec .tg{display:none}
+    .lh h1 small{display:block;margin-left:0}
+    .msg{max-width:92%}
+    #talk{padding:0 12px}
+  }
+  @media print{
+    @page{size:A4;margin:24mm 16mm 18mm}
+    html,body{height:auto;display:block;background:#fff}
+    #tsBackBar,.lh,.rule,.secs,.tools,#st,.bottom,.foot,.hint{display:none !important}
+    #log{overflow:visible;border:0;padding:0;font-size:11pt;line-height:1.7}
+    .msg{max-width:none;border-radius:0;padding:4px 0 6px;margin:0 0 6px;break-inside:avoid;background:none !important;color:#000 !important;border:0;border-bottom:1px solid #ddd}
+    .me::before{content:"あなた";display:block;font-size:9pt;color:#555;font-weight:700}
+    .ai b{font-size:9pt;color:#555}
+    .pr-head{display:flex;position:fixed;top:-18mm;left:0;right:0;align-items:center;gap:8px;border-bottom:1.5px solid #0f1d3a;padding-bottom:3px}
+    .pr-head img{width:26px;height:26px}
+    .pr-head div{font-size:12pt;font-weight:700;color:#0f1d3a}
+    .pr-head div small{display:block;font-size:7.5pt;font-weight:400;color:#333}
+    .pr-foot{display:flex;position:fixed;bottom:-12mm;left:0;right:0;justify-content:space-between;align-items:center;border-top:1px solid #0f1d3a;padding-top:2px;font-size:7.5pt;color:#333}
+    .pr-foot img{width:14px;height:14px;vertical-align:-3px;margin-right:4px}
+  }
+</style>
+</head>
+<body>
+<!-- 2026-10-15：前のページに戻るボタン（全画面共通・マウスの「戻る」と同じ動き。前のページが無いときは表札へ） -->
+<div id="tsBackBar" data-guard="0" style="padding:8px 16px 4px;box-sizing:border-box;text-align:left;width:100%;align-self:stretch"><button type="button" onclick="tsGoBack()" title="ひとつ前に開いていた画面へ戻ります" style="font-family:inherit;font-size:13px;line-height:1.4;color:#1f2328;background:#ffffff;border:1px solid #afb8c1;border-radius:999px;padding:4px 14px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.12)">‹ 前のページに戻る</button></div>
+<style>@media print{#tsBackBar{display:none !important}}</style>
+<script>
+function tsGoBack(){
+  var b=document.getElementById("tsBackBar");
+  if(b&&b.getAttribute("data-guard")==="1"){
+    var typed=[].some.call(document.querySelectorAll("textarea,input[type=text],input:not([type])"),function(e){return e.value&&e.value.trim();});
+    if(typed&&!confirm("この画面に入力した内容は保存されていません。前のページに戻ると消えます。戻りますか？"))return;
+  }
+  var r="";try{r=document.referrer?new URL(document.referrer).origin:"";}catch(e){}
+  if(history.length>1&&r===location.origin){history.back();}else{location.href="index.html";}
+}
+/* 2026-11-06（宏史さんの指示）：前の画面が無いとき（タブレットのアイコンから直接開いたときなど）は、ボタン自体を出さない。
+   トライサイトを契約していない人には表札へ行く道は要らないため */
+(function(){
+  var r="",rp="";try{if(document.referrer){var u=new URL(document.referrer);r=u.origin;rp=u.pathname;}}catch(e){}
+  /* 自分自身を読み直したとき（前の画面が自分）も、前の画面が無いものとして扱う（戻るの判定と同じ） */
+  if(!(history.length>1&&r===location.origin)||rp===location.pathname){var b=document.getElementById("tsBackBar");if(b)b.style.display="none";}
+})();
+</script>
+<style>@media print{#tsBackBar{display:none !important}}</style>
+<div class="pr-head"><img src="TriSight_icon_512.png" alt=""><div>TriTalk（トライトーク）　会話の記録<small>合同会社トライサイト</small></div></div>
+<div class="pr-foot"><span><img src="TriSight_icon_512.png" alt="">TriSight® ／ 合同会社トライサイト</span><span id="prDate"></span></div>
+
+<div class="lh">
+  <div class="logo"><img src="TriSight_icon_512.png" alt="TriSight®"><span>合同会社トライサイト</span></div>
+  <h1>TriTalk（トライトーク）<small>秘書と自由に話す　声でも、文字でも</small></h1>
+</div>
+<div class="rule"></div>
+
+<div class="secs" id="secs"></div>
+
+<div class="tools">
+  <button type="button" id="newConv">＋ 新しい会話</button>
+  <select id="past" aria-label="過去の会話"><option value="">過去の会話を開く</option></select>
+  <button type="button" id="saveTxt">TXTで書き出す</button>
+  <button type="button" id="printBtn">印刷</button>
+  <label title="指名した秘書が答えたあと、残りの2人もあなたに向けて、それぞれ別の提案を出します（付け加えることが無い秘書は飛ばします）" style="margin-left:auto"><input type="checkbox" id="chimeOn">ほかの秘書も意見を出す</label>
+  <label title="外すと、秘書は声を出さず文字だけで答えます" style="margin-left:0"><input type="checkbox" id="voiceOn" checked>声で答える</label>
+</div>
+
+<div id="log"></div>
+<div id="st"></div>
+<div class="bottom">
+  <textarea id="txt" placeholder="文字で話すときはここに入力（Enterで送る・Shift＋Enterで改行）"></textarea>
+  <button class="btn" id="send" type="button">送る</button>
+  <button class="btn" id="hush" type="button">■ 読み上げを止める</button>
+  <button class="btn" id="talk" type="button">🎙 話しかける</button>
+</div>
+<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 2026-11-26-01</span></div>
+
+<script src="TriVoiceEngine.js"></script>
+<script src="TriSecretaries.js"></script>
+<script>
+(function(){
+  'use strict';
+  var T = window.TriSecretaries, SEC = T.SEC, ORDER = T.ORDER;
+  var KEY = 'tritalk_convs_v1', MAX_CONVS = 30;
+  var ALL = { name:'みんな', role:'三方向', tag:'一つの問いに、あずさ→なぎさ→つかさの順で答えます' };
+  var cur = 'nagisa', talking = false, busy = false, audio = null, hushed = false;
+  var store = load(), conv = null;
+  var $ = function(id){ return document.getElementById(id); };
+
+  /* ---- 保存（この端末の localStorage だけ） ---- */
+  function load(){ try{ var o = JSON.parse(localStorage.getItem(KEY) || 'null'); if(o && Array.isArray(o.convs)) return o; }catch(e){} return { convs: [] }; }
+  function save(){
+    store.convs = store.convs.filter(function(c){ return c.items.length; }).slice(0, MAX_CONVS);
+    for(var n = 0; n < 5; n++){
+      try{ localStorage.setItem(KEY, JSON.stringify(store)); return; }
+      catch(e){ if(store.convs.length > 1) store.convs.pop(); else { status('この端末の保存領域がいっぱいで、会話を残せませんでした。TXTで書き出してください。', true); return; } }
+    }
+  }
+  function newConv(){ conv = { id: String(Date.now()), at: Date.now(), title: '', items: [] }; return conv; }
+  function stamp(t){ var d = new Date(t); return (d.getMonth()+1) + '/' + d.getDate() + ' ' + ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2); }
+  function fillPast(){
+    var sel = $('past'); sel.innerHTML = '<option value="">過去の会話を開く（' + store.convs.length + '件）</option>';
+    store.convs.forEach(function(c){ var o = document.createElement('option'); o.value = c.id; o.textContent = stamp(c.at) + '　' + (c.title || '（題名なし）'); if(conv && c.id === conv.id) o.textContent += '（表示中）'; sel.appendChild(o); });
+  }
+  function record(w, text){
+    if(!conv.items.length){ conv.title = text.replace(/\s+/g, ' ').slice(0, 24); store.convs.unshift(conv); }
+    conv.items.push({ w: w, t: text, at: Date.now() }); save(); fillPast();
+  }
+
+  /* ---- 表示 ---- */
+  function status(t, warn){ $('st').textContent = t || ''; $('st').className = (warn || /失敗|できません|未対応|合いません|まだ用意|いっぱい/.test(t || '')) ? 'warn' : ''; }
+  function label(w){ return SEC[w].name + '（' + SEC[w].role + '）'; }
+  function hint(){ $('log').innerHTML = '<div class="hint">話したい秘書を上から選んで、赤い「🎙 話しかける」を押してください。話し終えると自動で送ります。<br>話の頭で名前を呼んでも選べます（例「つかさ、〜」「ねえ、なぎさ、〜」「みんな、〜」）。文字で送ることもできます。<br>ほかの秘書の意見もほしいときは、上の「ほかの秘書も意見を出す」にチェックを入れてください。指名した秘書が答えたあと、残りの秘書もあなたへ別の提案を出します。<br>一つの見方に偏らず、三つの方向から考える。答えを決めるのは人間です。</div>'; }
+  function bubble(w, text){
+    var h = document.querySelector('#log .hint'); if(h) h.remove();
+    var d = document.createElement('div'); d.className = 'msg ' + (w === 'me' ? 'me' : 'ai');
+    if(w !== 'me'){ var b = document.createElement('b'); b.textContent = label(w); d.appendChild(b); }
+    d.appendChild(document.createTextNode(text)); $('log').appendChild(d); $('log').scrollTop = $('log').scrollHeight;
+  }
+  function render(){ $('log').innerHTML = ''; if(!conv.items.length) return hint(); conv.items.forEach(function(it){ bubble(it.w, it.t); }); }
+  ORDER.concat(['all']).forEach(function(k){
+    var s = k === 'all' ? ALL : SEC[k];
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'sec'; b.id = 'sec_' + k;
+    b.innerHTML = '<span class="nm">' + s.name + '</span><span class="rl">' + s.role + '</span><div class="tg">' + s.tag + '</div>';
+    b.addEventListener('click', function(){ pick(k); });
+    $('secs').appendChild(b);
+  });
+  function pick(k){ cur = k; ORDER.concat(['all']).forEach(function(x){ $('sec_' + x).classList.toggle('on', x === k); }); }
+
+  /* ---- 秘書へ渡す履歴：自分の話は assistant、他の秘書の話は［名前の発言］付きで user として渡す ---- */
+  function historyFor(k){
+    return conv.items.map(function(it){
+      if(it.w === 'me') return { role:'user', content: it.t };
+      if(it.w === k) return { role:'assistant', content: it.t };
+      return { role:'user', content: '［' + label(it.w) + 'の発言］' + it.t };
+    });
+  }
+  var EXTRA_BASE = 'この画面では、あずさ・なぎさ・つかさの三人の秘書が同じ会話に加わります。他の秘書の発言は［名前の発言］の見出し付きで届きます。返答には［ ］の見出しを付けず、そのまま話してください。';
+  /* やり取りはあくまでAIと人間（2026-11-26 宏史さん「意見交換ではありません」「一方通行」）。
+     後の秘書は前の秘書の答えを聞いたうえで、人間に向けて自分の意見を言う。前の秘書に話しかけたり、やり取りしたりはしない */
+  function EXTRA_CHIME(first, me){ var SEC_NAME_PH = SEC[me].name; return '今は' + label(first) + 'が相手（人間）の問いに答えたところです。あなたは' + SEC[first].name + 'の答えを聞いたうえで、自分の担当の立場から、相手（人間）に向けて「' + SEC_NAME_PH + 'はこのように考えます」と切り出して、自分の意見や提案を短く言ってください。' + SEC[first].name + 'の答えに触れるときは「' + SEC[first].name + 'の案を踏まえると、私は〜と考えます」のように人間への説明として触れ、' + SEC[first].name + 'や他の秘書に話しかけたり、言い返したりはしないでください（秘書どうしの意見交換ではなく、話す相手は人間だけの一方通行です）。他の秘書が言ったことの繰り返しや言い換えはしないでください。本当に付け加える意見が無いときは「パス」とだけ答えてください。'; }
+  var PASS = /^[\s　「」]*パス[。.！!]?[\s　」]*$/;
+  var EXTRA_ALL = '今回は「みんな」への問いかけで、あずさ→なぎさ→つかさの順に一人ずつ答えます。前の秘書が言ったことを繰り返さず、自分の担当の立場からだけ短く付け加えてください。';
+
+  /* ---- 声：読み上げ向けに記号を落とす。Googleの声が公開用の経路（Vertex AI）以外で作られたときは知らせる ---- */
+  function forSpeech(t){ return String(t).replace(/https?:\/\/\S+/g, '').replace(/[#＃*＊`>|]/g, '').replace(/^\s*[-・]\s*/gm, '').trim(); }
+  function play(text, k){
+    if(!$('voiceOn').checked || hushed || typeof TriVoice === 'undefined' || !TriVoice.synth) return Promise.resolve();
+    return TriVoice.synth(forSpeech(text), SEC[k].voice).then(function(o){
+      if(hushed) return;
+      if(SEC[k].voice.vendor === 'google' && o.route !== 'vertex') status('ご注意：' + SEC[k].name + 'の声は評価用の経路で作られています（公開の場では Vertex AI の設定が必要です）。', true);
+      return new Promise(function(res){
+        var url = URL.createObjectURL(o.blob); audio = new Audio(url); $('hush').classList.add('show');
+        audio.onended = audio.onerror = function(){ URL.revokeObjectURL(url); audio = null; $('hush').classList.remove('show'); res(); };
+        audio.play().catch(function(){ audio = null; $('hush').classList.remove('show'); res(); });
+        audio._done = res;
+      });
+    });
+  }
+  function hush(){
+    hushed = true;
+    if(audio){ var a = audio, r = a._done; audio = null; try{ a.pause(); }catch(e){} $('hush').classList.remove('show'); if(r) r(); }
+  }
+
+  /* ---- 一人の秘書に答えてもらう ---- */
+  async function one(k, extra, allowPass){
+    $('sec_' + k).classList.add('talk'); status(SEC[k].name + 'が考えています…');
+    var reply;
+    try{ reply = await T.ask(k, historyFor(k), { extra: extra }); }
+    catch(e){ $('sec_' + k).classList.remove('talk'); status(SEC[k].name + 'の返答を得られませんでした：' + e.message, true); return false; }
+    if(allowPass && PASS.test(reply)){ $('sec_' + k).classList.remove('talk'); status(SEC[k].name + 'は付け加えることがありません。'); return true; }
+    record(k, reply); bubble(k, reply);
+    var warned = /ご注意/.test($('st').textContent);
+    if(!warned) status($('voiceOn').checked && !hushed ? SEC[k].name + 'が話しています…' : '');
+    try{ await play(reply, k); if(!/ご注意/.test($('st').textContent)) status(''); }
+    catch(e){ status('声にできませんでした（文字で返答しています）：' + e.message, true); }
+    $('sec_' + k).classList.remove('talk');
+    return true;
+  }
+  /* 「みんな、〜」で3人に聞く。後ろに助詞が続くとき（「みんなに聞きたい」）は指名だけして文は残す。「皆様」等は呼びかけにしない */
+  var ALL_CALL = /^(?:みんな|皆さん|みなさん|全員)(?:さん)?(?![様])[、,，。\s　]*/, ALL_PART = /^(?:みんな|皆さん|みなさん|全員)(?=[にはがのもをとへやっ])/;
+  async function handle(raw){
+    raw = String(raw || '').trim(); if(!raw) return next();
+    var ld = raw.match(T.LEAD), body = ld ? raw.slice(ld[0].length) : raw;
+    var m = body.match(ALL_CALL), text = raw;
+    if(m){ pick('all'); text = ALL_PART.test(body) ? body : body.slice(m[0].length).trim(); }
+    else { var tn = T.takeName(raw); if(tn.who) pick(tn.who); text = tn.text; }
+    if(!text){ status((cur === 'all' ? ALL.name : SEC[cur].name) + 'に替えました。続けてどうぞ。'); return next(); }
+    busy = true; hushed = false; $('send').disabled = true;
+    record('me', text); bubble('me', text);
+    if(cur === 'all'){
+      for(var i = 0; i < ORDER.length; i++) await one(ORDER[i], EXTRA_BASE + EXTRA_ALL);   /* 一人が答えられなくても、残りの人は答える */
+    } else {
+      var first = cur, ok = await one(first, EXTRA_BASE);
+      if(ok && $('chimeOn').checked){
+        for(var j = 0; j < ORDER.length; j++){ if(ORDER[j] !== first) await one(ORDER[j], EXTRA_BASE + EXTRA_CHIME(first, ORDER[j]), true); }
+      }
+    }
+    busy = false; $('send').disabled = false; next();
+  }
+
+  /* ---- 声の会話：話の区切りで自動送信し、答え終わると自動でまた聞く ---- */
+  function next(){
+    if(!talking || busy) return;
+    TriVoice.listen({ status: function(t){ if(t) status(t); },
+      listeningMessage: (cur === 'all' ? '三人' : SEC[cur].name) + 'が聞いています。話し終えると自動で送ります。',
+      onText: function(t){ handle(t); },
+      onEnd: function(why){ if(why === 'nospeech' || why === 'noise'){ if(talking) next(); return; } stop(); } });
+  }
+  function start(){
+    if(typeof TriVoice === 'undefined' || !TriVoice.listen){ status('音声エンジンが読み込めません（文字で入力してください）。', true); return; }
+    talking = true; $('talk').classList.add('on'); $('talk').textContent = '■ 会話を終える'; next();
+  }
+  function stop(){
+    talking = false; $('talk').classList.remove('on'); $('talk').textContent = '🎙 話しかける';
+    try{ TriVoice.stopListen(); }catch(e){} hush();
+    if(!busy) status('');
+  }
+  $('talk').addEventListener('click', function(){ talking ? stop() : start(); });
+  $('hush').addEventListener('click', hush);
+  function sendTyped(){ var v = $('txt').value.trim(); if(!v || busy) return; $('txt').value = ''; handle(v); }
+  $('send').addEventListener('click', sendTyped);
+  $('txt').addEventListener('keydown', function(e){ if(e.key === 'Enter' && !e.shiftKey && !e.isComposing){ e.preventDefault(); sendTyped(); } });
+
+  /* ---- 会話の切り替え・書き出し・印刷 ---- */
+  $('newConv').addEventListener('click', function(){ if(busy) return; stop(); newConv(); render(); fillPast(); status('新しい会話を始めました。'); });
+  $('past').addEventListener('change', function(){
+    var id = this.value; if(!id || busy){ this.value = ''; return; }
+    var c = store.convs.filter(function(x){ return x.id === id; })[0];
+    if(c){ stop(); conv = c; render(); status(stamp(c.at) + 'の会話を開きました。このまま続けて話せます。'); }
+    fillPast(); this.value = '';
+  });
+  function text(){
+    var L = ['TriTalk（トライトーク）　会話の記録', '合同会社トライサイト　TriSight®', '始めた日時：' + new Date(conv.at).toLocaleString('ja-JP'), ''];
+    conv.items.forEach(function(it){ L.push('■ ' + (it.w === 'me' ? 'あなた' : label(it.w)) + '　' + stamp(it.at)); L.push(it.t); L.push(''); });
+    return L.join('\r\n');
+  }
+  $('saveTxt').addEventListener('click', function(){
+    if(!conv.items.length){ status('まだ会話がありません。'); return; }
+    var d = new Date(conv.at), name = 'トライトーク_会話_' + d.getFullYear() + ('0'+(d.getMonth()+1)).slice(-2) + ('0'+d.getDate()).slice(-2) + '_' + ('0'+d.getHours()).slice(-2) + ('0'+d.getMinutes()).slice(-2) + '.txt';
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + text()], { type:'text/plain;charset=utf-8' })); a.download = name;
+    document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    status('「' + name + '」をダウンロードフォルダに書き出しました。');
+  });
+  $('printBtn').addEventListener('click', function(){
+    if(!conv.items.length){ status('まだ会話がありません。'); return; }
+    $('prDate').textContent = '会話の日時：' + new Date(conv.at).toLocaleString('ja-JP'); window.print();
+  });
+  window.addEventListener('beforeprint', function(){ try{ TriVoice.stop(); }catch(e){} });
+
+  /* ---- 始め：前回の会話の続きを開く（無ければ新しく） ---- */
+  conv = store.convs[0] || newConv();
+  pick(cur); render(); fillPast();
+  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, version: '2026-11-26-01' };
+})();
+</script>
+</body>
+</html>

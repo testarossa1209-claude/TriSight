@@ -1,7 +1,7 @@
 /* ============================================================
    TriSecretaries.js — 3人の秘書（あずさ・なぎさ・つかさ）の共通部品（2026-11-26）
    ------------------------------------------------------------
-   ・「秘書と話す」（TriSight_v5.html）と「よろず相談」の舞台（TriYorozu.html）が同じものを使う。
+   ・「秘書と話す」（TriSight_v5.html）・「よろず相談」の舞台（TriYorozu.html）・トライトーク（TriTalk.html）が同じものを使う。
      秘書の役割・声・名前での指名・返答の取り方は、ここだけを直す（片方だけ直して食い違うのを防ぐ）。
    ・役割は宏史さんの定義（2026-11-26）。トライサイトの基本理念＝一つの見方に偏らず三つの方向から考える。答えを決めるのは人間。
        あずさ＝いまの状況から、これからの姿を自由な発想で描く
@@ -40,16 +40,29 @@
       + '・最後に決めるのは相手（人間）。結論を押し付けず、判断の材料を渡す。\n'
       + '・相手の聞き取り間違いと思われる言葉は、文脈から正しく受け取る。意味が取れないときは聞き返す。';
   }
-  /* 話の頭の名前で指名（ひらがな・カタカナ・漢字の聞き取り揺れも受ける。漢字は後ろに「さん」か区切りがあるときだけ） */
+  /* 名前で指名（2026-11-26 宏史さん「秘書を指名すると名前を呼ぶすべての機能を装備」）
+     ・ひらがな・カタカナ・漢字の聞き取り揺れを受ける（漢字は後ろに敬称か区切りがあるときだけ）
+     ・敬称：さん／ちゃん／くん／君／様／さま
+     ・頭の呼びかけ：「ねえ、なぎさ」「じゃあ、つかさ」「では、あずさ」「ちょっと、〜」「あの、〜」「おい、〜」も、その後に名前が来れば指名として受ける */
+  var HON = '(?:さん|ちゃん|くん|君|様|さま)?';
+  var SEP = '[、,，。！!？?\\s　]';
+  var LEAD = new RegExp('^(?:(?:ねえ|ねぇ|ねー|じゃあ|じゃ|それでは|では|ちょっと|あのう|あの|おい)' + SEP + '*|ね' + SEP + '+)');
+  function callRe(kana, kanji){ return new RegExp('^(?:(?:' + kana + ')' + HON + SEP + '*|(?:' + kanji + ')' + HON + SEP + '+|(?:' + kanji + ')(?:さん|ちゃん|くん|様|さま)' + SEP + '*)'); }
   var CALL = [
-    ['azusa',   /^(?:(?:あずさ|アズサ)(?:さん|ちゃん)?[、,，。\s　]*|梓(?:さん|ちゃん)?[、,，。\s　]+)/],
-    ['nagisa',  /^(?:(?:なぎさ|ナギサ)(?:さん|ちゃん)?[、,，。\s　]*|渚(?:さん|ちゃん)?[、,，。\s　]+)/],
-    ['tsukasa', /^(?:(?:つかさ|ツカサ)(?:さん|ちゃん)?[、,，。\s　]*|司(?:さん|ちゃん)?[、,，。\s　]+)/]
+    ['azusa',   callRe('あずさ|アズサ', '梓')],
+    ['nagisa',  callRe('なぎさ|ナギサ', '渚')],
+    ['tsukasa', callRe('つかさ|ツカサ', '司')]
   ];
-  /* 返り値 { who: 指名された秘書（無ければ null）, text: 名前を除いた残り } */
+  /* 名前のすぐ後に助詞が続くとき（「なぎさはどう思う？」「あずさに聞きます」）は、呼びかけではなく文の一部なので、指名だけして文はそのまま残す */
+  var PARTICLE = new RegExp('^(?:あずさ|アズサ|なぎさ|ナギサ|つかさ|ツカサ|梓|渚|司)' + HON + '(?=[にはがのもをとへやっ])');
+  /* 返り値 { who: 指名された秘書（無ければ null）, text: 名前（と頭の呼びかけ）を除いた残り } */
   function takeName(t){
     t = String(t || '').trim();
-    for(var i = 0; i < CALL.length; i++){ var m = t.match(CALL[i][1]); if(m) return { who: CALL[i][0], text: t.slice(m[0].length).trim() }; }
+    var lead = t.match(LEAD), body = lead ? t.slice(lead[0].length) : t;
+    for(var i = 0; i < CALL.length; i++){
+      var m = body.match(CALL[i][1]);
+      if(m) return { who: CALL[i][0], text: PARTICLE.test(body) ? body : body.slice(m[0].length).trim() };
+    }
     return { who: null, text: t };
   }
   function code(){
@@ -73,10 +86,11 @@
     return true;
   }
   function today(){ var d = new Date(); return '【今日の日付】' + d.getFullYear() + '年' + (d.getMonth()+1) + '月' + d.getDate() + '日\n\n'; }
-  /* 会話の履歴 [{role:'user'|'assistant', content}] を渡して、指名した秘書の返答を得る */
-  async function ask(k, history){
+  /* 会話の履歴 [{role:'user'|'assistant', content}] を渡して、指名した秘書の返答を得る
+     opts.extra … その画面だけの添え書き（例：トライトークの「みんな」で3人が順に答えるときの決まり）。system の末尾に足す（2026-11-26） */
+  async function ask(k, history, opts){
     var cfg = (global.TS_MODELS && global.TS_MODELS[k]) || MODELS[k];
-    var system = today() + sysPrompt(k);
+    var system = today() + sysPrompt(k) + ((opts && opts.extra) ? '\n' + opts.extra : '');
     var msgs = history.slice(-20).map(function(m){ return { role: m.role, content: m.content }; });
     var tries = [cfg.primary, cfg.fallback].filter(function(m, i, a){ return m && a.indexOf(m) === i; }), lastErr = null;
     for(var i = 0; i < tries.length; i++){
@@ -105,5 +119,5 @@
     }
     throw lastErr;
   }
-  global.TriSecretaries = { SEC: SEC, ROLE_TEXT: ROLE_TEXT, sysPrompt: sysPrompt, takeName: takeName, ask: ask, ORDER: ['azusa','nagisa','tsukasa'], version: '1.0' };
+  global.TriSecretaries = { SEC: SEC, ROLE_TEXT: ROLE_TEXT, sysPrompt: sysPrompt, takeName: takeName, LEAD: LEAD, ask: ask, ORDER: ['azusa','nagisa','tsukasa'], version: '1.2' };
 })(typeof window !== 'undefined' ? window : this);

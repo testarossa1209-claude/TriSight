@@ -102,8 +102,13 @@
         url = RELAY + '/api/openai';
         body = { model: model, messages: [{ role:'system', content: system }].concat(msgs) };
         if(/^gpt-4/.test(model)) body.max_tokens = 1200; else body.max_completion_tokens = 4000;
+        /* 2026-11-26：会話の画面（トライトーク）は速さを優先し、考える段階を飛ばす（gpt-6-sol は考えてから答える型で、指定が無いと中くらいに考える。
+           OpenAI の説明では reasoning.effort に none を選べる）。受け付けられなかったときは、指定を外して同じAIで取り直す */
+        if(opts && opts.fast && !/^gpt-4/.test(model)){ body.reasoning_effort = 'none'; body.max_completion_tokens = 1200; }
       }
       r = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json', 'x-trisight-code': code() }, body: JSON.stringify(body) });
+      if(r.status === 400 && body.reasoning_effort){ delete body.reasoning_effort; body.max_completion_tokens = 4000;
+        r = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json', 'x-trisight-code': code() }, body: JSON.stringify(body) }); }
       if(r.status === 401){ authFail(401); throw new Error('認証コードが合いません'); }
       if(r.ok){
         var j = await r.json(), t = '';
@@ -119,5 +124,5 @@
     }
     throw lastErr;
   }
-  global.TriSecretaries = { SEC: SEC, ROLE_TEXT: ROLE_TEXT, sysPrompt: sysPrompt, takeName: takeName, LEAD: LEAD, ask: ask, ORDER: ['azusa','nagisa','tsukasa'], version: '1.2' };
+  global.TriSecretaries = { SEC: SEC, ROLE_TEXT: ROLE_TEXT, sysPrompt: sysPrompt, takeName: takeName, LEAD: LEAD, ask: ask, ORDER: ['azusa','nagisa','tsukasa'], version: '1.3' };
 })(typeof window !== 'undefined' ? window : this);

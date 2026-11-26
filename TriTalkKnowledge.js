@@ -67,5 +67,16 @@
     for(var i = 0; i < scored.length; i++){ var t = scored[i].c.text; if(len + t.length > maxChars) continue; out.push(scored[i].c); len += t.length; if(len > maxChars * 0.9) break; }
     return out;
   }
-  global.TriTalkKnowledge = { CORE: CORE, RULE: RULE, load: load, status: status, pick: pick, grams: grams, roboChunks: function(){ return robo ? robo.chunks : []; }, roboList: function(){ return robo ? robo.list : []; }, version: '1.0' };
+  /* 2026-11-27（宏史さんの指摘「トライトークのなぎさが知らんと言う」）：本体の「秘書と話す」とよろず相談の舞台は、基礎知識を付けずに秘書へ聞いていた。
+     どの画面からでも同じ知識を添えられるよう、問いに合わせた知識の文をここで作る（学習資料はトライトークの画面だけが持つ） */
+  function forQuery(q){
+    return load().then(function(){
+      var parts = [CORE, RULE], list = robo ? robo.list : [];
+      if(list.length) parts.push('【トライサイト ファミリーのシステム】' + list.join('、'));
+      var rb = pick(q, robo ? robo.chunks : [], 3500);
+      if(rb.length) parts.push('【利用解説書（トライサイトロボ）から、問いに関係する部分の抜き出し】\n' + rb.map(function(c){ return c.text; }).join('\n'));
+      return '\n\n' + parts.join('\n\n');
+    });
+  }
+  global.TriTalkKnowledge = { CORE: CORE, RULE: RULE, load: load, status: status, pick: pick, grams: grams, forQuery: forQuery, roboChunks: function(){ return robo ? robo.chunks : []; }, roboList: function(){ return robo ? robo.list : []; }, version: '1.0' };
 })(typeof window !== 'undefined' ? window : this);

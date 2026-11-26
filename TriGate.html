@@ -1400,10 +1400,11 @@ window.tsSyncBanner = function(msg){
   }
 
   /* ===== 認証コードの画面上での確認・変更（開発者ツール不要） ===== */
+  function tsMaskCode(c){ c = String(c || ''); return c.length > 4 ? '•••' + c.slice(-4) : (c ? '•••' : ''); }   /* 2026-11-27（宏史さんの指示）：認証コードを画面にそのまま出さない（写真・のぞき見で漏れるため）。末尾4文字だけ見せる */
   function refreshAuthCodeLabel(){
     const c = localStorage.getItem('trisight_access_code') || '';
     const el = document.getElementById('authCodeLabel');
-    if(el) el.textContent = (c ? c : '（未設定）') + '　／　プラン：' + tsPlanLabel(c) + (tsPlanIsLocked(c) ? '（トライサイト設定）' : '');
+    if(el) el.textContent = (c ? tsMaskCode(c) : '（未設定）') + '　／　プラン：' + tsPlanLabel(c) + (tsPlanIsLocked(c) ? '（トライサイト設定）' : '');
     tgRefreshTierLinks(c);
   }
   /* 2026-08-20 契約プランに応じて画面上の行き先を出し分ける。
@@ -1423,18 +1424,19 @@ window.tsSyncBanner = function(msg){
     const next = prompt(
       '認証コードは、お客様を識別し、この端末の実績データを仕切るための番号です。\n' +
       '契約プラン（親機／廉価版）とは関係ありません。プランは「契約プラン」ボタンから確認・変更できます。\n\n' +
-      '変更しない場合はそのまま「OK」、または「キャンセル」を押してください。',
-      cur
+      '今のコード：' + (cur ? tsMaskCode(cur) : '（未設定）') + '\n新しいコードを入れてください。変更しない場合は空のまま「OK」か「キャンセル」を押してください。',
+      ''
     );
     if(next === null) return; // キャンセル
     const trimmed = next.trim();
+    if(trimmed === '') return;   /* 2026-11-27：今のコードを入力欄に出さなくなったため、空は「変更しない」 */
     if(trimmed === '' || /[^\x21-\x7E]/.test(trimmed)){
       alert('認証コードは半角英数字・記号のみで入力してください（全角・日本語・空白は使えません）。');
       return;
     }
     if(cur && trimmed !== cur){
       const ok = confirm(
-        '認証コードを「' + cur + '」から「' + trimmed + '」に変更します。\n\n' +
+        '認証コードを「' + tsMaskCode(cur) + '」から「' + trimmed + '」に変更します。\n\n' +
         '認証コードは実績データの仕切りキーを兼ねているため、このままでは旧コードで記録した獲得実績や設定が表示されなくなります。\n\n' +
         '「OK」＝旧コードのデータを新しいコードへ引き継ぐ\n' +
         '「キャンセル」＝引き継がない（データは旧コードの中に残ります）'
@@ -8399,7 +8401,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-11-21-05';
+  const TRIGATE_VERSION = '2026-11-27-01';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;

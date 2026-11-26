@@ -78,6 +78,7 @@ function tsGoBack(){
 </div>
 <script src="TriVoiceEngine.js"></script>
 <script src="TriSecretaries.js"></script>
+<script src="TriTalkKnowledge.js"></script>
 <script>
 (function(){
   var T = window.TriSecretaries, SEC = T.SEC, cur = 'nagisa', hist = [], talking = false, busy = false, audio = null;
@@ -113,7 +114,8 @@ function tsGoBack(){
     var k = cur; add('me', '', tn.text); hist.push({ role:'user', content: tn.text });
     busy = true; $('sec_' + k).classList.add('talk'); status(SEC[k].name + 'が考えています…');
     var reply;
-    try{ reply = await T.ask(k, hist); }
+    var kn = ''; try{ if(window.TriTalkKnowledge) kn = await window.TriTalkKnowledge.forQuery(tn.text); }catch(e){ kn = ''; }   /* 2026-11-27：トライトークと同じ基礎知識を添える */
+    try{ reply = await T.ask(k, hist, { extra: kn }); }
     catch(e){ busy = false; $('sec_' + k).classList.remove('talk'); status('返答を得られませんでした：' + e.message, true); return next(); }
     hist.push({ role:'assistant', content: reply });
     add('ai', SEC[k].name + '（' + SEC[k].role + '）', reply);

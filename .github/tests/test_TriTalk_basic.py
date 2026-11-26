@@ -108,11 +108,14 @@ async def test(p):
         await pg.click('button[data-del="0"]'); await pg.wait_for_timeout(300)
         assert '休日の決まり' not in await pg.inner_text('#gkList'), '外した科目が一覧に残っています'
         await pg.click('#gk_lst .gkClose')
-        # ⑫ シリーズ質問：会話へ送られ、選んでいる秘書が基礎知識付きで声で答える
+        # ⑫ シリーズ質問：システムのボタンで選び、聞き取った質問が会話へ送られ、選んでいる秘書が基礎知識付きで声で答える（打ち込む欄は無い）
         await pg.click('.gkTab[data-k="qa"]'); await pg.wait_for_timeout(400)
         n0 = len(tts)
-        await pg.fill('#qaText', 'トライタイムでは何ができますか'); await pg.click('#qaSend'); await pg.wait_for_timeout(1500)
-        assert 'トライタイムでは何ができますか' in await pg.inner_text('#log'), 'シリーズ質問が会話に入りません'
+        assert not await pg.query_selector('#qaText'), 'シリーズ質問に打ち込む欄が残っています'
+        await pg.click('#qaSys .qaSysB[data-s="トライタイム"]'); await pg.wait_for_timeout(200)
+        assert 'トライタイム' in await pg.inner_text('#qaSt'), 'システムのボタンで選べません'
+        await pg.evaluate("TriTalk._qaAsk('何ができますか')"); await pg.wait_for_timeout(1500)   # 声の聞き取りの代わりに、聞き取った文を渡す
+        assert 'トライタイムについて：何ができますか' in await pg.inner_text('#log'), 'シリーズ質問が会話に入りません'
         assert len(tts) > n0, 'シリーズ質問の答えを声にしていません'
         assert '【システムの紹介】トライタイム' in json.dumps(calls[-1], ensure_ascii=False), 'シリーズ質問に利用解説書が渡っていません'
         await s.shot('body', 'TriTalk.png')

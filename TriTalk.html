@@ -24,8 +24,9 @@
             付け加えることが無い秘書は「パス」と返し、画面には出さない（宏史さんの案・2026-11-26）
             開いたときは切り（指名した秘書だけが答える。指名の意味を残すため・宏史さんの決定 2026-11-26）
          ⑥ 名前での指名は TriSecretaries.js の takeName（呼びかけ・敬称・表記揺れ）。「みんな」も同じ呼びかけを受ける
-         ⑦ 2026-11-26-02（宏史さんの指示）：
+         ⑦ 2026-11-26-03（宏史さんの指示）：
             ・右の引き出し4つ＝学習窓／学習一覧／シリーズ質問（会話へ送り秘書が声で答える・トライロボの入口）／会話の記録
+         ⑧ 2026-11-26-03：シリーズ質問は声で聞いて声で答える窓にした（打ち込む欄はやめ、システムのボタンと「🎙 話しかけて質問する」を置く）
             ・声の会話は文字よりトークンを使うので、質問は短めにという注意を入力欄の上に出す
             ・右の引き出し「学習資料」＝資料を読ませる窓（PDF・Word・テキスト・貼り付け）と、学習科目の一覧（使う／使わない・外す）
             ・秘書はトライサイトシリーズの基礎知識を最初から持つ（TriTalkKnowledge.js。製品の説明はトライロボ＝利用解説書の元データを読む）
@@ -91,7 +92,10 @@
   .logItem small{display:block;color:var(--soft);font-size:12px}
   .qaQ{font-weight:700;color:var(--navy);margin:10px 0 4px}
   .qaA{white-space:pre-wrap;line-height:1.75;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
-  .qaChip{font:inherit;font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--gold);background:#fff;cursor:pointer}
+  .qaSysB{font:inherit;font-size:13px;padding:5px 12px;border-radius:999px;border:1px solid var(--gold);background:#fff;color:var(--navy);cursor:pointer}
+  .qaSysB.on{background:var(--gold);font-weight:700}
+  .qaTalk{font:inherit;font-weight:700;font-size:16px;border:0;border-radius:10px;padding:12px 22px;background:#c0392b;color:#fff;cursor:pointer}
+  .qaTalk.on{background:#e74c3c;animation:glow 1s infinite}
   body{padding-right:46px;box-sizing:border-box}   /* 右端の引き出しのつまみが、上の行の文字に重ならないように */
   @media (min-width:1240px){ body.gkOpen{padding-right:560px} }
   @media print{body{padding-right:0}}
@@ -185,7 +189,7 @@ function tsGoBack(){
   <button class="btn" id="hush" type="button">■ 読み上げを止める</button>
   <button class="btn" id="talk" type="button">🎙 話しかける</button>
 </div>
-<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 2026-11-26-02</span></div>
+<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 2026-11-26-03</span></div>
 
 <!-- 右の引き出し4つ（2026-11-26 宏史さんの指示「学習窓と学習一覧表とトライサイトシリーズに対する質問と会話の記録の４つは欲しい」） -->
 <div class="gkTabs">
@@ -223,16 +227,15 @@ function tsGoBack(){
   </div>
 </aside>
 <aside class="gkPanel" id="gk_qa" aria-label="シリーズ質問">
-  <div class="gkHead"><h2>シリーズ質問<small>トライサイトシリーズについての質問です。答えの中身はトライロボ（利用解説書）と同じで、上で選んでいる秘書が声で答えます。</small></h2><button type="button" class="gkClose" title="閉じる" aria-label="閉じる">×</button></div>
+  <div class="gkHead"><h2>シリーズ質問<small>トライサイトシリーズについて、声で聞いて声で答えます。答えの中身はトライロボ（利用解説書）と同じです。</small></h2><button type="button" class="gkClose" title="閉じる" aria-label="閉じる">×</button></div>
   <div class="gkBody">
-    <div class="box">
-      <textarea id="qaText" placeholder="例：トライゲイトで補助金を探すにはどうすればいいですか"></textarea>
-      <div style="margin-top:6px"><button type="button" class="btn2" id="qaSend">質問する</button></div>
-      <div class="muted" style="margin-top:8px">よくある質問（押すと質問の欄に入ります）：</div>
-      <div id="qaChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
-    </div>
+    <h3>何について聞きますか（押すと選べます。もう一度押すと外れます）</h3>
+    <div id="qaSys" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    <div style="margin-top:14px"><button type="button" id="qaTalk" class="qaTalk">🎙 話しかけて質問する</button></div>
+    <div id="qaSt" class="muted" style="margin-top:8px;min-height:1.6em"></div>
+    <div class="muted">話し終えると自動で送ります。上で選んでいる秘書が声で答え、答えは会話の欄にも残ります。システムを選ばずに話しても、シリーズ全体について答えます。</div>
     <h3>画面の操作を確かめたいとき</h3>
-    <div class="muted">どの画面のどのボタンを押すかを、いまの画面と照らし合わせて確かめたいときは、トライロボの「質問する」を使ってください。</div>
+    <div class="muted">どの画面のどのボタンを押すかを、いまの画面と照らし合わせて文字で確かめたいときは、トライロボの「質問する」を使ってください。</div>
     <div style="margin-top:6px"><a class="btn2" href="TriRobo.html" style="display:inline-block;text-decoration:none">トライロボを開く</a></div>
   </div>
 </aside>
@@ -431,14 +434,34 @@ function tsGoBack(){
   if(K){ K.load().then(function(){
     $('gkRobo').textContent = '（いま読めているもの：' + K.status() + '）';
     var l = K.roboList(); if(l.length) $('gkSys').textContent = '知っているシステム：' + l.join('、');
-    $('qaChips').innerHTML = l.map(function(n){ return '<button type="button" class="qaChip" data-q="' + esc(n) + 'では何ができますか">' + esc(n) + '</button>'; }).join('');
+    $('qaSys').innerHTML = l.map(function(n){ return '<button type="button" class="qaSysB" data-s="' + esc(n) + '">' + esc(n) + '</button>'; }).join('');
   }); }
-  /* ---- シリーズ質問：文字だけで、なぎさがトライロボと同じ内容で答える（会話の記録には入れない） ---- */
-  $('qaChips').addEventListener('click', function(e){ var q = e.target.getAttribute && e.target.getAttribute('data-q'); if(q){ $('qaText').value = q; $('qaText').focus(); } });
-  /* 質問は会話へ送り、上で選んでいる秘書が声で答える（中身はトライロボと同じ元データ。宏史さんの決定 2026-11-26） */
-  $('qaSend').addEventListener('click', function(){
-    var q = $('qaText').value.trim(); if(!q || busy) return;
-    $('qaText').value = ''; gkOpen(null); handle(q);
+  /* ---- シリーズ質問：声で聞いて声で答える（宏史さんの指示 2026-11-26「タイピングは不要。シリーズ質問にこそ、話しかけるボタンとシステムのボタンを並べて」）
+     システムのボタンで「何について」を選び、赤いボタンで1回聞き取って会話へ送る。答えは上で選んでいる秘書が声で返す ---- */
+  var qaSel = '', qaListening = false;
+  $('qaSys').addEventListener('click', function(e){
+    var n = e.target.getAttribute && e.target.getAttribute('data-s'); if(!n) return;
+    qaSel = (qaSel === n) ? '' : n;
+    [].forEach.call(document.querySelectorAll('#qaSys .qaSysB'), function(b){ b.classList.toggle('on', b.getAttribute('data-s') === qaSel); });
+    $('qaSt').textContent = qaSel ? '「' + qaSel + '」について聞きます。赤いボタンを押して話してください。' : '';
+  });
+  function qaAsk(t){
+    t = String(t || '').trim(); if(!t) return;
+    var q = qaSel ? qaSel + 'について：' + t : t;
+    $('qaSt').textContent = '質問を送りました：' + q;
+    handle(q);
+  }
+  function qaStop(){ qaListening = false; $('qaTalk').classList.remove('on'); $('qaTalk').textContent = '🎙 話しかけて質問する'; }
+  $('qaTalk').addEventListener('click', function(){
+    if(qaListening){ try{ TriVoice.stopListen(); }catch(e){} qaStop(); $('qaSt').textContent = ''; return; }
+    if(busy){ $('qaSt').textContent = '秘書が答えている途中です。答え終わってから押してください。'; return; }
+    if(typeof TriVoice === 'undefined' || !TriVoice.listen){ $('qaSt').textContent = '音声エンジンが読み込めません。'; return; }
+    if(talking) stop();
+    qaListening = true; $('qaTalk').classList.add('on'); $('qaTalk').textContent = '■ 聞き取りをやめる';
+    TriVoice.listen({ endSilenceMs: 1000, status: function(m){ if(m) $('qaSt').textContent = m; },
+      listeningMessage: (qaSel ? '「' + qaSel + '」について' : '') + 'どうぞ、お話しください。話し終えると自動で送ります。',
+      onText: function(t){ qaStop(); qaAsk(t); },
+      onEnd: function(why){ qaStop(); if(why === 'nospeech' || why === 'noise') $('qaSt').textContent = '声が聞き取れませんでした。もう一度押して話してください。'; } });
   });
   /* 学習資料を、問いで探しやすい大きさ（約700文字）に切る。切った結果は覚えておき、資料が変わったら作り直す */
   var docChunkCache = { key: '', chunks: [] };
@@ -555,7 +578,7 @@ function tsGoBack(){
   /* ---- 始め：前回の会話の続きを開く（無ければ新しく） ---- */
   conv = store.convs[0] || newConv();
   pick(cur); render(); fillPast();
-  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, version: '2026-11-26-02' };
+  window.TriTalk = { _handle: handle, _qaAsk: qaAsk, _store: function(){ return store; }, _historyFor: historyFor, version: '2026-11-26-03' };
 })();
 </script>
 </body>

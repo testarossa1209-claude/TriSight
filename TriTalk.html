@@ -22,6 +22,7 @@
          ⑤ 「ほかの秘書も意見を出す」＝ 指名した秘書が答えたあと、残りの2人がその答えを聞いたうえで「（自分の名前）はこのように考えます」と人間に向けて別の提案を出す。
             秘書どうしの意見交換ではなく一方通行：後の秘書は前の秘書の答えを聞いたうえで、人間に向けて自分の意見を言う（前の秘書には話しかけない）。
             付け加えることが無い秘書は「パス」と返し、画面には出さない（宏史さんの案・2026-11-26）
+            開いたときは切り（指名した秘書だけが答える。指名の意味を残すため・宏史さんの決定 2026-11-26）
          ⑥ 名前での指名は TriSecretaries.js の takeName（呼びかけ・敬称・表記揺れ）。「みんな」も同じ呼びかけを受ける
      ・会話はこの端末（ブラウザ）の中にだけ残り、当社のサーバーには残さない。
      ============================================================ -->
@@ -130,7 +131,7 @@ function tsGoBack(){
   <select id="past" aria-label="過去の会話"><option value="">過去の会話を開く</option></select>
   <button type="button" id="saveTxt">TXTで書き出す</button>
   <button type="button" id="printBtn">印刷</button>
-  <label title="指名した秘書が答えたあと、残りの2人もあなたに向けて、それぞれ別の提案を出します（付け加えることが無い秘書は飛ばします）" style="margin-left:auto"><input type="checkbox" id="chimeOn" checked>ほかの秘書も意見を出す</label>
+  <label title="指名した秘書が答えたあと、残りの2人もあなたに向けて、それぞれ別の提案を出します（付け加えることが無い秘書は飛ばします）" style="margin-left:auto"><input type="checkbox" id="chimeOn">ほかの秘書も意見を出す</label>
   <label title="外すと、秘書は声を出さず文字だけで答えます" style="margin-left:0"><input type="checkbox" id="voiceOn" checked>声で答える</label>
 </div>
 
@@ -179,7 +180,7 @@ function tsGoBack(){
   /* ---- 表示 ---- */
   function status(t, warn){ $('st').textContent = t || ''; $('st').className = (warn || /失敗|できません|未対応|合いません|まだ用意|いっぱい/.test(t || '')) ? 'warn' : ''; }
   function label(w){ return SEC[w].name + '（' + SEC[w].role + '）'; }
-  function hint(){ $('log').innerHTML = '<div class="hint">話したい秘書を上から選んで、赤い「🎙 話しかける」を押してください。話し終えると自動で送ります。<br>話の頭で名前を呼んでも選べます（例「つかさ、〜」「ねえ、なぎさ、〜」「みんな、〜」）。文字で送ることもできます。<br>指名した秘書が答えたあと、ほかの秘書もあなたへ別の提案を出します（上の「ほかの秘書も意見を出す」で切り替え）。<br>一つの見方に偏らず、三つの方向から考える。答えを決めるのは人間です。</div>'; }
+  function hint(){ $('log').innerHTML = '<div class="hint">話したい秘書を上から選んで、赤い「🎙 話しかける」を押してください。話し終えると自動で送ります。<br>話の頭で名前を呼んでも選べます（例「つかさ、〜」「ねえ、なぎさ、〜」「みんな、〜」）。文字で送ることもできます。<br>ほかの秘書の意見もほしいときは、上の「ほかの秘書も意見を出す」にチェックを入れてください。指名した秘書が答えたあと、残りの秘書もあなたへ別の提案を出します。<br>一つの見方に偏らず、三つの方向から考える。答えを決めるのは人間です。</div>'; }
   function bubble(w, text){
     var h = document.querySelector('#log .hint'); if(h) h.remove();
     var d = document.createElement('div'); d.className = 'msg ' + (w === 'me' ? 'me' : 'ai');

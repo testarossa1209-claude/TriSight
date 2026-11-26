@@ -1,5 +1,5 @@
 /*! ===========================================================================
- *  TriVoiceEngine.js  —  TriSight® 横串・共通音声エンジン（正）  v2.3（2026-11-15：録音の取り消し・元に戻す・今入れた分を取り消す／2026-10-28：欄ごとの「話して入力」fieldMics／2026-10-15：小さいマイク small）
+ *  TriVoiceEngine.js  —  TriSight® 横串・共通音声エンジン（正）  v2.4（2026-11-26：声の会話 listen・speak／2026-11-15：録音の取り消し・元に戻す・今入れた分を取り消す／2026-10-28：欄ごとの「話して入力」fieldMics／2026-10-15：小さいマイク small）
  *  ---------------------------------------------------------------------------
  *  役割：録音 → リレー → 文字起こし(Whisper) → ［任意］AI構造化(Claude) → 落とし込み
  *  構成：iPad Safari でも確実に動く MediaRecorder 方式。
@@ -621,6 +621,106 @@
     if(global.MutationObserver) new MutationObserver(function(){ clearTimeout(t); t = setTimeout(scan, 150); }).observe(document.body, { childList:true, subtree:true });
   }
 
+  /* =====================================================================
+     ⑥ 声の会話（2026-11-26：宏史さんの決定）
+     ・listen … 1回押せば聞き取りを始め、話の区切り（無音が続いたところ）で自動で止めて文字にする。
+                送る前の確認はしない。雑音が入る前提で、最初に周りの音の大きさを測ってから基準を決める。
+     ・speak  … 返答を声で読み上げる。声はリレーの /api/tts で作る（会社と声の名前は画面側が渡す）。
+     ===================================================================== */
+  /* 文字起こしが雑音から作りがちな決まり文句（話していないのに出る文）は捨てる */
+  var NOISE_PHRASES = ['ご視聴ありがとうございました','ご清聴ありがとうございました','チャンネル登録','字幕','おやすみなさい','ありがとうございました'];
+  function isNoiseText(t){
+    var s = String(t || '').replace(/[\s　。、．，！？!?…・「」]/g, '');
+    if(s.length < 2) return true;
+    for(var i = 0; i < NOISE_PHRASES.length; i++){ if(s === NOISE_PHRASES[i].replace(/[\s　。、]/g, '')) return true; }
+    return false;
+  }
+  var lis = null;   // 会話の聞き取り（同時に1つだけ）
+  function stopListen(silent){
+    if(!lis) return;
+    var L = lis; lis = null;
+    try{ cancelAnimationFrame(L.raf); }catch(e){}
+    try{ L.ctx.close(); }catch(e){}
+    L.discard = !!silent;
+    try{ if(L.mr.state !== 'inactive') L.mr.stop(); }catch(e){}
+    try{ L.stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
+  }
+  function listen(opts){
+    opts = opts || {};
+    var c = merge(opts), say = opts.status || function(){};
+    var endMs = opts.endSilenceMs || 1300, waitMs = opts.noSpeechMs || 12000, maxMs = opts.maxMs || 90000;
+    if(!global.MediaRecorder || !navigator.mediaDevices || !(global.AudioContext || global.webkitAudioContext)){
+      say('この端末は声の会話に未対応です（文字で入力してください）。'); if(opts.onEnd) opts.onEnd('unsupported'); return;
+    }
+    if(isRecording()) stopRec();
+    stopListen(true);
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation:true, noiseSuppression:true, autoGainControl:true } }).then(function(stream){
+      var mime = pickMime(), mr;
+      try{ mr = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream); }
+      catch(e){ say('録音を開始できません：' + e.message); stream.getTracks().forEach(function(t){ t.stop(); }); if(opts.onEnd) opts.onEnd('error'); return; }
+      var AC = global.AudioContext || global.webkitAudioContext, ctx = new AC();
+      var src = ctx.createMediaStreamSource(stream), an = ctx.createAnalyser();
+      an.fftSize = 1024; src.connect(an);
+      var buf = new Float32Array(an.fftSize), chunks = [];
+      var L = { mr: mr, stream: stream, ctx: ctx, raf: 0, discard: false };
+      lis = L;
+      var t0 = Date.now(), floor = 0, nFloor = 0, thr = 0.02, spoke = false, loudSince = 0, quietSince = 0;
+      function level(){ an.getFloatTimeDomainData(buf); var s = 0; for(var i = 0; i < buf.length; i++) s += buf[i] * buf[i]; return Math.sqrt(s / buf.length); }
+      function tick(){
+        if(lis !== L) return;
+        var v = level(), now = Date.now(), el = now - t0;
+        if(el < 500){ floor += v; nFloor++; thr = Math.max(0.015, (floor / nFloor) * 2.5); }   // 最初の0.5秒で周りの音の大きさを測る
+        else if(v > thr){ if(!loudSince) loudSince = now; if(now - loudSince > 180) spoke = true; quietSince = 0; }
+        else { loudSince = 0; if(!quietSince) quietSince = now; }
+        if(opts.onLevel) opts.onLevel(v, thr, spoke);
+        if(spoke && quietSince && now - quietSince > endMs){ stopListen(false); return; }      // 話の区切り
+        if(!spoke && el > waitMs){ stopListen(true); if(opts.onEnd) opts.onEnd('nospeech'); return; } // 話し始めがない
+        if(el > maxMs){ stopListen(false); return; }
+        L.raf = requestAnimationFrame(tick);
+      }
+      mr.ondataavailable = function(ev){ if(ev.data && ev.data.size) chunks.push(ev.data); };
+      mr.onstop = function(){
+        if(L.discard){ return; }
+        var usedMime = mr.mimeType || mime || 'audio/mp4';
+        var blob = new Blob(chunks, { type: usedMime });
+        transcribe(blob, usedMime, { conf: c, status: say, onText: function(txt){
+          if(isNoiseText(txt)){ say(''); if(opts.onEnd) opts.onEnd('noise'); return; }
+          if(opts.onText) opts.onText(txt);
+        }});
+      };
+      mr.start();
+      say(opts.listeningMessage || 'どうぞ、お話しください。話し終えると自動で送ります。');
+      L.raf = requestAnimationFrame(tick);
+    }).catch(function(e){
+      say('マイクを使用できません（端末設定でマイク許可を確認）：' + e.name); if(opts.onEnd) opts.onEnd('error');
+    });
+  }
+  var speaking = null;
+  function stopSpeak(){ if(speaking){ try{ speaking.pause(); }catch(e){} speaking = null; } }
+  /* v = { vendor:'openai'|'google', voice:'marin', model:'…', instructions:'…' } */
+  function speak(text, v, opts){
+    opts = opts || {};
+    var c = merge(opts);
+    stopSpeak();
+    return fetch(c.relay + (opts.ttsPath || '/api/tts'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-trisight-code': tsCode() },
+      body: JSON.stringify({ text: String(text || '').slice(0, 3800), vendor: v.vendor, voice: v.voice, model: v.model || '', instructions: v.instructions || '', language: 'ja-JP' })
+    }).then(function(r){
+      if(tsAuthFail(r.status)) throw new Error('認証コードが合いません');
+      if(r.status === 404) throw new Error('声の窓口（リレーの /api/tts）がまだ用意されていません');
+      if(!r.ok) return r.json().catch(function(){ return {}; }).then(function(d){ throw new Error((d && d.error) || ('HTTP ' + r.status)); });
+      return r.blob();
+    }).then(function(b){
+      return new Promise(function(res){
+        var url = URL.createObjectURL(b), a = new Audio(url);
+        speaking = a;
+        a.onended = a.onerror = function(){ URL.revokeObjectURL(url); if(speaking === a) speaking = null; res(); };
+        a.play().catch(function(){ res(); });
+      });
+    });
+  }
+
   /* ---- 公開API --------------------------------------------------------- */
   global.TriVoice = {
     init:      init,        // ①② フォーム初期化
@@ -628,8 +728,12 @@
     command:   command,     // ④ 声で操作（画面のボタン・タブ・選び欄・日付）
     fieldMics: fieldMics,   // ⑤ 欄ごとの「話して入力」（2026-10-28）
     _runCommand: function(t){ if(cmd) runCommand(t); },  // 試験用：文字で渡して照らし合わせだけ行う
-    stop:      stopRec,     // 録音停止（印刷・クリア前に呼ぶ）
-    version:   '2.2'
+    stop:      function(){ stopRec(); stopListen(true); stopSpeak(); },  // 録音・聞き取り・読み上げを止める（印刷・クリア前に呼ぶ）
+    listen:    listen,      // ⑥ 声の会話：話の区切りで自動で止めて文字にする（2026-11-26）
+    stopListen: function(){ stopListen(true); },
+    speak:     speak,       // ⑥ 声の会話：返答を声で読み上げる（リレーの /api/tts）
+    stopSpeak: stopSpeak,
+    version:   '2.4'
   };
 
 })(window);

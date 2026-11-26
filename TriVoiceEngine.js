@@ -1,5 +1,5 @@
 /*! ===========================================================================
- *  TriVoiceEngine.js  —  TriSight® 横串・共通音声エンジン（正）  v2.4（2026-11-26：声の会話 listen・speak／2026-11-15：録音の取り消し・元に戻す・今入れた分を取り消す／2026-10-28：欄ごとの「話して入力」fieldMics／2026-10-15：小さいマイク small）
+ *  TriVoiceEngine.js  —  TriSight® 横串・共通音声エンジン（正）  v2.5（2026-11-26：声の保存用 synth／声の会話 listen・speak／2026-11-15：録音の取り消し・元に戻す・今入れた分を取り消す／2026-10-28：欄ごとの「話して入力」fieldMics／2026-10-15：小さいマイク small）
  *  ---------------------------------------------------------------------------
  *  役割：録音 → リレー → 文字起こし(Whisper) → ［任意］AI構造化(Claude) → 落とし込み
  *  構成：iPad Safari でも確実に動く MediaRecorder 方式。
@@ -697,11 +697,12 @@
   }
   var speaking = null;
   function stopSpeak(){ if(speaking){ try{ speaking.pause(); }catch(e){} speaking = null; } }
-  /* v = { vendor:'openai'|'google', voice:'marin', model:'…', instructions:'…' } */
-  function speak(text, v, opts){
+  /* v = { vendor:'openai'|'google', voice:'marin', model:'…', instructions:'…' }
+     synth … 声を作るだけ（再生しない）。{ blob, route } を返す。route は声を作った経路（openai／vertex／gemini-api）。
+             公開用の声を保存する画面は、Googleの声が vertex 以外の経路で作られたものを保存しないこと（2026-11-26）。 */
+  function synth(text, v, opts){
     opts = opts || {};
     var c = merge(opts);
-    stopSpeak();
     return fetch(c.relay + (opts.ttsPath || '/api/tts'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-trisight-code': tsCode() },
@@ -710,10 +711,15 @@
       if(tsAuthFail(r.status)) throw new Error('認証コードが合いません');
       if(r.status === 404) throw new Error('声の窓口（リレーの /api/tts）がまだ用意されていません');
       if(!r.ok) return r.json().catch(function(){ return {}; }).then(function(d){ throw new Error((d && d.error) || ('HTTP ' + r.status)); });
-      return r.blob();
-    }).then(function(b){
+      var route = r.headers.get('x-tts-route') || '';
+      return r.blob().then(function(b){ return { blob: b, route: route }; });
+    });
+  }
+  function speak(text, v, opts){
+    stopSpeak();
+    return synth(text, v, opts).then(function(o){
       return new Promise(function(res){
-        var url = URL.createObjectURL(b), a = new Audio(url);
+        var url = URL.createObjectURL(o.blob), a = new Audio(url);
         speaking = a;
         a.onended = a.onerror = function(){ URL.revokeObjectURL(url); if(speaking === a) speaking = null; res(); };
         a.play().catch(function(){ res(); });
@@ -732,8 +738,9 @@
     listen:    listen,      // ⑥ 声の会話：話の区切りで自動で止めて文字にする（2026-11-26）
     stopListen: function(){ stopListen(true); },
     speak:     speak,       // ⑥ 声の会話：返答を声で読み上げる（リレーの /api/tts）
+    synth:     synth,       // ⑥ 声を作るだけ（保存用）。{ blob, route } を返す（2026-11-26）
     stopSpeak: stopSpeak,
-    version:   '2.4'
+    version:   '2.5'
   };
 
 })(window);

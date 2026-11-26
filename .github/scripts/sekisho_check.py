@@ -71,7 +71,7 @@ VERSION_MAP = {
     'trisight': 'TriSight_v5.html', 'trisheet': 'TriSheet.html', 'trisight_auto': 'TriSight_v5_auto.html',
     'trirobo': 'TriRobo.html', 'report_business': 'TriSight_Report_Business.html',
     'tritime': 'TriTime.html', 'tricare_asm': 'TriCare_Assessment.html',
-    'triplan': 'TriPlan.html',
+    'triplan': 'TriPlan.html', 'tritalk': 'TriTalk.html',
 }
 # 戻るボタンを付けない画面（表札そのものと、使っていない古い控え）
 BACK_SKIP = {'index.html', 'TriBase_20260802.html', 'TriReward_kourei_20260802.html'}

@@ -464,7 +464,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-21-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-27-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -4492,7 +4492,63 @@ document.addEventListener('keydown', function(e){
    ・個人のパーソナルデータ（入職日・生年月日・追加の資格・経歴と特記）は野木画面でだけ入れ、ゼウスキーで鍵をかけて保管する（mgmt の own:person:職員の番号）
    ・評価項目（職員の評価・評価する管理者の評価）は、この土台ができてから改めて決める（宏史さんの指示） */
 var NG = { month:'', open:'', view:'people' };
-var NG_VIEWS = [['summary','部門のようす'],['people','人物情報表'],['attend','出勤状況'],['cmp','予定表の比較'],['rules','条項表'],['seval','職員評価'],['meval','管理者評価'],['cand','幹部候補']];   /* 2026-11-04：予定表の比較（人情×効率）と条項表 */
+var NG_VIEWS = [['summary','部門のようす'],['people','人物情報表'],['attend','出勤状況'],['cmp','予定表の比較'],['rules','条項表'],['seval','職員評価'],['meval','管理者評価'],['cand','幹部候補'],['sysver','システムの版']];   /* 2026-11-27：システムの版（全システムの最新版と変更の記録） */   /* 2026-11-04：予定表の比較（人情×効率）と条項表 */
+/* ===== システムの版（2026-11-27・宏史さんの指示「全システムの最新版の一覧表を付ける。毎日自動で更新し、仕様変更をしたらトライタイムで見て確認できるように」）=====
+   ・版の一覧：GitHub の version.json（各画面を直すたびに同じ申請で書き換える台帳）を、開くたびに取り直して並べる。
+     開いたままの画面でも1日1回取り直す（毎日の自動更新）。直近3日以内に上がった版には「新」を付ける。
+   ・変更の記録：TriSight リポジトリでマージ済みの申請（PR）の題名を新しい順に30件。システムで絞り込める。
+   ・中継（trisight-relay）の変更は非公開の場所にあるため、この画面からは読めない（下に注記）。 */
+var SV_NAMES = { trisight:['トライサイト本体','TriSight_v5.html'], trisight_auto:['トライサイト AI連携オプション','TriSight_v5_auto.html'],
+  trigate:['トライゲイト','TriGate.html'], tritime:['トライタイム','TriTime.html'], tritalk:['トライトーク','TriTalk.html'],
+  triform:['トライフォーム','TriForm.html'], tritask:['トライタスク','TriTask.html'], trisheet:['トライシート（基本情報シート）','TriSheet.html'],
+  trirobo:['トライロボ','TriRobo.html'], triplan:['トライプラン（受給計画書）','TriPlan.html'], tricare_asm:['トライケア（アセスメント）','TriCare_Assessment.html'],
+  report_business:['業務報告書','TriSight_Report_Business.html'] };
+var SV_WORDS = { trisight:['トライサイト本体','TriSight_v5','本体','秘書と話す'], trisight_auto:['AI連携','v5_auto'], trigate:['トライゲイト','TriGate','ゲイト','発掘'],
+  tritime:['トライタイム','TriTime'], tritalk:['トライトーク','TriTalk'], triform:['トライフォーム','TriForm'], tritask:['トライタスク','TriTask'],
+  trisheet:['トライシート','TriSheet','基本情報シート'], trirobo:['トライロボ','TriRobo'], triplan:['トライプラン','TriPlan','受給計画書'],
+  tricare_asm:['トライケア','TriCare','アセスメント'], report_business:['業務報告','Report_Business'] };
+var SV = { at:0, ver:null, prs:null, err:'', filter:'' };
+var SV_REPO = 'https://api.github.com/repos/testarossa1209-claude/TriSight/pulls?state=closed&base=main&sort=updated&direction=desc&per_page=60';
+function svDaysAgo(v){ var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v || ''); if(!m) return 999; var d = new Date(+m[1], +m[2] - 1, +m[3]); return Math.floor((new Date() - d) / 86400000); }
+function svLoad(force){
+  if(!force && SV.at && (Date.now() - SV.at) < 86400000 && SV.ver){ svShow(); return; }
+  var box = $('svBox'); if(box) box.textContent = '読み込んでいます…';
+  SV.err = '';
+  Promise.all([
+    fetch('version.json?t=' + Date.now(), { cache:'no-store' }).then(function(r){ if(!r.ok) throw new Error('版の台帳（version.json）を読めませんでした（' + r.status + '）'); return r.json(); }),
+    fetch(SV_REPO, { cache:'no-store', headers:{ Accept:'application/vnd.github+json' } }).then(function(r){ if(!r.ok) throw new Error('変更の記録（GitHub）を読めませんでした（' + r.status + '）'); return r.json(); }).catch(function(e){ SV.err = e.message || '変更の記録を読めませんでした'; return null; })
+  ]).then(function(a){
+    SV.ver = a[0]; SV.at = Date.now();
+    SV.prs = a[1] ? a[1].filter(function(p){ return p && p.merged_at; }).sort(function(x, y){ return String(y.merged_at).localeCompare(String(x.merged_at)); }).slice(0, 30) : null;
+    svShow();
+  }).catch(function(e){ var b = $('svBox'); if(b) b.textContent = (e && e.message) || '読み込めませんでした。'; });
+}
+function svShow(){
+  var box = $('svBox'); if(!box || !SV.ver) return;
+  var keys = Object.keys(SV.ver);
+  var t = new Date(SV.at), hm = t.getFullYear() + '/' + (t.getMonth() + 1) + '/' + t.getDate() + ' ' + ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2);
+  var rows = keys.map(function(k){
+    var nm = SV_NAMES[k] || [k, ''], v = String(SV.ver[k] || ''), d = svDaysAgo(v);
+    return '<tr><td>' + esc(nm[0]) + (d <= 3 ? ' <span style="background:#c8a24a;color:#fff;border-radius:999px;padding:0 8px;font-size:12px">新</span>' : '') + '</td><td><b>' + esc(v) + '</b></td><td><small class="muted">' + esc(nm[1]) + '</small></td></tr>';
+  }).join('');
+  var opts = '<option value="">すべてのシステム</option>' + keys.map(function(k){ return '<option value="' + esc(k) + '"' + (SV.filter === k ? ' selected' : '') + '>' + esc((SV_NAMES[k] || [k])[0]) + '</option>'; }).join('');
+  var prs = (SV.prs || []).filter(function(p){ if(!SV.filter) return true; var w = SV_WORDS[SV.filter] || [SV.filter]; return w.some(function(x){ return String(p.title || '').indexOf(x) >= 0; }); });
+  var chg = SV.prs ? (prs.length ? '<div class="tbl-scroll"><table><tr><th>マージした日時</th><th>変更の内容（申請の題名）</th><th>番号</th></tr>' + prs.map(function(p){
+      var m = new Date(p.merged_at);
+      return '<tr><td style="white-space:nowrap">' + m.getFullYear() + '/' + (m.getMonth() + 1) + '/' + m.getDate() + ' ' + ('0' + m.getHours()).slice(-2) + ':' + ('0' + m.getMinutes()).slice(-2) + '</td><td>' + esc(p.title || '') + '</td><td>#' + esc(p.number) + '</td></tr>';
+    }).join('') + '</table></div>' : '<p class="empty">このシステムの題名を含む変更は、直近30件の中にありません。</p>') : '<p class="muted">' + esc(SV.err || '変更の記録を読めませんでした。') + '</p>';
+  box.className = '';
+  box.innerHTML = '<p class="muted">GitHub の版の台帳（version.json）から読んでいます。最後に読み込んだ時刻：' + esc(hm) + '（開いたままでも1日1回読み直します）'
+    + ' <button type="button" class="btn sub" id="svReload" style="padding:2px 12px">読み直す</button></p>'
+    + '<div class="tbl-scroll"><table><tr><th>システム</th><th>最新の版</th><th>ファイル</th></tr>' + rows + '</table></div>'
+    + '<h3 style="margin:18px 0 6px">変更の記録（マージ済みの申請・新しい順）</h3>'
+    + '<div class="row"><div><label class="f" for="svFilter">システムで絞る</label><select id="svFilter">' + opts + '</select></div></div>' + chg
+    + '<p class="muted" style="margin-top:8px">中継（リレー）の変更は、非公開の場所に置いているためこの一覧には出ません。中継を直したときは、なぎさが会話の中でお知らせします。</p>';
+  $('svReload').addEventListener('click', function(){ svLoad(true); });
+  $('svFilter').addEventListener('change', function(){ SV.filter = this.value; svShow(); });
+}
+setInterval(function(){ if($('svBox')) svLoad(); }, 3600000);   /* 1時間ごとに見て、前回から1日たっていれば読み直す */
+window.TT_SV = { load: svLoad, views: NG_VIEWS };   /* 動かす試験（.github/tests/test_TriTime_sysver.py）用の入口 */
 function ngDeptKey(){ var d = D(); return d.kind === 'office' ? 'all' : d.k; }
 function ngPerson(id){ return live('mgmt').filter(function(x){ return x.id === 'own:person:' + id; })[0] || { id:'own:person:' + id }; }
 function ngSavePerson(id, data){
@@ -4586,6 +4642,8 @@ function ngRender(){
     body = '<h2>予定表の比較（人情×効率）（' + esc(depName) + '・' + esc(jpMonth(m)) + '）</h2>' + (dk === 'all' ? '<p class="muted">上の「使う部署」で訪問の部署（訪問看護部など）を選ぶと、その部署の比較が出ます。</p>' : cmpRender(m));
   } else if(NG.view === 'rules'){
     body = '<h2>許容範囲外の条項表</h2>' + rulesRender();
+  } else if(NG.view === 'sysver'){
+    body = '<h2>システムの版と変更の記録</h2><div id="svBox" class="muted">読み込んでいます…</div>';
   } else {
     var nm = (NG_VIEWS.filter(function(v){ return v[0] === NG.view; })[0] || [])[1] || '';
     body = '<h2>' + esc(nm) + '</h2><p class="muted">評価項目を決めてから、ここに中身を作ります。</p>';
@@ -4598,6 +4656,7 @@ function ngRender(){
   sec.querySelectorAll('[data-ngp]').forEach(function(b){ b.addEventListener('click', function(){ var id = b.getAttribute('data-ngp'); NG.open = NG.open === id ? '' : id; ngRender(); }); });
   $('ng_month').addEventListener('change', function(){ NG.month = this.value || ymd(new Date()).slice(0, 7); ngRender(); });
   var slot = $('ngEvSlot'); if(slot){ evMode = NG.view; slot.appendChild($('evBody')); evRender(); }
+  if(NG.view === 'sysver') svLoad();
   if($('cmp_save')){ $('cmp_save').onclick = cmpSave; cmpHistRender(); }   /* 2026-11-04 */
   rulesWire();
   var sv = $('ng_save'); if(sv) sv.addEventListener('click', function(){

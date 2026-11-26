@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<script src="TriDevice.js"></script>
+<script>
+/* 中継へ送るときに、この画面の製品の名前（?p=）を付ける（他の画面と同じ） */
+(function(){var P="trisight",f=window.fetch;if(!f)return;window.fetch=function(u,o){try{var s=typeof u==="string"?u:(u&&u.url)||"";if(s.indexOf("trisight-relay.vercel.app/api/")>=0&&!/[?&]p=/.test(s)){var n=s+(s.indexOf("?")>=0?"&":"?")+"p="+P;u=(typeof u==="string")?n:new Request(n,u);}}catch(e){}return f.call(this,u,o);};})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>よろず相談　声で話しかけるだけ｜TriSight®</title>
+<link rel="icon" href="favicon-32.png">
+<style>
+  html,body{height:100%}
+  body{margin:0;background:#0f1d3a;color:#f5f0e8;font-family:'Zen Kaku Gothic New','Hiragino Sans','Yu Gothic',sans-serif;display:flex;flex-direction:column}
+  #tsBackBar button{background:transparent !important;color:#f5f0e8 !important;border-color:#c9a84c !important}
+  .top{display:flex;align-items:center;gap:14px;padding:6px 28px 10px;border-bottom:2px solid #c9a84c}
+  .top img{width:48px;height:48px;background:#fff;border-radius:8px;padding:3px}
+  .top h1{margin:0;font-size:clamp(22px,2.4vw,36px);letter-spacing:.04em}
+  .top small{display:block;font-size:clamp(13px,1.1vw,18px);color:#c9a84c;font-weight:400}
+  .secs{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:16px 28px}
+  .sec{border:2px solid #3a4a6e;border-radius:16px;padding:14px 18px;cursor:pointer;background:#16213a;transition:.2s;text-align:left;font:inherit;color:inherit}
+  .sec .nm{font-size:clamp(24px,2.6vw,40px);font-weight:700}
+  .sec .rl{display:inline-block;margin-left:10px;font-size:clamp(13px,1.1vw,18px);color:#0f1d3a;background:#c9a84c;border-radius:999px;padding:2px 12px;vertical-align:middle}
+  .sec .tg{font-size:clamp(14px,1.3vw,21px);margin-top:6px;color:#d9d2c3}
+  .sec.on{border-color:#c9a84c;background:#1f2d4f;box-shadow:0 0 0 4px rgba(201,168,76,.35)}
+  .sec.talk{animation:glow 1s infinite}
+  @keyframes glow{50%{box-shadow:0 0 0 10px rgba(201,168,76,.15)}}
+  #log{flex:1;overflow-y:auto;padding:8px 28px 16px;font-size:clamp(18px,1.7vw,28px);line-height:1.7}
+  .msg{max-width:82%;margin:0 0 14px;padding:12px 18px;border-radius:16px;white-space:pre-wrap;word-break:break-word}
+  .me{margin-left:auto;background:#f5f0e8;color:#0f1d3a;border-bottom-right-radius:4px}
+  .ai{background:#1f2d4f;border:1px solid #3a4a6e;border-bottom-left-radius:4px}
+  .ai b{display:block;font-size:.7em;color:#c9a84c;margin-bottom:2px}
+  .hint{color:#9fb0cf;text-align:center;font-size:clamp(15px,1.3vw,22px);margin:20px 0}
+  .bottom{display:flex;gap:12px;align-items:center;padding:12px 28px 18px;border-top:1px solid #3a4a6e}
+  #st{flex:1;font-size:clamp(14px,1.2vw,20px);color:#c9d3e8;min-height:1.5em}
+  #st.warn{color:#ffb4a8}
+  #txt{width:min(420px,32vw);font:inherit;font-size:16px;padding:10px;border-radius:10px;border:1px solid #3a4a6e;background:#16213a;color:#f5f0e8}
+  .btn{font:inherit;font-weight:700;border:0;border-radius:999px;cursor:pointer}
+  #send{font-size:16px;padding:12px 20px;background:#3a4a6e;color:#fff}
+  #talk{font-size:clamp(18px,1.6vw,26px);padding:16px 34px;background:#c0392b;color:#fff;white-space:nowrap}
+  #talk.on{background:#e74c3c;animation:glow 1s infinite}
+  #clear{font-size:14px;padding:10px 16px;background:transparent;color:#c9d3e8;border:1px solid #3a4a6e}
+  @media print{body{display:none}}
+</style>
+</head>
+<body>
+<!-- 2026-10-15：前のページに戻るボタン（全画面共通・マウスの「戻る」と同じ動き。前のページが無いときは表札へ） -->
+<div id="tsBackBar" data-guard="0" style="padding:8px 16px 4px;box-sizing:border-box;text-align:left;width:100%;align-self:stretch"><button type="button" onclick="tsGoBack()" title="ひとつ前に開いていた画面へ戻ります" style="font-family:inherit;font-size:13px;line-height:1.4;color:#1f2328;background:#ffffff;border:1px solid #afb8c1;border-radius:999px;padding:4px 14px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.12)">‹ 前のページに戻る</button></div>
+<style>@media print{#tsBackBar{display:none !important}}</style>
+<script>
+function tsGoBack(){
+  var b=document.getElementById("tsBackBar");
+  if(b&&b.getAttribute("data-guard")==="1"){
+    var typed=[].some.call(document.querySelectorAll("textarea,input[type=text],input:not([type])"),function(e){return e.value&&e.value.trim();});
+    if(typed&&!confirm("この画面に入力した内容は保存されていません。前のページに戻ると消えます。戻りますか？"))return;
+  }
+  var r="";try{r=document.referrer?new URL(document.referrer).origin:"";}catch(e){}
+  if(history.length>1&&r===location.origin){history.back();}else{location.href="index.html";}
+}
+/* 2026-11-06（宏史さんの指示）：前の画面が無いとき（タブレットのアイコンから直接開いたときなど）は、ボタン自体を出さない。
+   トライサイトを契約していない人には表札へ行く道は要らないため */
+(function(){
+  var r="",rp="";try{if(document.referrer){var u=new URL(document.referrer);r=u.origin;rp=u.pathname;}}catch(e){}
+  /* 自分自身を読み直したとき（前の画面が自分）も、前の画面が無いものとして扱う（戻るの判定と同じ） */
+  if(!(history.length>1&&r===location.origin)||rp===location.pathname){var b=document.getElementById("tsBackBar");if(b)b.style.display="none";}
+})();
+</script>
+<div class="top"><img src="TriSight_icon_512.png" alt="TriSight®"><h1>よろず相談　声で話しかけるだけ<small>話したい秘書を選んで、赤いボタンを押してください。名前を呼んでも選べます（例「なぎさ、〜」）。</small></h1></div>
+<div class="secs" id="secs"></div>
+<div id="log"><div class="hint">一つの見方に偏らず、三つの方向から考える。答えを決めるのは人間です。</div></div>
+<div class="bottom">
+  <div id="st"></div>
+  <input id="txt" type="text" placeholder="文字で相談するときはここに入力">
+  <button class="btn" id="send" type="button">送る</button>
+  <button class="btn" id="clear" type="button">最初から</button>
+  <button class="btn" id="talk" type="button">🎙 話しかける</button>
+</div>
+<script src="TriVoiceEngine.js"></script>
+<script src="TriSecretaries.js"></script>
+<script>
+(function(){
+  var T = window.TriSecretaries, SEC = T.SEC, cur = 'nagisa', hist = [], talking = false, busy = false, audio = null;
+  var $ = function(id){ return document.getElementById(id); };
+  function status(t, warn){ $('st').textContent = t || ''; $('st').className = (warn || /失敗|できません|未対応|合いません|まだ用意/.test(t || '')) ? 'warn' : ''; }
+  T.ORDER.forEach(function(k){
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'sec'; b.id = 'sec_' + k;
+    b.innerHTML = '<span class="nm">' + SEC[k].name + '</span><span class="rl">' + SEC[k].role + '</span><div class="tg">' + SEC[k].tag + '</div>';
+    b.addEventListener('click', function(){ pick(k); });
+    $('secs').appendChild(b);
+  });
+  function pick(k){ cur = k; T.ORDER.forEach(function(x){ $('sec_' + x).classList.toggle('on', x === k); }); }
+  function add(cls, who, text){
+    var h = document.querySelector('#log .hint'); if(h) h.remove();
+    var d = document.createElement('div'); d.className = 'msg ' + cls;
+    if(who){ var b = document.createElement('b'); b.textContent = who; d.appendChild(b); }
+    d.appendChild(document.createTextNode(text)); $('log').appendChild(d); $('log').scrollTop = $('log').scrollHeight;
+  }
+  /* 声：作ってから鳴らす。Googleの声が公開用の経路（Vertex AI）以外で作られたときは、画面の下に知らせる */
+  function play(text, k){
+    return TriVoice.synth(text, SEC[k].voice).then(function(o){
+      if(SEC[k].voice.vendor === 'google' && o.route !== 'vertex') status('ご注意：' + SEC[k].name + 'の声は評価用の経路で作られています（公開の場では Vertex AI の設定が必要です）。', true);
+      return new Promise(function(res){
+        var url = URL.createObjectURL(o.blob); audio = new Audio(url);
+        audio.onended = audio.onerror = function(){ URL.revokeObjectURL(url); audio = null; res(); };
+        audio.play().catch(function(){ res(); });
+      });
+    });
+  }
+  async function handle(raw){
+    var tn = T.takeName(raw); if(tn.who) pick(tn.who);
+    if(!tn.text){ status(SEC[cur].name + 'に替えました。続けてどうぞ。'); return next(); }
+    var k = cur; add('me', '', tn.text); hist.push({ role:'user', content: tn.text });
+    busy = true; $('sec_' + k).classList.add('talk'); status(SEC[k].name + 'が考えています…');
+    var reply;
+    try{ reply = await T.ask(k, hist); }
+    catch(e){ busy = false; $('sec_' + k).classList.remove('talk'); status('返答を得られませんでした：' + e.message, true); return next(); }
+    hist.push({ role:'assistant', content: reply });
+    add('ai', SEC[k].name + '（' + SEC[k].role + '）', reply);
+    if(!/ご注意/.test($('st').textContent)) status(SEC[k].name + 'が話しています…');
+    try{ await play(reply, k); if(!/ご注意/.test($('st').textContent)) status(''); }
+    catch(e){ status('声にできませんでした（文字で返答しています）：' + e.message, true); }
+    busy = false; $('sec_' + k).classList.remove('talk'); next();
+  }
+  function next(){
+    if(!talking || busy) return;
+    TriVoice.listen({ status: function(t){ if(t) status(t); },
+      listeningMessage: SEC[cur].name + 'が聞いています。話し終えると自動で送ります。',
+      onText: function(t){ handle(t); },
+      onEnd: function(why){ if(why === 'nospeech' || why === 'noise'){ if(talking) next(); return; } stop(); } });
+  }
+  function start(){
+    if(typeof TriVoice === 'undefined' || !TriVoice.listen){ status('音声エンジンが読み込めません（文字で入力してください）。', true); return; }
+    talking = true; $('talk').classList.add('on'); $('talk').textContent = '■ 会話を終える'; next();
+  }
+  function stop(){
+    talking = false; $('talk').classList.remove('on'); $('talk').textContent = '🎙 話しかける';
+    try{ TriVoice.stopListen(); }catch(e){} if(audio){ try{ audio.pause(); }catch(e){} audio = null; }
+    if(!busy) status('');
+  }
+  $('talk').addEventListener('click', function(){ talking ? stop() : start(); });
+  function sendTyped(){ var v = $('txt').value.trim(); if(!v || busy) return; $('txt').value = ''; handle(v); }
+  $('send').addEventListener('click', sendTyped);
+  $('txt').addEventListener('keydown', function(e){ if(e.key === 'Enter' && !e.isComposing){ e.preventDefault(); sendTyped(); } });
+  $('clear').addEventListener('click', function(){ stop(); hist = []; $('log').innerHTML = '<div class="hint">一つの見方に偏らず、三つの方向から考える。答えを決めるのは人間です。</div>'; status(''); });
+  pick(cur);
+})();
+</script>
+</body>
+</html>

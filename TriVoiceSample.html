@@ -39,6 +39,27 @@
 </style>
 </head>
 <body>
+<!-- 2026-10-15：前のページに戻るボタン（全画面共通・マウスの「戻る」と同じ動き。前のページが無いときは表札へ） -->
+<div id="tsBackBar" data-guard="0" style="padding:8px 16px 4px;box-sizing:border-box;text-align:left;width:100%;align-self:stretch"><button type="button" onclick="tsGoBack()" title="ひとつ前に開いていた画面へ戻ります" style="font-family:inherit;font-size:13px;line-height:1.4;color:#1f2328;background:#ffffff;border:1px solid #afb8c1;border-radius:999px;padding:4px 14px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.12)">‹ 前のページに戻る</button></div>
+<style>@media print{#tsBackBar{display:none !important}}</style>
+<script>
+function tsGoBack(){
+  var b=document.getElementById("tsBackBar");
+  if(b&&b.getAttribute("data-guard")==="1"){
+    var typed=[].some.call(document.querySelectorAll("textarea,input[type=text],input:not([type])"),function(e){return e.value&&e.value.trim();});
+    if(typed&&!confirm("この画面に入力した内容は保存されていません。前のページに戻ると消えます。戻りますか？"))return;
+  }
+  var r="";try{r=document.referrer?new URL(document.referrer).origin:"";}catch(e){}
+  if(history.length>1&&r===location.origin){history.back();}else{location.href="index.html";}
+}
+/* 2026-11-06（宏史さんの指示）：前の画面が無いとき（タブレットのアイコンから直接開いたときなど）は、ボタン自体を出さない。
+   トライサイトを契約していない人には表札へ行く道は要らないため */
+(function(){
+  var r="",rp="";try{if(document.referrer){var u=new URL(document.referrer);r=u.origin;rp=u.pathname;}}catch(e){}
+  /* 自分自身を読み直したとき（前の画面が自分）も、前の画面が無いものとして扱う（戻るの判定と同じ） */
+  if(!(history.length>1&&r===location.origin)||rp===location.pathname){var b=document.getElementById("tsBackBar");if(b)b.style.display="none";}
+})();
+</script>
 <div class="wrap">
   <div class="lh"><img src="TriSight_icon_512.png" alt="TriSight®"><h1>説明動画の声 聞き比べ（台本第3版・14場面）<small>合同会社トライサイト</small></h1></div>
   <div class="note">この画面は<b>聞き比べ（評価）用</b>です。ここで作る声は販売・公開用の動画には使いません（Googleの試験提供の声を公開用に作るときは、Vertex AI の窓口を通して作り直します）。<br>

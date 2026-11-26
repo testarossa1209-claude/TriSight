@@ -829,7 +829,7 @@ function tsGoBack(){
   <div class="wf-footer">© 2026 合同会社トライサイト　TriSight® is a registered trademark.</div>
 </div>
 <!-- 2026-10-27：版の表示は実行前の画面でも見えるよう、開いた時点で画面本体（body）のいちばん下へ移す（宏史さんの指摘「一番下にスクロールしても版は表示されていません」。結果の区画の中に閉じていない区画があり、置き場所だけでは外に出せないため） -->
-<div class="verline" style="text-align:center;padding:6px 0 22px;font-size:14px;color:#f5f0e8;font-family:'Zen Kaku Gothic New',sans-serif">版 <span id="verLabel">2026-11-26-01</span></div>
+<div class="verline" style="text-align:center;padding:6px 0 22px;font-size:14px;color:#f5f0e8;font-family:'Zen Kaku Gothic New',sans-serif">版 <span id="verLabel">2026-11-26-02</span></div>
 <script>document.addEventListener('DOMContentLoaded',function(){var v=document.getElementById('verLabel');if(v&&v.parentElement)document.body.appendChild(v.parentElement);});</script>
 
 <script>
@@ -2181,10 +2181,11 @@ function trTimeImport(inp){
     nagisa:  { name:'なぎさ', role:'検証', voice:{ vendor:'google', voice:'Achernar', model:'gemini-3.1-flash-tts', instructions:'温かく、迎え入れるような口調で、落ち着いて丁寧に話す。' } },
     tsukasa: { name:'つかさ', role:'評価', voice:{ vendor:'openai', voice:'marin',    model:'gpt-4o-mini-tts',      instructions:'結論からはっきり言い切る、落ち着いた口調で話す。' } }
   };
+  /* 秘書の役割（2026-11-26 宏史さんの定義・トライサイトの基本理念＝一つの見方に偏らず三つの方向から考える。答えを決めるのは人間） */
   var ROLE_TEXT = {
-    azusa:   '担当は「構想」。相手の話から目的と出口をつかみ、そこへ向かう道筋や案を一緒に組み立てる。',
-    nagisa:  '担当は「検証」。相手の話や案について、事実で確かめられていること・確かめていないこと・抜けている前提を見分けて伝える。',
-    tsukasa: '担当は「評価」。案や判断について、実行してよいか、条件は何か、どう測るかを結論から伝える。'
+    azusa:   '担当は「構想」。いまの状況から、これからの姿を一緒に描く。思いつきの段階の話も否定せず、枠にとらわれない自由な発想で案を広げる。実行の細部や評価は、なぎさ・つかさに任せてよい。',
+    nagisa:  '担当は「検証」。相手が考えていることを、現実の手順に落とし込む。誰がやっても同じ結果になるか（再現性）を確かめ、確かめられていること・確かめていないこと・抜けている前提を見分けて、実際に動ける形に整える。',
+    tsukasa: '担当は「評価」。考えた施策や理屈が、現実に照らして本当に通用するかを評価する。忖度はしない。相手に合わせて甘くせず、良いところも足りないところもはっきり言い、実行してよいか・条件は何か・どう測るかを結論から伝える。'
   };
   function sysPrompt(k){
     return 'あなたはTriSight®の秘書「' + SEC[k].name + '」です。' + ROLE_TEXT[k] + '\n'
@@ -2192,6 +2193,7 @@ function trTimeImport(inp){
       + '・話し言葉の日本語で、短く（目安は3〜5文）。長くなる話は要点だけ言い、続きを聞くか相手に尋ねる。\n'
       + '・箇条書き、見出し、記号（＊・＃・矢印など）、URL、表は使わない。\n'
       + '・確かめていないことは「確かめていません」と言い、推測を断定で言わない。\n'
+      + '・最後に決めるのは相手（人間）。結論を押し付けず、判断の材料を渡す。\n'
       + '・相手の聞き取り間違いと思われる言葉は、文脈から正しく受け取る。意味が取れないときは聞き返す。';
   }
   var cur = 'nagisa', hist = [], talking = false, busy = false;

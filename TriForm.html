@@ -240,7 +240,7 @@ function tsGoBack(){
 
 <footer>
   合同会社トライサイト　TriSight&reg; ファミリー
-  <div class="verline">版 <span id="verLabel">2026-11-12-01</span>（v3）</div>
+  <div class="verline">版 <span id="verLabel">2026-11-27-01</span>（v3）</div>
 </footer>
 </div>
 
@@ -299,12 +299,12 @@ function tsGoBack(){
   function myAuthCode(){ try{ return localStorage.getItem("trisight_access_code") || ""; }catch(e){ return ""; } }
   function refreshAuthLabel(){
     const c = myAuthCode();
-    $("authLabel").textContent = "認証コード：" + (c || "（未設定）");
+    $("authLabel").textContent = "認証コード：" + (c ? (c.length > 4 ? "•••" + c.slice(-4) : "•••") : "（未設定）");   /* 2026-11-27：コードをそのまま出さない */
   }
   $("authCodeChangeBtn").addEventListener("click", function(){
     const cur = myAuthCode();
-    const v = window.prompt("認証コードを確認・変更します。", cur);
-    if(v === null) return;
+    const v = window.prompt("認証コードを変更します。今のコード：" + (cur ? (cur.length > 4 ? "•••" + cur.slice(-4) : "•••") : "（未設定）") + "\n新しいコードを入れてください。変更しない場合は空のまま「OK」か「キャンセル」。", "");
+    if(v === null || !v.trim()) return;   /* 2026-11-27：今のコードを入力欄に出さない。空は変更しない */
     try{ localStorage.setItem("trisight_access_code", v.trim()); }catch(e){}
     refreshAuthLabel();
     renderList();

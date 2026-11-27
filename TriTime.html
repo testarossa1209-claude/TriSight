@@ -390,6 +390,7 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
       else if(o.s===401)msg.textContent="認証コードが一致しませんでした。";
       else if(o.s===429)msg.textContent=(o.j&&o.j.error)||"間違いが続いたため、しばらく受け付けません。";
       else if(o.s===400)msg.textContent="中継の更新がまだ済んでいないため、確かめられません。";
+      else if(o.s===403)msg.textContent=(o.j&&o.j.error)||"この端末は登録されていません。管理者に連絡して、端末の登録を受けてください。";
       else msg.textContent="確かめられませんでした（"+o.s+"）。少しおいてもう一度押してください。";
     },function(){go.disabled=false;go.style.opacity="";go.textContent="トライタイムを開く";msg.style.color="#b42318";msg.textContent="中継につながりませんでした。通信を確かめて、もう一度押してください。";});
   };
@@ -451,6 +452,7 @@ function tsPortalAsk(){
       else if(o.s===401)msg.textContent="認証コードが一致しませんでした。";
       else if(o.s===429)msg.textContent=(o.j&&o.j.error)||"間違いが続いたため、しばらく受け付けません。";
       else if(o.s===400)msg.textContent="中継の更新がまだ済んでいないため、確かめられません。";
+      else if(o.s===403)msg.textContent=(o.j&&o.j.error)||"この端末は登録されていません。管理者に連絡して、端末の登録を受けてください。";
       else msg.textContent="確かめられませんでした（"+o.s+"）。少しおいてもう一度押してください。";
     },function(){go.disabled=false;msg.style.color="#b42318";msg.textContent="中継につながりませんでした。通信を確かめて、もう一度押してください。";});
   };
@@ -464,7 +466,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-21-04</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-27-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->
@@ -7227,8 +7229,11 @@ $('fd_pick').addEventListener('click', function(){
   }
   window.showDirectoryPicker({ id:'tritime-folder', mode:'readwrite' }).then(function(h){ return fdSetH(h).then(function(){ return fdActivate(h); }); }).catch(function(){});
 });
-var fdCodeSeen = tsCode();
-window.addEventListener('focus', function(){ var c = tsCode(); if(c !== fdCodeSeen){ fdCodeSeen = c; fdRestore(); } });
+/* 2026-11-27（宏史さんの指摘を受けて）：開いた直後と画面に戻るたびに tsCode() を呼んでいたため、初めての端末ではログインのカードと別に
+   ブラウザの小さな入力窓でも認証コードを聞いていた（キャンセルすると画面に戻るたびに再び出た）。ここは「コードが変わったか」を見るだけなので、聞かずに読むだけにする。 */
+function tsCodeQuiet(){ try{ return localStorage.getItem('trisight_access_code') || localStorage.getItem('trisight_open_tritime_code') || ''; }catch(e){ return ''; } }
+var fdCodeSeen = tsCodeQuiet();
+window.addEventListener('focus', function(){ var c = tsCodeQuiet(); if(c !== fdCodeSeen){ fdCodeSeen = c; fdRestore(); } });
 $('fd_now').addEventListener('click', function(){ if(!FD.on){ fdMsg('先に「フォルダを選ぶ」を押してください。'); return; } fdWrite(); });
 $('fd_load').addEventListener('click', function(){
   if(!FD.on || !FD.handle){ fdMsg('先に「フォルダを選ぶ」を押してください。'); return; }

@@ -38,6 +38,12 @@
             ・「リピーティング」＝あずさの英語を声でまねると、あずさが点数と直す点を画面に出す（聞き取った文字を元に採点する。発音の細かな音までは測れない）
             ・通訳のやり取りは、この端末の中にだけ残す（最新50件）
          ⑩ 2026-11-27-03（宏史さんの指摘「ラップトップでは同時通訳の引き出しが隠れて見えない」）：右の引き出しのつまみを画面の縦の真ん中に置き、背の低い画面でも全部入るようにした
+         ⑪ 2026-11-28-01（宏史さんの指摘・指示）：
+            ・英語の切り替えスイッチ（日本語／English）を会話の画面の上に付けた。同時通訳の引き出しと同じ端末にだけ出す。
+              11-27夜の指示どおり、登録名に「トライサイトPC」を含む端末にも出す（それまでは「ラップトップ」だけで、メインPCに出ていなかった）
+            ・Englishのとき：秘書は英語だけで、同じ秘書の声のまま英語で答える。聞き取りも英語。秘書の英語の下に和訳を小さく出す（和訳は声にしない・リピーティングもしない）
+            ・同時通訳の引き出しでも、あずさ（と意見を出した秘書）の英語の和訳を、ボタンを押さなくても自動で出す
+            ・二重に話す不具合の止め：新しい声を始めたら前の声は止める（声を重ねない）／答えている途中や止めた後・古い聞き取りから届いた文字は捨てる（一つの声から返答を二つ出さない）
          ⑨ 2026-11-27-02（宏史さんの指摘「なぜ本体機能の理解の為の情報を読み込まないのか」）：同時通訳の引き出しでも、
             会話の画面と同じ知識（トライサイトの基礎知識・利用解説書の抜き出し・学習資料）をあずさに渡す。
             「通訳」では製品名などを正しく訳すため、「英語で会話」ではトライサイトシリーズについて英語で正しく答えるため
@@ -72,6 +78,12 @@
   .me{margin-left:auto;background:var(--navy);color:#fff;border-bottom-right-radius:4px}
   .ai{background:var(--paper);border:1px solid var(--line);border-bottom-left-radius:4px}
   .ai b{display:block;font-size:12px;color:#8a6d1f;margin-bottom:2px}
+  /* 2026-11-28：英語で話しているときの和訳（声にしない・画面にだけ控えめに出す） */
+  .ai .jaTr{display:block;margin-top:6px;padding-top:5px;border-top:1px dashed var(--line);font-size:13px;line-height:1.6;color:#6b7280}
+  .ai .jaTr i{font-style:normal;font-size:11px;color:#9aa3b2;margin-right:6px}
+  .langSw{display:inline-flex;border:1px solid var(--navy);border-radius:999px;overflow:hidden}
+  .tools .langSw button{border:0;border-radius:0;padding:5px 14px;background:#fff;color:var(--navy);font-weight:700}
+  .tools .langSw button.on{background:var(--navy);color:#fff}
   .hint{color:var(--soft);text-align:center;font-size:14px;margin:18px 0;line-height:1.8}
   #st{min-height:1.6em;font-size:13px;color:var(--soft);padding:5px 22px}
   #st.warn{color:#b42318}
@@ -206,6 +218,8 @@ function tsGoBack(){
 
 <div class="tools">
   <button type="button" id="newConv">＋ 新しい会話</button>
+  <!-- 2026-11-28（宏史さんの指示）：英語で会話する切り替え。英語のときは秘書が英語の声で答え、和訳を画面にだけ出す -->
+  <span class="langSw" id="langSw" style="display:none" title="秘書と話す言葉を切り替えます。Englishのときは、秘書の英語の下に和訳を小さく出します（和訳は声にしません）"><button type="button" data-l="ja" class="on">日本語</button><button type="button" data-l="en">English</button></span>
   <label title="指名した秘書が答えたあと、残りの2人もあなたに向けて、それぞれ別の提案を出します（付け加えることが無い秘書は飛ばします）" style="margin-left:auto"><input type="checkbox" id="chimeOn">ほかの秘書も意見を出す</label>
 </div>
 
@@ -218,7 +232,7 @@ function tsGoBack(){
   <button class="btn" id="hush" type="button">■ 読み上げを止める</button>
   <button class="btn" id="talk" type="button">🎙 話しかける</button>
 </div>
-<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 <span id="verLabel">2026-11-27-07</span></span></div>
+<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 <span id="verLabel">2026-11-28-01</span></span></div>
 
 <!-- 右の引き出し4つ（2026-11-26 宏史さんの指示「学習窓と学習一覧表とトライサイトシリーズに対する質問と会話の記録の４つは欲しい」） -->
 <div class="gkTabs">
@@ -312,6 +326,16 @@ function tsGoBack(){
   var cur = 'nagisa', talking = false, busy = false, audio = null, hushed = false;
   var store = load(), conv = null;
   var $ = function(id){ return document.getElementById(id); };
+  /* 2026-11-28：二重に話す不具合の止め。
+     playGen＝いま鳴らしてよい声の番号（新しい声を始めたら、前の声は途中でも止める。二つの声を同時に鳴らさない）
+     lisGen ＝いま有効な聞き取りの番号（止めた後・古い聞き取りから届いた文字は捨てる。一つの声から返答が二つ出ない） */
+  var playGen = 0, lisGen = 0;
+  /* 2026-11-28：話す言葉（日本語／English）。切り替えスイッチは同時通訳と同じ端末にだけ出す */
+  var LKEY = 'tritalk_lang', lang = 'ja';
+  try{ lang = localStorage.getItem(LKEY) === 'en' ? 'en' : 'ja'; }catch(e){}
+  var intlOn = false;
+  function isEn(){ return intlOn && lang === 'en'; }
+  var EN_NAME = { azusa:'Azusa', nagisa:'Nagisa', tsukasa:'Tsukasa' };
 
   /* ---- 保存（この端末の localStorage だけ） ---- */
   function load(){ try{ var o = JSON.parse(localStorage.getItem(KEY) || 'null'); if(o && Array.isArray(o.convs)) return o; }catch(e){} return { convs: [] }; }
@@ -338,20 +362,37 @@ function tsGoBack(){
   }
   function record(w, text){
     if(!conv.items.length){ conv.title = text.replace(/\s+/g, ' ').slice(0, 24); store.convs.unshift(conv); }
-    conv.items.push({ w: w, t: text, at: Date.now() }); save(); fillPast();
+    var it = { w: w, t: text, at: Date.now() };
+    conv.items.push(it); save(); fillPast();
+    return it;
   }
 
   /* ---- 表示 ---- */
   function status(t, warn){ $('st').textContent = t || ''; $('st').className = (warn || /失敗|できません|未対応|合いません|まだ用意|いっぱい/.test(t || '')) ? 'warn' : ''; }
   function label(w){ return SEC[w].name + '（' + SEC[w].role + '）'; }
   function hint(){ $('log').innerHTML = '<div class="hint">話したい秘書を上から選んで、赤い「🎙 話しかける」を押してください。話し終えると自動で送ります。<br>話の頭で名前を呼んでも選べます（例「つかさ、〜」「ねえ、なぎさ、〜」「みんな、〜」）。文字で送ることもできます。<br>ほかの秘書の意見もほしいときは、上の「ほかの秘書も意見を出す」にチェックを入れてください。指名した秘書が答えたあと、残りの秘書もあなたへ別の提案を出します。<br>一つの見方に偏らず、三つの方向から考える。答えを決めるのは人間です。</div>'; }
-  function bubble(w, text){
+  function bubble(w, text, ja){
     var h = document.querySelector('#log .hint'); if(h) h.remove();
     var d = document.createElement('div'); d.className = 'msg ' + (w === 'me' ? 'me' : 'ai');
     if(w !== 'me'){ var b = document.createElement('b'); b.textContent = label(w); d.appendChild(b); }
-    d.appendChild(document.createTextNode(text)); $('log').appendChild(d); $('log').scrollTop = $('log').scrollHeight;
+    d.appendChild(document.createTextNode(text));
+    if(w !== 'me' && ja) setJa(d, ja);
+    $('log').appendChild(d); $('log').scrollTop = $('log').scrollHeight;
+    return d;
   }
-  function render(){ $('log').innerHTML = ''; if(!conv.items.length) return hint(); conv.items.forEach(function(it){ bubble(it.w, it.t); }); }
+  /* 和訳を吹き出しの下に小さく足す（声にはしない） */
+  function setJa(d, ja){
+    var s = d.querySelector('.jaTr'); if(!s){ s = document.createElement('span'); s.className = 'jaTr'; d.appendChild(s); }
+    s.innerHTML = '<i>和訳</i>' + esc(ja);
+    var lg = $('log'); if(lg.scrollHeight - lg.scrollTop - lg.clientHeight < 160) lg.scrollTop = lg.scrollHeight;
+  }
+  /* 英語を日本語に訳す（翻訳だけ。答えたり意見を足したりしない） */
+  async function toJa(list){
+    var r = await T.ask('azusa', [{ role:'user', content: JSON.stringify(list) }],
+      { extra: 'あなたは今、翻訳者です。届いた配列の各文を、意味を変えずに自然な日本語に訳してください。すでに日本語の文はそのまま返してください。答えたり意見を足したりしないでください。' + JSON_RULE + '形式：{"ja":["訳1","訳2", ...]}（届いた配列と同じ順・同じ数）', fast: true });
+    var o = pj(r); return Array.isArray(o.ja) ? o.ja.map(function(x){ return String(x || '').trim(); }) : [];
+  }
+  function render(){ $('log').innerHTML = ''; if(!conv.items.length) return hint(); conv.items.forEach(function(it){ bubble(it.w, it.t, it.ja); }); }
   ORDER.concat(['all']).forEach(function(k){
     var s = k === 'all' ? ALL : SEC[k];
     var b = document.createElement('button'); b.type = 'button'; b.className = 'sec'; b.id = 'sec_' + k;
@@ -373,7 +414,10 @@ function tsGoBack(){
   /* やり取りはあくまでAIと人間（2026-11-26 宏史さん「意見交換ではありません」「一方通行」）。
      後の秘書は前の秘書の答えを聞いたうえで、人間に向けて自分の意見を言う。前の秘書に話しかけたり、やり取りしたりはしない */
   function EXTRA_CHIME(first, me){ var SEC_NAME_PH = SEC[me].name; return '今は' + label(first) + 'が相手（人間）の問いに答えたところです。あなたは' + SEC[first].name + 'の答えを聞いたうえで、自分の担当の立場から、相手（人間）に向けて「' + SEC_NAME_PH + 'はこのように考えます」と切り出して、自分の意見や提案を短く言ってください。' + SEC[first].name + 'の答えに触れるときは「' + SEC[first].name + 'の案を踏まえると、私は〜と考えます」のように人間への説明として触れ、' + SEC[first].name + 'や他の秘書に話しかけたり、言い返したりはしないでください（秘書どうしの意見交換ではなく、話す相手は人間だけの一方通行です）。他の秘書が言ったことの繰り返しや言い換えはしないでください。本当に付け加える意見が無いときは「パス」とだけ答えてください。'; }
-  var PASS = /^[\s　「」]*パス[。.！!]?[\s　」]*$/;
+  var PASS = /^[\s　「」]*パス[。.！!]?[\s　」]*$/, PASS_EN = /^\W*PASS\W*$/i;
+  /* 2026-11-28：英語で話すときの決まり（秘書は英語だけで答える。和訳は画面側で別に出すので付けない） */
+  function EXTRA_EN(k){ return isEn() ? '\n\n【この会話は英語です】相手（人間）は英語を話せる大人です。あなたの答えは必ず英語だけで、自然な口語で短く話してください。日本語訳は付けないでください（和訳は画面が別に出します）。知識の中の「話し言葉の日本語で」の決まりより、この英語の決まりを優先してください。製品名は英語ではTriSight、TriGate、TriTalkのように表記してください。'
+    + (k ? '自分の意見を言うときは「' + SEC[k].name + 'はこのように考えます」の代わりに「' + EN_NAME[k] + ' thinks ...」と切り出し、付け加えることが無いときは「PASS」とだけ答えてください。' : '') : ''; }
   var EXTRA_ALL = '今回は「みんな」への問いかけで、あずさ→なぎさ→つかさの順に一人ずつ答えます。前の秘書が言ったことを繰り返さず、自分の担当の立場からだけ短く付け加えてください。';
 
   /* ---- 声：読み上げ向けに記号を落とす。Googleの声が公開用の経路（Vertex AI）以外で作られたときは知らせる ---- */
@@ -388,29 +432,41 @@ function tsGoBack(){
     if(cur) out.push(cur);
     return out;
   }
-  function playBlob(b){
+  /* 鳴っている声を止める（止めた声の待ちも終わらせる） */
+  function cutAudio(){
+    if(audio){ var a = audio, r = a._done; audio = null; try{ a.pause(); }catch(e){} $('hush').classList.remove('show'); if(r) r(); }
+  }
+  /* 新しい声を始める：前の声の続きは鳴らさない（番号が変わるので、前の読み上げは次の文へ進まずに終わる） */
+  function newVoice(){ playGen++; cutAudio(); return playGen; }
+  function playBlob(b, g){
     return new Promise(function(res){
-      if(hushed) return res();
-      var url = URL.createObjectURL(b); audio = new Audio(url); audio._done = res; $('hush').classList.add('show');
-      audio.onended = audio.onerror = function(){ URL.revokeObjectURL(url); audio = null; $('hush').classList.remove('show'); res(); };
-      audio.play().catch(function(){ audio = null; $('hush').classList.remove('show'); res(); });
+      if(hushed || (g !== undefined && g !== playGen)) return res();
+      cutAudio();   /* 2026-11-28：前の声が残っていたら止めてから鳴らす（二つの声を重ねない） */
+      var url = URL.createObjectURL(b), me = new Audio(url); audio = me; me._done = res; $('hush').classList.add('show');
+      me.onended = me.onerror = function(){ URL.revokeObjectURL(url); if(audio === me){ audio = null; $('hush').classList.remove('show'); } res(); };
+      me.play().catch(function(){ if(audio === me){ audio = null; $('hush').classList.remove('show'); } res(); });
     });
   }
   /* 全部の文の声を一度に頼み、できた順ではなく文の順に鳴らす（最初の一文ができた所で話し始める） */
   async function play(text, k){
     if(hushed || typeof TriVoice === 'undefined' || !TriVoice.synth) return;
-    var ps = pieces(forSpeech(text)), jobs = ps.map(function(t){ return TriVoice.synth(t, SEC[k].voice); });
+    var g = newVoice();
+    /* 2026-11-28：英語で話しているときは、同じ秘書の声のまま話し方だけ英語向けにする */
+    var v = SEC[k].voice;
+    if(isEn()) v = { vendor: v.vendor, voice: v.voice, model: v.model, instructions: 'Speak in clear, natural English at a slightly slow pace.' };
+    var ps = pieces(forSpeech(text)), jobs = ps.map(function(t){ return TriVoice.synth(t, v); });
     jobs.forEach(function(j){ j.catch(function(){}); });
     for(var i = 0; i < jobs.length; i++){
-      if(hushed) return;
+      if(hushed || g !== playGen) return;
       var o = await jobs[i];
-      if(SEC[k].voice.vendor === 'google' && o.route !== 'vertex') status('ご注意：' + SEC[k].name + 'の声は評価用の経路で作られています（公開の場では Vertex AI の設定が必要です）。', true);
-      await playBlob(o.blob);
+      if(g !== playGen) return;
+      if(v.vendor === 'google' && o.route !== 'vertex') status('ご注意：' + SEC[k].name + 'の声は評価用の経路で作られています（公開の場では Vertex AI の設定が必要です）。', true);
+      await playBlob(o.blob, g);
     }
   }
   function hush(){
-    hushed = true;
-    if(audio){ var a = audio, r = a._done; audio = null; try{ a.pause(); }catch(e){} $('hush').classList.remove('show'); if(r) r(); }
+    hushed = true; playGen++;
+    cutAudio();
   }
 
   /* ---- 学習資料（この端末の localStorage だけ）---- */
@@ -525,8 +581,13 @@ function tsGoBack(){
     var reply;
     try{ reply = await T.ask(k, historyFor(k), { extra: extra, fast: true }); }
     catch(e){ $('sec_' + k).classList.remove('talk'); status(SEC[k].name + 'の返答を得られませんでした：' + e.message, true); return false; }
-    if(allowPass && PASS.test(reply)){ $('sec_' + k).classList.remove('talk'); status(SEC[k].name + 'は付け加えることがありません。'); return true; }
-    record(k, reply); bubble(k, reply);
+    if(allowPass && (PASS.test(reply) || PASS_EN.test(reply))){ $('sec_' + k).classList.remove('talk'); status(SEC[k].name + 'は付け加えることがありません。'); return true; }
+    var it = record(k, reply), bd = bubble(k, reply);
+    /* 2026-11-28（宏史さんの指示）：英語で話しているときは、秘書の英語の意味を画面にだけ和訳で出す（声にしない・リピーティングもしない）。
+       訳は声と並行して作り、できた所で吹き出しの下に足す */
+    if(isEn()){
+      toJa([reply]).then(function(ja){ if(ja[0]){ it.ja = ja[0]; save(); if(bd.isConnected) setJa(bd, ja[0]); } }, function(){});
+    }
     var warned = /ご注意/.test($('st').textContent);
     if(!warned) status(!hushed ? SEC[k].name + 'が話しています…' : '');
     try{ await play(reply, k); if(!/ご注意/.test($('st').textContent)) status(''); }
@@ -537,6 +598,8 @@ function tsGoBack(){
   /* 「みんな、〜」で3人に聞く。後ろに助詞が続くとき（「みんなに聞きたい」）は指名だけして文は残す。「皆様」等は呼びかけにしない */
   var ALL_CALL = /^(?:みんな|皆さん|みなさん|全員)(?:さん)?(?![様])[、,，。\s　]*/, ALL_PART = /^(?:みんな|皆さん|みなさん|全員)(?=[にはがのもをとへやっ])/;
   async function handle(raw){
+    /* 2026-11-28：答えている途中に届いた文字は受けない（一つの問いに返答が二重に走らないように） */
+    if(busy) return;
     raw = String(raw || '').trim(); if(!raw) return next();
     var ld = raw.match(T.LEAD), body = ld ? raw.slice(ld[0].length) : raw;
     var m = body.match(ALL_CALL), text = raw;
@@ -548,11 +611,11 @@ function tsGoBack(){
     var kn = ''; try{ kn = await knowledgeFor(text); }catch(e){ kn = ''; }
     if(kn) kn = '\n\n' + kn;
     if(cur === 'all'){
-      for(var i = 0; i < ORDER.length; i++) await one(ORDER[i], EXTRA_BASE + EXTRA_ALL + kn);   /* 一人が答えられなくても、残りの人は答える */
+      for(var i = 0; i < ORDER.length; i++) await one(ORDER[i], EXTRA_BASE + EXTRA_ALL + kn + EXTRA_EN());   /* 一人が答えられなくても、残りの人は答える */
     } else {
-      var first = cur, ok = await one(first, EXTRA_BASE + kn);
+      var first = cur, ok = await one(first, EXTRA_BASE + kn + EXTRA_EN());
       if(ok && $('chimeOn').checked){
-        for(var j = 0; j < ORDER.length; j++){ if(ORDER[j] !== first) await one(ORDER[j], EXTRA_BASE + EXTRA_CHIME(first, ORDER[j]) + kn, true); }
+        for(var j = 0; j < ORDER.length; j++){ if(ORDER[j] !== first) await one(ORDER[j], EXTRA_BASE + EXTRA_CHIME(first, ORDER[j]) + kn + EXTRA_EN(ORDER[j]), true); }
       }
     }
     busy = false; $('send').disabled = false; next();
@@ -561,17 +624,18 @@ function tsGoBack(){
   /* ---- 声の会話：話の区切りで自動送信し、答え終わると自動でまた聞く ---- */
   function next(){
     if(!talking || busy) return;
-    TriVoice.listen({ endSilenceMs: 1000, status: function(t){ if(t) status(t); },
-      listeningMessage: (cur === 'all' ? '三人' : SEC[cur].name) + 'が聞いています。話し終えると自動で送ります。',
-      onText: function(t){ handle(t); },
-      onEnd: function(why){ if(why === 'nospeech' || why === 'noise'){ if(talking) next(); return; } stop(); } });
+    var g = ++lisGen;
+    TriVoice.listen({ language: isEn() ? 'en' : 'ja', endSilenceMs: 1000, status: function(t){ if(t && g === lisGen) status(t); },
+      listeningMessage: (cur === 'all' ? '三人' : SEC[cur].name) + 'が聞いています' + (isEn() ? '（English）' : '') + '。話し終えると自動で送ります。',
+      onText: function(t){ if(g !== lisGen || !talking) return; lisGen++; handle(t); },   /* 古い聞き取り・止めた後の文字は捨てる */
+      onEnd: function(why){ if(g !== lisGen) return; if(why === 'nospeech' || why === 'noise'){ if(talking) next(); return; } stop(); } });
   }
   function start(){
     if(typeof TriVoice === 'undefined' || !TriVoice.listen){ status('音声エンジンが読み込めません（文字で入力してください）。', true); return; }
     talking = true; $('talk').classList.add('on'); $('talk').textContent = '■ 会話を終える'; next();
   }
   function stop(){
-    talking = false; $('talk').classList.remove('on'); $('talk').textContent = '🎙 話しかける';
+    talking = false; lisGen++; $('talk').classList.remove('on'); $('talk').textContent = '🎙 話しかける';
     try{ TriVoice.stopListen(); }catch(e){} hush();
     if(!busy) status('');
   }
@@ -615,19 +679,35 @@ function tsGoBack(){
     if(iq){ qs.delete('interp'); history.replaceState(null, '', location.pathname + (qs.toString() ? '?' + qs : '') + location.hash); }
   }catch(e){}
   var interpOn = false; try{ interpOn = localStorage.getItem(IKEY) === '1'; }catch(e){}
-  if(interpOn) $('gkTabInt').style.display = '';
+  /* 2026-11-28：同時通訳の引き出しと、英語の切り替えスイッチは同じ端末にだけ出す */
+  function showIntl(){
+    interpOn = intlOn = true; $('gkTabInt').style.display = ''; $('langSw').style.display = '';
+    [].forEach.call($('langSw').children, function(b){ b.classList.toggle('on', b.getAttribute('data-l') === lang); });
+  }
+  if(interpOn) showIntl();
+  $('langSw').addEventListener('click', function(e){
+    var l = e.target.getAttribute && e.target.getAttribute('data-l'); if(!l || l === lang) return;
+    if(busy){ status('答え終わってから切り替えてください。'); return; }
+    var wasTalking = talking; if(talking) stop();
+    lang = l; try{ localStorage.setItem(LKEY, l); }catch(e2){}
+    [].forEach.call($('langSw').children, function(b){ b.classList.toggle('on', b.getAttribute('data-l') === lang); });
+    status(l === 'en' ? 'Englishに切り替えました。秘書は英語の声で答え、和訳は画面にだけ出します。' : '日本語に切り替えました。');
+    if(wasTalking) start();
+  });
   /* 2026-11-27（宏史さんの指摘「タスクバーのアイコンから開くと同時通訳が出ない」）：合図はブラウザごとにしまわれるため、
-     Chrome・Edge・アイコンのどれから開いたかで出たり出なかったりした。端末の登録名に「ラップトップ」を含む端末なら、合図が無くても出す。 */
+     Chrome・Edge・アイコンのどれから開いたかで出たり出なかったりした。端末の登録名に「ラップトップ」を含む端末なら、合図が無くても出す。
+     2026-11-28（宏史さんの指摘「切り替えスイッチがついていない」）：11-27夜の指示どおりトライサイトPC（メインPC）にも出す。登録名に「トライサイトPC」を含む端末も対象にする */
   if(!interpOn){
     try{
       var wc = localStorage.getItem('trisight_access_code') || '';
       if(wc) fetch('https://trisight-relay.vercel.app/api/gate', { method:'POST', headers:{ 'Content-Type':'application/json', 'x-trisight-code':wc }, body: JSON.stringify({ task:'whoami' }) })
         .then(function(r){ return r.ok ? r.json() : null; })
-        .then(function(j){ if(j && j.dev && /ラップトップ/.test(j.dev.name || '')){ try{ localStorage.setItem(IKEY, '1'); }catch(e){} interpOn = true; $('gkTabInt').style.display = ''; iRender(); } }, function(){});
+        .then(function(j){ if(j && j.dev && /ラップトップ|トライサイト\s*(?:メイン)?\s*(?:PC|ＰＣ)/i.test(j.dev.name || '')){ try{ localStorage.setItem(IKEY, '1'); }catch(e){} showIntl(); iRender(); } }, function(){});
     }catch(e){}
   }
   var imode = 'cv', icards = [];   /* 2026-11-27（宏史さんの指示）：英語での会話を基本にする */
   try{ icards = JSON.parse(localStorage.getItem(ILOG) || '[]') || []; }catch(e){ icards = []; }
+  icards.forEach(function(c){ delete c.trWait; });   /* 途中で閉じた訳の待ちを持ち越さない（和訳ボタンで訳し直せる） */
   function isave(){ icards = icards.slice(0, IMAX); for(var n = 0; n < 5; n++){ try{ localStorage.setItem(ILOG, JSON.stringify(icards)); return; }catch(e){ if(icards.length > 1) icards.pop(); else return; } } }
   function ist(t, warn){ $('itSt').textContent = t || ''; $('itSt').className = warn ? 'warn' : ''; }
   /* 英語の声：あずさの声（Sulafat）のまま、話し方の指定だけ英語向けにする（声の窓口は文の言語を自動で読み分ける） */
@@ -636,13 +716,15 @@ function tsGoBack(){
   async function playEn(t){
     if(typeof TriVoice === 'undefined' || !TriVoice.synth) return;
     hushed = false;
+    var g = newVoice();
     var ps = pieces(forSpeech(t)), jobs = ps.map(function(x){ return TriVoice.synth(x, EN_VOICE); });
     jobs.forEach(function(j){ j.catch(function(){}); });
     for(var i = 0; i < jobs.length; i++){
-      if(hushed) return;
+      if(hushed || g !== playGen) return;
       var o = await jobs[i];
+      if(g !== playGen) return;
       if(EN_VOICE.vendor === 'google' && o.route !== 'vertex') ist('ご注意：あずさの声は評価用の経路で作られています（公開の場では Vertex AI の設定が必要です）。', true);
-      await playBlob(o.blob);
+      await playBlob(o.blob, g);
     }
   }
   function pj(t){ var m = String(t || '').match(/\{[\s\S]*\}/); if(!m) throw new Error('答えの形が崩れていました'); return JSON.parse(m[0]); }
@@ -657,8 +739,9 @@ function tsGoBack(){
         + (c.others || []).map(function(o){ return '<div class="lb">' + esc(o.name) + '</div><div class="en">' + esc(o.text) + '</div>'; }).join('')
         + (c.help ? '<div class="lb">日本語メモ（分からなかった言葉・文法の直し）</div><div class="ja">' + esc(c.help) + '</div>' : '')
         /* 2026-11-27（宏史さんの指示）：押したときだけ、話したことと秘書の答えの和訳を出す */
+        + (c.trWait && !c.tr ? '<div class="lb">和訳</div><div class="muted">和訳を作っています…</div>' : '')
         + (c.tr ? '<div class="lb">和訳</div><div class="ja">' + c.tr.map(function(x){ return '<div><b>' + esc(x.who) + '：</b>' + esc(x.ja) + '</div>'; }).join('') + '</div>'
-                : '<div style="margin-top:6px"><button type="button" class="itTrBtn" data-i="' + i + '" style="font:inherit;font-size:12px;padding:2px 12px;border:1px solid #10243b;border-radius:999px;background:#fff;color:#10243b;cursor:pointer">和訳を見る</button></div>');
+                : c.trWait ? '' : '<div style="margin-top:6px"><button type="button" class="itTrBtn" data-i="' + i + '" style="font:inherit;font-size:12px;padding:2px 12px;border:1px solid #10243b;border-radius:999px;background:#fff;color:#10243b;cursor:pointer">和訳を見る</button></div>');
       (c.reps || []).forEach(function(r){
         h += '<div class="sc"><b class="pt">' + esc(r.score) + ' / 100</b> Heard: ' + esc(r.heard)
           + (r.good ? '<div>Good: ' + esc(r.good) + '</div>' : '')
@@ -674,10 +757,11 @@ function tsGoBack(){
     if(typeof TriVoice === 'undefined' || !TriVoice.listen){ ist('音声エンジンが読み込めません（文字で入力してください）。', true); return; }
     if(talking) stop();
     hush();
+    var g = ++lisGen;   /* 2026-11-28：古い聞き取りから届いた文字は捨てる（二重の返答を出さない） */
     TriVoice.listen({ language: lang, endSilenceMs: 1300, listeningMessage: msg,
-      status: function(t){ if(t) ist(t, /失敗|できません|未対応|エラー|不一致/.test(t)); },
-      onText: function(t){ cb(t); },
-      onEnd: function(why){ if(why === 'nospeech') ist('声が聞こえませんでした。もう一度押してください。'); else if(why === 'noise') ist('うまく聞き取れませんでした。もう一度押してください。'); } });
+      status: function(t){ if(t && g === lisGen) ist(t, /失敗|できません|未対応|エラー|不一致/.test(t)); },
+      onText: function(t){ if(g !== lisGen) return; lisGen++; cb(t); },
+      onEnd: function(why){ if(g !== lisGen) return; if(why === 'nospeech') ist('声が聞こえませんでした。もう一度押してください。'); else if(why === 'noise') ist('うまく聞き取れませんでした。もう一度押してください。'); } });
   }
   /* 日本語 → あずさの英語（通訳／会話） */
   async function iJa(ja){
@@ -705,7 +789,13 @@ function tsGoBack(){
     catch(e){ iBusy(false); ist('Could not get Azusa\'s reply: ' + e.message, true); return; }
     var c = { at: Date.now(), m: imode, me: ja, en: String(o.en || '').trim(), help: String(o.help || '').trim(), reps: [] };
     if(!c.en){ iBusy(false); ist('Azusa\'s reply was empty. Please try again.', true); return; }
-    icards.unshift(c); isave(); iBusy(false);
+    icards.unshift(c); isave();
+    /* 2026-11-28（宏史さんの指示）：あずさの英語の意味を、ボタンを押さなくても画面に和訳で出す（声にしない）。声と並行して訳す */
+    c.trWait = true; iBusy(false);
+    toJa([c.me, c.en]).then(function(ja){
+      var add = [{ who:'あなた', ja: ja[0] || '（訳せませんでした）' }, { who:'あずさ', ja: ja[1] || '（訳せませんでした）' }];
+      c.tr = add.concat(c.tr || []); c.trWait = false; isave(); iRender();
+    }, function(){ c.trWait = false; iRender(); });
     ist('Azusa is speaking…');
     try{ await playEn(c.en); if(!/ご注意/.test($('itSt').textContent)) ist('To practice, press "🔁 Repeat after Azusa" and say the English sentence.'); }
     catch(e){ ist('Could not play the voice (the text is shown): ' + e.message, true); }
@@ -725,6 +815,7 @@ function tsGoBack(){
       iBusy(false);
       if(!t || /^\W*PASS\W*$/i.test(t)) continue;
       (c.others = c.others || []).push({ k: k, name: enName, en_name: enName, text: t }); isave(); iRender();
+      (function(who, en){ toJa([en]).then(function(ja){ (c.tr = c.tr || []).push({ who: who, ja: ja[0] || '（訳せませんでした）' }); isave(); iRender(); }, function(){}); })(nm, t);
       ist(enName + ' is speaking…');
       try{ await playOther(k, t); }catch(e){}
     }
@@ -733,8 +824,8 @@ function tsGoBack(){
   async function playOther(k, t){
     if(typeof TriVoice === 'undefined' || !TriVoice.synth) return;
     var v = SEC[k].voice, opt = { vendor: v.vendor, voice: v.voice, model: v.model, instructions: 'Speak in clear, natural English at a slightly slow pace.' };
-    var ps = pieces(forSpeech(t));
-    for(var i = 0; i < ps.length; i++){ if(hushed) return; var o = await TriVoice.synth(ps[i], opt); await playBlob(o.blob); }
+    var ps = pieces(forSpeech(t)), g = newVoice();
+    for(var i = 0; i < ps.length; i++){ if(hushed || g !== playGen) return; var o = await TriVoice.synth(ps[i], opt); if(g !== playGen) return; await playBlob(o.blob, g); }
   }
   /* リピーティングの採点（いちばん上の英語が手本） */
   async function iScore(heard){
@@ -788,7 +879,7 @@ function tsGoBack(){
   /* ---- 始め：前回の会話の続きを開く（無ければ新しく） ---- */
   conv = store.convs[0] || newConv();
   pick(cur); render(); fillPast();
-  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-27-07' };
+  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-28-01' };
 })();
 </script>
 <!-- 2026-11-27：版の一覧（全システムの版をリアルタイムで出す・宏史さんの指示） -->

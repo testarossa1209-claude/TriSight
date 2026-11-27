@@ -654,7 +654,10 @@ function tsGoBack(){
         + '<div class="lb">You</div><div class="itMe">' + esc(c.me) + '</div>'
         + '<div class="lb">Azusa</div><div class="en">' + esc(c.en) + '</div>'
         + (c.others || []).map(function(o){ return '<div class="lb">' + esc(o.name) + '</div><div class="en">' + esc(o.text) + '</div>'; }).join('')
-        + (c.help ? '<div class="lb">日本語メモ（分からなかった言葉・文法の直し）</div><div class="ja">' + esc(c.help) + '</div>' : '');
+        + (c.help ? '<div class="lb">日本語メモ（分からなかった言葉・文法の直し）</div><div class="ja">' + esc(c.help) + '</div>' : '')
+        /* 2026-11-27（宏史さんの指示）：押したときだけ、話したことと秘書の答えの和訳を出す */
+        + (c.tr ? '<div class="lb">和訳</div><div class="ja">' + c.tr.map(function(x){ return '<div><b>' + esc(x.who) + '：</b>' + esc(x.ja) + '</div>'; }).join('') + '</div>'
+                : '<div style="margin-top:6px"><button type="button" class="itTrBtn" data-i="' + i + '" style="font:inherit;font-size:12px;padding:2px 12px;border:1px solid #10243b;border-radius:999px;background:#fff;color:#10243b;cursor:pointer">和訳を見る</button></div>');
       (c.reps || []).forEach(function(r){
         h += '<div class="sc"><b class="pt">' + esc(r.score) + ' / 100</b> Heard: ' + esc(r.heard)
           + (r.good ? '<div>Good: ' + esc(r.good) + '</div>' : '')
@@ -714,7 +717,7 @@ function tsGoBack(){
       if(hushed) return;
       var k = rest[i], nm = SEC[k].name, enName = { nagisa:'Nagisa', tsukasa:'Tsukasa' }[k] || nm;
       var prev = 'Azusa: ' + c.en + (c.others || []).map(function(o){ return '\n' + o.en_name + ': ' + o.text; }).join('');
-      var extra = 'あなたは今、相手（人間）とあずさの英語の会話に加わっています。会話は英語で行います。あなたは前の秘書の答えを聞いたうえで、自分の担当の立場から、相手（人間）に向けて英語で「' + enName + ' thinks ...」と切り出し、自分の意見や提案を1〜2文で言ってください。前の秘書に話しかけたり、同じことを繰り返したりしないでください。日本語は使わないでください。付け加えることが無ければ「PASS」とだけ答えてください。' + (kn ? '\n\n下の知識は、製品名・用語を正しく使うために使ってください。製品名は英語ではTriSight、TriGate、TriTalkのように表記してください。\n' + kn : '');
+      var extra = 'あなたは今、相手（人間）とあずさの英語の会話に加わっています。会話は英語で行います。あなたは前の秘書の答えを聞いたうえで、自分の担当の立場から、意見や補足が本当にある場合だけ、相手（人間）に向けて英語で「' + enName + ' thinks ...」と切り出し、1〜2文で言ってください（全員が答える必要はありません。迷うときは答えないでください）。前の秘書に話しかけたり、同じことを繰り返したりしないでください。日本語は使わないでください。付け加えることが無ければ「PASS」とだけ答えてください。' + (kn ? '\n\n下の知識は、製品名・用語を正しく使うために使ってください。製品名は英語ではTriSight、TriGate、TriTalkのように表記してください。\n' + kn : '');
       var t = '';
       iBusy(true); ist(enName + ' is thinking…');
       try{ t = String(await T.ask(k, [{ role:'user', content: '相手（人間）の発言：' + c.me + '\n' + prev }], { extra: extra, fast: true }) || '').trim(); }catch(e){ t = ''; }
@@ -755,6 +758,20 @@ function tsGoBack(){
   $('itJa').addEventListener('click', function(){ if(busy) return; if(imode === 'tr') iListen('ja', 'Speak in Japanese. It sends automatically when you stop.', iJa); else iListen('en', 'Go ahead in English. It sends automatically when you stop.', iJa); });
   $('itRep').addEventListener('click', function(){ if(!busy && icards.length) iListen('en', 'Repeat the English sentence. It scores automatically when you stop.', iScore); });
   $('itAgain').addEventListener('click', function(){ if(busy || !icards.length) return; ist('Playing again…'); playEn(icards[0].en).then(function(){ ist(''); }, function(e){ ist('Could not play the voice: ' + e.message, true); }); });
+  /* 和訳ボタン：このカードの「あなた」と秘書の答えを日本語に訳して、カードに出す（一度訳したら覚えておく） */
+  $('itList').addEventListener('click', async function(e){
+    var b = e.target && e.target.closest ? e.target.closest('.itTrBtn') : null; if(!b || busy) return;
+    var c = icards[+b.getAttribute('data-i')]; if(!c) return;
+    var items = [{ who:'あなた', t:c.me }, { who:'あずさ', t:c.en }].concat((c.others || []).map(function(o){ return { who: SEC[o.k] ? SEC[o.k].name : o.name, t:o.text }; }));
+    b.disabled = true; b.textContent = '訳しています…';
+    try{
+      var r = await T.ask('azusa', [{ role:'user', content: JSON.stringify(items.map(function(x){ return x.t; })) }],
+        { extra: 'あなたは今、翻訳者です。届いた配列の各文を、意味を変えずに自然な日本語に訳してください。すでに日本語の文はそのまま返してください。答えたり意見を足したりしないでください。' + JSON_RULE + '形式：{"ja":["訳1","訳2", ...]}（届いた配列と同じ順・同じ数）', fast: true });
+      var o = pj(r), ja = Array.isArray(o.ja) ? o.ja : [];
+      c.tr = items.map(function(x, k){ return { who: x.who, ja: String(ja[k] || '').trim() || '（訳せませんでした）' }; });
+      isave(); iRender();
+    }catch(err){ b.disabled = false; b.textContent = '和訳を見る'; ist('Could not translate: ' + err.message, true); }
+  });
   $('itStop').addEventListener('click', function(){ try{ TriVoice.stopListen(); }catch(e){} hush(); ist('Stopped.'); });
   $('itTxt').addEventListener('keydown', function(e){ if(e.key === 'Enter' && !e.isComposing){ e.preventDefault(); var v = this.value.trim(); if(v && !busy){ this.value = ''; iJa(v); } } });
   if(interpOn) iRender();

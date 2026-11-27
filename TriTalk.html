@@ -218,7 +218,7 @@ function tsGoBack(){
   <button class="btn" id="hush" type="button">■ 読み上げを止める</button>
   <button class="btn" id="talk" type="button">🎙 話しかける</button>
 </div>
-<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 <span id="verLabel">2026-11-27-05</span></span></div>
+<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 <span id="verLabel">2026-11-27-06</span></span></div>
 
 <!-- 右の引き出し4つ（2026-11-26 宏史さんの指示「学習窓と学習一覧表とトライサイトシリーズに対する質問と会話の記録の４つは欲しい」） -->
 <div class="gkTabs">
@@ -614,6 +614,16 @@ function tsGoBack(){
   }catch(e){}
   var interpOn = false; try{ interpOn = localStorage.getItem(IKEY) === '1'; }catch(e){}
   if(interpOn) $('gkTabInt').style.display = '';
+  /* 2026-11-27（宏史さんの指摘「タスクバーのアイコンから開くと同時通訳が出ない」）：合図はブラウザごとにしまわれるため、
+     Chrome・Edge・アイコンのどれから開いたかで出たり出なかったりした。端末の登録名に「ラップトップ」を含む端末なら、合図が無くても出す。 */
+  if(!interpOn){
+    try{
+      var wc = localStorage.getItem('trisight_access_code') || '';
+      if(wc) fetch('https://trisight-relay.vercel.app/api/gate', { method:'POST', headers:{ 'Content-Type':'application/json', 'x-trisight-code':wc }, body: JSON.stringify({ task:'whoami' }) })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(j){ if(j && j.dev && /ラップトップ/.test(j.dev.name || '')){ try{ localStorage.setItem(IKEY, '1'); }catch(e){} interpOn = true; $('gkTabInt').style.display = ''; } }, function(){});
+    }catch(e){}
+  }
   var imode = 'tr', icards = [];
   try{ icards = JSON.parse(localStorage.getItem(ILOG) || '[]') || []; }catch(e){ icards = []; }
   function isave(){ icards = icards.slice(0, IMAX); for(var n = 0; n < 5; n++){ try{ localStorage.setItem(ILOG, JSON.stringify(icards)); return; }catch(e){ if(icards.length > 1) icards.pop(); else return; } } }
@@ -721,7 +731,7 @@ function tsGoBack(){
   /* ---- 始め：前回の会話の続きを開く（無ければ新しく） ---- */
   conv = store.convs[0] || newConv();
   pick(cur); render(); fillPast();
-  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-27-05' };
+  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-27-06' };
 })();
 </script>
 <!-- 2026-11-27：版の一覧（全システムの版をリアルタイムで出す・宏史さんの指示） -->

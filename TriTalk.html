@@ -32,6 +32,11 @@
             ・問いに関係する部分だけを選んで送る（全部を毎回送らない。トークンを抑えるため）
             ・速さ：あずさ・つかさは考える段階を飛ばす設定で呼ぶ（TriSecretaries.ask の fast）。声は最初の一文ができた所から話し始め、
               話している間に残りを声にする。話し終わりの待ちを1.3秒→1.0秒に
+         ⑧ 2026-11-27-01（宏史さんの希望・宏史さんのトライサイトラップトップだけ）：右の引き出し「同時通訳」
+            ・この引き出しは、合図を覚えさせた端末にだけ出る（その端末で一度だけ TriTalk.html?interp=on を開く。外すときは ?interp=off）
+            ・「通訳」＝話した日本語を、あずさが英語に訳して英語の声で読む／「英語で会話」＝あずさが英語で答える。どちらも画面に英語と日本語訳を出す
+            ・「リピーティング」＝あずさの英語を声でまねると、あずさが点数と直す点を画面に出す（聞き取った文字を元に採点する。発音の細かな音までは測れない）
+            ・通訳のやり取りは、この端末の中にだけ残す（最新50件）
      ・会話はこの端末（ブラウザ）の中にだけ残り、当社のサーバーには残さない。
      ============================================================ -->
 <style>
@@ -85,7 +90,29 @@
   .gkTab small{display:block;margin-top:6px;font-size:11px;background:var(--gold);color:var(--navy);border-radius:999px;padding:0 6px}
   body.gkOpen .gkTabs{display:none}
   .gkPanel{position:fixed;top:0;right:0;bottom:0;width:min(560px,100vw);z-index:70;background:#fff;border-left:1px solid var(--line);box-shadow:-8px 0 28px rgba(16,36,59,.14);transform:translateX(105%);transition:transform .22s ease;display:flex;flex-direction:column}
-  body.gk_winOpen #gk_win, body.gk_lstOpen #gk_lst, body.gk_qaOpen #gk_qa, body.gk_logOpen #gk_log{transform:none}
+  body.gk_winOpen #gk_win, body.gk_lstOpen #gk_lst, body.gk_qaOpen #gk_qa, body.gk_logOpen #gk_log, body.gk_intOpen #gk_int{transform:none}
+  /* 同時通訳（宏史さんのラップトップだけ・2026-11-27） */
+  .itMode{display:flex;gap:6px;margin:0 0 8px}
+  .itMode button{font:inherit;font-size:14px;padding:6px 14px;border-radius:999px;border:1px solid var(--navy);background:#fff;color:var(--navy);cursor:pointer}
+  .itMode button.on{background:var(--navy);color:#fff}
+  .itBtns{display:flex;flex-wrap:wrap;gap:8px}
+  .itBtns button{font:inherit;font-weight:700;font-size:14px;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}
+  #itJa{background:#c0392b;color:#fff}
+  #itRep{background:var(--gold);color:var(--navy)}
+  #itAgain{background:#fff;color:var(--navy);border:1px solid var(--navy)}
+  #itStop{background:#fff;color:#b42318;border:1px solid #b42318}
+  .itBtns button:disabled{opacity:.45;cursor:default}
+  #itSt{min-height:1.4em;font-size:13px;color:var(--navy);margin:6px 0}
+  #itSt.warn{color:#b42318}
+  .itCard{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 10px;background:#fff}
+  .itCard.cur{border:2px solid var(--gold);padding:9px 11px}
+  .itCard .lb{font-size:11px;color:var(--soft)}
+  .itCard .itMe{font-size:14px;margin:2px 0 6px}
+  .itCard .en{font-size:19px;line-height:1.55;color:var(--navy);font-weight:700;margin:2px 0 4px}
+  .itCard .ja{font-size:14px;line-height:1.7;color:#3d4660}
+  .itCard .sc{margin-top:8px;padding:8px 10px;border-radius:10px;background:#fffbef;border:1px solid #f0d9a8;font-size:13px;line-height:1.7}
+  .itCard .sc b.pt{font-size:20px;color:#8a6d1f;margin-right:6px}
+  .itCard .sc ul{margin:4px 0 0 18px;padding:0}
   .logItem{display:block;width:100%;text-align:left;font:inherit;font-size:14px;padding:8px 10px;margin:0 0 6px;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer}
   .logItem.on{border:2px solid var(--gold);background:#fffbef}
   .logItem small{display:block;color:var(--soft);font-size:12px}
@@ -185,7 +212,7 @@ function tsGoBack(){
   <button class="btn" id="hush" type="button">■ 読み上げを止める</button>
   <button class="btn" id="talk" type="button">🎙 話しかける</button>
 </div>
-<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 2026-11-26-02</span></div>
+<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 2026-11-27-01</span></div>
 
 <!-- 右の引き出し4つ（2026-11-26 宏史さんの指示「学習窓と学習一覧表とトライサイトシリーズに対する質問と会話の記録の４つは欲しい」） -->
 <div class="gkTabs">
@@ -193,6 +220,7 @@ function tsGoBack(){
 <button type="button" class="gkTab" data-k="lst" title="秘書が覚えた学習科目の一覧を右に開きます" aria-label="学習一覧"><span>学</span><span>習</span><span>一</span><span>覧</span><small id="gkCount">0</small></button>
 <button type="button" class="gkTab" data-k="qa" title="トライサイトシリーズについての質問を右に開きます" aria-label="シリーズ質問"><span>シ</span><span>リ</span><span class="bar">ー</span><span>ズ</span><span>質</span><span>問</span></button>
 <button type="button" class="gkTab" data-k="log" title="過去の会話の一覧を右に開きます" aria-label="会話の記録"><span>会</span><span>話</span><span>の</span><span>記</span><span>録</span></button>
+<button type="button" class="gkTab" data-k="int" id="gkTabInt" style="display:none" title="あずさとの同時通訳・英語のリピーティングを右に開きます" aria-label="同時通訳"><span>同</span><span>時</span><span>通</span><span>訳</span></button>
 </div>
 <aside class="gkPanel" id="gk_win" aria-label="学習窓">
   <div class="gkHead"><h2>学習窓<small>秘書に読ませる資料を入れます。覚えた資料は「学習一覧」に並びます。</small></h2><button type="button" class="gkClose" title="閉じる" aria-label="閉じる">×</button></div>
@@ -241,6 +269,24 @@ function tsGoBack(){
   <div class="gkBody">
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn2" id="saveTxt">表示中の会話をTXTで書き出す</button><button type="button" class="btn2" id="printBtn">表示中の会話を印刷</button></div>
     <div id="logList" style="margin-top:12px"></div>
+  </div>
+</aside>
+<aside class="gkPanel" id="gk_int" aria-label="同時通訳">
+  <div class="gkHead"><h2>同時通訳（あずさ）<small>日本語で話すと、あずさが英語の声で返します。画面には英語と日本語訳が出ます。</small></h2><button type="button" class="gkClose" title="閉じる" aria-label="閉じる">×</button></div>
+  <div class="gkBody">
+    <div class="itMode" id="itMode"><button type="button" data-m="tr" class="on">通訳</button><button type="button" data-m="cv">英語で会話</button></div>
+    <div class="muted" id="itModeTx">通訳：話した日本語を、あずさが英語に訳して読み上げます。</div>
+    <div class="itBtns" style="margin-top:8px">
+      <button type="button" id="itJa">🎙 日本語で話す</button>
+      <button type="button" id="itRep" disabled>🔁 リピーティング</button>
+      <button type="button" id="itAgain" disabled>🔊 もう一度聞く</button>
+      <button type="button" id="itStop">■ 止める</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:8px"><input type="text" id="itTxt" placeholder="文字で日本語を入れるときはここ（Enterで送る）"></div>
+    <div id="itSt"></div>
+    <div class="muted">リピーティング：いちばん上の英語を、声に出してまねてください。あずさが点数と直す点を下に出します。採点は、聞き取った英語の文字を元にしています（発音の細かな音までは測れません）。</div>
+    <div style="margin-top:10px" id="itList"></div>
+    <div class="muted" style="margin-top:6px">やり取りはこの端末の中にだけ残ります（最新50件・当社のサーバーには残りません）。</div>
   </div>
 </aside>
 
@@ -418,7 +464,7 @@ function tsGoBack(){
     if(!n){ gkMsg('科目名を入れてください（一覧に出す名前です）。', true); return; }
     addDoc(n, '貼り付け', t); $('gkPaste').value = ''; $('gkTitle').value = '';
   });
-  var GK = ['win', 'lst', 'qa', 'log'];
+  var GK = ['win', 'lst', 'qa', 'log', 'int'];
   function gkOpen(k){
     GK.forEach(function(x){ document.body.classList.remove('gk_' + x + 'Open'); });
     document.body.classList.toggle('gkOpen', !!k);
@@ -552,10 +598,121 @@ function tsGoBack(){
   });
   window.addEventListener('beforeprint', function(){ try{ TriVoice.stop(); }catch(e){} });
 
+  /* ---- 同時通訳（宏史さんのトライサイトラップトップだけ・2026-11-27） ----
+     合図（tritalk_interp）を覚えた端末にだけ引き出しを出す。合図は合言葉ではない（機能の表示の切り替えだけ）。 */
+  var IKEY = 'tritalk_interp', ILOG = 'tritalk_interp_v1', IMAX = 50;
+  try{
+    var qs = new URLSearchParams(location.search), iq = qs.get('interp');
+    if(iq === 'on') localStorage.setItem(IKEY, '1'); else if(iq === 'off') localStorage.removeItem(IKEY);
+    if(iq){ qs.delete('interp'); history.replaceState(null, '', location.pathname + (qs.toString() ? '?' + qs : '') + location.hash); }
+  }catch(e){}
+  var interpOn = false; try{ interpOn = localStorage.getItem(IKEY) === '1'; }catch(e){}
+  if(interpOn) $('gkTabInt').style.display = '';
+  var imode = 'tr', icards = [];
+  try{ icards = JSON.parse(localStorage.getItem(ILOG) || '[]') || []; }catch(e){ icards = []; }
+  function isave(){ icards = icards.slice(0, IMAX); for(var n = 0; n < 5; n++){ try{ localStorage.setItem(ILOG, JSON.stringify(icards)); return; }catch(e){ if(icards.length > 1) icards.pop(); else return; } } }
+  function ist(t, warn){ $('itSt').textContent = t || ''; $('itSt').className = warn ? 'warn' : ''; }
+  /* 英語の声：あずさの声（Sulafat）のまま、話し方の指定だけ英語向けにする（声の窓口は文の言語を自動で読み分ける） */
+  var EN_VOICE = { vendor: SEC.azusa.voice.vendor, voice: SEC.azusa.voice.voice, model: SEC.azusa.voice.model,
+                   instructions: 'Speak in clear, natural English at a slightly slow pace, so that a Japanese learner can repeat after you.' };
+  async function playEn(t){
+    if(typeof TriVoice === 'undefined' || !TriVoice.synth) return;
+    hushed = false;
+    var ps = pieces(forSpeech(t)), jobs = ps.map(function(x){ return TriVoice.synth(x, EN_VOICE); });
+    jobs.forEach(function(j){ j.catch(function(){}); });
+    for(var i = 0; i < jobs.length; i++){
+      if(hushed) return;
+      var o = await jobs[i];
+      if(EN_VOICE.vendor === 'google' && o.route !== 'vertex') ist('ご注意：あずさの声は評価用の経路で作られています（公開の場では Vertex AI の設定が必要です）。', true);
+      await playBlob(o.blob);
+    }
+  }
+  function pj(t){ var m = String(t || '').match(/\{[\s\S]*\}/); if(!m) throw new Error('答えの形が崩れていました'); return JSON.parse(m[0]); }
+  var JSON_RULE = 'この依頼に限り、上の「話し言葉の日本語で短く」「記号を使わない」の決まりより、次の出力形式を優先してください。出力はJSONだけにし、前後に説明を付けないでください。';
+  function iRender(){
+    var box = $('itList');
+    if(!icards.length){ box.innerHTML = '<div class="muted">まだやり取りはありません。赤い「🎙 日本語で話す」を押して、日本語で話してください。</div>'; }
+    else box.innerHTML = icards.map(function(c, i){
+      var h = '<div class="itCard' + (i === 0 ? ' cur' : '') + '"><div class="lb">' + (c.m === 'cv' ? '英語で会話' : '通訳') + '　' + stamp(c.at) + '</div>'
+        + '<div class="lb">あなた（日本語）</div><div class="itMe">' + esc(c.me) + '</div>'
+        + '<div class="lb">あずさ（英語）</div><div class="en">' + esc(c.en) + '</div>'
+        + (c.ja ? '<div class="lb">日本語訳</div><div class="ja">' + esc(c.ja) + '</div>' : '');
+      (c.reps || []).forEach(function(r){
+        h += '<div class="sc"><b class="pt">' + esc(r.score) + '点</b>聞き取った英語：' + esc(r.heard)
+          + (r.good ? '<div>良かった点：' + esc(r.good) + '</div>' : '')
+          + (r.points && r.points.length ? '<div>直す点：</div><ul>' + r.points.map(function(p){ return '<li>' + esc(p) + '</li>'; }).join('') + '</ul>' : '') + '</div>';
+      });
+      return h + '</div>';
+    }).join('');
+    $('itRep').disabled = $('itAgain').disabled = !icards.length || busy;
+    $('itJa').disabled = busy;
+  }
+  function iBusy(b){ busy = b; $('send').disabled = b; iRender(); }
+  function iListen(lang, msg, cb){
+    if(typeof TriVoice === 'undefined' || !TriVoice.listen){ ist('音声エンジンが読み込めません（文字で入力してください）。', true); return; }
+    if(talking) stop();
+    hush();
+    TriVoice.listen({ language: lang, endSilenceMs: 1300, listeningMessage: msg,
+      status: function(t){ if(t) ist(t, /失敗|できません|未対応|エラー|不一致/.test(t)); },
+      onText: function(t){ cb(t); },
+      onEnd: function(why){ if(why === 'nospeech') ist('声が聞こえませんでした。もう一度押してください。'); else if(why === 'noise') ist('うまく聞き取れませんでした。もう一度押してください。'); } });
+  }
+  /* 日本語 → あずさの英語（通訳／会話） */
+  async function iJa(ja){
+    ja = String(ja || '').trim(); if(!ja || busy) return;
+    iBusy(true); ist('あずさが考えています…');
+    var extra, hist;
+    if(imode === 'tr'){
+      extra = 'あなたは今、通訳です。相手の日本語を、意味を変えずに自然な英語へ訳してください。相手の話に答えたり、意見を足したりしないでください。' + JSON_RULE
+        + '形式：{"en":"英訳","ja":"その英訳を日本語に訳し戻した文"}';
+      hist = [{ role:'user', content: ja }];
+    } else {
+      extra = 'あなたは今、相手と英語で会話しています。相手は日本語で話しますが、あなたは英語だけで答えてください。英語を学んでいる相手がまねて言える長さ（2〜3文）と言葉づかいにしてください。' + JSON_RULE
+        + '形式：{"en":"あなたの英語の答え","ja":"その答えの日本語訳"}';
+      hist = [];
+      icards.slice(0, 6).reverse().forEach(function(c){ if(c.m === 'cv'){ hist.push({ role:'user', content: c.me }); hist.push({ role:'assistant', content: JSON.stringify({ en: c.en, ja: c.ja }) }); } });
+      hist.push({ role:'user', content: ja });
+    }
+    var o;
+    try{ var r = await T.ask('azusa', hist, { extra: extra, fast: true }); try{ o = pj(r); }catch(e){ o = { en: r, ja: '' }; } }
+    catch(e){ iBusy(false); ist('あずさの返答を得られませんでした：' + e.message, true); return; }
+    var c = { at: Date.now(), m: imode, me: ja, en: String(o.en || '').trim(), ja: String(o.ja || '').trim(), reps: [] };
+    if(!c.en){ iBusy(false); ist('あずさの英語が空でした。もう一度話してください。', true); return; }
+    icards.unshift(c); isave(); iBusy(false);
+    ist('あずさが英語で話しています…');
+    try{ await playEn(c.en); if(!/ご注意/.test($('itSt').textContent)) ist('リピーティングするときは「🔁 リピーティング」を押して、英語をまねてください。'); }
+    catch(e){ ist('声にできませんでした（文字は出ています）：' + e.message, true); }
+  }
+  /* リピーティングの採点（いちばん上の英語が手本） */
+  async function iScore(heard){
+    var c = icards[0]; heard = String(heard || '').trim(); if(!c || !heard || busy) return;
+    iBusy(true); ist('あずさが採点しています…');
+    var extra = 'あなたは今、英語のリピーティングの先生です。相手が手本の英語を声でまね、音声認識で文字にしたものが届きます。届くのは文字で、発音そのものではありません。'
+      + '手本と違う語・抜けた語・足した語を見つけ、発音の取り違えか言い落としの可能性として、日本語で具体的に指摘してください。100点満点で採点し、甘くしないでください。' + JSON_RULE
+      + '形式：{"score":点数の整数,"good":"良かった点（日本語で1文）","points":["直す点（日本語・どの語をどう直すか。最大3つ。無ければ空）"]}';
+    var r, o;
+    try{ r = await T.ask('azusa', [{ role:'user', content: '手本：' + c.en + '\n聞き取った英語：' + heard }], { extra: extra, fast: true }); o = pj(r); }
+    catch(e){ iBusy(false); ist('採点を得られませんでした：' + e.message, true); return; }
+    var sc = parseInt(o.score, 10); if(isNaN(sc)) sc = '—'; else sc = Math.max(0, Math.min(100, sc));
+    c.reps.push({ heard: heard, score: sc, good: String(o.good || ''), points: (Array.isArray(o.points) ? o.points : []).map(String).filter(Boolean).slice(0, 3) });
+    isave(); iBusy(false); ist('採点を下に出しました。');
+  }
+  $('itMode').addEventListener('click', function(e){
+    var m = e.target.getAttribute && e.target.getAttribute('data-m'); if(!m) return; imode = m;
+    [].forEach.call($('itMode').children, function(b){ b.classList.toggle('on', b.getAttribute('data-m') === m); });
+    $('itModeTx').textContent = m === 'tr' ? '通訳：話した日本語を、あずさが英語に訳して読み上げます。' : '英語で会話：話した日本語に、あずさが英語で答えます。';
+  });
+  $('itJa').addEventListener('click', function(){ if(!busy) iListen('ja', '日本語でどうぞ。話し終えると自動で送ります。', iJa); });
+  $('itRep').addEventListener('click', function(){ if(!busy && icards.length) iListen('en', '英語をまねて言ってください。話し終えると自動で採点します。', iScore); });
+  $('itAgain').addEventListener('click', function(){ if(busy || !icards.length) return; ist('もう一度読み上げています…'); playEn(icards[0].en).then(function(){ ist(''); }, function(e){ ist('声にできませんでした：' + e.message, true); }); });
+  $('itStop').addEventListener('click', function(){ try{ TriVoice.stopListen(); }catch(e){} hush(); ist('止めました。'); });
+  $('itTxt').addEventListener('keydown', function(e){ if(e.key === 'Enter' && !e.isComposing){ e.preventDefault(); var v = this.value.trim(); if(v && !busy){ this.value = ''; iJa(v); } } });
+  if(interpOn) iRender();
+
   /* ---- 始め：前回の会話の続きを開く（無ければ新しく） ---- */
   conv = store.convs[0] || newConv();
   pick(cur); render(); fillPast();
-  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, version: '2026-11-26-02' };
+  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-27-01' };
 })();
 </script>
 </body>

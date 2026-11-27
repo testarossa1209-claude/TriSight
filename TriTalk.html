@@ -39,6 +39,7 @@
             ・通訳のやり取りは、この端末の中にだけ残す（最新50件）
          ⑩ 2026-11-27-03（宏史さんの指摘「ラップトップでは同時通訳の引き出しが隠れて見えない」）：右の引き出しのつまみを画面の縦の真ん中に置き、背の低い画面でも全部入るようにした
          ⑪ 2026-11-28-01（宏史さんの指摘・指示）：
+            ・未マージだった 2026-11-27-08／09（メインPCにも出す・ノアメインPCだけの「同時通訳を出す／しまう」）をこの版に取り込んだ。英語の切り替えも同じ出し入れに従う
             ・英語の切り替えスイッチ（日本語／English）を会話の画面の上に付けた。同時通訳の引き出しと同じ端末にだけ出す。
               11-27夜の指示どおり、登録名に「トライサイトPC」を含む端末にも出す（それまでは「ラップトップ」だけで、メインPCに出ていなかった）
             ・Englishのとき：秘書は英語だけで、同じ秘書の声のまま英語で答える。聞き取りも英語。秘書の英語の下に和訳を小さく出す（和訳は声にしない・リピーティングもしない）
@@ -95,6 +96,8 @@
   #hush.show{display:inline-block}
   #talk{background:#c0392b;color:#fff;font-size:16px;padding:0 22px}
   #talk.on{background:#e74c3c;animation:glow 1s infinite}
+  #itSwitch{font:inherit;font-size:12px;font-weight:700;border:1px solid var(--navy);background:#fff;color:var(--navy);border-radius:999px;padding:3px 12px;cursor:pointer}
+  #itSwitch.on{background:var(--navy);color:#fff}
   .foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:11px;color:#8a93a6;padding:2px 22px 10px}
   .pr-head,.pr-foot{display:none}
   .caution{margin:0 22px 4px;padding:6px 12px;border-radius:8px;background:#fff6e5;border:1px solid #f0d9a8;color:#7a4e12;font-size:13px}
@@ -232,7 +235,7 @@ function tsGoBack(){
   <button class="btn" id="hush" type="button">■ 読み上げを止める</button>
   <button class="btn" id="talk" type="button">🎙 話しかける</button>
 </div>
-<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 <span id="verLabel">2026-11-28-01</span></span></div>
+<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><button type="button" id="itSwitch" style="display:none" title="この端末で同時通訳のつまみを出す／しまう（ノアメインPCだけ）">同時通訳を出す</button><span>TriTalk　版 <span id="verLabel">2026-11-28-01</span></span></div>
 
 <!-- 右の引き出し4つ（2026-11-26 宏史さんの指示「学習窓と学習一覧表とトライサイトシリーズに対する質問と会話の記録の４つは欲しい」） -->
 <div class="gkTabs">
@@ -684,6 +687,11 @@ function tsGoBack(){
     interpOn = intlOn = true; $('gkTabInt').style.display = ''; $('langSw').style.display = '';
     [].forEach.call($('langSw').children, function(b){ b.classList.toggle('on', b.getAttribute('data-l') === lang); });
   }
+  /* しまうとき：日本語に戻す（英語のまま切り替えが見えなくなるのを防ぐ） */
+  function hideIntl(){
+    if(talking) stop();
+    interpOn = intlOn = false; $('gkTabInt').style.display = 'none'; $('langSw').style.display = 'none';
+  }
   if(interpOn) showIntl();
   $('langSw').addEventListener('click', function(e){
     var l = e.target.getAttribute && e.target.getAttribute('data-l'); if(!l || l === lang) return;
@@ -696,13 +704,27 @@ function tsGoBack(){
   });
   /* 2026-11-27（宏史さんの指摘「タスクバーのアイコンから開くと同時通訳が出ない」）：合図はブラウザごとにしまわれるため、
      Chrome・Edge・アイコンのどれから開いたかで出たり出なかったりした。端末の登録名に「ラップトップ」を含む端末なら、合図が無くても出す。
-     2026-11-28（宏史さんの指摘「切り替えスイッチがついていない」）：11-27夜の指示どおりトライサイトPC（メインPC）にも出す。登録名に「トライサイトPC」を含む端末も対象にする */
-  if(!interpOn){
+     2026-11-27（宏史さんの指示「トライサイトメインPCにも同時通訳を入れてください」）：登録名に「トライサイトPC」「トライサイトメインPC」を含む端末にも出す（「ノア」を含む名前は除く）。
+     2026-11-28：英語の切り替え（日本語／English）も、同時通訳のつまみと一緒に出し入れする */
+  /* 2026-11-27（宏史さんの指示「ノアのメインPCでも作業ができるように、同時通訳を表示する切り替えスイッチをノアPCだけに」）：
+     登録名に「ノア」と「メイン」を含む端末にだけ、画面下に「同時通訳を出す／しまう」の切り替えを出す。ほかのノアの端末には出さない。 */
+  function iSwitchShow(){
+    var b = $('itSwitch'); b.style.display = '';
+    b.textContent = interpOn ? '同時通訳をしまう' : '同時通訳を出す'; b.classList.toggle('on', interpOn);
+  }
+  $('itSwitch').addEventListener('click', function(){
+    interpOn = !interpOn;
+    try{ if(interpOn) localStorage.setItem(IKEY, '1'); else localStorage.removeItem(IKEY); }catch(e){}
+    if(interpOn){ showIntl(); iRender(); }
+    else { hideIntl(); if(document.body.classList.contains('gk_intOpen')) gkOpen(null); }
+    iSwitchShow();
+  });
+  {
     try{
       var wc = localStorage.getItem('trisight_access_code') || '';
       if(wc) fetch('https://trisight-relay.vercel.app/api/gate', { method:'POST', headers:{ 'Content-Type':'application/json', 'x-trisight-code':wc }, body: JSON.stringify({ task:'whoami' }) })
         .then(function(r){ return r.ok ? r.json() : null; })
-        .then(function(j){ if(j && j.dev && /ラップトップ|トライサイト\s*(?:メイン)?\s*(?:PC|ＰＣ)/i.test(j.dev.name || '')){ try{ localStorage.setItem(IKEY, '1'); }catch(e){} showIntl(); iRender(); } }, function(){});
+        .then(function(j){ var dn = (j && j.dev && j.dev.name) || ''; if(/ノア/.test(dn) && /メイン/.test(dn)){ iSwitchShow(); return; } if(!interpOn && /ラップトップ|トライサイト\s*(メイン)?\s*(PC|ＰＣ)/i.test(dn) && !/ノア/.test(dn)){ try{ localStorage.setItem(IKEY, '1'); }catch(e){} showIntl(); iRender(); } }, function(){});
     }catch(e){}
   }
   var imode = 'cv', icards = [];   /* 2026-11-27（宏史さんの指示）：英語での会話を基本にする */

@@ -8402,7 +8402,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-11-27-02';
+  const TRIGATE_VERSION = '2026-11-27-03';
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -9511,5 +9511,7 @@ if(window.TriSheetSync) TriSheetSync.init({ notify:false });
   window.addEventListener('storage', function(e){ if(pn.classList.contains('open') && /^(tritask_inbox|tritask_grants|tritime_mgmt|tg_kettei|tg_kessai|trisight_dig_company)$/.test(e.key || '')) render(); });
 })();
 </script>
+<!-- 2026-11-27：版の一覧（全システムの版をリアルタイムで出す・宏史さんの指示） -->
+<script src="TriVersions.js"></script>
 </body>
 </html>

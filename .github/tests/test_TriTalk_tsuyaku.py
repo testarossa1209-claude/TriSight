@@ -4,6 +4,7 @@
 ② 通訳：日本語を送ると、あずさの英語と日本語訳が出て、英語向けの話し方で声の窓口を呼ぶ
 ③ リピーティング：聞き取った英語を渡すと、点数・良かった点・直す点が出る
 ④ 英語で会話：前の会話が履歴として渡る
+⑥ 通訳・英語で会話のどちらでも、トライサイトの基礎知識と利用解説書の抜き出しがあずさに渡る
 ⑤ 画面の中で誤りが起きない"""
 import sys, os, json, threading, http.server, socketserver, functools
 sys.path.insert(0, os.path.dirname(__file__))
@@ -66,6 +67,14 @@ async def test(p):
         msgs = calls[-1]['messages']
         assert any('元気ですか' in m.get('content', '') for m in msgs), '英語で会話の前の話が渡っていません'
         assert 'I am fine, thank you.' in await pg.inner_text('#itList'), '英語で会話の答えが出ません'
+        # ⑥
+        await pg.evaluate("TriTalk._iJa('トライゲイトでは何ができますか')"); await pg.wait_for_timeout(1500)
+        body = json.dumps(calls[-1], ensure_ascii=False)
+        assert 'トライサイトの基礎知識' in body and '【システムの紹介】トライゲイト' in body, '英語で会話にトライサイトの知識が渡っていません'
+        await pg.click('#itMode button[data-m="tr"]')
+        await pg.evaluate("TriTalk._iJa('トライゲイトで補助金を探します')"); await pg.wait_for_timeout(1500)
+        body = json.dumps(calls[-1], ensure_ascii=False)
+        assert '通訳です' in body and 'トライサイトの基礎知識' in body, '通訳にトライサイトの知識が渡っていません'
         await s.shot('#gk_int', 'TriTalk_tsuyaku.png')
         # ⑤
         assert not s.errs, '画面の中で誤り：' + str(s.errs)

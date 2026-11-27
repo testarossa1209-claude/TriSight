@@ -288,6 +288,7 @@ function tsGoBack(){
       <button type="button" id="itRep" disabled>🔁 Repeat after Azusa</button>
       <button type="button" id="itAgain" disabled>🔊 Listen again</button>
       <button type="button" id="itStop">■ Stop</button>
+      <button type="button" id="itClear" title="Clear the text box and all exchanges on this screen">🧹 Clear</button>
     </div>
     <div style="display:flex;gap:6px;margin-top:8px"><input type="text" id="itTxt" placeholder="Type here (press Enter to send)"></div>
     <div id="itSt"></div>
@@ -771,6 +772,14 @@ function tsGoBack(){
       c.tr = items.map(function(x, k){ return { who: x.who, ja: String(ja[k] || '').trim() || '（訳せませんでした）' }; });
       isave(); iRender();
     }catch(err){ b.disabled = false; b.textContent = '和訳を見る'; ist('Could not translate: ' + err.message, true); }
+  });
+  /* 2026-11-27（宏史さんの指示）：入力画面のクリア。文字の欄と、この画面のやり取りをすべて消して、まっさらから始める */
+  $('itClear').addEventListener('click', function(){
+    if(busy) return;
+    $('itTxt').value = '';
+    if(icards.length && !confirm('Clear all exchanges on this screen? (They cannot be restored.)')) return;
+    try{ TriVoice.stopListen(); }catch(e){} hush();
+    icards = []; isave(); iRender(); ist('Cleared.');
   });
   $('itStop').addEventListener('click', function(){ try{ TriVoice.stopListen(); }catch(e){} hush(); ist('Stopped.'); });
   $('itTxt').addEventListener('keydown', function(e){ if(e.key === 'Enter' && !e.isComposing){ e.preventDefault(); var v = this.value.trim(); if(v && !busy){ this.value = ''; iJa(v); } } });

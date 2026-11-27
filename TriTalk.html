@@ -89,6 +89,7 @@
   /* 右の引き出し（トライタイムと同じ形：右端に縦書きのつまみ、押すと右から板が開く） */
   /* 2026-11-27（宏史さんの指摘「ラップトップでは同時通訳の引き出しが隠れて見えない」）：画面の縦の真ん中に置き、背の低い画面でも全部のつまみが入るようにする */
   .gkTabs{position:fixed;right:0;top:50%;transform:translateY(-50%);max-height:calc(100vh - 16px);overflow-y:auto;overflow-x:hidden;padding:4px 0 4px 6px;box-sizing:border-box;z-index:60;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  .gkTabs > *{flex-shrink:0}
   .gkTab{font:inherit;font-size:14px;font-weight:700;line-height:1.25;background:var(--navy);color:#fff;border:0;border-radius:10px 0 0 10px;padding:12px 9px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25);display:flex;flex-direction:column;align-items:center}
   .gkTab span{display:block}
   .gkTab span.bar{transform:rotate(90deg)}
@@ -217,7 +218,7 @@ function tsGoBack(){
   <button class="btn" id="hush" type="button">■ 読み上げを止める</button>
   <button class="btn" id="talk" type="button">🎙 話しかける</button>
 </div>
-<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 2026-11-27-03</span></div>
+<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 2026-11-27-04</span></div>
 
 <!-- 右の引き出し4つ（2026-11-26 宏史さんの指示「学習窓と学習一覧表とトライサイトシリーズに対する質問と会話の記録の４つは欲しい」） -->
 <div class="gkTabs">
@@ -720,7 +721,7 @@ function tsGoBack(){
   /* ---- 始め：前回の会話の続きを開く（無ければ新しく） ---- */
   conv = store.convs[0] || newConv();
   pick(cur); render(); fillPast();
-  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-27-03' };
+  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-27-04' };
 })();
 </script>
 </body>

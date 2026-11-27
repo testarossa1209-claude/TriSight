@@ -246,7 +246,8 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   .ssChip .hvL{display:inline-block;font-size:10px;line-height:1.2;padding:0 4px;border-radius:3px;background:#fbf3e4;color:#7a4e12;margin-left:2px}
   .ssChip.ptrHit{outline:3px solid #993c1d;outline-offset:-1px;background:#fff3e0}
   /* 2026-10-29：情報の引き出し（右端のつまみを縦に並べる：仮スケジュール表・対照表・使い方） */
-  .sideTabs{position:fixed;right:0;top:30%;z-index:60;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  /* 2026-11-27（トライトークと同じ直し）：背の低い画面（ラップトップ）でも下のつまみが隠れないよう、縦の真ん中に置き、入りきらないときは引き出しの列の中で送れるようにする */
+  .sideTabs{position:fixed;right:0;top:50%;transform:translateY(-50%);max-height:calc(100vh - 16px);overflow-y:auto;overflow-x:hidden;padding:4px 0 4px 6px;box-sizing:border-box;z-index:60;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
   .sideTabs .ssTab{position:static}
   body.ssOpen .sideTabs .ssTab, body.kpOpen .sideTabs .ssTab, body.mnOpen .sideTabs .ssTab, body.nmOpen .sideTabs .ssTab, body.osOpen .sideTabs .ssTab, body.rqOpen .sideTabs .ssTab, body.jmOpen .sideTabs .ssTab, body.jlOpen .sideTabs .ssTab, body.hbOpen .sideTabs .ssTab, body.auOpen .sideTabs .ssTab, body.plOpen .sideTabs .ssTab, body.nvOpen .sideTabs .ssTab, body.evOpen .sideTabs .ssTab{display:none}
   body.kpOpen #kpPanel, body.mnOpen #mnPanel, body.nmOpen #nmPanel, body.osOpen #osPanel, body.rqOpen #rqPanel, body.jmOpen #jmPanel, body.jlOpen #jlPanel, body.hbOpen #hbPanel, body.auOpen #auPanel, body.plOpen #plPanel, body.nvOpen #nvPanel, body.evOpen #evPanel{transform:none}
@@ -267,7 +268,7 @@ if(v!=="1")document.documentElement.className+=" openLocked";})();
   /* 2026-11-03：左の引き出し（使い方・ご要望）。つまみは小さめにし、画面の上の方から並べる（ラップトップで下が切れないように） */
   .sideTabs{top:84px}
   .sideTabs .ssTab{font-size:13px;padding:9px 7px;line-height:1.2}
-  .sideTabs.lft{right:auto;left:0;align-items:flex-start}
+  .sideTabs.lft{right:auto;left:0;align-items:flex-start;padding:4px 6px 4px 0}
   .sideTabs.lft .ssTab{border-radius:0 10px 10px 0}
   .ssPanel.lft{right:auto;left:0;border-left:0;border-right:1px solid var(--line);box-shadow:8px 0 28px rgba(16,36,59,.14);transform:translateX(-105%)}
   @media (max-height:820px){ .sideTabs{gap:5px;top:70px} .sideTabs .ssTab{font-size:12px;padding:6px 6px;line-height:1.12} }
@@ -466,7 +467,7 @@ function tsPortalAsk(){
   <img src="TriSight_icon_512.png" alt="TriSight®">
   <h1>TriTime（トライタイム）<small id="hdSub">訪問の予定・キャンセルの記録・患者さんの経過を、時間の流れで持つ</small></h1>
 </header>
-<div class="verline">版 <span id="verLabel">2026-11-27-01</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
+<div class="verline">版 <span id="verLabel">2026-11-27-02</span><button type="button" id="verReload" style="margin-left:10px;font-family:inherit;font-size:12px;padding:2px 12px;border:1px solid #0f1d3a;background:#0f1d3a;color:#fff;border-radius:999px;cursor:pointer">最新の版に更新</button></div>
 <!-- 2026-10-19：部署ごとに予定と記録を分ける（宏史さんの指示）。いまの画面は訪問看護部用。端末ごとに選んだ部署を覚える -->
 <div class="deptbar" id="deptBar"><b>使う部署</b></div>
 <!-- 2026-10-26：仮スケジュール表（右に立ち上がるサブ画面） -->

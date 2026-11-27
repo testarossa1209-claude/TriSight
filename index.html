@@ -240,6 +240,12 @@ footer{text-align:center;color:#7e8499;font-size:11px;margin-top:14px;line-heigh
   <div class="e-foot"><a href="TriEngines.html">コモンエンジン台帳を開く</a></div>
 </section>
 
+<!-- 2026-11-27：版の一覧（全システムの版を、GitHubに上がった版のとおり自動で出す） -->
+<section class="eng" aria-labelledby="tvTitle" style="margin-top:18px">
+  <div class="e-nm" id="tvTitle">Versions<span>各システムの最新の版</span></div>
+  <div id="tvList" style="margin-top:8px;border-radius:10px;overflow:hidden"></div>
+</section>
+
 <footer>TriSight&reg; は合同会社トライサイトの登録商標です ／ &copy; 2026 合同会社トライサイト</footer>
 
 </div><script src="TriEngines.js"></script>
@@ -348,4 +354,6 @@ footer{text-align:center;color:#7e8499;font-size:11px;margin-top:14px;line-heigh
   };
 })();
 </script>
+<!-- 2026-11-27：版の一覧（全システムの版をリアルタイムで出す・宏史さんの指示） -->
+<script src="TriVersions.js"></script>
 </body></html>

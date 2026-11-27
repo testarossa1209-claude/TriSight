@@ -218,7 +218,7 @@ function tsGoBack(){
   <button class="btn" id="hush" type="button">■ 読み上げを止める</button>
   <button class="btn" id="talk" type="button">🎙 話しかける</button>
 </div>
-<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 2026-11-27-04</span></div>
+<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 <span id="verLabel">2026-11-27-04</span></span></div>
 
 <!-- 右の引き出し4つ（2026-11-26 宏史さんの指示「学習窓と学習一覧表とトライサイトシリーズに対する質問と会話の記録の４つは欲しい」） -->
 <div class="gkTabs">
@@ -724,5 +724,7 @@ function tsGoBack(){
   window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-27-04' };
 })();
 </script>
+<!-- 2026-11-27：版の一覧（全システムの版をリアルタイムで出す・宏史さんの指示） -->
+<script src="TriVersions.js"></script>
 </body>
 </html>

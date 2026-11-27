@@ -37,6 +37,9 @@
             ・「通訳」＝話した日本語を、あずさが英語に訳して英語の声で読む／「英語で会話」＝あずさが英語で答える。どちらも画面に英語と日本語訳を出す
             ・「リピーティング」＝あずさの英語を声でまねると、あずさが点数と直す点を画面に出す（聞き取った文字を元に採点する。発音の細かな音までは測れない）
             ・通訳のやり取りは、この端末の中にだけ残す（最新50件）
+         ⑨ 2026-11-27-02（宏史さんの指摘「なぜ本体機能の理解の為の情報を読み込まないのか」）：同時通訳の引き出しでも、
+            会話の画面と同じ知識（トライサイトの基礎知識・利用解説書の抜き出し・学習資料）をあずさに渡す。
+            「通訳」では製品名などを正しく訳すため、「英語で会話」ではトライサイトシリーズについて英語で正しく答えるため
      ・会話はこの端末（ブラウザ）の中にだけ残り、当社のサーバーには残さない。
      ============================================================ -->
 <style>
@@ -212,7 +215,7 @@ function tsGoBack(){
   <button class="btn" id="hush" type="button">■ 読み上げを止める</button>
   <button class="btn" id="talk" type="button">🎙 話しかける</button>
 </div>
-<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 2026-11-27-01</span></div>
+<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 2026-11-27-02</span></div>
 
 <!-- 右の引き出し4つ（2026-11-26 宏史さんの指示「学習窓と学習一覧表とトライサイトシリーズに対する質問と会話の記録の４つは欲しい」） -->
 <div class="gkTabs">
@@ -673,6 +676,9 @@ function tsGoBack(){
       icards.slice(0, 6).reverse().forEach(function(c){ if(c.m === 'cv'){ hist.push({ role:'user', content: c.me }); hist.push({ role:'assistant', content: JSON.stringify({ en: c.en, ja: c.ja }) }); } });
       hist.push({ role:'user', content: ja });
     }
+    /* 会話の画面と同じ知識を渡す（11-27-01 では渡しておらず、トライサイトのことを知らない答えになっていた） */
+    var kn = ''; try{ kn = await knowledgeFor(ja); }catch(e){ kn = ''; }
+    if(kn) extra += '\n\n下の知識は、製品名・用語を正しく訳し、トライサイトシリーズについて正しく答えるために使ってください。製品名は英語ではTriSight、TriGate、TriTalkのように表記してください。知識の中の「話し言葉の日本語で」の決まりより、上の出力形式（英語とJSON）を優先してください。\n\n' + kn;
     var o;
     try{ var r = await T.ask('azusa', hist, { extra: extra, fast: true }); try{ o = pj(r); }catch(e){ o = { en: r, ja: '' }; } }
     catch(e){ iBusy(false); ist('あずさの返答を得られませんでした：' + e.message, true); return; }
@@ -712,7 +718,7 @@ function tsGoBack(){
   /* ---- 始め：前回の会話の続きを開く（無ければ新しく） ---- */
   conv = store.convs[0] || newConv();
   pick(cur); render(); fillPast();
-  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-27-01' };
+  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-27-02' };
 })();
 </script>
 </body>

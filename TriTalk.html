@@ -37,6 +37,7 @@
             ・「通訳」＝話した日本語を、あずさが英語に訳して英語の声で読む／「英語で会話」＝あずさが英語で答える。どちらも画面に英語と日本語訳を出す
             ・「リピーティング」＝あずさの英語を声でまねると、あずさが点数と直す点を画面に出す（聞き取った文字を元に採点する。発音の細かな音までは測れない）
             ・通訳のやり取りは、この端末の中にだけ残す（最新50件）
+         ⑩ 2026-11-27-03（宏史さんの指摘「ラップトップでは同時通訳の引き出しが隠れて見えない」）：右の引き出しのつまみを画面の縦の真ん中に置き、背の低い画面でも全部入るようにした
          ⑨ 2026-11-27-02（宏史さんの指摘「なぜ本体機能の理解の為の情報を読み込まないのか」）：同時通訳の引き出しでも、
             会話の画面と同じ知識（トライサイトの基礎知識・利用解説書の抜き出し・学習資料）をあずさに渡す。
             「通訳」では製品名などを正しく訳すため、「英語で会話」ではトライサイトシリーズについて英語で正しく答えるため
@@ -86,7 +87,8 @@
   .pr-head,.pr-foot{display:none}
   .caution{margin:0 22px 4px;padding:6px 12px;border-radius:8px;background:#fff6e5;border:1px solid #f0d9a8;color:#7a4e12;font-size:13px}
   /* 右の引き出し（トライタイムと同じ形：右端に縦書きのつまみ、押すと右から板が開く） */
-  .gkTabs{position:fixed;right:0;top:22%;z-index:60;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  /* 2026-11-27（宏史さんの指摘「ラップトップでは同時通訳の引き出しが隠れて見えない」）：画面の縦の真ん中に置き、背の低い画面でも全部のつまみが入るようにする */
+  .gkTabs{position:fixed;right:0;top:50%;transform:translateY(-50%);max-height:calc(100vh - 16px);overflow-y:auto;overflow-x:hidden;padding:4px 0 4px 6px;box-sizing:border-box;z-index:60;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
   .gkTab{font:inherit;font-size:14px;font-weight:700;line-height:1.25;background:var(--navy);color:#fff;border:0;border-radius:10px 0 0 10px;padding:12px 9px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25);display:flex;flex-direction:column;align-items:center}
   .gkTab span{display:block}
   .gkTab span.bar{transform:rotate(90deg)}
@@ -215,7 +217,7 @@ function tsGoBack(){
   <button class="btn" id="hush" type="button">■ 読み上げを止める</button>
   <button class="btn" id="talk" type="button">🎙 話しかける</button>
 </div>
-<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 2026-11-27-02</span></div>
+<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 2026-11-27-03</span></div>
 
 <!-- 右の引き出し4つ（2026-11-26 宏史さんの指示「学習窓と学習一覧表とトライサイトシリーズに対する質問と会話の記録の４つは欲しい」） -->
 <div class="gkTabs">
@@ -718,7 +720,7 @@ function tsGoBack(){
   /* ---- 始め：前回の会話の続きを開く（無ければ新しく） ---- */
   conv = store.convs[0] || newConv();
   pick(cur); render(); fillPast();
-  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-27-02' };
+  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-27-03' };
 })();
 </script>
 </body>

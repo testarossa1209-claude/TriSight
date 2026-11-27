@@ -5,6 +5,7 @@
 ③ リピーティング：聞き取った英語を渡すと、点数・良かった点・直す点が出る
 ④ 英語で会話：前の会話が履歴として渡る
 ⑥ 通訳・英語で会話のどちらでも、トライサイトの基礎知識と利用解説書の抜き出しがあずさに渡る
+⑦ 画面が知識を添えずに聞いても、なぎさ・つかさ・あずさの誰にでも共通部品（TriSecretaries.ask）が知識を添える。二重には添えない
 ⑤ 画面の中で誤りが起きない"""
 import sys, os, json, threading, http.server, socketserver, functools
 sys.path.insert(0, os.path.dirname(__file__))
@@ -75,6 +76,12 @@ async def test(p):
         await pg.evaluate("TriTalk._iJa('トライゲイトで補助金を探します')"); await pg.wait_for_timeout(1500)
         body = json.dumps(calls[-1], ensure_ascii=False)
         assert '通訳です' in body and 'トライサイトの基礎知識' in body, '通訳にトライサイトの知識が渡っていません'
+        # ⑦
+        for who in ('nagisa', 'tsukasa', 'azusa'):
+            await pg.evaluate("TriSecretaries.ask('%s', [{role:'user', content:'トライゲイトでは何ができますか'}], {})" % who); await pg.wait_for_timeout(300)
+            body = json.dumps(calls[-1], ensure_ascii=False)
+            assert 'トライサイトの基礎知識' in body and '【システムの紹介】トライゲイト' in body, who + 'に知識が渡っていません'
+            assert body.count('【トライサイトの基礎知識') == 1, who + 'に知識が二重に渡っています'
         await s.shot('#gk_int', 'TriTalk_tsuyaku.png')
         # ⑤
         assert not s.errs, '画面の中で誤り：' + str(s.errs)

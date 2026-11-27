@@ -9,6 +9,10 @@
        つかさ＝施策や理屈が現実に通用するかを、忖度せずに評価する
    ・声：あずさ＝Google Sulafat／なぎさ＝Google Achernar（Gemini 3.1 Flash TTS。公開の場では Vertex AI 経由）／つかさ＝OpenAI Marin
    ・返答のAI：画面に TS_MODELS（本体の「使うAIの表」）があればそれに従い、無ければ下の標準を使う。
+   ・2026-11-27（宏史さんの指摘「あずさだけではなく、なぎさでもつかさでも情報は渡しておいてもらわないとだめ」）：
+     トライサイトの知識（TriTalkKnowledge.js の基礎知識＋利用解説書の抜き出し）は、ask の中で必ず添える。
+     画面ごとに添える作りでは、本体の「秘書と話す」・よろず相談・同時通訳の板で渡し忘れが3度起きたため。
+     画面が既に添えているとき（「【トライサイトの基礎知識」を含むとき）は二重に添えない。部品が読み込まれていない画面では、ここで読み込む。
    ============================================================ */
 (function(global){
   'use strict';
@@ -88,9 +92,29 @@
   function today(){ var d = new Date(); return '【今日の日付】' + d.getFullYear() + '年' + (d.getMonth()+1) + '月' + d.getDate() + '日\n\n'; }
   /* 会話の履歴 [{role:'user'|'assistant', content}] を渡して、指名した秘書の返答を得る
      opts.extra … その画面だけの添え書き（例：トライトークの「みんな」で3人が順に答えるときの決まり）。system の末尾に足す（2026-11-26） */
+  var kLoading = null;
+  function knowledgeLib(){
+    if(global.TriTalkKnowledge) return Promise.resolve(global.TriTalkKnowledge);
+    if(typeof document === 'undefined') return Promise.resolve(null);
+    if(!kLoading) kLoading = new Promise(function(res){
+      var sc = document.createElement('script'); sc.src = 'TriTalkKnowledge.js';
+      sc.onload = function(){ res(global.TriTalkKnowledge || null); }; sc.onerror = function(){ res(null); };
+      document.head.appendChild(sc);
+    });
+    return kLoading;
+  }
+  async function withKnowledge(extra, history){
+    if(extra.indexOf('【トライサイトの基礎知識') >= 0) return extra;
+    try{
+      var K = await knowledgeLib(); if(!K || !K.forQuery) return extra;
+      var q = ''; for(var i = history.length - 1; i >= 0; i--){ if(history[i].role === 'user'){ q = String(history[i].content || ''); break; } }
+      return extra + await K.forQuery(q);
+    }catch(e){ return extra; }
+  }
   async function ask(k, history, opts){
     var cfg = (global.TS_MODELS && global.TS_MODELS[k]) || MODELS[k];
-    var system = today() + sysPrompt(k) + ((opts && opts.extra) ? '\n' + opts.extra : '');
+    var extra = await withKnowledge((opts && opts.extra) ? String(opts.extra) : '', history);   /* 3人とも、どの画面からでも知識を添える（2026-11-27） */
+    var system = today() + sysPrompt(k) + (extra ? '\n' + extra : '');
     var msgs = history.slice(-20).map(function(m){ return { role: m.role, content: m.content }; });
     var tries = [cfg.primary, cfg.fallback].filter(function(m, i, a){ return m && a.indexOf(m) === i; }), lastErr = null;
     for(var i = 0; i < tries.length; i++){
@@ -124,5 +148,5 @@
     }
     throw lastErr;
   }
-  global.TriSecretaries = { SEC: SEC, ROLE_TEXT: ROLE_TEXT, sysPrompt: sysPrompt, takeName: takeName, LEAD: LEAD, ask: ask, ORDER: ['azusa','nagisa','tsukasa'], version: '1.3' };
+  global.TriSecretaries = { SEC: SEC, ROLE_TEXT: ROLE_TEXT, sysPrompt: sysPrompt, takeName: takeName, LEAD: LEAD, ask: ask, ORDER: ['azusa','nagisa','tsukasa'], version: '1.4' };
 })(typeof window !== 'undefined' ? window : this);

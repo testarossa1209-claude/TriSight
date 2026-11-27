@@ -113,7 +113,7 @@ function tsGoBack(){
     var b = document.createElement('div'); b.className = 'btns';
     b.innerHTML = '<button class="main" data-k="' + k + '" data-w="' + it.who + '">▶ ' + VOICE[it.who].name + 'で聞く（割り振り）</button>'
       + ['azusa','nagisa','tsukasa'].filter(function(w){ return w !== it.who; }).map(function(w){ return '<button data-k="' + k + '" data-w="' + w + '">' + VOICE[w].name + 'で聞く</button>'; }).join('')
-      + '<button data-save1="' + k + '">💾 この場面を保存（' + it.scene + '.wav）</button>';
+      + '<button data-save1="' + k + '">💾 この場面を保存（' + it.scene + '）</button>';
     c.appendChild(b); list.appendChild(c);
   });
   /* WAVを1本につなぐ（同じ形式の声を順に並べ、ヘッダーを作り直す） */
@@ -147,12 +147,15 @@ function tsGoBack(){
         say('声を作っています：' + it.scene + '（' + (i + 1) + '／' + cs.length + '）');
         var o = await TriVoice.synth(cs[i], VOICE[it.who].v);
         if(VOICE[it.who].v.vendor === 'google' && o.route !== 'vertex'){ say('保存を中止しました：' + VOICE[it.who].name + 'の声が Vertex AI の窓口で作れていません。', true); return; }
-        if(!/wav/.test(o.blob.type)){ say('保存を中止しました：この声はWAVで返らないため1本につなげません。', true); return; }
-        parts.push(new Uint8Array(await o.blob.arrayBuffer()));
+        if(!/wav/.test(o.blob.type) && cs.length > 1){ say('保存を中止しました：この声はWAVで返らないため1本につなげません。', true); return; }
+        parts.push(o.blob);
       }
-      var a = document.createElement('a'); a.href = URL.createObjectURL(joinWav(parts)); a.download = it.scene + '.wav';
+      /* 1回で作れた声（つかさのmp3など）はそのまま、分けて作ったWAVは1本につないで保存する */
+      var one = parts.length === 1, ext = /mpeg/.test(parts[0].type) ? 'mp3' : 'wav';
+      var blob = one ? parts[0] : joinWav(await Promise.all(parts.map(async function(b){ return new Uint8Array(await b.arrayBuffer()); })));
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = it.scene + '.' + ext;
       document.body.appendChild(a); a.click(); a.remove();
-      say('保存しました：' + it.scene + '.wav（ダウンロードフォルダ）');
+      say('保存しました：' + it.scene + '.' + ext + '（ダウンロードフォルダ）');
     }catch(e){ say('保存できませんでした：' + e.message, true); }
     finally{ btn.disabled = false; mark(-1); }
   }

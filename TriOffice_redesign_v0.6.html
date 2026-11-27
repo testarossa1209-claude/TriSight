@@ -604,6 +604,7 @@ setTimeout(sync,400);})();
       else if(o.s===401)msg.textContent="認証コードが一致しませんでした。";
       else if(o.s===429)msg.textContent=(o.j&&o.j.error)||"間違いが続いたため、しばらく受け付けません。";
       else if(o.s===400)msg.textContent="中継の更新がまだ済んでいないため、確かめられません。";
+      else if(o.s===403)msg.textContent=(o.j&&o.j.error)||"この端末は登録されていません。管理者に連絡して、端末の登録を受けてください。";
       else msg.textContent="確かめられませんでした（"+o.s+"）。少しおいてもう一度押してください。";
     },function(){go.disabled=false;msg.style.color="#b42318";msg.textContent="中継につながりませんでした。通信を確かめて、もう一度押してください。";});
   };

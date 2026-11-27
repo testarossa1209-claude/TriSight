@@ -282,6 +282,7 @@ function tsGoBack(){
   <div class="gkBody">
     <div class="itMode" id="itMode"><button type="button" data-m="cv" class="on">Conversation</button><button type="button" data-m="tr">Interpret (JA → EN)</button></div>
     <div class="muted" id="itModeTx">Conversation: speak in English and Azusa answers in English.</div>
+    <label style="display:block;margin-top:6px;font-size:13px" title="After Azusa answers, Nagisa and Tsukasa also give their own opinions in English (skipped when they have nothing to add)."><input type="checkbox" id="itOthers" checked> Other secretaries also comment (Nagisa, Tsukasa)</label>
     <div class="itBtns" style="margin-top:8px">
       <button type="button" id="itJa">🎙 Speak (English)</button>
       <button type="button" id="itRep" disabled>🔁 Repeat after Azusa</button>
@@ -652,6 +653,7 @@ function tsGoBack(){
       var h = '<div class="itCard' + (i === 0 ? ' cur' : '') + '"><div class="lb">' + (c.m === 'cv' ? 'Conversation' : 'Interpret') + '　' + stamp(c.at) + '</div>'
         + '<div class="lb">You</div><div class="itMe">' + esc(c.me) + '</div>'
         + '<div class="lb">Azusa</div><div class="en">' + esc(c.en) + '</div>'
+        + (c.others || []).map(function(o){ return '<div class="lb">' + esc(o.name) + '</div><div class="en">' + esc(o.text) + '</div>'; }).join('')
         + (c.help ? '<div class="lb">日本語メモ（分からなかった言葉・文法の直し）</div><div class="ja">' + esc(c.help) + '</div>' : '');
       (c.reps || []).forEach(function(r){
         h += '<div class="sc"><b class="pt">' + esc(r.score) + ' / 100</b> Heard: ' + esc(r.heard)
@@ -703,6 +705,32 @@ function tsGoBack(){
     ist('Azusa is speaking…');
     try{ await playEn(c.en); if(!/ご注意/.test($('itSt').textContent)) ist('To practice, press "🔁 Repeat after Azusa" and say the English sentence.'); }
     catch(e){ ist('Could not play the voice (the text is shown): ' + e.message, true); }
+    /* 2026-11-27（宏史さんの指示）：同時通訳の会話では、最初から他の秘書も意見を出す（なぎさ→つかさの順。英語で、人間に向けて。付け加えることが無ければ飛ばす） */
+    if(imode === 'cv' && $('itOthers') && $('itOthers').checked){ await iOthers(c, kn); }
+  }
+  async function iOthers(c, kn){
+    var rest = ORDER.filter(function(k){ return k !== 'azusa'; });
+    for(var i = 0; i < rest.length; i++){
+      if(hushed) return;
+      var k = rest[i], nm = SEC[k].name, enName = { nagisa:'Nagisa', tsukasa:'Tsukasa' }[k] || nm;
+      var prev = 'Azusa: ' + c.en + (c.others || []).map(function(o){ return '\n' + o.en_name + ': ' + o.text; }).join('');
+      var extra = 'あなたは今、相手（人間）とあずさの英語の会話に加わっています。会話は英語で行います。あなたは前の秘書の答えを聞いたうえで、自分の担当の立場から、相手（人間）に向けて英語で「' + enName + ' thinks ...」と切り出し、自分の意見や提案を1〜2文で言ってください。前の秘書に話しかけたり、同じことを繰り返したりしないでください。日本語は使わないでください。付け加えることが無ければ「PASS」とだけ答えてください。' + (kn ? '\n\n下の知識は、製品名・用語を正しく使うために使ってください。製品名は英語ではTriSight、TriGate、TriTalkのように表記してください。\n' + kn : '');
+      var t = '';
+      iBusy(true); ist(enName + ' is thinking…');
+      try{ t = String(await T.ask(k, [{ role:'user', content: '相手（人間）の発言：' + c.me + '\n' + prev }], { extra: extra, fast: true }) || '').trim(); }catch(e){ t = ''; }
+      iBusy(false);
+      if(!t || /^\W*PASS\W*$/i.test(t)) continue;
+      (c.others = c.others || []).push({ k: k, name: enName, en_name: enName, text: t }); isave(); iRender();
+      ist(enName + ' is speaking…');
+      try{ await playOther(k, t); }catch(e){}
+    }
+    ist('');
+  }
+  async function playOther(k, t){
+    if(typeof TriVoice === 'undefined' || !TriVoice.synth) return;
+    var v = SEC[k].voice, opt = { vendor: v.vendor, voice: v.voice, model: v.model, instructions: 'Speak in clear, natural English at a slightly slow pace.' };
+    var ps = pieces(forSpeech(t));
+    for(var i = 0; i < ps.length; i++){ if(hushed) return; var o = await TriVoice.synth(ps[i], opt); await playBlob(o.blob); }
   }
   /* リピーティングの採点（いちばん上の英語が手本） */
   async function iScore(heard){

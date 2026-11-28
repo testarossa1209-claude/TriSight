@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """TriTalk.html の同時通訳の引き出し（2026-11-27・宏史さんのトライサイトラップトップだけ）の動かす試験。中継（返答・声）は試験の側で答える。
-① 合図の無い端末では「同時通訳」のつまみが出ない。?interp=on で開くと出て、合図はアドレスから消える
+① 最初は「同時通訳」のつまみが出ない。「同時通訳を使う」のチェックを入れると出て、開き直しても覚えている（2026-11-28改め）
 ② 通訳：日本語を送ると、あずさの英語が出て、英語向けの話し方で声の窓口を呼ぶ。和訳はボタンを押さなくても自動で出て、声にはしない（2026-11-28・宏史さんの指示で改め）
 ③ リピーティング：聞き取った英語を渡すと、点数・良かった点・直す点が出る
 ④ 英語で会話（最初から選ばれている）：前の会話が履歴として渡る。意見のある秘書だけが英語で意見を足す（PASSの秘書は出ない）
@@ -49,11 +49,11 @@ async def test(p):
         await go(base)
         # ①
         assert not await pg.is_visible('#gkTabInt'), '合図の無い端末に「同時通訳」のつまみが出ています'
-        await go(base + '?interp=on')
-        assert await pg.is_visible('#gkTabInt'), '?interp=on で開いても「同時通訳」のつまみが出ません'
-        assert 'interp' not in pg.url, '合図がアドレスに残っています：' + pg.url
+        assert not await pg.is_checked('#itUse'), '「同時通訳を使う」が最初から入っています'
+        await pg.check('#itUse'); await pg.wait_for_timeout(300)
+        assert await pg.is_visible('#gkTabInt'), 'チェックを入れても「同時通訳」のつまみが出ません'
         await go(base)
-        assert await pg.is_visible('#gkTabInt'), '合図を覚えた端末で、開き直すとつまみが消えます'
+        assert await pg.is_visible('#gkTabInt') and await pg.is_checked('#itUse'), '開き直すとチェック・つまみが消えます'
         await pg.click('#gkTabInt'); await pg.wait_for_timeout(400)
         assert 'on' in (await pg.get_attribute('#itMode button[data-m="cv"]', 'class') or ''), '最初から「Conversation」が選ばれていません'
         # ②

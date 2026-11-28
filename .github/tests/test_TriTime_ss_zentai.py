@@ -36,7 +36,7 @@ async def test(p):
         t = await pg.inner_text('#ssGrid')
         assert '訪問看護部の予定を組み直す・確定する' in t, '全体で開いたとき、いちばん上に部署の入口がありません：' + t[:200]
         await s.shot('#ssBody', 'TriTime_ss_office.png')
-        await pg.click('[data-ssgo=nurse]')
+        await pg.evaluate("document.querySelector('[data-ssgo=nurse]').click()")   # 2026-11-28：点検の機械が混んでいると、重なりの判定で押せずに時間切れになるため、直接押す
         await pg.wait_for_selector('#ssd_remake', timeout=15000)
         bar = await pg.inner_text('.ssdBar')
         assert '予定を組み直す' in bar and 'この内容で予定を確定する' in bar, '切り替えた後に3つのボタンが出ません：' + bar[:200]

@@ -33,7 +33,8 @@ async def test(p):
         if await pg.query_selector('#ogGo'):
             await pg.click('#ogGo'); await pg.wait_for_timeout(2000)
     try:
-        await go(base + '?interp=on')
+        await go(base)
+        await pg.check('#itUse'); await pg.wait_for_timeout(300)
         assert await pg.is_visible('#langSw'), '「日本語｜English」が出ません'
         await pg.click('#langSw button[data-l="en"]'); await pg.wait_for_timeout(300)
         # ①

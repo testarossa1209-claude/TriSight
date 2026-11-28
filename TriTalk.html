@@ -33,11 +33,14 @@
             ・速さ：あずさ・つかさは考える段階を飛ばす設定で呼ぶ（TriSecretaries.ask の fast）。声は最初の一文ができた所から話し始め、
               話している間に残りを声にする。話し終わりの待ちを1.3秒→1.0秒に
          ⑧ 2026-11-27-01（宏史さんの希望・宏史さんのトライサイトラップトップだけ）：右の引き出し「同時通訳」
-            ・この引き出しは、合図を覚えさせた端末にだけ出る（その端末で一度だけ TriTalk.html?interp=on を開く。外すときは ?interp=off）
+            ・この引き出しは、合図を覚えさせた端末にだけ出る（2026-11-28に廃止。いまは「同時通訳を使う」のチェック欄で出し入れする）
             ・「通訳」＝話した日本語を、あずさが英語に訳して英語の声で読む／「英語で会話」＝あずさが英語で答える。どちらも画面に英語と日本語訳を出す
             ・「リピーティング」＝あずさの英語を声でまねると、あずさが点数と直す点を画面に出す（聞き取った文字を元に採点する。発音の細かな音までは測れない）
             ・通訳のやり取りは、この端末の中にだけ残す（最新50件）
          ⑩ 2026-11-27-03（宏史さんの指摘「ラップトップでは同時通訳の引き出しが隠れて見えない」）：右の引き出しのつまみを画面の縦の真ん中に置き、背の低い画面でも全部入るようにした
+         ⑬ 2026-11-28-03（宏史さんの決定「同時通訳の出し方」）：
+            ・端末の登録名（ラップトップ等）で見分ける条件と、?interp=on／off の合図、ノアメインPCだけの「同時通訳を出す／しまう」をやめた
+            ・「ほかの秘書も意見を出す」の横に、同じ見た目のチェック欄「同時通訳を使う」を足した（最初は外れている）。入れると右のつまみの列のいちばん下に「同時通訳」が出る。外すと消え、開いていれば閉じる。入れたかどうかはその端末のブラウザが覚える。どの端末でも同じ動き
          ⑫ 2026-11-28-02（宏史さんの指示「私の言った英語の和訳が出ない」「通常はこのように言いますとの指導も欲しい」）：
             ・Englishのとき、自分の英語の吹き出しの下に「和訳」「通常はこのように言います」「ひとこと（直した点）」を出す（声にしない）
             ・意味を取れないときは「下の窓に日本語で打ち込んでください」と出す。Englishのときに日本語を打ち込むと、あずさが正確な英語にして手本を声で言い、リピーティングを求める。言い直した英語は手本どおり言えたかを「ひとこと」で返す
@@ -103,8 +106,6 @@
   #hush.show{display:inline-block}
   #talk{background:#c0392b;color:#fff;font-size:16px;padding:0 22px}
   #talk.on{background:#e74c3c;animation:glow 1s infinite}
-  #itSwitch{font:inherit;font-size:12px;font-weight:700;border:1px solid var(--navy);background:#fff;color:var(--navy);border-radius:999px;padding:3px 12px;cursor:pointer}
-  #itSwitch.on{background:var(--navy);color:#fff}
   .foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:11px;color:#8a93a6;padding:2px 22px 10px}
   .pr-head,.pr-foot{display:none}
   .caution{margin:0 22px 4px;padding:6px 12px;border-radius:8px;background:#fff6e5;border:1px solid #f0d9a8;color:#7a4e12;font-size:13px}
@@ -231,6 +232,8 @@ function tsGoBack(){
   <!-- 2026-11-28（宏史さんの指示）：英語で会話する切り替え。英語のときは秘書が英語の声で答え、和訳を画面にだけ出す -->
   <span class="langSw" id="langSw" style="display:none" title="秘書と話す言葉を切り替えます。Englishのときは、秘書の英語の下に和訳を小さく出します（和訳は声にしません）"><button type="button" data-l="ja" class="on">日本語</button><button type="button" data-l="en">English</button></span>
   <label title="指名した秘書が答えたあと、残りの2人もあなたに向けて、それぞれ別の提案を出します（付け加えることが無い秘書は飛ばします）" style="margin-left:auto"><input type="checkbox" id="chimeOn">ほかの秘書も意見を出す</label>
+  <!-- 2026-11-28（宏史さんの決定）：同時通訳はどの端末でも、このチェック欄で出し入れする（最初は外しておく） -->
+  <label title="入れると、右のつまみの列のいちばん下に「同時通訳」が出ます。入れたかどうかはこの端末のブラウザが覚えます" style="margin-left:10px"><input type="checkbox" id="itUse">同時通訳を使う</label>
 </div>
 
 <div id="log"></div>
@@ -242,7 +245,7 @@ function tsGoBack(){
   <button class="btn" id="hush" type="button">■ 読み上げを止める</button>
   <button class="btn" id="talk" type="button">🎙 話しかける</button>
 </div>
-<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><button type="button" id="itSwitch" style="display:none" title="この端末で同時通訳のつまみを出す／しまう（ノアメインPCだけ）">同時通訳を出す</button><span>TriTalk　版 <span id="verLabel">2026-11-28-02</span></span></div>
+<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 <span id="verLabel">2026-11-28-03</span></span></div>
 
 <!-- 右の引き出し4つ（2026-11-26 宏史さんの指示「学習窓と学習一覧表とトライサイトシリーズに対する質問と会話の記録の４つは欲しい」） -->
 <div class="gkTabs">
@@ -726,24 +729,20 @@ function tsGoBack(){
   });
   window.addEventListener('beforeprint', function(){ try{ TriVoice.stop(); }catch(e){} });
 
-  /* ---- 同時通訳（宏史さんのトライサイトラップトップだけ・2026-11-27） ----
-     合図（tritalk_interp）を覚えた端末にだけ引き出しを出す。合図は合言葉ではない（機能の表示の切り替えだけ）。 */
+  /* ---- 同時通訳（2026-11-27） ----
+     2026-11-28（宏史さんの決定）：端末の登録名で見分ける条件と ?interp=on/off の合図はやめ、どの端末でも
+     「ほかの秘書も意見を出す」の横のチェック欄「同時通訳を使う」で出し入れする。入れたかどうかはその端末のブラウザが覚える（キー tritalk_interp）。
+     英語の切り替え（日本語／English）も、同時通訳のつまみと一緒に出し入れする */
   var IKEY = 'tritalk_interp', ILOG = 'tritalk_interp_v1', IMAX = 50;
-  try{
-    var qs = new URLSearchParams(location.search), iq = qs.get('interp');
-    if(iq === 'on') localStorage.setItem(IKEY, '1'); else if(iq === 'off') localStorage.removeItem(IKEY);
-    if(iq){ qs.delete('interp'); history.replaceState(null, '', location.pathname + (qs.toString() ? '?' + qs : '') + location.hash); }
-  }catch(e){}
   var interpOn = false; try{ interpOn = localStorage.getItem(IKEY) === '1'; }catch(e){}
-  /* 2026-11-28：同時通訳の引き出しと、英語の切り替えスイッチは同じ端末にだけ出す */
   function showIntl(){
-    interpOn = intlOn = true; $('gkTabInt').style.display = ''; $('langSw').style.display = '';
+    interpOn = intlOn = true; $('gkTabInt').style.display = ''; $('langSw').style.display = ''; $('itUse').checked = true;
     [].forEach.call($('langSw').children, function(b){ b.classList.toggle('on', b.getAttribute('data-l') === lang); });
   }
-  /* しまうとき：日本語に戻す（英語のまま切り替えが見えなくなるのを防ぐ） */
+  /* 外したとき：つまみと英語の切り替えを隠す（隠れている間は日本語で話す） */
   function hideIntl(){
     if(talking) stop();
-    interpOn = intlOn = false; $('gkTabInt').style.display = 'none'; $('langSw').style.display = 'none';
+    interpOn = intlOn = false; $('gkTabInt').style.display = 'none'; $('langSw').style.display = 'none'; $('itUse').checked = false;
   }
   if(interpOn) showIntl();
   $('langSw').addEventListener('click', function(e){
@@ -755,31 +754,11 @@ function tsGoBack(){
     status(l === 'en' ? 'Englishに切り替えました。秘書は英語の声で答え、和訳は画面にだけ出します。' : '日本語に切り替えました。');
     if(wasTalking) start();
   });
-  /* 2026-11-27（宏史さんの指摘「タスクバーのアイコンから開くと同時通訳が出ない」）：合図はブラウザごとにしまわれるため、
-     Chrome・Edge・アイコンのどれから開いたかで出たり出なかったりした。端末の登録名に「ラップトップ」を含む端末なら、合図が無くても出す。
-     2026-11-27（宏史さんの指示「トライサイトメインPCにも同時通訳を入れてください」）：登録名に「トライサイトPC」「トライサイトメインPC」を含む端末にも出す（「ノア」を含む名前は除く）。
-     2026-11-28：英語の切り替え（日本語／English）も、同時通訳のつまみと一緒に出し入れする */
-  /* 2026-11-27（宏史さんの指示「ノアのメインPCでも作業ができるように、同時通訳を表示する切り替えスイッチをノアPCだけに」）：
-     登録名に「ノア」と「メイン」を含む端末にだけ、画面下に「同時通訳を出す／しまう」の切り替えを出す。ほかのノアの端末には出さない。 */
-  function iSwitchShow(){
-    var b = $('itSwitch'); b.style.display = '';
-    b.textContent = interpOn ? '同時通訳をしまう' : '同時通訳を出す'; b.classList.toggle('on', interpOn);
-  }
-  $('itSwitch').addEventListener('click', function(){
-    interpOn = !interpOn;
-    try{ if(interpOn) localStorage.setItem(IKEY, '1'); else localStorage.removeItem(IKEY); }catch(e){}
-    if(interpOn){ showIntl(); iRender(); }
+  $('itUse').addEventListener('change', function(){
+    try{ if(this.checked) localStorage.setItem(IKEY, '1'); else localStorage.removeItem(IKEY); }catch(e){}
+    if(this.checked){ showIntl(); iRender(); }
     else { hideIntl(); if(document.body.classList.contains('gk_intOpen')) gkOpen(null); }
-    iSwitchShow();
   });
-  {
-    try{
-      var wc = localStorage.getItem('trisight_access_code') || '';
-      if(wc) fetch('https://trisight-relay.vercel.app/api/gate', { method:'POST', headers:{ 'Content-Type':'application/json', 'x-trisight-code':wc }, body: JSON.stringify({ task:'whoami' }) })
-        .then(function(r){ return r.ok ? r.json() : null; })
-        .then(function(j){ var dn = (j && j.dev && j.dev.name) || ''; if(/ノア/.test(dn) && /メイン/.test(dn)){ iSwitchShow(); return; } if(!interpOn && /ラップトップ|トライサイト\s*(メイン)?\s*(PC|ＰＣ)/i.test(dn) && !/ノア/.test(dn)){ try{ localStorage.setItem(IKEY, '1'); }catch(e){} showIntl(); iRender(); } }, function(){});
-    }catch(e){}
-  }
   var imode = 'cv', icards = [];   /* 2026-11-27（宏史さんの指示）：英語での会話を基本にする */
   try{ icards = JSON.parse(localStorage.getItem(ILOG) || '[]') || []; }catch(e){ icards = []; }
   icards.forEach(function(c){ delete c.trWait; });   /* 途中で閉じた訳の待ちを持ち越さない（和訳ボタンで訳し直せる） */
@@ -954,7 +933,7 @@ function tsGoBack(){
   /* ---- 始め：前回の会話の続きを開く（無ければ新しく） ---- */
   conv = store.convs[0] || newConv();
   pick(cur); render(); fillPast();
-  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-28-02' };
+  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-28-03' };
 })();
 </script>
 <!-- 2026-11-27：版の一覧（全システムの版をリアルタイムで出す・宏史さんの指示） -->

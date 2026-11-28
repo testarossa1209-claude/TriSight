@@ -8402,7 +8402,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-11-28-01';   /* 2026-11-28-01：トライトークから声で発掘を始める口（?talkdig=）を足した */
+  const TRIGATE_VERSION = '2026-11-28-02';   /* 2026-11-28-02：声の発掘で、会社・認証コードが保管庫から入るまで待つようにした／-01：トライトークから声で発掘を始める口（?talkdig=）を足した */
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -8694,11 +8694,21 @@ window.tsSyncBanner = function(msg){
   function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   function stText(){ var e = document.getElementById("digStatus"); return e ? String(e.textContent || "").trim() : ""; }
   function saved(){ try{ return JSON.parse(localStorage.getItem("trisight_dig_saved") || "null"); }catch(_){ return null; } }
+  function hasComp(){
+    try{ if(typeof window.tsCompanyName === "function" && window.tsCompanyName()) return true; }catch(_){}
+    try{ return !!JSON.parse(localStorage.getItem("trisight_dig_company") || "null"); }catch(_){ return false; }
+  }
   async function run(){
-    var code = (typeof tsCode === "function") ? tsCode() : "";
+    /* 2026-11-28-02：認証コードと会社は、保管庫から取り込み終わってから入ることがある。
+       開いた直後に一度だけ見て「入っていません」と止めていたため、入るまで最大90秒待ってから判断する */
+    var code = "", tw = Date.now();
+    while(Date.now() - tw < 90000){
+      code = (typeof tsCode === "function") ? tsCode() : "";
+      if(code && hasComp()) break;
+      await sleep(1000);
+    }
     if(!code){ send({ ok:false, why:"この端末に認証コードが入っていません。" }); return; }
-    var comp = null; try{ comp = JSON.parse(localStorage.getItem("trisight_dig_company") || "null"); }catch(_){ comp = null; }
-    if(!comp){ send({ ok:false, why:"この端末に会社の基礎情報が読み込まれていません。" }); return; }
+    if(!hasComp()){ send({ ok:false, why:"この端末に会社の基礎情報が読み込まれていません。" }); return; }
     var btn = document.getElementById("digBtn"), inp = document.getElementById("digKeyword");
     if(!btn || !inp){ send({ ok:false, why:"新着探索のボタンが見つかりません。" }); return; }
     var t0 = Date.now();

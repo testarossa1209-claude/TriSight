@@ -62,7 +62,9 @@ async def test(p):
     real = datetime.date.today(); today = real if real.weekday() < 5 else real + datetime.timedelta(days=9 - real.weekday())
     shift = (today - real).days * 86400000
     mon = today - datetime.timedelta(days=today.weekday())
-    csv = make_csv(mon)
+    # 2026-11-28：月末の週は伝票の2日目が翌月になり、翌月の行は記録されない。試験の伝票は同じ月の2日に収める
+    cmon = mon if (mon + datetime.timedelta(days=1)).month == mon.month else mon - datetime.timedelta(days=1)
+    csv = make_csv(cmon)
     s = Screen(); pg = await s.open(p, 'TriTime.html', w=1300, h=1000)
     try:
         if shift:
@@ -138,7 +140,7 @@ async def test(p):
         await s.shot('#tab-slip', 'TriTime_patriot_denpyo.png')
         await pg.evaluate("document.getElementById('slp_go').click()"); await pg.wait_for_timeout(800)
         sl = await pg.evaluate("JSON.parse(localStorage.getItem('tritime_events')).filter(e => e.type === 'slips').map(e => [e.ym, e.rows.length, e.src])")
-        assert sl == [[mon.strftime('%Y-%m'), 3, 'denpyo_test.csv']], '伝票の記録が残りません：' + str(sl)
+        assert sl == [[cmon.strftime('%Y-%m'), 3, 'denpyo_test.csv']], '伝票の記録が残りません：' + str(sl)
         assert (await pg.evaluate("JSON.parse(localStorage.getItem('tritime_settings')).slipMap")) == { 'date':0, 'name':1, 'no':-1, 'start':2, 'end':3, 'who':4, 'kind':5, 'amt':6 }, '列の対応が決まりごとに残りません'
         assert await pg.inner_text('#slp_list') and mon.strftime('%Y') in await pg.inner_text('#slp_list'), '保管した伝票の一覧に出ません'
         mt = await pg.inner_text('#slp_match')

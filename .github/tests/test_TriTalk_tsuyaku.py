@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """TriTalk.html の同時通訳の引き出し（2026-11-27・宏史さんのトライサイトラップトップだけ）の動かす試験。中継（返答・声）は試験の側で答える。
 ① 合図の無い端末では「同時通訳」のつまみが出ない。?interp=on で開くと出て、合図はアドレスから消える
-② 通訳：日本語を送ると、あずさの英語が出て（和訳は最初は出さない）、英語向けの話し方で声の窓口を呼ぶ。「和訳を見る」を押すと和訳が出る
+② 通訳：日本語を送ると、あずさの英語が出て、英語向けの話し方で声の窓口を呼ぶ。和訳はボタンを押さなくても自動で出て、声にはしない（2026-11-28・宏史さんの指示で改め）
 ③ リピーティング：聞き取った英語を渡すと、点数・良かった点・直す点が出る
 ④ 英語で会話（最初から選ばれている）：前の会話が履歴として渡る。意見のある秘書だけが英語で意見を足す（PASSの秘書は出ない）
 ⑧ 🧹 Clear で、この画面のやり取りが消える（2026-11-27・宏史さんの指示で②④⑧を改め・追加）
@@ -61,12 +61,10 @@ async def test(p):
         await pg.fill('#itTxt', '今日は天気がいいですね'); await pg.press('#itTxt', 'Enter'); await pg.wait_for_timeout(1500)
         t = await pg.inner_text('#itList')
         assert 'The weather is nice today.' in t and '今日は天気がいいですね' in t, '通訳の結果が出ません：' + t
-        assert '今日は天気が良いです。' not in t, '和訳が最初から出ています：' + t
-        assert '通訳です' in json.dumps(calls[-1], ensure_ascii=False), '通訳の添え書きが渡っていません'
+        assert any('通訳です' in json.dumps(c, ensure_ascii=False) for c in calls), '通訳の添え書きが渡っていません'
         assert tts and 'English' in tts[-1].get('instructions', '') and 'weather' in tts[-1].get('text', ''), '英語の声を英語向けの話し方で頼んでいません：' + str(tts[-1:])
-        await pg.click('#itList .itTrBtn'); await pg.wait_for_timeout(800)
-        t = await pg.inner_text('#itList')
-        assert '今日は天気が良いです。' in t and '翻訳者' in json.dumps(calls[-1], ensure_ascii=False), '「和訳を見る」で和訳が出ません：' + t
+        assert '今日は天気が良いです。' in t and any('翻訳者' in json.dumps(c, ensure_ascii=False) for c in calls), 'ボタンを押さなくても和訳が出る決まりなのに、和訳が出ません：' + t
+        assert not any('天気が良い' in x.get('text', '') for x in tts), '和訳を声にしています：' + str(tts)
         # ③
         await pg.evaluate("TriTalk._iScore('The wether is nice today.')"); await pg.wait_for_timeout(1000)
         t = await pg.inner_text('#itList')
@@ -88,7 +86,7 @@ async def test(p):
         assert 'トライサイトの基礎知識' in body and '【システムの紹介】トライゲイト' in body, '英語で会話にトライサイトの知識が渡っていません'
         await pg.click('#itMode button[data-m="tr"]')
         await pg.evaluate("TriTalk._iJa('トライゲイトで補助金を探します')"); await pg.wait_for_timeout(1500)
-        body = json.dumps(calls[-1], ensure_ascii=False)
+        body = json.dumps([c for c in calls if '通訳です' in json.dumps(c, ensure_ascii=False)][-1], ensure_ascii=False)   # 自動の和訳の呼び出しは除く
         assert '通訳です' in body and 'トライサイトの基礎知識' in body, '通訳にトライサイトの知識が渡っていません'
         # ⑦
         for who in ('nagisa', 'tsukasa', 'azusa'):

@@ -38,6 +38,10 @@
             ・「リピーティング」＝あずさの英語を声でまねると、あずさが点数と直す点を画面に出す（聞き取った文字を元に採点する。発音の細かな音までは測れない）
             ・通訳のやり取りは、この端末の中にだけ残す（最新50件）
          ⑩ 2026-11-27-03（宏史さんの指摘「ラップトップでは同時通訳の引き出しが隠れて見えない」）：右の引き出しのつまみを画面の縦の真ん中に置き、背の低い画面でも全部入るようにした
+         ⑯ 2026-11-29-01（宏史さんの指示「お手本を聞きたい時だけボタンを押して見本を話す形に」）：
+            ・Englishのときに日本語を打ち込んで作るお手本の英語は、自動では読み上げない。吹き出しの下の「🔊 お手本を聞く」を押したときだけ、あずさが英語の声で読む（何度でも押せる）
+            ・押したときは聞き取りをいったん止めてから読み、読み終わったらまた聞き始める（あずさの声を宏史さんの声として拾わないため）
+            ・過去の会話を開き直しても、お手本の吹き出しにはボタンが付いたまま
          ⑮ 2026-11-28-05（宏史さんのラップトップで声で試した結果）：
             ・「補助金」が「補助キー」と聞き取られて発掘が始まらなかったため、「補助」「助成」の2文字で発掘の依頼と見分けるようにした
             ・話していないのに「最後までご視聴いただきありがとうございます」が送られたため、動画の締めの決まり文句は雑音として捨てる（TriVoiceEngine.js）
@@ -98,6 +102,9 @@
   .me .coach{display:block;margin-top:6px;padding-top:5px;border-top:1px dashed rgba(255,255,255,.45);font-size:13px;line-height:1.6;color:#e3e9f5}
   .me .coach i{font-style:normal;font-size:11px;color:#b9c4da;margin-right:6px}
   .me .coach .cb{display:block;color:#fff;font-weight:700}
+  /* 2026-11-29（宏史さんの指示）：お手本の英語は押したときだけ読む */
+  .ai .mdl{display:inline-block;margin-top:6px;font:inherit;font-size:13px;padding:4px 12px;border-radius:999px;border:1px solid var(--gold);background:#fffbef;color:var(--navy);cursor:pointer}
+  .ai .mdl:disabled{opacity:.5;cursor:default}
   .ai .jaTr i{font-style:normal;font-size:11px;color:#9aa3b2;margin-right:6px}
   .langSw{display:inline-flex;border:1px solid var(--navy);border-radius:999px;overflow:hidden}
   .tools .langSw button{border:0;border-radius:0;padding:5px 14px;background:#fff;color:var(--navy);font-weight:700}
@@ -260,7 +267,7 @@ function tsGoBack(){
   <button class="btn" id="hush" type="button">■ 読み上げを止める</button>
   <button class="btn" id="talk" type="button">🎙 話しかける</button>
 </div>
-<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 <span id="verLabel">2026-11-28-05</span></span></div>
+<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 <span id="verLabel">2026-11-29-01</span></span></div>
 
 <!-- 右の引き出し4つ（2026-11-26 宏史さんの指示「学習窓と学習一覧表とトライサイトシリーズに対する質問と会話の記録の４つは欲しい」） -->
 <div class="gkTabs">
@@ -399,15 +406,35 @@ function tsGoBack(){
   function status(t, warn){ $('st').textContent = t || ''; $('st').className = (warn || /失敗|できません|未対応|合いません|まだ用意|いっぱい/.test(t || '')) ? 'warn' : ''; }
   function label(w){ return SEC[w].name + '（' + SEC[w].role + '）'; }
   function hint(){ $('log').innerHTML = '<div class="hint">話したい秘書を上から選んで、赤い「🎙 話しかける」を押してください。話し終えると自動で送ります。<br>話の頭で名前を呼んでも選べます（例「つかさ、〜」「ねえ、なぎさ、〜」「みんな、〜」）。文字で送ることもできます。<br>ほかの秘書の意見もほしいときは、上の「ほかの秘書も意見を出す」にチェックを入れてください。指名した秘書が答えたあと、残りの秘書もあなたへ別の提案を出します。<br>一つの見方に偏らず、三つの方向から考える。答えを決めるのは人間です。</div>'; }
-  function bubble(w, text, ja){
+  function bubble(w, text, ja, model){
     var h = document.querySelector('#log .hint'); if(h) h.remove();
     var d = document.createElement('div'); d.className = 'msg ' + (w === 'me' ? 'me' : 'ai');
     if(w !== 'me'){ var b = document.createElement('b'); b.textContent = label(w); d.appendChild(b); }
     d.appendChild(document.createTextNode(text));
     if(w !== 'me' && ja) setJa(d, ja);
     if(w === 'me' && ja && typeof ja === 'object') setCoach(d, ja);
+    if(w !== 'me' && model) addModelBtn(d, text);
     $('log').appendChild(d); $('log').scrollTop = $('log').scrollHeight;
     return d;
+  }
+  /* 2026-11-29（宏史さんの指示）：お手本の英語は自動で読まず、このボタンを押したときだけ読む */
+  function addModelBtn(d, en){
+    var bt = document.createElement('button'); bt.type = 'button'; bt.className = 'mdl'; bt.textContent = '🔊 お手本を聞く';
+    bt.addEventListener('click', function(){ playModel(en); });
+    d.appendChild(document.createElement('br')); d.appendChild(bt);
+  }
+  async function playModel(en){
+    if(busy) return;
+    busy = true; $('send').disabled = true;
+    lisGen++; try{ TriVoice.stopListen(); }catch(e){}   /* 聞き取りを止めてから読む（あずさの声を拾わない） */
+    document.querySelectorAll('#log .mdl').forEach(function(b){ b.disabled = true; });
+    status('お手本の英語を言います。');
+    $('sec_azusa').classList.add('talk');
+    try{ await playEn(en); }catch(e){}
+    $('sec_azusa').classList.remove('talk');
+    document.querySelectorAll('#log .mdl').forEach(function(b){ b.disabled = false; });
+    status(talking ? 'どうぞ、声に出して言ってみてください。' : '赤いボタン「🎙 話しかける」を押して、声に出して言ってみてください。');
+    busy = false; $('send').disabled = false; next();
   }
   /* 和訳を吹き出しの下に小さく足す（声にはしない） */
   function setJa(d, ja){
@@ -449,12 +476,11 @@ function tsGoBack(){
       en = String(pj(r).en || '').trim();
     }catch(e){ en = ''; }
     if(!en){ status('英語にできませんでした。もう一度打ち込んでください。', true); busy = false; $('send').disabled = false; return next(); }
-    var guide = 'リピーティング：この英語を、赤いボタン「🎙 話しかける」で声に出して言ってみてください。言い終わると、手本どおり言えたかを吹き出しの下に出します。';
-    var it = record('azusa', en); it.ja = '言いたかったこと：' + ja + ' ／ ' + guide; save();
-    var d = bubble('azusa', en, it.ja);
+    var guide = 'リピーティング：この英語を、赤いボタン「🎙 話しかける」で声に出して言ってみてください。お手本の声を聞きたいときは「🔊 お手本を聞く」を押してください。言い終わると、手本どおり言えたかを吹き出しの下に出します。';
+    var it = record('azusa', en); it.ja = '言いたかったこと：' + ja + ' ／ ' + guide; it.model = true; save();
+    var d = bubble('azusa', en, it.ja, true);
     repeatTarget = en;
-    status('手本の英語を言います。続けて声に出して言ってみてください。');
-    $('sec_azusa').classList.add('talk'); await play(en, 'azusa'); $('sec_azusa').classList.remove('talk');
+    status('英語にしました。声に出して言ってみてください（お手本の声は「🔊 お手本を聞く」で聞けます）。');
     busy = false; $('send').disabled = false; next();
   }
   /* 英語を日本語に訳す（翻訳だけ。答えたり意見を足したりしない） */
@@ -463,7 +489,7 @@ function tsGoBack(){
       { extra: 'あなたは今、翻訳者です。届いた配列の各文を、意味を変えずに自然な日本語に訳してください。すでに日本語の文はそのまま返してください。答えたり意見を足したりしないでください。' + JSON_RULE + '形式：{"ja":["訳1","訳2", ...]}（届いた配列と同じ順・同じ数）', fast: true });
     var o = pj(r); return Array.isArray(o.ja) ? o.ja.map(function(x){ return String(x || '').trim(); }) : [];
   }
-  function render(){ $('log').innerHTML = ''; if(!conv.items.length) return hint(); conv.items.forEach(function(it){ bubble(it.w, it.t, it.w === 'me' ? it.coach : it.ja); }); }
+  function render(){ $('log').innerHTML = ''; if(!conv.items.length) return hint(); conv.items.forEach(function(it){ bubble(it.w, it.t, it.w === 'me' ? it.coach : it.ja, it.model); }); }
   ORDER.concat(['all']).forEach(function(k){
     var s = k === 'all' ? ALL : SEC[k];
     var b = document.createElement('button'); b.type = 'button'; b.className = 'sec'; b.id = 'sec_' + k;
@@ -1003,7 +1029,7 @@ function tsGoBack(){
   /* ---- 始め：前回の会話の続きを開く（無ければ新しく） ---- */
   conv = store.convs[0] || newConv();
   pick(cur); render(); fillPast();
-  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-28-05' };
+  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-29-01' };
 })();
 </script>
 <!-- 2026-11-27：版の一覧（全システムの版をリアルタイムで出す・宏史さんの指示） -->

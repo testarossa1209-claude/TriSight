@@ -38,6 +38,10 @@
             ・「リピーティング」＝あずさの英語を声でまねると、あずさが点数と直す点を画面に出す（聞き取った文字を元に採点する。発音の細かな音までは測れない）
             ・通訳のやり取りは、この端末の中にだけ残す（最新50件）
          ⑩ 2026-11-27-03（宏史さんの指摘「ラップトップでは同時通訳の引き出しが隠れて見えない」）：右の引き出しのつまみを画面の縦の真ん中に置き、背の低い画面でも全部入るようにした
+         ⑭ 2026-11-28-04（宏史さんの決定「12月2日に役員が声で発掘まで指示する」）：
+            ・「〇〇の補助金を探して」のように話すと、話した言葉をキーワードにしてトライゲイトの発掘（新着探索）を動かす
+            ・トライゲイトはこの画面の中に開く（「閉じる」で閉じる）。一覧が出たら、件数と上の3件の制度名をあずさが声で読み上げる
+            ・会社・地域・認証コードは、この端末のトライゲイトに入っているものを使う。英語で話しているときは使わない
          ⑬ 2026-11-28-03（宏史さんの決定「同時通訳の出し方」）：
             ・端末の登録名（ラップトップ等）で見分ける条件と、?interp=on／off の合図、ノアメインPCだけの「同時通訳を出す／しまう」をやめた
             ・「ほかの秘書も意見を出す」の横に、同じ見た目のチェック欄「同時通訳を使う」を足した（最初は外れている）。入れると右のつまみの列のいちばん下に「同時通訳」が出る。外すと消え、開いていれば閉じる。入れたかどうかはその端末のブラウザが覚える。どの端末でも同じ動き
@@ -191,6 +195,13 @@
     .pr-foot{display:flex;position:fixed;bottom:-12mm;left:0;right:0;justify-content:space-between;align-items:center;border-top:1px solid #0f1d3a;padding-top:2px;font-size:7.5pt;color:#333}
     .pr-foot img{width:14px;height:14px;vertical-align:-3px;margin-right:4px}
   }
+  /* 2026-11-28：声で発掘したときに、この画面の中に開くトライゲイト */
+  #digPane{position:fixed;top:4vh;bottom:4vh;left:3vw;right:3vw;z-index:60;background:#fff;border:2px solid #0f1d3a;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.25);display:none;flex-direction:column;overflow:hidden}
+  #digPane.on{display:flex}
+  #digPaneHead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;background:#0f1d3a;color:#fff;font-weight:700}
+  #digPaneHead button{font-size:15px;padding:5px 16px;border-radius:6px;border:0;background:#fff;color:#0f1d3a;font-weight:700;cursor:pointer}
+  #digPane iframe{flex:1;border:0;width:100%}
+  @media print{#digPane{display:none !important}}
 </style>
 </head>
 <body>
@@ -238,6 +249,7 @@ function tsGoBack(){
 
 <div id="log"></div>
 <div id="st"></div>
+<div id="digPane"><div id="digPaneHead"><span id="digPaneTitle">トライゲイトで発掘しています</span><button type="button" id="digPaneClose">閉じる</button></div><iframe id="digFrame" title="トライゲイト"></iframe></div>
 <div class="caution">ご注意：声の会話は、文字で打つより多くのトークン（AIの利用料）を使います。質問は短めにお願いします。</div>
 <div class="bottom">
   <textarea id="txt" placeholder="文字で話すときはここに入力（Enterで送る・Shift＋Enterで改行）"></textarea>
@@ -245,7 +257,7 @@ function tsGoBack(){
   <button class="btn" id="hush" type="button">■ 読み上げを止める</button>
   <button class="btn" id="talk" type="button">🎙 話しかける</button>
 </div>
-<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 <span id="verLabel">2026-11-28-03</span></span></div>
+<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><span>TriTalk　版 <span id="verLabel">2026-11-28-04</span></span></div>
 
 <!-- 右の引き出し4つ（2026-11-26 宏史さんの指示「学習窓と学習一覧表とトライサイトシリーズに対する質問と会話の記録の４つは欲しい」） -->
 <div class="gkTabs">
@@ -651,6 +663,58 @@ function tsGoBack(){
     $('sec_' + k).classList.remove('talk');
     return true;
   }
+  /* ---- 2026-11-28（宏史さんの決定）：声で発掘を始める ----
+     「〇〇の補助金を探して」と話すと、話した言葉をキーワードにして、トライゲイトの発掘（新着探索）を動かす。
+     トライゲイトはこの画面の中に開く（声の聞き取りから別の窓を開くと、ブラウザに止められるため）。
+     一覧が出たら、件数と上の3件の制度名を、あずさが声で読み上げる。英語で話しているときは使わない。 */
+  var DIG_ASK = /(補助金|助成金|支援金|給付金|制度).*(探して|さがして|掘って|ほって|発掘|見つけて|調べて|しらべて)|発掘して|トライゲイトで.*(探|掘|調)/;
+  function digKw(t){
+    var s = String(t).replace(/トライゲイト(で|を使って|に)?/g, ' ')
+      .replace(/(探して|さがして|掘って|ほって|発掘して|発掘|見つけて|調べて|しらべて).*$/, '')
+      .replace(/(を|の|で)?(補助金|助成金|支援金|給付金|制度)(を|が|は|で)?/g, ' ')
+      .replace(/(うちの会社|うち|当社|弊社|御社)(で|に|の|が)?/g, ' ')
+      .replace(/(に|で)?(使える|使う|受けられる|もらえる)/g, ' ')
+      .replace(/^[\s　]*(ねえ|あの|えっと)[、,]?/, ' ')
+      .replace(/[、。,.\s　「」？?]+/g, ' ').trim();
+    var w = s.split(' ').map(function(x){ return x.replace(/(で|に|の|を|が)$/, ''); }).filter(function(x){ return x.length >= 2; })[0] || '';
+    return w || '事業';
+  }
+  var digCh = null, digWait = null;
+  try{ digCh = new BroadcastChannel('tritalk_dig'); }catch(e){ digCh = null; }
+  if(digCh) digCh.onmessage = function(ev){ var d = ev && ev.data; if(d && digWait && d.id === digWait.id){ var w = digWait; digWait = null; w.done(d); } };
+  function digSay(d){
+    if(!d.ok) return 'トライゲイトで探せませんでした。' + (d.why ? '画面には「' + String(d.why).slice(0, 80) + '」と出ています。' : '');
+    if(!d.n) return '「' + d.kw + '」で探しましたが、この会社の条件に合う制度は見つかりませんでした。言葉を変えて、もう一度探すこともできます。';
+    var t = (d.titles || []).filter(Boolean).slice(0, 3).map(function(x, i){ return (i + 1) + 'つ目、' + x; }).join('。');
+    return '見つかりました。「' + d.kw + '」で探して、この会社に合いそうな制度が' + d.n + '件出ました。' + (t ? '上から、' + t + '。' : '') + '詳しくは画面の一覧をご覧ください。';
+  }
+  async function digFlow(text){
+    busy = true; hushed = false; $('send').disabled = true;
+    record('me', text); bubble('me', text);
+    var kw = digKw(text), id = String(Date.now());
+    var a1 = 'トライゲイトで「' + kw + '」の補助金・助成金を探します。見つかるまで数分かかりますので、画面でご覧ください。';
+    record('azusa', a1); bubble('azusa', a1);
+    $('digPaneTitle').textContent = 'トライゲイトで「' + kw + '」を発掘しています';
+    $('digFrame').src = 'TriGate.html?talkdig=' + encodeURIComponent(kw) + '&talkid=' + id;
+    $('digPane').classList.add('on');
+    status('トライゲイトが探しています…');
+    var said = play(a1, 'azusa').catch(function(){});
+    var d = await new Promise(function(res){
+      digWait = { id: id, done: res };
+      if(!digCh){ digWait = null; res({ ok: false, kw: kw, why: 'このブラウザでは、トライゲイトの結果を受け取れません（文字で一覧をご覧ください）' }); return; }
+      setTimeout(function(){ if(digWait && digWait.id === id){ digWait = null; res({ ok: false, kw: kw, why: '20分たっても発掘が終わりませんでした' }); } }, 20 * 60000);
+    });
+    await said;
+    var a2 = digSay(d);
+    record('azusa', a2); bubble('azusa', a2);
+    status('');
+    try{ await play(a2, 'azusa'); }catch(e){ status('声にできませんでした（文字で返答しています）：' + e.message, true); }
+    busy = false; $('send').disabled = false; next();
+  }
+  $('digPaneClose').addEventListener('click', function(){
+    $('digPane').classList.remove('on'); $('digFrame').src = 'about:blank';
+    if(digWait){ var w = digWait; digWait = null; w.done({ ok: false, kw: '', why: '発掘の画面を閉じました' }); }
+  });
   /* 「みんな、〜」で3人に聞く。後ろに助詞が続くとき（「みんなに聞きたい」）は指名だけして文は残す。「皆様」等は呼びかけにしない */
   var ALL_CALL = /^(?:みんな|皆さん|みなさん|全員)(?:さん)?(?![様])[、,，。\s　]*/, ALL_PART = /^(?:みんな|皆さん|みなさん|全員)(?=[にはがのもをとへやっ])/;
   async function handle(raw){
@@ -663,6 +727,7 @@ function tsGoBack(){
     else { var tn = T.takeName(raw); if(tn.who) pick(tn.who); text = tn.text; }
     if(!text){ status((cur === 'all' ? ALL.name : SEC[cur].name) + 'に替えました。続けてどうぞ。'); return next(); }
     if(isEn() && looksJa(text)) return repeatFlow(text);
+    if(!isEn() && DIG_ASK.test(text)) return digFlow(text);
     busy = true; hushed = false; $('send').disabled = true;
     var mi = record('me', text), md = bubble('me', text);
     /* 2026-11-28（宏史さんの指示）：英語で話したときは、自分の英語の下に和訳と「通常はこのように言います」の指導を出す。秘書の答えと並行して作る */
@@ -933,7 +998,7 @@ function tsGoBack(){
   /* ---- 始め：前回の会話の続きを開く（無ければ新しく） ---- */
   conv = store.convs[0] || newConv();
   pick(cur); render(); fillPast();
-  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-28-03' };
+  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-28-04' };
 })();
 </script>
 <!-- 2026-11-27：版の一覧（全システムの版をリアルタイムで出す・宏史さんの指示） -->

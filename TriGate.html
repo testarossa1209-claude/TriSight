@@ -8402,7 +8402,7 @@ window.tsSyncBanner = function(msg){
   //     顧客のPCを覗かずに原因の切り分けができる（保守範囲A/B/Cの判定に使う）。
   //   ②version.json を定期的に見に行き、新版が出ていたら画面下部に案内を出す。
   //     自動では読み込み直さない（作業中の内容が消えるため）。押すのは利用者。
-  const TRIGATE_VERSION = '2026-11-27-03';
+  const TRIGATE_VERSION = '2026-11-28-01';   /* 2026-11-28-01：トライトークから声で発掘を始める口（?talkdig=）を足した */
   (function(){
     var lbl = document.getElementById('verLabel');
     if(lbl) lbl.textContent = TRIGATE_VERSION;
@@ -8679,6 +8679,59 @@ window.tsSyncBanner = function(msg){
     setTimeout(go1, 60000);   /* 2026-11-13：保管庫の返事が来なくても、1分で先へ進む（待ち続けて何も起きないのを防ぐ） */
   }
   else setTimeout(go1, 3000);
+})();
+
+/* 2026-11-28（宏史さんの決定）：トライトークから声で発掘を始める。
+   TriGate.html?talkdig=<キーワード>&talkid=<番号> で開かれたら（トライトークの画面の中に開く）、
+   この端末に入っている会社で、「検索する語」にキーワードを入れて「新着探索」を自動で押す。
+   一覧が出たところで、件数と上の3件の制度名をトライトークへ知らせる（見込み額の判定は待たない）。 */
+(function(){
+  var kw = "", tid = "";
+  try{ var q = new URLSearchParams(location.search); kw = String(q.get("talkdig") || "").trim(); tid = String(q.get("talkid") || ""); }catch(_){}
+  if(!kw) return;
+  var ch = null; try{ ch = new BroadcastChannel("tritalk_dig"); }catch(_){ ch = null; }
+  function send(o){ o.id = tid; o.kw = kw; try{ if(ch) ch.postMessage(o); }catch(_){} }
+  function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  function stText(){ var e = document.getElementById("digStatus"); return e ? String(e.textContent || "").trim() : ""; }
+  function saved(){ try{ return JSON.parse(localStorage.getItem("trisight_dig_saved") || "null"); }catch(_){ return null; } }
+  async function run(){
+    var code = (typeof tsCode === "function") ? tsCode() : "";
+    if(!code){ send({ ok:false, why:"この端末に認証コードが入っていません。" }); return; }
+    var comp = null; try{ comp = JSON.parse(localStorage.getItem("trisight_dig_company") || "null"); }catch(_){ comp = null; }
+    if(!comp){ send({ ok:false, why:"この端末に会社の基礎情報が読み込まれていません。" }); return; }
+    var btn = document.getElementById("digBtn"), inp = document.getElementById("digKeyword");
+    if(!btn || !inp){ send({ ok:false, why:"新着探索のボタンが見つかりません。" }); return; }
+    var t0 = Date.now();
+    while(btn.disabled && Date.now() - t0 < 120000) await sleep(1000);
+    inp.value = kw.length >= 2 ? kw : "事業";
+    var before = ((saved() || {}).savedAt) || "";
+    btn.click();
+    var started = false, t1 = Date.now();
+    while(Date.now() - t1 < 15 * 60000){
+      await sleep(2000);
+      var sv = saved();
+      if(sv && sv.savedAt && sv.savedAt !== before && Array.isArray(sv.rows)){
+        var rows = sv.rows.filter(function(r){ return r && !r.__offBiz; });
+        send({ ok:true, n: rows.length, titles: rows.slice(0, 3).map(function(r){ return String(r.title || ""); }), status: String(sv.status || "") });
+        return;
+      }
+      if(btn.disabled){ started = true; continue; }
+      if(started || Date.now() - t1 > 20000){
+        var s = stText();
+        if(/除外されました/.test(s)) send({ ok:true, n:0, titles:[], status:s });
+        else send({ ok:false, why: s || "発掘が始まりませんでした。" });
+        return;
+      }
+    }
+    send({ ok:false, why:"15分たっても発掘が終わりませんでした。" });
+  }
+  var went = false, go = function(){ if(went) return; went = true; run(); };
+  var ready = window.tsBoxReady;
+  if(ready && typeof ready.then === "function"){
+    ready.then(function(){ setTimeout(go, 1500); }, function(){ setTimeout(go, 1500); });
+    setTimeout(go, 60000);
+  }
+  else setTimeout(go, 3000);
 })();
 </script>
 

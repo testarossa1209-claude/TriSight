@@ -38,6 +38,9 @@
             ・「リピーティング」＝あずさの英語を声でまねると、あずさが点数と直す点を画面に出す（聞き取った文字を元に採点する。発音の細かな音までは測れない）
             ・通訳のやり取りは、この端末の中にだけ残す（最新50件）
          ⑩ 2026-11-27-03（宏史さんの指摘「ラップトップでは同時通訳の引き出しが隠れて見えない」）：右の引き出しのつまみを画面の縦の真ん中に置き、背の低い画面でも全部入るようにした
+         ⑫ 2026-11-28-02（宏史さんの指示「私の言った英語の和訳が出ない」「通常はこのように言いますとの指導も欲しい」）：
+            ・Englishのとき、自分の英語の吹き出しの下に「和訳」「通常はこのように言います」「ひとこと（直した点）」を出す（声にしない）
+            ・意味を取れないときは「下の窓に日本語で打ち込んでください」と出す。Englishのときに日本語を打ち込むと、あずさが正確な英語にして手本を声で言い、リピーティングを求める。言い直した英語は手本どおり言えたかを「ひとこと」で返す
          ⑪ 2026-11-28-01（宏史さんの指摘・指示）：
             ・未マージだった 2026-11-27-08／09（メインPCにも出す・ノアメインPCだけの「同時通訳を出す／しまう」）をこの版に取り込んだ。英語の切り替えも同じ出し入れに従う
             ・英語の切り替えスイッチ（日本語／English）を会話の画面の上に付けた。同時通訳の引き出しと同じ端末にだけ出す。
@@ -81,6 +84,10 @@
   .ai b{display:block;font-size:12px;color:#8a6d1f;margin-bottom:2px}
   /* 2026-11-28：英語で話しているときの和訳（声にしない・画面にだけ控えめに出す） */
   .ai .jaTr{display:block;margin-top:6px;padding-top:5px;border-top:1px dashed var(--line);font-size:13px;line-height:1.6;color:#6b7280}
+  /* 2026-11-28（宏史さんの指示）：英語で話したとき、自分の英語の下に和訳と「通常はこのように言います」の指導を出す（声にしない） */
+  .me .coach{display:block;margin-top:6px;padding-top:5px;border-top:1px dashed rgba(255,255,255,.45);font-size:13px;line-height:1.6;color:#e3e9f5}
+  .me .coach i{font-style:normal;font-size:11px;color:#b9c4da;margin-right:6px}
+  .me .coach .cb{display:block;color:#fff;font-weight:700}
   .ai .jaTr i{font-style:normal;font-size:11px;color:#9aa3b2;margin-right:6px}
   .langSw{display:inline-flex;border:1px solid var(--navy);border-radius:999px;overflow:hidden}
   .tools .langSw button{border:0;border-radius:0;padding:5px 14px;background:#fff;color:var(--navy);font-weight:700}
@@ -235,7 +242,7 @@ function tsGoBack(){
   <button class="btn" id="hush" type="button">■ 読み上げを止める</button>
   <button class="btn" id="talk" type="button">🎙 話しかける</button>
 </div>
-<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><button type="button" id="itSwitch" style="display:none" title="この端末で同時通訳のつまみを出す／しまう（ノアメインPCだけ）">同時通訳を出す</button><span>TriTalk　版 <span id="verLabel">2026-11-28-01</span></span></div>
+<div class="foot"><span>会話はこの端末の中にだけ残ります（当社のサーバーには残りません）。答えを決めるのは人間です。</span><button type="button" id="itSwitch" style="display:none" title="この端末で同時通訳のつまみを出す／しまう（ノアメインPCだけ）">同時通訳を出す</button><span>TriTalk　版 <span id="verLabel">2026-11-28-02</span></span></div>
 
 <!-- 右の引き出し4つ（2026-11-26 宏史さんの指示「学習窓と学習一覧表とトライサイトシリーズに対する質問と会話の記録の４つは欲しい」） -->
 <div class="gkTabs">
@@ -380,6 +387,7 @@ function tsGoBack(){
     if(w !== 'me'){ var b = document.createElement('b'); b.textContent = label(w); d.appendChild(b); }
     d.appendChild(document.createTextNode(text));
     if(w !== 'me' && ja) setJa(d, ja);
+    if(w === 'me' && ja && typeof ja === 'object') setCoach(d, ja);
     $('log').appendChild(d); $('log').scrollTop = $('log').scrollHeight;
     return d;
   }
@@ -389,13 +397,55 @@ function tsGoBack(){
     s.innerHTML = '<i>和訳</i>' + esc(ja);
     var lg = $('log'); if(lg.scrollHeight - lg.scrollTop - lg.clientHeight < 160) lg.scrollTop = lg.scrollHeight;
   }
+  /* 自分の英語の下に：和訳／通常はこのように言います／直した点（声にしない） */
+  function setCoach(d, c){
+    var s = d.querySelector('.coach'); if(!s){ s = document.createElement('span'); s.className = 'coach'; d.appendChild(s); }
+    s.innerHTML = (c.ja ? '<span><i>和訳</i>' + esc(c.ja) + '</span>' : '')
+      + (c.better ? '<span class="cb"><i>通常はこのように言います</i>' + esc(c.better) + '</span>' : '')
+      + (c.note ? '<span><i>ひとこと</i>' + esc(c.note) + '</span>' : '');
+    var lg = $('log'); if(lg.scrollHeight - lg.scrollTop - lg.clientHeight < 160) lg.scrollTop = lg.scrollHeight;
+  }
+  /* 宏史さんの英語を見る先生（英語は中学生レベルまで落ちている前提で、やさしく直す） */
+  var repeatTarget = '';   /* リピーティングの手本（日本語を打ち込んだときに作った英語） */
+  var UNCLEAR_MSG = '言いたいことがうまく伝わらないときは、下の「文字で話すときはここに入力」の窓に、日本語で言いたいことを打ち込んでください。正しい英語にしてお返しするので、それを声に出して言ってみてください。';
+  async function toCoach(text){
+    var tg = repeatTarget; repeatTarget = '';
+    var r = await T.ask('azusa', [{ role:'user', content: (tg ? '手本（言ってほしかった英語）：' + tg + '\n' : '') + '話した英語：' + text }],
+      { extra: 'あなたは今、英会話の先生です。届いたのは、英語を学び直している大人（単語や文法を忘れかけている）が話した英語です（聞き取りの誤りが混ざることがあります）。答えたり会話を続けたりせず、次の3つだけを返してください。'
+        + 'ja＝話した内容の自然な日本語訳。better＝同じ意味を、ネイティブが普通に言う自然な英語で1文〜2文（すでに自然ならそのままでよい）。note＝単語や文法の誤り・より自然な言い方のポイントを日本語で短く（直す所が無ければ空）。'
+        + '手本が届いたときは、手本どおり言えたかを note で評価してください（言えていればひとこと褒め、違う所があれば具体的に）。'
+        + 'unclear＝話した英語の意味がほとんど取れないときだけ true。' + JSON_RULE + '形式：{"ja":"…","better":"…","note":"…","unclear":false}', fast: true });
+    var o = pj(r), c = { ja: String(o.ja || '').trim(), better: String(o.better || '').trim(), note: String(o.note || '').trim() };
+    if(o.unclear === true || o.unclear === 'true'){ c.note = (c.note ? c.note + ' ' : '') + UNCLEAR_MSG; if(!c.ja) c.ja = '（意味を取れませんでした）'; }
+    return c;
+  }
+  /* 2026-11-28（宏史さんの指示）：Englishのときに日本語を打ち込んだら、正確な英語にして手本を声で言い、リピーティングを求める */
+  var JA_CH = /[\u3040-\u30ff\u4e00-\u9fff]/g;
+  function looksJa(t){ var j = (t.match(JA_CH) || []).length, e = (t.match(/[A-Za-z]/g) || []).length; return j > 0 && j >= e; }
+  async function repeatFlow(ja){
+    busy = true; hushed = false; $('send').disabled = true;
+    record('me', ja); bubble('me', ja);
+    var en = '';
+    try{
+      var r = await T.ask('azusa', [{ role:'user', content: ja }], { extra: 'あなたは今、英会話の先生です。届いた日本語は、相手が英語で言いたかったことです。答えたり会話を続けたりせず、その意味を、ネイティブが普通に言う正確で自然な英語（中学生でも言える長さ・1文〜2文）にしてください。' + JSON_RULE + '形式：{"en":"…"}', fast: true });
+      en = String(pj(r).en || '').trim();
+    }catch(e){ en = ''; }
+    if(!en){ status('英語にできませんでした。もう一度打ち込んでください。', true); busy = false; $('send').disabled = false; return next(); }
+    var guide = 'リピーティング：この英語を、赤いボタン「🎙 話しかける」で声に出して言ってみてください。言い終わると、手本どおり言えたかを吹き出しの下に出します。';
+    var it = record('azusa', en); it.ja = '言いたかったこと：' + ja + ' ／ ' + guide; save();
+    var d = bubble('azusa', en, it.ja);
+    repeatTarget = en;
+    status('手本の英語を言います。続けて声に出して言ってみてください。');
+    $('sec_azusa').classList.add('talk'); await play(en, 'azusa'); $('sec_azusa').classList.remove('talk');
+    busy = false; $('send').disabled = false; next();
+  }
   /* 英語を日本語に訳す（翻訳だけ。答えたり意見を足したりしない） */
   async function toJa(list){
     var r = await T.ask('azusa', [{ role:'user', content: JSON.stringify(list) }],
       { extra: 'あなたは今、翻訳者です。届いた配列の各文を、意味を変えずに自然な日本語に訳してください。すでに日本語の文はそのまま返してください。答えたり意見を足したりしないでください。' + JSON_RULE + '形式：{"ja":["訳1","訳2", ...]}（届いた配列と同じ順・同じ数）', fast: true });
     var o = pj(r); return Array.isArray(o.ja) ? o.ja.map(function(x){ return String(x || '').trim(); }) : [];
   }
-  function render(){ $('log').innerHTML = ''; if(!conv.items.length) return hint(); conv.items.forEach(function(it){ bubble(it.w, it.t, it.ja); }); }
+  function render(){ $('log').innerHTML = ''; if(!conv.items.length) return hint(); conv.items.forEach(function(it){ bubble(it.w, it.t, it.w === 'me' ? it.coach : it.ja); }); }
   ORDER.concat(['all']).forEach(function(k){
     var s = k === 'all' ? ALL : SEC[k];
     var b = document.createElement('button'); b.type = 'button'; b.className = 'sec'; b.id = 'sec_' + k;
@@ -609,8 +659,11 @@ function tsGoBack(){
     if(m){ pick('all'); text = ALL_PART.test(body) ? body : body.slice(m[0].length).trim(); }
     else { var tn = T.takeName(raw); if(tn.who) pick(tn.who); text = tn.text; }
     if(!text){ status((cur === 'all' ? ALL.name : SEC[cur].name) + 'に替えました。続けてどうぞ。'); return next(); }
+    if(isEn() && looksJa(text)) return repeatFlow(text);
     busy = true; hushed = false; $('send').disabled = true;
-    record('me', text); bubble('me', text);
+    var mi = record('me', text), md = bubble('me', text);
+    /* 2026-11-28（宏史さんの指示）：英語で話したときは、自分の英語の下に和訳と「通常はこのように言います」の指導を出す。秘書の答えと並行して作る */
+    if(isEn()) toCoach(text).then(function(c){ if(c.ja || c.better){ mi.coach = c; save(); if(md.isConnected) setCoach(md, c); } }, function(){});
     var kn = ''; try{ kn = await knowledgeFor(text); }catch(e){ kn = ''; }
     if(kn) kn = '\n\n' + kn;
     if(cur === 'all'){
@@ -901,7 +954,7 @@ function tsGoBack(){
   /* ---- 始め：前回の会話の続きを開く（無ければ新しく） ---- */
   conv = store.convs[0] || newConv();
   pick(cur); render(); fillPast();
-  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-28-01' };
+  window.TriTalk = { _handle: handle, _store: function(){ return store; }, _historyFor: historyFor, _iJa: function(t){ return iJa(t); }, _iScore: function(t){ return iScore(t); }, version: '2026-11-28-02' };
 })();
 </script>
 <!-- 2026-11-27：版の一覧（全システムの版をリアルタイムで出す・宏史さんの指示） -->

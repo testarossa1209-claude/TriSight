@@ -633,6 +633,9 @@
     var s = String(t || '').replace(/[\s　。、．，！？!?…・「」]/g, '');
     if(s.length < 2) return true;
     for(var i = 0; i < NOISE_PHRASES.length; i++){ if(s === NOISE_PHRASES[i].replace(/[\s　。、]/g, '')) return true; }
+    /* 2026-11-28：話していないのに「最後までご視聴いただきありがとうございます」が送られ、秘書が会話を終わらせた（宏史さんのラップトップ）。
+       動画の締めの決まり文句は、言い回しが少し違っても雑音として捨てる。人がトライサイトに話しかけるときには使わない言葉のため */
+    if(/ご視聴|ご清聴|チャンネル登録|高評価/.test(s)) return true;
     return false;
   }
   var lis = null;   // 会話の聞き取り（同時に1つだけ）
